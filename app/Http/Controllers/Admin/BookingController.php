@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CancelBookingRequest;
-use App\Http\Requests\Admin\VerifyBookingPaymentRequest;
 use App\Models\Booking;
 use App\Services\Booking\BookingService;
 use Illuminate\Http\RedirectResponse;
@@ -49,6 +48,9 @@ class BookingController extends Controller
      * Detail booking.
      *
      * Route: GET /admin/bookings/{booking}
+     *
+     * Catatan: status pembayaran sekarang terisi otomatis via Xendit Webhook.
+     * Admin hanya perlu "confirm" kalau pembayaran sudah verified.
      */
     public function show(Booking $booking): InertiaResponse
     {
@@ -65,29 +67,13 @@ class BookingController extends Controller
     }
 
     /**
-     * Verifikasi pembayaran.
-     *
-     * Route: POST /admin/bookings/{booking}/verify-payment
-     *
-     * ✅ Menggunakan VerifyBookingPaymentRequest (validasi terpusat)
-     */
-    public function verifyPayment(VerifyBookingPaymentRequest $request, Booking $booking): RedirectResponse
-    {
-        $this->bookingService->verifyPayment(
-            booking: $booking,
-            admin: $request->user(),
-            catatan: $request->validated('catatan'),
-        );
-
-        return redirect()
-            ->route('admin.bookings.show', $booking->id)
-            ->with('status', 'Pembayaran berhasil diverifikasi.');
-    }
-
-    /**
      * Konfirmasi booking (setelah payment verified).
      *
      * Route: POST /admin/bookings/{booking}/confirm
+     *
+     * Alur status:
+     *   - Payment diverifikasi OTOMATIS oleh Xendit Webhook → `payment_verified`.
+     *   - Admin klik "Confirm" → `confirmed` + Trip & E-Ticket auto-generated.
      */
     public function confirm(Booking $booking): RedirectResponse
     {

@@ -19,32 +19,45 @@ class PaymentFactory extends Factory
     public function definition(): array
     {
         return [
-            'booking_id' => Booking::factory()->pendingPayment(),
-            'jumlah' => fake()->numberBetween(300_000, 5_000_000),
-            'metode' => PaymentMetode::TRANSFER_BANK->value,
-            'bank_pengirim' => fake()->randomElement(['BCA', 'Mandiri', 'BRI', 'BNI']),
-            'nama_pengirim' => fake()->name(),
-            'bukti_transfer' => null,
+            'booking_id'  => Booking::factory()->pendingPayment(),
+            'jumlah'      => fake()->numberBetween(300_000, 5_000_000),
+            'metode'      => PaymentMetode::XENDIT->value,
             'verified_by' => null,
             'verified_at' => null,
-            'catatan' => null,
+            'catatan'     => null,
         ];
     }
 
+    /**
+     * State: payment sudah diverifikasi.
+     *
+     * Catatan:
+     * - `verified_by` diisi ID user (bukan factory object).
+     * - Untuk payment via Xendit, verifikasi OTOMATIS oleh webhook,
+     *   `verified_by` bisa `null` (tidak ada admin yang klik).
+     *   Kalau butuh simulasi admin yang klik manual (legacy),
+     *   pakai `->verified($admin)`.
+     */
     public function verified(?User $admin = null): static
     {
-        return $this->state(fn (array $attributes): array => [
-            'verified_by' => $admin !== null
-                ? $admin->id
-                : User::factory()->admin(),
+        return $this->state(fn (): array => [
+            'verified_by' => $admin?->id,
             'verified_at' => now(),
         ]);
     }
 
-    public function denganBukti(): static
+    /**
+     * State: payment yang diverifikasi OTOMATIS oleh Xendit webhook.
+     *
+     * `verified_by = null` (tidak ada admin), `verified_at = now()`,
+     * dan `catatan` berisi ID invoice Xendit.
+     */
+    public function viaXendit(string $invoiceId = 'test-invoice-123'): static
     {
-        return $this->state(fn (array $attributes): array => [
-            'bukti_transfer' => 'payment-proofs/'.fake()->uuid().'.jpg',
+        return $this->state(fn (): array => [
+            'verified_by' => null,
+            'verified_at' => now(),
+            'catatan'     => "Pembayaran otomatis via Xendit (Invoice: {$invoiceId})",
         ]);
     }
 }

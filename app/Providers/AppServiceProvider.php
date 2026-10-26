@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Repositories\Contracts\PaymentGatewayInterface;
 use App\Repositories\Contracts\BookingRepositoryInterface;
 use App\Repositories\Contracts\DailyReportRepositoryInterface;
 use App\Repositories\Contracts\PackageRepositoryInterface;
@@ -18,6 +19,7 @@ use App\Repositories\Eloquent\ProfileRepository;
 use App\Repositories\Eloquent\TripRepository;
 use App\Repositories\Eloquent\UserRepository;
 use App\Repositories\Eloquent\WalletRepository;
+use App\Services\Payment\XenditHttpGateway;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -34,6 +36,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // ==========================================
+        // REPOSITORY BINDINGS
+        // ==========================================
         $this->app->bind(UserRepositoryInterface::class, UserRepository::class);
         $this->app->bind(ProfileRepositoryInterface::class, ProfileRepository::class);
         $this->app->bind(PackageRepositoryInterface::class, PackageRepository::class);
@@ -42,6 +47,19 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(DailyReportRepositoryInterface::class, DailyReportRepository::class);
         $this->app->bind(WalletRepositoryInterface::class, WalletRepository::class);
         $this->app->bind(PayoutRepositoryInterface::class, PayoutRepository::class);
+
+        // ==========================================
+        // PAYMENT GATEWAY BINDING
+        // ==========================================
+        // ✅ Binding interface → implementasi konkret.
+        // Untuk ganti gateway (Midtrans, OVO, dll.):
+        // 1. Buat class baru implement PaymentGatewayInterface.
+        // 2. Ganti 1 baris di bawah.
+        // 3. Tidak perlu ubah BookingService / PayoutService.
+        $this->app->bind(
+            PaymentGatewayInterface::class,
+            XenditHttpGateway::class,
+        );
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Services\Booking;
 
+use App\Repositories\Contracts\PaymentGatewayInterface;
 use App\Enums\BookingStatus;
 use App\Enums\PaymentMetode;
 use App\Models\Booking;
@@ -28,6 +29,7 @@ class BookingService
         protected TripService $tripService,
         protected ETicketService $eTicketService,
         protected NotificationService $notificationService,
+        protected PaymentGatewayInterface $paymentGateway,
     ) {}
 
     // ==========================================
@@ -83,7 +85,7 @@ class BookingService
     }
 
     // ==========================================
-    // CREATE
+    // CREATE (Generate Invoice via Payment Gateway)
     // ==========================================
 
     /** @param array<string, mixed> $data */
@@ -91,7 +93,8 @@ class BookingService
     {
         $this->validateBooking($package, $data);
 
-        return DB::transaction(function () use ($package, $client, $data) {
+        // 1. Simpan Booking ke Database
+        $booking = DB::transaction(function () use ($package, $client, $data) {
             $totalHarga = $this->calculateTotalHarga($package, (int) $data['jumlah_peserta']);
             $kode = $this->bookingRepository->generateKode((int) now()->year);
             $expiredAt = now()->addHours(24);
@@ -118,53 +121,38 @@ class BookingService
                 ]);
             }
 
-            Log::info('Booking baru dibuat', [
-                'booking_id' => $booking->id,
-                'kode' => $booking->kode,
-                'package_id' => $package->id,
-                'client_id' => $client->id,
-                'total_harga' => $totalHarga,
+            return $booking;
+        });
+
+        // 2. Generate Invoice via Payment Gateway (di luar DB transaction)
+        try {
+            $invoice = $this->paymentGateway->createInvoice($booking);
+
+            $booking->update([
+                'xendit_invoice_id' => $invoice['id'] ?? null,
+                'xendit_invoice_url' => $invoice['invoice_url'] ?? null,
             ]);
 
-            return $booking->load(['package', 'participants']);
-        });
+            Log::info('Booking baru dibuat & Invoice ter-generate', [
+                'booking_id' => $booking->id,
+                'kode' => $booking->kode,
+                'invoice_url' => $invoice['invoice_url'] ?? null,
+            ]);
+
+        } catch (\Throwable $e) {
+            Log::error('Booking dibuat tapi gagal generate Invoice', [
+                'booking_id' => $booking->id,
+                'kode' => $booking->kode,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return $booking->load(['package', 'participants']);
     }
 
     // ==========================================
     // CLIENT ACTIONS
     // ==========================================
-
-    /** @param array<string, mixed> $data */
-    public function uploadPayment(Booking $booking, array $data): Payment
-    {
-        if ($booking->status !== BookingStatus::PENDING_PAYMENT) {
-            throw ValidationException::withMessages([
-                'status' => ['Booking sudah tidak bisa upload bukti transfer.'],
-            ]);
-        }
-
-        return DB::transaction(function () use ($booking, $data) {
-            $payment = Payment::updateOrCreate(
-                ['booking_id' => $booking->id],
-                [
-                    'jumlah' => $data['jumlah'] ?? $booking->total_harga,
-                    'metode' => $data['metode'] ?? PaymentMetode::TRANSFER_BANK->value,
-                    'bank_pengirim' => $data['bank_pengirim'] ?? null,
-                    'nama_pengirim' => $data['nama_pengirim'] ?? null,
-                    'bukti_transfer' => $data['bukti_transfer'] ?? null,
-                    'catatan' => $data['catatan'] ?? null,
-                ]
-            );
-
-            Log::info('Payment diupload client', [
-                'booking_id' => $booking->id,
-                'payment_id' => $payment->id,
-                'kode' => $booking->kode,
-            ]);
-
-            return $payment;
-        });
-    }
 
     public function cancelByClient(Booking $booking): Booking
     {
@@ -181,46 +169,40 @@ class BookingService
     // ADMIN ACTIONS
     // ==========================================
 
-    public function verifyPayment(Booking $booking, User $admin, ?string $catatan = null): Booking
+    /**
+     * Verifikasi Pembayaran via Webhook Xendit.
+     */
+    public function verifyPaymentViaWebhook(Booking $booking, string $xenditInvoiceId): Booking
     {
         if ($booking->status !== BookingStatus::PENDING_PAYMENT) {
-            throw ValidationException::withMessages([
-                'status' => ['Booking ini tidak dalam status menunggu pembayaran.'],
+            Log::warning('Webhook: Booking sudah tidak pending, skip.', [
+                'booking_id' => $booking->id,
+                'current_status' => $booking->status->value,
             ]);
+            return $booking;
         }
 
-        return DB::transaction(function () use ($booking, $admin, $catatan) {
-            $payment = $booking->payments()->first();
-
-            if ($payment) {
-                $payment->update([
-                    'verified_by' => $admin->id,
-                    'verified_at' => now(),
-                    'catatan' => $catatan ?? $payment->catatan,
-                ]);
-            } else {
-                Payment::create([
-                    'booking_id' => $booking->id,
-                    'jumlah' => $booking->total_harga,
-                    'metode' => PaymentMetode::TRANSFER_BANK->value,
-                    'verified_by' => $admin->id,
-                    'verified_at' => now(),
-                    'catatan' => $catatan ?? 'Diverifikasi manual oleh admin.',
-                ]);
-            }
+        return DB::transaction(function () use ($booking, $xenditInvoiceId) {
+            Payment::create([
+                'booking_id' => $booking->id,
+                'jumlah' => $booking->total_harga,
+                'metode' => PaymentMetode::XENDIT->value,
+                'verified_at' => now(),
+                'catatan' => "Pembayaran otomatis via Xendit (Invoice: {$xenditInvoiceId})",
+            ]);
 
             $booking = $this->bookingRepository->update($booking, [
                 'status' => BookingStatus::PAYMENT_VERIFIED->value,
                 'expired_at' => null,
             ]);
 
-            Log::info('Pembayaran diverifikasi admin', [
+            Log::info('Webhook: Pembayaran diverifikasi otomatis oleh Xendit', [
                 'booking_id' => $booking->id,
                 'kode' => $booking->kode,
-                'admin_id' => $admin->id,
+                'xendit_invoice_id' => $xenditInvoiceId,
             ]);
 
-            return $booking->load('payments.verifier');
+            return $booking->load('payments');
         });
     }
 
@@ -285,7 +267,7 @@ class BookingService
                 }
             }
 
-            return $booking->load('payments.verifier');
+            return $booking->load('payments');
         });
     }
 
@@ -308,13 +290,6 @@ class BookingService
 
             if ($trip && $trip->canBeCancelled()) {
                 $this->tripService->cancel($trip, "Booking dibatalkan: {$alasan}");
-
-                Log::info('Trip di-cancel karena booking dibatalkan', [
-                    'booking_id' => $booking->id,
-                    'booking_kode' => $booking->kode,
-                    'trip_id' => $trip->id,
-                    'trip_kode' => $trip->kode,
-                ]);
             }
 
             return $this->cancel($booking, $alasan);
@@ -340,10 +315,6 @@ class BookingService
                     'error' => $e->getMessage(),
                 ]);
             }
-        }
-
-        if ($count > 0) {
-            Log::info("Auto-cancel: {$count} booking expired.");
         }
 
         return $count;

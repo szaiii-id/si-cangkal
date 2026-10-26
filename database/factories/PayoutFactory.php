@@ -26,32 +26,64 @@ class PayoutFactory extends Factory
         ];
     }
 
-    public function approved(): static
+    /**
+     * State: payout sudah di-approve admin.
+     *
+     * @param  User|null  $admin  Reviewer (opsional). Kalau null, `reviewed_by` = null.
+     */
+    public function approved(?User $admin = null): static
     {
-        return $this->state(fn () => [
+        return $this->state(fn (): array => [
             'status' => PayoutStatus::APPROVED->value,
-            'reviewed_by' => User::factory()->admin(),
+            'reviewed_by' => $admin?->id,
             'reviewed_at' => now(),
         ]);
     }
 
-    public function paid(): static
+    /**
+     * State: payout sudah ditransfer ke rekening mitra.
+     *
+     * @param  User|null  $admin  Reviewer (opsional).
+     */
+    public function paid(?User $admin = null): static
     {
-        return $this->state(fn () => [
+        return $this->state(fn (): array => [
             'status' => PayoutStatus::PAID->value,
-            'reviewed_by' => User::factory()->admin(),
+            'reviewed_by' => $admin?->id,
             'reviewed_at' => now()->subHour(),
             'paid_at' => now(),
         ]);
     }
 
-    public function rejected(string $reason = 'Data rekening tidak valid'): static
+    /**
+     * State: payout ditolak admin.
+     *
+     * @param  string  $reason  Alasan penolakan.
+     * @param  User|null  $admin  Reviewer (opsional).
+     */
+    public function rejected(string $reason = 'Data rekening tidak valid', ?User $admin = null): static
     {
-        return $this->state(fn () => [
+        return $this->state(fn (): array => [
             'status' => PayoutStatus::REJECTED->value,
-            'reviewed_by' => User::factory()->admin(),
+            'reviewed_by' => $admin?->id,
             'reviewed_at' => now(),
             'rejection_reason' => $reason,
+        ]);
+    }
+
+    /**
+     * State: payout dengan Xendit tracking ID.
+     *
+     * @param  string  $xenditPayoutId  ID dari Xendit.
+     * @param  string  $xenditStatus  Status Xendit (SUCCEEDED, FAILED, PENDING).
+     */
+    public function withXendit(
+        string $xenditPayoutId = 'xnd_payout_test123',
+        string $xenditStatus = 'PENDING',
+    ): static {
+        return $this->state(fn (): array => [
+            'xendit_payout_id' => $xenditPayoutId,
+            'xendit_payout_status' => $xenditStatus,
         ]);
     }
 }

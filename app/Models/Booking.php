@@ -39,6 +39,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property int $jumlah_peserta
  * @property string $total_harga
  * @property BookingStatus $status
+ * @property string|null $xendit_invoice_id
+ * @property string|null $xendit_invoice_url
  * @property CarbonImmutable|null $expired_at
  * @property string|null $catatan
  * @property CarbonImmutable|null $created_at
@@ -72,6 +74,8 @@ class Booking extends Model
         'jumlah_peserta',
         'total_harga',
         'status',
+        'xendit_invoice_id',
+        'xendit_invoice_url',
         'expired_at',
         'catatan',
     ];

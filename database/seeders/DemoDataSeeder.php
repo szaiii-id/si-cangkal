@@ -154,11 +154,10 @@ class DemoDataSeeder extends Seeder
                 Payment::create([
                     'booking_id' => $booking->id,
                     'jumlah' => $booking->total_harga,
-                    'metode' => PaymentMetode::TRANSFER_BANK->value,
-                    'bank_pengirim' => $faker->randomElement(['BCA', 'Mandiri', 'BRI', 'BNI']),
-                    'nama_pengirim' => $client->name,
+                    'metode' => PaymentMetode::XENDIT->value,
                     'verified_by' => $admin->id,
                     'verified_at' => Carbon::parse($tanggalBerangkat)->subDays(rand(1, 5)),
+                    'catatan' => 'Pembayaran via Xendit (demo seed).',
                 ]);
             }
 
@@ -227,6 +226,16 @@ class DemoDataSeeder extends Seeder
 
             $payout->nama_pemilik = $mitra->name;
             $payout->catatan = $faker->optional()->sentence;
+
+            // ✅ Xendit fields (nullable — hanya diisi kalau status paid/approved)
+            if (in_array($status, ['paid', 'approved'])) {
+                $payout->xendit_payout_id = 'xnd_payout_'.strtolower($faker->bothify('??####??####'));
+                $payout->xendit_payout_status = $status === 'paid' ? 'SUCCEEDED' : 'PENDING';
+            }
+
+            if ($status === 'paid') {
+                $payout->paid_at = Carbon::parse($tanggalRequest)->addDays(rand(1, 3));
+            }
 
             // ✅ FIX: Payout pakai Carbon biasa (bukan CarbonImmutable)
             $payout->created_at = Carbon::parse($tanggalRequest);

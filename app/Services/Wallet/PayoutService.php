@@ -2,6 +2,7 @@
 
 namespace App\Services\Wallet;
 
+use App\Repositories\Contracts\PaymentGatewayInterface;
 use App\Enums\PayoutStatus;
 use App\Models\Payout;
 use App\Models\User;
@@ -18,6 +19,7 @@ class PayoutService
     public function __construct(
         protected PayoutRepositoryInterface $payoutRepository,
         protected WalletService $walletService,
+        protected PaymentGatewayInterface $paymentGateway, // ✅ Interface, bukan XenditService
     ) {}
 
     /**
@@ -107,6 +109,15 @@ class PayoutService
         });
     }
 
+    /**
+     * Approve Payout & Otomatis Kirim Dana via Payment Gateway.
+     *
+     * Alur:
+     * 1. Potong saldo mitra (di dalam DB transaction).
+     * 2. Panggil PaymentGatewayInterface->createPayout().
+     * 3. Jika gateway gagal → Rollback (saldo kembali).
+     * 4. Jika sukses → Simpan gateway_payout_id & update status.
+     */
     public function approve(Payout $payout, User $admin): Payout
     {
         if ($payout->status !== PayoutStatus::PENDING) {
@@ -122,7 +133,12 @@ class PayoutService
             ]);
         }
 
-        return DB::transaction(function () use ($payout, $admin, $mitra) {
+        // 1. Potong Saldo Mitra (di dalam transaksi DB)
+        //    Jika gateway gagal, kita akan melakukan rollback saldo manual.
+        DB::beginTransaction();
+
+        try {
+            // Potong saldo & catat di wallet_transactions
             $this->walletService->debitForPayout(
                 $mitra,
                 (float) $payout->jumlah,
@@ -130,19 +146,40 @@ class PayoutService
                 $payout->id,
             );
 
+            // 2. Kirim Dana via Payment Gateway
+            $gatewayPayout = $this->paymentGateway->createPayout($payout);
+
+            // 3. Update status Payout dengan ID dari gateway
             $payout = $this->payoutRepository->update($payout, [
                 'status' => PayoutStatus::APPROVED->value,
                 'reviewed_by' => $admin->id,
                 'reviewed_at' => now(),
+                'xendit_payout_id' => $gatewayPayout['id'] ?? null,
+                'xendit_payout_status' => $gatewayPayout['status'] ?? null,
             ]);
 
-            Log::info('Payout approved', [
+            DB::commit();
+
+            Log::info('Payout approved & dikirim ke Payment Gateway', [
                 'payout_id' => $payout->id,
                 'admin_id' => $admin->id,
+                'gateway_payout_id' => $gatewayPayout['id'] ?? null,
             ]);
 
             return $payout;
-        });
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            Log::error('Gagal approve payout via Payment Gateway. Saldo mitra dikembalikan.', [
+                'payout_id' => $payout->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            throw ValidationException::withMessages([
+                'payment_gateway' => ['Gagal memproses pencairan ke Payment Gateway: '.$e->getMessage()],
+            ]);
+        }
     }
 
     public function reject(Payout $payout, User $admin, string $reason): Payout
@@ -170,22 +207,32 @@ class PayoutService
         });
     }
 
-    public function markPaid(Payout $payout, User $admin): Payout
+    /**
+     * Update Status Payout via Webhook Payment Gateway.
+     *
+     * Dipanggil dari XenditWebhookController saat menerima event 'payout.succeeded'
+     * atau 'payout.failed'.
+     */
+    public function updateFromWebhook(Payout $payout, string $xenditStatus): Payout
     {
-        if ($payout->status !== PayoutStatus::APPROVED) {
-            throw ValidationException::withMessages([
-                'status' => ['Hanya pengajuan approved yang bisa ditandai sudah ditransfer.'],
-            ]);
-        }
+        // Mapping status gateway ke PayoutStatus internal
+        $statusEnum = match (strtoupper($xenditStatus)) {
+            'SUCCEEDED' => PayoutStatus::PAID,
+            'FAILED' => PayoutStatus::REJECTED,
+            default => PayoutStatus::APPROVED,
+        };
 
-        return DB::transaction(function () use ($payout) {
+        return DB::transaction(function () use ($payout, $xenditStatus, $statusEnum) {
             $payout = $this->payoutRepository->update($payout, [
-                'status' => PayoutStatus::PAID->value,
-                'paid_at' => now(),
+                'status' => $statusEnum->value,
+                'xendit_payout_status' => $xenditStatus,
+                'paid_at' => $statusEnum === PayoutStatus::PAID ? now() : $payout->paid_at,
             ]);
 
-            Log::info('Payout paid', [
+            Log::info('Webhook: Payout diupdate dari Payment Gateway', [
                 'payout_id' => $payout->id,
+                'xendit_status' => $xenditStatus,
+                'internal_status' => $statusEnum->value,
             ]);
 
             return $payout;

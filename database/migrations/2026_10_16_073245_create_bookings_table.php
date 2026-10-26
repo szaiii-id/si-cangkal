@@ -26,6 +26,10 @@ return new class extends Migration
      *
      * Catatan enum:
      * - `status` disimpan sebagai string + PHP Enum cast di model.
+     *
+     * Catatan Xendit:
+     * - `xendit_invoice_id` & `xendit_invoice_url` disimpan untuk tracking
+     *   dan redirect client ke halaman pembayaran Xendit.
      */
     public function up(): void
     {
@@ -38,7 +42,7 @@ return new class extends Migration
             // Relasi
             $table->foreignId('package_id')
                 ->constrained('packages')
-                ->restrictOnDelete();                     // paket tidak bisa dihapus kalau ada booking
+                ->restrictOnDelete();
 
             $table->foreignId('user_id')                  // client
                 ->constrained('users')
@@ -53,10 +57,14 @@ return new class extends Migration
             $table->string('status', 30)->default('pending_payment');
             // pending_payment | payment_verified | confirmed | in_progress | completed | cancelled
 
+            // Menyimpan ID Invoice dari Xendit & URL untuk redirect client
+            $table->string('xendit_invoice_id')->nullable()->after('status');
+            $table->string('xendit_invoice_url', 500)->nullable()->after('xendit_invoice_id');
+
             // Auto-expire
             $table->timestamp('expired_at')->nullable();  // UTC, created_at + 24h
 
-            // Catatan client (alergi, permintaan khusus, dll)
+            // Catatan client
             $table->text('catatan')->nullable();
 
             $table->timestamps();
@@ -66,7 +74,7 @@ return new class extends Migration
             $table->index('status');
             $table->index('user_id');
             $table->index('package_id');
-            $table->index('expired_at');                  // untuk scheduler expire
+            $table->index('expired_at');
             $table->index('tanggal_keberangkatan');
         });
     }

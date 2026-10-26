@@ -17,7 +17,13 @@ export type BookingStatus =
     | 'completed'
     | 'cancelled';
 
-export type PaymentMetode = 'transfer_bank' | 'tunai' | 'lainnya';
+/**
+ * Metode pembayaran — full Xendit.
+ *
+ * Backend `App\Enums\PaymentMetode` sekarang HANYA punya case XENDIT.
+ * Metode manual (transfer_bank, tunai, lainnya) sudah dihapus.
+ */
+export type PaymentMetode = 'xendit';
 
 // ==========================================
 // TRIP

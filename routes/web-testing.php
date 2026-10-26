@@ -245,6 +245,7 @@ Route::post('/_test/create-booking', function (Request $request) use ($ensureTes
             'id' => $booking->id,
             'kode' => $booking->kode,
             'status' => $enumValue($booking->status),
+            'xendit_invoice_url' => $booking->xendit_invoice_url,
         ]);
     } catch (Throwable $e) {
         return response()->json(['error' => $e->getMessage()], 422);
@@ -254,6 +255,8 @@ Route::post('/_test/create-booking', function (Request $request) use ($ensureTes
 // ==========================================
 // VERIFY BOOKING PAYMENT (E2E HELPER)
 // ==========================================
+// Simulasi webhook Xendit: panggil method yang sama dengan controller webhook.
+// Method lama `verifyPayment()` sudah dihapus; diganti `verifyPaymentViaWebhook()`.
 Route::post('/_test/verify-booking-payment', function (Request $request) use ($ensureTesting, $findBooking): Response|JsonResponse {
     $ensureTesting();
 
@@ -263,11 +266,11 @@ Route::post('/_test/verify-booking-payment', function (Request $request) use ($e
 
     $booking = $findBooking((int) $request->input('booking_id'));
 
-    /** @var User $admin */
-    $admin = User::query()->where('role', 'admin')->firstOrFail();
-
     try {
-        app(BookingService::class)->verifyPayment($booking, $admin);
+        // Simulasi webhook: pakai invoice_id dari booking (atau synthetic kalau null)
+        $invoiceId = $booking->xendit_invoice_id ?? 'test-invoice-'.$booking->id;
+
+        app(BookingService::class)->verifyPaymentViaWebhook($booking, $invoiceId);
 
         return response()->noContent();
     } catch (Throwable $e) {
@@ -322,7 +325,12 @@ Route::post('/_test/create-trip', function (Request $request) use ($ensureTestin
         /** @var User $admin */
         $admin = User::query()->where('role', 'admin')->firstOrFail();
 
-        app(BookingService::class)->verifyPayment($booking, $admin);
+        // ✅ FIX: verifyPayment() sudah dihapus; pakai verifyPaymentViaWebhook()
+        //    (simulasi webhook Xendit) supaya status jadi `payment_verified`.
+        $invoiceId = $booking->xendit_invoice_id ?? 'test-invoice-'.$booking->id;
+        app(BookingService::class)->verifyPaymentViaWebhook($booking, $invoiceId);
+
+        // Lanjut konfirmasi booking → auto-create Trip
         app(BookingService::class)->confirm($booking, $admin);
 
         $trip = $findTrip(
@@ -473,7 +481,6 @@ Route::post('/_test/submit-daily-report', function (Request $request) use ($ensu
         /** @var User|null $mitra */
         $mitra = User::query()->find($request->input('mitra_id'));
     } else {
-        // ✅ FIX PHPStan: query langsung dari User agar return type pasti User
         $mitraIndex = (int) $request->input('mitra_index', 0);
         /** @var User|null $mitra */
         $mitra = User::query()
@@ -692,7 +699,7 @@ Route::post('/_test/find-package', function (Request $request) use ($ensureTesti
         'id' => $pkg->id,
         'kode' => $pkg->kode,
         'nama' => $pkg->nama,
-        'status' => $pkg->status->value, // ✅ FIX: status pasti enum
+        'status' => $pkg->status->value,
         'timezone' => $pkg->timezone,
         'durasi_hari' => $pkg->durasi_hari,
     ]);
@@ -720,7 +727,7 @@ Route::post('/_test/find-trip', function (Request $request) use ($ensureTesting)
     return response()->json([
         'id' => $trip->id,
         'kode' => $trip->kode,
-        'status' => $trip->status->value, // ✅ FIX: status pasti enum
+        'status' => $trip->status->value,
         'tanggal_mulai' => $trip->tanggal_mulai,
         'mitra_count' => $trip->mitras()->count(),
     ]);
@@ -742,11 +749,7 @@ Route::post('/_test/reset-trip-days', function (Request $request) use ($ensureTe
         ->where('trip_id', $trip->id)
         ->delete();
 
-    // ✅ FIX PHPStan: relasi package tidak nullable, tidak perlu ?->
     $durasiHari = $trip->package->durasi_hari;
-
-    // ✅ FIX PHPStan: tanggal_mulai bisa nullable, jadi tetap pakai ?? fallback
-    // ✅ FIX PHPStan: tanggal_mulai sudah pasti Carbon (tidak nullable)
     $tanggalMulai = Carbon::parse($trip->tanggal_mulai);
 
     for ($i = 1; $i <= $durasiHari; $i++) {

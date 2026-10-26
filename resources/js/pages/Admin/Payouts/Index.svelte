@@ -49,12 +49,7 @@
     // STATE
     // ==========================================
 
-    // Filter state — di-init dari props `filters` (initial value).
-    // Setelah user ubah filter → router.get() → Inertia reload → komponen
-    // re-mount → state re-init dari filters baru. Jadi tidak perlu sync.
-    // svelte-ignore state_referenced_locally
     let search = $state(filters.search ?? '');
-    // svelte-ignore state_referenced_locally
     let selectedStatus = $state(filters.status ?? '');
     let searchTimeout: ReturnType<typeof setTimeout>;
 
@@ -190,37 +185,7 @@
             },
         );
     }
-
-    // ==========================================
-    // MODAL — PAID
-    // ==========================================
-
-    let showPaidModal = $state(false);
-    let payoutToPaid = $state<PayoutItem | null>(null);
-    let paidProcessing = $state(false);
-
-    function openPaid(p: PayoutItem) {
-        payoutToPaid = p;
-        showPaidModal = true;
-    }
-
-    function confirmPaid() {
-        if (!payoutToPaid) return;
-        paidProcessing = true;
-        router.post(
-            `/admin/payouts/${payoutToPaid.id}/mark-paid`,
-            {},
-            {
-                onFinish: () => {
-                    paidProcessing = false;
-                    showPaidModal = false;
-                    payoutToPaid = null;
-                },
-            },
-        );
-    }
 </script>
-
 
 <svelte:head><title>Payout | Titiktemu</title></svelte:head>
 
@@ -376,28 +341,8 @@
                                         </svg>
                                         Tolak
                                     </button>
-                                {:else if p.status === 'approved'}
-                                    <button
-                                        type="button"
-                                        onclick={() => openPaid(p)}
-                                        class="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-white bg-pink-dark hover:bg-sun-dark shadow-md"
-                                    >
-                                        <svg
-                                            class="w-3.5 h-3.5"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                            stroke="currentColor"
-                                            stroke-width="2.5"
-                                        >
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-                                            />
-                                        </svg>
-                                        Tandai Ditransfer
-                                    </button>
                                 {/if}
+                                <!-- ✅ TOMBOL MARK PAID DIHAPUS -->
                             </div>
                         </div>
                     </div>
@@ -439,17 +384,4 @@
     reasonError={rejectErrors.reason}
     processing={rejectProcessing}
     onConfirm={confirmReject}
-/>
-
-<!-- ==========================================
-     MODAL: PAID
-========================================== -->
-<ConfirmModal
-    bind:open={showPaidModal}
-    variant="info"
-    title="Tandai Sudah Ditransfer?"
-    description={`Pastikan Anda sudah mentransfer ${formatCurrency(payoutToPaid?.jumlah ?? 0)} ke rekening mitra.`}
-    confirmLabel="Ya, Tandai"
-    processing={paidProcessing}
-    onConfirm={confirmPaid}
 />

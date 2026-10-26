@@ -61,7 +61,7 @@
     let processing = $state(false);
 
     // ==========================================
-    // MIN DATE — H+3 BERDASARKAN TIMEZONE PACKAGE (PRD §9.6)
+    // MIN DATE — H+3 BERDASARKAN TIMEZONE PACKAGE
     // ==========================================
 
     function getMinDate(): string {
@@ -413,7 +413,6 @@
                     </div>
                 </div>
 
-                <!-- ✅ FIX: novalidate — HTML5 min/max tidak block submit -->
                 <form
                     novalidate
                     onsubmit={(e) => {
@@ -660,7 +659,6 @@
                     </button>
                 </div>
 
-                <!-- ✅ FIX: novalidate — HTML5 required tidak block submit -->
                 <form novalidate onsubmit={handleSubmit}>
                     <div class="p-5 sm:p-6 space-y-4">
                         {#each participants as participant, index}
@@ -833,9 +831,7 @@
                             </span>
                         </div>
                         <p class="text-[11px] text-gray-500">
-                            Pembayaran manual via transfer bank.
-                            Setelah booking dibuat, Anda akan
-                            mendapat instruksi pembayaran.
+                            Pembayaran aman via Xendit. Setelah booking dibuat, Anda akan diarahkan ke halaman pembayaran.
                         </p>
                     </div>
 

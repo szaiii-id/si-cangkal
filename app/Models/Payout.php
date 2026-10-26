@@ -21,6 +21,8 @@ use Illuminate\Support\Carbon;
  * @property string $no_rekening
  * @property string $nama_pemilik
  * @property PayoutStatus $status
+ * @property string|null $xendit_payout_id
+ * @property string|null $xendit_payout_status
  * @property Carbon|null $requested_at
  * @property int|null $reviewed_by
  * @property Carbon|null $reviewed_at
@@ -50,6 +52,8 @@ class Payout extends Model
         'no_rekening',
         'nama_pemilik',
         'status',
+        'xendit_payout_id',
+        'xendit_payout_status',
         'requested_at',
         'reviewed_by',
         'reviewed_at',

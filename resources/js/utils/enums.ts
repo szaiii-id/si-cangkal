@@ -342,11 +342,12 @@ export function packageDayCostSatuanLabel(satuan: string): string {
 // ==========================================
 // PAYMENT METODE
 // ==========================================
+//
+// Backend `App\Enums\PaymentMetode` sekarang HANYA punya case XENDIT.
+// Semua pembayaran otomatis via Xendit (Invoice/VA/QRIS/E-Wallet).
 
 const PAYMENT_METODE_LABEL: Record<PaymentMetode, string> = {
-    transfer_bank: 'Transfer Bank',
-    tunai: 'Tunai',
-    lainnya: 'Lainnya',
+    xendit: 'Xendit (Otomatis)',
 };
 
 export function paymentMetodeLabel(metode: string): string {

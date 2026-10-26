@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\PayoutController as AdminPayoutController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\TripController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
+use App\Http\Controllers\Api\XenditWebhookController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\ChangePasswordController;
 use App\Http\Controllers\Auth\PasswordResetController;
@@ -45,6 +46,15 @@ Route::get('/', function () {
 Route::post('/contact', [ContactController::class, 'store'])
     ->middleware('throttle:contact')
     ->name('contact.store');
+
+// ==========================================
+// XENDIT WEBHOOK (Server-to-Server)
+// ==========================================
+// CSRF dikecualikan via bootstrap/app.php:
+//   $middleware->preventRequestForgery(except: ['xendit/webhook']);
+// Keamanan dijaga via validasi x-callback-token di XenditWebhookController.
+Route::post('/xendit/webhook', [XenditWebhookController::class, 'handle'])
+    ->name('xendit.webhook');
 
 // ==========================================
 // RUTE GUEST (Hanya untuk yang BELUM login)
@@ -145,7 +155,7 @@ Route::middleware('auth')->group(function () {
             // ==========================================
             Route::get('/bookings', [AdminBookingController::class, 'index'])->name('bookings.index');
             Route::get('/bookings/{booking}', [AdminBookingController::class, 'show'])->name('bookings.show');
-            Route::post('/bookings/{booking}/verify-payment', [AdminBookingController::class, 'verifyPayment'])->name('bookings.verify-payment');
+            // ✅ Route verify-payment DIHAPUS — verifikasi otomatis via Xendit Webhook
             Route::post('/bookings/{booking}/confirm', [AdminBookingController::class, 'confirm'])->name('bookings.confirm');
             Route::post('/bookings/{booking}/cancel', [AdminBookingController::class, 'cancel'])->name('bookings.cancel');
 
@@ -177,7 +187,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/payouts', [AdminPayoutController::class, 'index'])->name('payouts.index');
             Route::post('/payouts/{payout}/approve', [AdminPayoutController::class, 'approve'])->name('payouts.approve');
             Route::post('/payouts/{payout}/reject', [AdminPayoutController::class, 'reject'])->name('payouts.reject');
-            Route::post('/payouts/{payout}/mark-paid', [AdminPayoutController::class, 'markPaid'])->name('payouts.mark-paid');
+            // ✅ Route mark-paid DIHAPUS — status paid di-set otomatis via Xendit Webhook
 
             // ==========================================
             // LAPORAN (Fase 7)
@@ -266,7 +276,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/bookings/create/{package}', [ClientBookingController::class, 'create'])->name('bookings.create');
             Route::post('/bookings/{package}', [ClientBookingController::class, 'store'])->name('bookings.store');
             Route::get('/bookings/{booking}', [ClientBookingController::class, 'show'])->name('bookings.show');
-            Route::post('/bookings/{booking}/upload-payment-proof', [ClientBookingController::class, 'uploadPaymentProof'])->name('bookings.upload-payment-proof');
+            // ✅ Route upload-payment-proof DIHAPUS — client diarahkan ke Xendit Invoice
             Route::post('/bookings/{booking}/cancel', [ClientBookingController::class, 'cancel'])->name('bookings.cancel');
 
             // ==========================================

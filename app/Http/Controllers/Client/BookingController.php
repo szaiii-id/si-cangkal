@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Client\StoreBookingRequest;
-use App\Http\Requests\Client\UploadPaymentProofRequest;
 use App\Models\Booking;
 use App\Models\ETicket;
 use App\Models\Package;
@@ -13,6 +12,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
+use Symfony\Component\HttpFoundation\Response; // ✅ TAMBAHKAN INI
 
 class BookingController extends Controller
 {
@@ -52,19 +52,27 @@ class BookingController extends Controller
         ]);
     }
 
-    public function store(StoreBookingRequest $request, Package $package): RedirectResponse
+    /**
+     * Simpan booking baru & redirect ke Xendit Invoice.
+     */
+    // ✅ UBAH RETURN TYPE: Tambahkan Symfony Response
+    public function store(StoreBookingRequest $request, Package $package): Response|InertiaResponse|RedirectResponse
     {
-        $client = $request->user();
-
         $booking = $this->bookingService->create(
             package: $package,
-            client: $client,
+            client: $request->user(),
             data: $request->validated(),
         );
 
+        // ✅ Gunakan Inertia::location() agar browser melakukan navigasi penuh
+        if ($booking->xendit_invoice_url !== null) {
+            return Inertia::location($booking->xendit_invoice_url);
+        }
+
+        // Fallback jika gagal
         return redirect()
             ->route('client.bookings.show', $booking->id)
-            ->with('status', 'Booking berhasil dibuat! Silakan lakukan pembayaran dan upload bukti transfer.');
+            ->with('status', 'Booking berhasil dibuat, tapi invoice pembayaran gagal dibuat otomatis.');
     }
 
     public function show(Request $request, Booking $booking): InertiaResponse
@@ -87,24 +95,6 @@ class BookingController extends Controller
                 'generated_at' => $eticket->generated_at?->toIso8601String(),
             ] : null,
         ]);
-    }
-
-    public function uploadPaymentProof(UploadPaymentProofRequest $request, Booking $booking): RedirectResponse
-    {
-        $this->authorizeOwnership($request, $booking);
-
-        $validated = $request->validated();
-
-        if ($request->hasFile('bukti_transfer')) {
-            $path = $request->file('bukti_transfer')->store('payment-proofs', 'public');
-            $validated['bukti_transfer'] = $path;
-        }
-
-        $this->bookingService->uploadPayment($booking, $validated);
-
-        return redirect()
-            ->route('client.bookings.show', $booking->id)
-            ->with('status', 'Bukti transfer berhasil diupload. Menunggu verifikasi admin.');
     }
 
     public function cancel(Request $request, Booking $booking): RedirectResponse

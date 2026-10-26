@@ -9,19 +9,16 @@ return new class extends Migration
     /**
      * Run the migrations.
      *
-     * Tabel `payments` — bukti pembayaran manual dari client.
+     * Tabel `payments` — rekam jejak pembayaran via Xendit.
      *
      * Alur:
-     * 1. Client booking → dapat instruksi transfer manual.
-     * 2. Client transfer ke rekening admin.
-     * 3. Client upload bukti transfer (atau langsung konfirmasi via WA).
-     * 4. Admin verifikasi → `verified_at` di-set.
-     * 5. Booking status berubah jadi `payment_verified`.
+     * 1. Client booking → sistem generate Invoice Xendit.
+     * 2. Client bayar via halaman Xendit.
+     * 3. Xendit kirim Webhook → sistem otomatis insert record di sini.
+     * 4. Booking status berubah jadi `payment_verified`.
      *
      * Catatan:
-     * - 1 booking = 1 payment untuk MVP (multi-payment/DP tunda ke versi berikutnya).
-     * - Tidak ada payment gateway — semua manual.
-     * - `bukti_transfer` path relatif ke `storage/app/public/payment-proofs/`.
+     * - Full otomatis via Xendit, tidak ada lagi upload manual.
      * - ON DELETE CASCADE: kalau booking dihapus, payment ikut terhapus.
      */
     public function up(): void
@@ -36,25 +33,18 @@ return new class extends Migration
             // Jumlah yang dibayar (dalam Rupiah)
             $table->decimal('jumlah', 12, 2);
 
-            // Metode pembayaran
-            $table->string('metode', 30)->default('transfer_bank');
-            // transfer_bank | tunai | lainnya
+            // Metode pembayaran (sekarang hanya Xendit)
+            $table->string('metode', 30)->default('xendit'); 
 
-            // Info bank pengirim (untuk transfer)
-            $table->string('bank_pengirim', 100)->nullable();
-            $table->string('nama_pengirim')->nullable();
-
-            // Bukti transfer (path file)
-            $table->string('bukti_transfer')->nullable();
-
-            // Verifikasi admin
+            // Verifikasi (Diisi otomatis oleh Webhook Xendit)
+            // nullable karena bisa saja webhook belum masuk saat record dibuat
             $table->foreignId('verified_by')
                 ->nullable()
                 ->constrained('users')
                 ->nullOnDelete();
             $table->timestamp('verified_at')->nullable();
 
-            // Catatan admin (alasan reject, dll)
+            // Catatan admin / log dari Xendit (misal: Invoice ID)
             $table->text('catatan')->nullable();
 
             $table->timestamps();

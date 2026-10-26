@@ -3,17 +3,17 @@
 namespace App\Enums;
 
 /**
- * Metode pembayaran manual (tanpa payment gateway).
+ * Metode pembayaran (Full Xendit).
  *
- * - transfer_bank : client transfer ke rekening admin (default).
- * - tunai         : bayar langsung (jarang — untuk kasus khusus).
- * - lainnya       : metode lain (e-wallet, dll — konfirmasi manual).
+ * - xendit : Pembayaran otomatis via Xendit (Invoice/VA/QRIS/E-Wallet).
+ *
+ * Catatan:
+ * - Metode manual (transfer_bank, tunai, lainnya) sudah dihapus.
+ * - Semua pembayaran sekarang full otomatis via Xendit.
  */
 enum PaymentMetode: string
 {
-    case TRANSFER_BANK = 'transfer_bank';
-    case TUNAI = 'tunai';
-    case LAINNYA = 'lainnya';
+    case XENDIT = 'xendit';
 
     /**
      * Label Bahasa Indonesia untuk tampilan UI.
@@ -21,9 +21,7 @@ enum PaymentMetode: string
     public function label(): string
     {
         return match ($this) {
-            self::TRANSFER_BANK => 'Transfer Bank',
-            self::TUNAI => 'Tunai',
-            self::LAINNYA => 'Lainnya',
+            self::XENDIT => 'Xendit (Otomatis)',
         };
     }
 
@@ -33,9 +31,7 @@ enum PaymentMetode: string
     public function badgeClass(): string
     {
         return match ($this) {
-            self::TRANSFER_BANK => 'bg-blue/10 text-blue-dark border border-blue/20',
-            self::TUNAI => 'bg-green/10 text-green-dark border border-green/20',
-            self::LAINNYA => 'bg-gray-100 text-gray-700 border border-gray-200',
+            self::XENDIT => 'bg-purple/10 text-purple-dark border border-purple/20',
         };
     }
 

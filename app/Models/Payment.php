@@ -11,15 +11,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
 /**
- * Model Payment — bukti pembayaran manual dari client.
+ * Model Payment — rekam jejak pembayaran via Xendit.
  *
  * @property int $id
  * @property int $booking_id
  * @property numeric-string $jumlah
  * @property PaymentMetode $metode
- * @property string|null $bank_pengirim
- * @property string|null $nama_pengirim
- * @property string|null $bukti_transfer
  * @property int|null $verified_by
  * @property Carbon|null $verified_at
  * @property string|null $catatan
@@ -42,9 +39,6 @@ class Payment extends Model
         'booking_id',
         'jumlah',
         'metode',
-        'bank_pengirim',
-        'nama_pengirim',
-        'bukti_transfer',
         'verified_by',
         'verified_at',
         'catatan',
@@ -113,23 +107,9 @@ class Payment extends Model
         return $this->verified_at !== null;
     }
 
-    public function hasBuktiTransfer(): bool
-    {
-        return ! empty($this->bukti_transfer);
-    }
-
     public function jumlahRupiah(): string
     {
         return 'Rp '.number_format((float) $this->jumlah, 0, ',', '.');
-    }
-
-    public function buktiTransferUrl(): ?string
-    {
-        if ($this->bukti_transfer === null || $this->bukti_transfer === '') {
-            return null;
-        }
-
-        return asset('storage/'.$this->bukti_transfer);
     }
 
     /**

@@ -82,13 +82,10 @@ class BookingSeeder extends Seeder
             ],
             'payment' => [
                 'jumlah' => null,
-                'metode' => PaymentMetode::TRANSFER_BANK,
-                'bank_pengirim' => 'BCA',
-                'nama_pengirim' => 'Budi Client',
-                'bukti_transfer' => null,
+                'metode' => PaymentMetode::XENDIT,
                 'verified_by' => $admin,
                 'verified_at' => Carbon::now()->subHours(6),
-                'catatan' => 'Transfer sudah masuk, sesuai nominal.',
+                'catatan' => 'Pembayaran via Xendit (seed).',
             ],
         ]);
 
@@ -108,13 +105,10 @@ class BookingSeeder extends Seeder
             ],
             'payment' => [
                 'jumlah' => null,
-                'metode' => PaymentMetode::TRANSFER_BANK,
-                'bank_pengirim' => 'Mandiri',
-                'nama_pengirim' => 'Budi Client',
-                'bukti_transfer' => null,
+                'metode' => PaymentMetode::XENDIT,
                 'verified_by' => $admin,
                 'verified_at' => Carbon::now()->subDays(2),
-                'catatan' => 'Sudah diverifikasi.',
+                'catatan' => 'Pembayaran via Xendit (seed).',
             ],
         ]);
 
@@ -133,13 +127,10 @@ class BookingSeeder extends Seeder
             ],
             'payment' => [
                 'jumlah' => null,
-                'metode' => PaymentMetode::TRANSFER_BANK,
-                'bank_pengirim' => 'BRI',
-                'nama_pengirim' => 'Budi Client',
-                'bukti_transfer' => null,
+                'metode' => PaymentMetode::XENDIT,
                 'verified_by' => $admin,
                 'verified_at' => Carbon::now()->subDays(1),
-                'catatan' => 'Sudah diverifikasi.',
+                'catatan' => 'Pembayaran via Xendit (seed).',
             ],
         ]);
 
@@ -174,13 +165,10 @@ class BookingSeeder extends Seeder
             ],
             'payment' => [
                 'jumlah' => null,
-                'metode' => PaymentMetode::TRANSFER_BANK,
-                'bank_pengirim' => 'BCA',
-                'nama_pengirim' => 'E2E Client 1',
-                'bukti_transfer' => null,
+                'metode' => PaymentMetode::XENDIT,
                 'verified_by' => $admin,
                 'verified_at' => Carbon::now()->subDays(1),
-                'catatan' => 'Pembayaran E2E sudah diverifikasi.',
+                'catatan' => 'Pembayaran via Xendit (E2E seed).',
             ],
         ]);
 
@@ -194,8 +182,6 @@ class BookingSeeder extends Seeder
     /**
      * Helper: seed satu booking lengkap (dengan participants & payment).
      *
-     * ✅ FIX PHPStan: Tambahkan PHPDoc tipe array yang lengkap
-     *
      * @param  array{
      *     kode: string,
      *     package: Package,
@@ -208,9 +194,6 @@ class BookingSeeder extends Seeder
      *     payment: array{
      *         jumlah?: float|int|null,
      *         metode: PaymentMetode,
-     *         bank_pengirim?: string|null,
-     *         nama_pengirim?: string|null,
-     *         bukti_transfer?: string|null,
      *         verified_by?: User|null,
      *         verified_at?: Carbon|null,
      *         catatan?: string|null,
@@ -283,10 +266,9 @@ class BookingSeeder extends Seeder
             }
 
             if ($data['payment'] !== null) {
-                /** @var array{jumlah?: float|int|null, metode: PaymentMetode, bank_pengirim?: string|null, nama_pengirim?: string|null, bukti_transfer?: string|null, verified_by?: User|null, verified_at?: Carbon|null, catatan?: string|null} $paymentData */
+                /** @var array{jumlah?: float|int|null, metode: PaymentMetode, verified_by?: User|null, verified_at?: Carbon|null, catatan?: string|null} $paymentData */
                 $paymentData = $data['payment'];
 
-                // ✅ FIX PHPStan: Hilangkan instanceof karena tipe sudah pasti User dari PHPDoc
                 $verifiedById = isset($paymentData['verified_by'])
                     ? $paymentData['verified_by']->id
                     : null;
@@ -296,9 +278,6 @@ class BookingSeeder extends Seeder
                     [
                         'jumlah' => $paymentData['jumlah'] ?? $totalHarga,
                         'metode' => $paymentData['metode']->value,
-                        'bank_pengirim' => $paymentData['bank_pengirim'] ?? null,
-                        'nama_pengirim' => $paymentData['nama_pengirim'] ?? null,
-                        'bukti_transfer' => $paymentData['bukti_transfer'] ?? null,
                         'verified_by' => $verifiedById,
                         'verified_at' => $paymentData['verified_at'] ?? null,
                         'catatan' => $paymentData['catatan'] ?? null,

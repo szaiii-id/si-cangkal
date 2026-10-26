@@ -173,6 +173,9 @@ export type Booking = {
     jumlah_peserta: number;
     total_harga: string;
     status: BookingStatus;
+    // ✅ BARU — Xendit Invoice tracking
+    xendit_invoice_id: string | null;
+    xendit_invoice_url: string | null;
     expired_at: string | null;
     catatan: string | null;
     created_at: string;
@@ -195,14 +198,21 @@ export type BookingParticipant = {
     catatan: string | null;
 };
 
+/**
+ * Payment — rekam jejak pembayaran via Xendit.
+ *
+ * Catatan:
+ * - Full Xendit, tidak ada lagi upload bukti manual.
+ * - Field `bank_pengirim`, `nama_pengirim`, `bukti_transfer` sudah DIHAPUS
+ *   dari database (lihat migration `payments`).
+ * - `verified_at` diisi OTOMATIS oleh webhook Xendit (`invoice.paid`).
+ * - `catatan` berisi info invoice ID dari Xendit.
+ */
 export type Payment = {
     id: number;
     booking_id: number;
     jumlah: string;
     metode: PaymentMetode;
-    bank_pengirim: string | null;
-    nama_pengirim: string | null;
-    bukti_transfer: string | null;
     verified_by: number | null;
     verified_at: string | null;
     catatan: string | null;
@@ -330,6 +340,17 @@ export type WalletTransaction = {
     created_at: string;
 };
 
+/**
+ * Payout — pengajuan pencairan honor mitra.
+ *
+ * Catatan:
+ * - Field `xendit_payout_id` & `xendit_payout_status` ditambahkan untuk
+ *   tracking transfer via Xendit Disbursement API.
+ * - Status `paid` di-set OTOMATIS oleh webhook Xendit (`payout.succeeded`).
+ * - Status `rejected` bisa dari admin manual ATAU webhook `payout.failed`.
+ * - `xendit_payout_status` berisi status mentah dari Xendit:
+ *   `PENDING`, `SUCCEEDED`, `FAILED`.
+ */
 export type Payout = {
     id: number;
     kode: string;
@@ -339,6 +360,9 @@ export type Payout = {
     no_rekening: string;
     nama_pemilik: string;
     status: PayoutStatus;
+    // ✅ BARU — Xendit Payout tracking
+    xendit_payout_id: string | null;
+    xendit_payout_status: string | null;
     requested_at: string | null;
     reviewed_by: number | null;
     reviewed_at: string | null;

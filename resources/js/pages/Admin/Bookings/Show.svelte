@@ -61,56 +61,16 @@
     // DERIVED
     // ==========================================
 
-    let latestPayment = $derived(booking.payments[0] ?? null);
     let isPending = $derived(booking.status === 'pending_payment');
     let isPaymentVerified = $derived(
         booking.status === 'payment_verified',
     );
-    let canVerifyPayment = $derived(isPending);
     let canConfirm = $derived(isPaymentVerified);
     let canCancel = $derived(
         !(['completed', 'cancelled'] as BookingStatus[]).includes(
             booking.status,
         ),
     );
-
-    // ==========================================
-    // MODAL — VERIFY
-    // ==========================================
-
-    let showVerifyModal = $state(false);
-    let verifyCatatan = $state('');
-    let verifyErrors = $state<Record<string, string>>({});
-    let verifyProcessing = $state(false);
-
-    function openVerifyModal() {
-        verifyCatatan = '';
-        verifyErrors = {};
-        showVerifyModal = true;
-    }
-
-    function submitVerify() {
-        verifyProcessing = true;
-        verifyErrors = {};
-
-        router.post(
-            `/admin/bookings/${booking.id}/verify-payment`,
-            { catatan: verifyCatatan || null },
-            {
-                onError: (err) => {
-                    verifyErrors = err as Record<string, string>;
-                    verifyProcessing = false;
-                },
-                onSuccess: () => {
-                    showVerifyModal = false;
-                    verifyProcessing = false;
-                },
-                onFinish: () => {
-                    verifyProcessing = false;
-                },
-            },
-        );
-    }
 
     // ==========================================
     // MODAL — CONFIRM
@@ -181,6 +141,99 @@
         href="/admin/bookings"
         label="Kembali ke Daftar Booking"
     />
+
+    <!-- ==========================================
+         INFO BANNER: Menunggu Pembayaran
+    ========================================== -->
+    {#if isPending}
+        <div
+            class="bg-sun/10 border-2 border-sun/30 rounded-3xl p-4 sm:p-5 mb-6"
+        >
+            <div class="flex items-start gap-3">
+                <svg
+                    class="w-6 h-6 text-sun-text flex-shrink-0 mt-0.5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width="2"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                </svg>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-extrabold text-sun-text mb-1">
+                        Menunggu pembayaran client via Xendit
+                    </p>
+                    <p class="text-xs text-sun-text/80 leading-relaxed">
+                        Status akan otomatis berubah menjadi
+                        "Pembayaran Diverifikasi" setelah client
+                        menyelesaikan pembayaran. Tidak perlu
+                        verifikasi manual.
+                    </p>
+                    {#if booking.xendit_invoice_url}
+                        <a
+                            href={booking.xendit_invoice_url}
+                            target="_blank"
+                            rel="noopener"
+                            class="inline-flex items-center gap-1.5 mt-2 text-xs font-bold text-sun-text hover:underline"
+                        >
+                            <svg
+                                class="w-3.5 h-3.5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                stroke-width="2.5"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                                />
+                            </svg>
+                            Lihat Invoice Xendit
+                        </a>
+                    {/if}
+                </div>
+            </div>
+        </div>
+    {/if}
+
+    <!-- ==========================================
+         INFO BANNER: Payment Verified
+    ========================================== -->
+    {#if isPaymentVerified}
+        <div
+            class="bg-green/10 border-2 border-green/30 rounded-3xl p-4 sm:p-5 mb-6"
+        >
+            <div class="flex items-start gap-3">
+                <svg
+                    class="w-6 h-6 text-green-text flex-shrink-0 mt-0.5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width="2"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                </svg>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-extrabold text-green-text mb-1">
+                        ✓ Pembayaran diverifikasi otomatis oleh Xendit
+                    </p>
+                    <p class="text-xs text-green-text/80 leading-relaxed">
+                        Client sudah membayar. Silakan konfirmasi
+                        booking untuk membuat Trip dan E-Ticket.
+                    </p>
+                </div>
+            </div>
+        </div>
+    {/if}
 
     <!-- ==========================================
          HEADER: Info Booking + Actions
@@ -261,29 +314,6 @@
             <div
                 class="flex flex-col gap-2 lg:w-48 flex-shrink-0"
             >
-                {#if canVerifyPayment}
-                    <button
-                        type="button"
-                        onclick={openVerifyModal}
-                        class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-green-dark text-white font-bold text-sm hover:bg-green transition-all shadow-md"
-                    >
-                        <svg
-                            class="w-4 h-4"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            stroke-width="2.5"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                        </svg>
-                        Verifikasi Pembayaran
-                    </button>
-                {/if}
-
                 {#if canConfirm}
                     <button
                         type="button"
@@ -591,7 +621,7 @@
                             Pembayaran
                         </h2>
                         <p class="text-xs text-gray-500">
-                            Bukti transfer & verifikasi
+                            Status pembayaran via Xendit
                         </p>
                     </div>
                 </div>
@@ -611,17 +641,17 @@
                                     <path
                                         stroke-linecap="round"
                                         stroke-linejoin="round"
-                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                                     />
                                 </svg>
                             </div>
                             <p
                                 class="text-sm font-bold text-dark mb-1"
                             >
-                                Belum ada pembayaran
+                                Menunggu pembayaran
                             </p>
                             <p class="text-xs text-gray-500">
-                                Client belum upload bukti transfer.
+                                Client belum menyelesaikan pembayaran via Xendit.
                             </p>
                         </div>
                     {:else}
@@ -647,9 +677,6 @@
                                                 {paymentMetodeLabel(
                                                     payment.metode,
                                                 )}
-                                                {#if payment.bank_pengirim}
-                                                    • {payment.bank_pengirim}
-                                                {/if}
                                             </p>
                                         </div>
                                         {#if payment.verified_at}
@@ -671,88 +698,24 @@
                                                 </svg>
                                                 Terverifikasi
                                             </span>
-                                        {:else}
-                                            <span
-                                                class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-sun/10 text-sun-text border border-sun/20"
-                                            >
-                                                <svg
-                                                    class="w-3 h-3"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
-                                                    stroke="currentColor"
-                                                    stroke-width="3"
-                                                >
-                                                    <path
-                                                        stroke-linecap="round"
-                                                        stroke-linejoin="round"
-                                                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                                                    />
-                                                </svg>
-                                                Menunggu Verifikasi
-                                            </span>
                                         {/if}
                                     </div>
-
-                                    {#if payment.nama_pengirim}
-                                        <p
-                                            class="text-xs text-gray-600 mb-2"
-                                        >
-                                            <strong>Atas nama:</strong>
-                                            {payment.nama_pengirim}
-                                        </p>
-                                    {/if}
-
-                                    {#if payment.bukti_transfer}
-                                        <div class="mt-3">
-                                            <a
-                                                href={`/storage/${payment.bukti_transfer}`}
-                                                target="_blank"
-                                                rel="noopener"
-                                                class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-blue bg-blue/5 hover:bg-blue/10 transition-all"
-                                            >
-                                                <svg
-                                                    class="w-3.5 h-3.5"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
-                                                    stroke="currentColor"
-                                                    stroke-width="2.5"
-                                                >
-                                                    <path
-                                                        stroke-linecap="round"
-                                                        stroke-linejoin="round"
-                                                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                                                    />
-                                                    <path
-                                                        stroke-linecap="round"
-                                                        stroke-linejoin="round"
-                                                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                                                    />
-                                                </svg>
-                                                Lihat Bukti Transfer
-                                            </a>
-                                        </div>
-                                    {/if}
-
-                                    {#if payment.verified_at && payment.verifier}
-                                        <div
-                                            class="mt-3 pt-3 border-t border-gray-100 text-[11px] text-gray-500"
-                                        >
-                                            Diverifikasi oleh
-                                            <strong
-                                                >{payment.verifier
-                                                    .name}</strong
-                                            >
-                                            pada {formatDateTime(
-                                                payment.verified_at,
-                                            )}
-                                        </div>
-                                    {/if}
 
                                     {#if payment.catatan}
                                         <div
                                             class="mt-3 p-3 bg-gray-50 rounded-xl text-xs text-gray-600 whitespace-pre-line"
                                         >
                                             {payment.catatan}
+                                        </div>
+                                    {/if}
+
+                                    {#if payment.verified_at}
+                                        <div
+                                            class="mt-3 pt-3 border-t border-gray-100 text-[11px] text-gray-500"
+                                        >
+                                            Diverifikasi otomatis pada {formatDateTime(
+                                                payment.verified_at,
+                                            )}
                                         </div>
                                     {/if}
                                 </div>
@@ -848,6 +811,70 @@
                     </div>
                 {/if}
 
+                <!-- Xendit Invoice -->
+                {#if booking.xendit_invoice_url}
+                    <div
+                        class="bg-purple/5 border border-purple/20 rounded-3xl p-5"
+                    >
+                        <div class="flex items-start gap-3">
+                            <svg
+                                class="w-5 h-5 text-purple flex-shrink-0 mt-0.5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                                />
+                            </svg>
+                            <div class="flex-1 min-w-0">
+                                <p
+                                    class="text-xs font-extrabold text-purple mb-1"
+                                >
+                                    Xendit Invoice
+                                </p>
+                                <p
+                                    class="text-[11px] text-purple/80 mb-2 leading-relaxed"
+                                >
+                                    Link pembayaran yang dikirim ke client.
+                                </p>
+                                {#if booking.xendit_invoice_id}
+                                    <p
+                                        class="text-[10px] font-mono text-purple/70 mb-2 truncate"
+                                        title={booking.xendit_invoice_id}
+                                    >
+                                        ID: {booking.xendit_invoice_id}
+                                    </p>
+                                {/if}
+                                <a
+                                    href={booking.xendit_invoice_url}
+                                    target="_blank"
+                                    rel="noopener"
+                                    class="inline-flex items-center gap-1.5 text-xs font-bold text-purple hover:underline"
+                                >
+                                    <svg
+                                        class="w-3.5 h-3.5"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                        stroke-width="2.5"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                                        />
+                                    </svg>
+                                    Buka Invoice
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                {/if}
+
                 <!-- Timeline -->
                 <div
                     class="bg-white rounded-3xl border border-gray-200 shadow-sm p-5"
@@ -897,7 +924,7 @@
                     </dl>
                 </div>
 
-                <!-- Info Box -->
+                <!-- Info Box: Alur Verifikasi -->
                 <div
                     class="bg-blue/5 border border-blue/20 rounded-3xl p-5"
                 >
@@ -919,14 +946,14 @@
                             <p
                                 class="text-xs font-extrabold text-blue-text mb-1"
                             >
-                                Alur Verifikasi
+                                Alur Booking
                             </p>
                             <ol
                                 class="text-[11px] text-blue-text/80 space-y-0.5 list-decimal list-inside"
                             >
-                                <li>Cek bukti transfer client</li>
-                                <li>Klik "Verifikasi Pembayaran"</li>
-                                <li>Konfirmasi booking</li>
+                                <li>Client bayar via Xendit</li>
+                                <li>Webhook verifikasi otomatis</li>
+                                <li>Admin konfirmasi booking</li>
                                 <li>Assign mitra (Fase 3)</li>
                             </ol>
                         </div>
@@ -938,57 +965,13 @@
 </DashboardLayout>
 
 <!-- ==========================================
-     MODAL: VERIFY PAYMENT
-========================================== -->
-<ConfirmModal
-    bind:open={showVerifyModal}
-    variant="success"
-    title="Verifikasi Pembayaran?"
-    description="Konfirmasi bahwa pembayaran client sudah diterima. Booking akan berstatus 'Pembayaran Diverifikasi'."
-    confirmLabel="Ya, Verifikasi"
-    processing={verifyProcessing}
-    onConfirm={submitVerify}
->
-    {#snippet children()}
-        {#if !latestPayment}
-            <div
-                class="mb-3 p-3 bg-sun/10 border border-sun/20 rounded-2xl text-xs text-sun-text"
-            >
-                <strong>Catatan:</strong> Client belum upload bukti
-                transfer. Verifikasi akan membuat catatan pembayaran
-                manual.
-            </div>
-        {/if}
-        <label
-            for="verify_catatan"
-            class="block text-xs font-bold text-dark mb-1.5"
-        >
-            Catatan
-            <span class="text-gray-400 font-normal">(opsional)</span>
-        </label>
-        <textarea
-            id="verify_catatan"
-            bind:value={verifyCatatan}
-            rows="3"
-            placeholder="Contoh: Transfer sudah masuk rekening BCA"
-            class="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm font-medium placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink/10 focus:border-pink focus:bg-white transition-all resize-none"
-        ></textarea>
-        {#if verifyErrors.catatan}
-            <p class="text-pink text-[11px] mt-1 font-bold">
-                {verifyErrors.catatan}
-            </p>
-        {/if}
-    {/snippet}
-</ConfirmModal>
-
-<!-- ==========================================
      MODAL: CONFIRM BOOKING
 ========================================== -->
 <ConfirmModal
     bind:open={showConfirmModal}
     variant="info"
     title="Konfirmasi Booking?"
-    description="Booking akan berstatus 'Terkonfirmasi'. Pastikan Anda siap meng-assign mitra ke trip ini."
+    description="Booking akan berstatus 'Terkonfirmasi'. Trip dan E-Ticket akan dibuat otomatis. Pastikan Anda siap meng-assign mitra ke trip ini."
     confirmLabel="Ya, Konfirmasi"
     processing={confirmProcessing}
     onConfirm={confirmBooking}
