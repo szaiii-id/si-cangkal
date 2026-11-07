@@ -7,7 +7,7 @@ use App\Models\Booking;
 use App\Models\Package;
 use App\Models\Trip;
 use App\Models\TripDay;
-use App\Models\TripMitra;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
@@ -52,6 +52,7 @@ class TripFactory extends Factory
             ),
             'booking_id' => Booking::factory()->confirmed(),
             'package_id' => Package::factory()->aktif(),
+            'mitra_id' => User::factory()->mitraLive(), // ✅ TAMBAHAN
             'snapshot_package' => $snapshot,
             'tanggal_mulai' => $tanggalMulai->format('Y-m-d'),
             'tanggal_selesai' => $tanggalSelesai->format('Y-m-d'),
@@ -108,7 +109,7 @@ class TripFactory extends Factory
         $tanggalMulai = now()->addDays(7);
         $tanggalSelesai = $tanggalMulai->copy()->addDays($durasiHari - 1);
 
-        $package->loadMissing(['days.costs', 'facilities']);
+        $package->loadMissing(['days', 'facilities']);
 
         $snapshot = [
             'nama' => $package->nama,
@@ -143,6 +144,7 @@ class TripFactory extends Factory
 
         return $this->state(fn (array $attributes) => [
             'package_id' => $package->id,
+            'mitra_id' => $package->mitra_id, // ✅ Warisi mitra dari paket
             'snapshot_package' => $snapshot,
             'tanggal_mulai' => $tanggalMulai->format('Y-m-d'),
             'tanggal_selesai' => $tanggalSelesai->format('Y-m-d'),
@@ -155,6 +157,7 @@ class TripFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'booking_id' => $booking->id,
             'package_id' => $booking->package_id,
+            'mitra_id' => $booking->mitra_id, // ✅ Warisi mitra dari booking
             'jumlah_peserta' => $booking->jumlah_peserta,
         ]);
     }
@@ -171,16 +174,6 @@ class TripFactory extends Factory
                     'tanggal' => $trip->tanggal_mulai->copy()->addDays($i - 1),
                 ]);
             }
-
-            TripMitra::factory()
-                ->lead()
-                ->forTrip($trip)
-                ->create();
-
-            TripMitra::factory()
-                ->asisten()
-                ->forTrip($trip)
-                ->create();
         });
     }
 }

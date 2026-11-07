@@ -82,7 +82,7 @@
                         <th class="px-5 py-4">No</th>
                         <th class="px-5 py-4">Nama Mitra</th>
                         <th class="px-5 py-4 text-center">Trip Selesai</th>
-                        <th class="px-5 py-4 text-right">Total Honor</th>
+                        <th class="px-5 py-4 text-right">Total Revenue</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
@@ -94,7 +94,7 @@
                                 <div class="text-[11px] text-gray-500">{m.email}</div>
                             </td>
                             <td class="px-5 py-4 text-center font-bold">{m.total_trip}</td>
-                            <td class="px-5 py-4 text-right font-extrabold text-green-700">{formatCurrency(m.total_honor)}</td>
+                            <td class="px-5 py-4 text-right font-extrabold text-green-700">{formatCurrency(m.total_revenue)}</td>
                         </tr>
                     {:else}
                         <tr>

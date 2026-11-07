@@ -1,5 +1,10 @@
 <script lang="ts">
+    import type { Snippet } from 'svelte';
+    import { onMount } from 'svelte';
     import { inertia, router, page } from '@inertiajs/svelte';
+    import ToastContainer from '@/components/ui/ToastContainer.svelte';
+    import NotificationPermissionBanner from '@/components/NotificationPermissionBanner.svelte';
+    import { isFcmSupported } from '@/utils/firebase';
 
     let {
         title = 'Dashboard',
@@ -8,30 +13,88 @@
     }: {
         title?: string;
         menuItems?: Array<{ label: string; href: string; icon?: string }>;
-        children: any;
+        children: Snippet;
     } = $props();
 
     let isSidebarOpen = $state(false);
     let isLoggingOut = $state(false);
+    let showNotificationBanner = $state(false);
 
     let user = $derived(page.props.auth?.user);
-    let unreadNotifications = $derived(page.props.unread_notifications ?? 0);
+    let unreadNotifications = $derived(
+        page.props.unread_notifications ?? 0,
+    );
 
     let dashboardUrl = $derived(
         user?.role === 'admin'
             ? '/admin/dashboard'
             : user?.role === 'mitra'
               ? '/mitra/dashboard'
-              : '/client/dashboard'
+              : '/client/dashboard',
     );
+
+    // ==========================================
+    // FCM (Firebase Cloud Messaging)
+    // ==========================================
+
+    /**
+     * Kunci localStorage per user.
+     * Kalau user ganti akun, banner bisa muncul lagi untuk akun baru.
+     */
+    let fcmPromptKey = $derived(
+        user
+            ? `fcm_prompt_dismissed_${user.id}`
+            : 'fcm_prompt_dismissed_guest',
+    );
+
+    onMount(() => {
+        if (!user) return;
+
+        // Hanya mitra & client
+        if (user.role !== 'mitra' && user.role !== 'client') return;
+
+        // Browser tidak support → jangan tampilkan
+        if (!isFcmSupported()) {
+            console.warn(
+                'Browser tidak mendukung notifikasi push. ' +
+                'Gunakan Chrome/Edge/Firefox di HTTPS, atau di iPhone instal sebagai PWA.'
+            );
+            return;
+        }
+
+        // Sudah punya token → jangan tampilkan
+        if (user.has_fcm_token) return;
+
+        // User sudah pernah dismiss → jangan tampilkan
+        const wasDismissed =
+            localStorage.getItem(fcmPromptKey) === 'true';
+        if (wasDismissed) return;
+
+        // Tampilkan banner setelah 3 detik
+        const timer = setTimeout(() => {
+            showNotificationBanner = true;
+        }, 3000);
+
+        return () => clearTimeout(timer);
+    });
+
+    function dismissNotificationBanner() {
+        showNotificationBanner = false;
+        // Persist flag agar tidak muncul lagi di halaman berikutnya
+        localStorage.setItem(fcmPromptKey, 'true');
+    }
 
     function logout() {
         isLoggingOut = true;
-        router.post('/logout', {}, {
-            onFinish: () => {
-                isLoggingOut = false;
+        router.post(
+            '/logout',
+            {},
+            {
+                onFinish: () => {
+                    isLoggingOut = false;
+                },
             },
-        });
+        );
     }
 
     function isActive(href: string): boolean {
@@ -41,20 +104,25 @@
 
 <!-- Wrapper utama: background PUTIH -->
 <div class="min-h-screen bg-white text-dark relative">
-
     <!-- EFEK CAHAYA -->
     <div class="fixed inset-0 overflow-hidden pointer-events-none z-0">
-        <div class="absolute -top-32 -left-20 w-[400px] h-[400px] bg-blue rounded-full filter blur-[120px] opacity-10"></div>
-        <div class="absolute bottom-10 right-0 w-[500px] h-[500px] bg-pink rounded-full filter blur-[130px] opacity-10"></div>
-        <div class="absolute top-1/3 right-1/4 w-[300px] h-[300px] bg-sun rounded-full filter blur-[100px] opacity-15"></div>
+        <div
+            class="absolute -top-32 -left-20 w-[400px] h-[400px] bg-blue rounded-full filter blur-[120px] opacity-10"
+        ></div>
+        <div
+            class="absolute bottom-10 right-0 w-[500px] h-[500px] bg-pink rounded-full filter blur-[130px] opacity-10"
+        ></div>
+        <div
+            class="absolute top-1/3 right-1/4 w-[300px] h-[300px] bg-sun rounded-full filter blur-[100px] opacity-15"
+        ></div>
     </div>
 
     <!-- Dot pattern -->
-    <div class="fixed inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:24px_24px] opacity-50 pointer-events-none z-0"></div>
+    <div
+        class="fixed inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:24px_24px] opacity-50 pointer-events-none z-0"
+    ></div>
 
-    <!-- ==========================================
-         SIDEBAR (FIXED)
-    ========================================== -->
+    <!-- SIDEBAR (FIXED) -->
     <aside
         class={[
             'fixed top-3 lg:top-6 left-3 lg:left-6 z-40',
@@ -62,11 +130,15 @@
             'bg-white border border-gray-200 rounded-3xl shadow-xl',
             'flex flex-col overflow-hidden',
             'transform transition-transform duration-300 ease-in-out',
-            isSidebarOpen ? 'translate-x-0' : '-translate-x-[120%] lg:translate-x-0',
+            isSidebarOpen
+                ? 'translate-x-0'
+                : '-translate-x-[120%] lg:translate-x-0',
         ].join(' ')}
     >
-        <!-- Logo → Dashboard Role -->
-        <div class="flex items-center justify-between px-7 py-6 border-b border-gray-200 flex-shrink-0">
+        <!-- Logo -->
+        <div
+            class="flex items-center justify-between px-7 py-6 border-b border-gray-200 flex-shrink-0"
+        >
             <a
                 href={dashboardUrl}
                 use:inertia
@@ -80,8 +152,18 @@
                 class="lg:hidden text-gray-400 hover:text-dark"
                 aria-label="Tutup menu"
             >
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                <svg
+                    class="w-5 h-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width="2"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M6 18L18 6M6 6l12 12"
+                    />
                 </svg>
             </button>
         </div>
@@ -100,16 +182,28 @@
                             : 'text-gray-600 hover:bg-gray-100 hover:text-dark',
                     ].join(' ')}
                 >
-                    <span class={[
-                        'flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center',
-                        'transition-colors',
-                        isActive(item.href)
-                            ? 'bg-white/20 text-white'
-                            : 'bg-gray-100 text-gray-500 group-hover:bg-pink/10 group-hover:text-pink-text',
-                    ].join(' ')}>
+                    <span
+                        class={[
+                            'flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center',
+                            'transition-colors',
+                            isActive(item.href)
+                                ? 'bg-white/20 text-white'
+                                : 'bg-gray-100 text-gray-500 group-hover:bg-pink/10 group-hover:text-pink-text',
+                        ].join(' ')}
+                    >
                         {#if item.icon}
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d={item.icon} />
+                            <svg
+                                class="w-4 h-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    d={item.icon}
+                                />
                             </svg>
                         {/if}
                     </span>
@@ -120,14 +214,24 @@
 
         <!-- Card CTA -->
         <div class="p-4 flex-shrink-0 mt-auto">
-            <div class="bg-gradient-to-br from-pink-dark to-purple rounded-2xl p-5 relative overflow-hidden">
-                <div class="absolute -top-8 -right-8 w-24 h-24 bg-white/10 rounded-full"></div>
-                <div class="absolute -bottom-8 -left-8 w-20 h-20 bg-white/10 rounded-full"></div>
+            <div
+                class="bg-gradient-to-br from-pink-dark to-purple rounded-2xl p-5 relative overflow-hidden"
+            >
+                <div
+                    class="absolute -top-8 -right-8 w-24 h-24 bg-white/10 rounded-full"
+                ></div>
+                <div
+                    class="absolute -bottom-8 -left-8 w-20 h-20 bg-white/10 rounded-full"
+                ></div>
                 <div class="relative z-10">
-                    <p class="text-xs font-bold text-white/80 uppercase tracking-wider mb-1">
+                    <p
+                        class="text-xs font-bold text-white/80 uppercase tracking-wider mb-1"
+                    >
                         Masuk sebagai
                     </p>
-                    <p class="text-sm font-extrabold text-white truncate">
+                    <p
+                        class="text-sm font-extrabold text-white truncate"
+                    >
                         {user?.name || 'User'}
                     </p>
                     <p class="text-xs text-white/70 truncate mt-1">
@@ -148,14 +252,15 @@
         ></button>
     {/if}
 
-    <!-- ==========================================
-         MAIN AREA
-    ========================================== -->
+    <!-- MAIN AREA -->
     <div class="relative z-10 min-h-screen p-3 sm:p-4 lg:p-6">
-        <div class="lg:ml-72 xl:ml-80 flex flex-col min-h-full gap-4 lg:gap-6">
-
+        <div
+            class="lg:ml-72 xl:ml-80 flex flex-col min-h-full gap-4 lg:gap-6"
+        >
             <!-- Topbar -->
-            <header class="sticky top-3 lg:top-6 z-20 bg-white border border-gray-200 rounded-3xl shadow-xl h-16 flex items-center justify-between px-4 sm:px-6">
+            <header
+                class="sticky top-3 lg:top-6 z-20 bg-white border border-gray-200 rounded-3xl shadow-xl h-16 flex items-center justify-between px-4 sm:px-6"
+            >
                 <div class="flex items-center gap-4">
                     <button
                         type="button"
@@ -163,46 +268,82 @@
                         class="lg:hidden text-dark hover:text-pink-text"
                         aria-label="Buka menu"
                     >
-                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                        <svg
+                            class="w-6 h-6"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            stroke-width="2"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                d="M4 6h16M4 12h16M4 18h16"
+                            />
                         </svg>
                     </button>
                     <div>
-                        <h1 class="text-base sm:text-lg font-extrabold text-dark leading-tight">{title}</h1>
+                        <h1
+                            class="text-base sm:text-lg font-extrabold text-dark leading-tight"
+                        >
+                            {title}
+                        </h1>
                     </div>
                 </div>
 
                 <!-- Notifikasi + User Info + Logout -->
                 <div class="flex items-center gap-3">
-
-                    <!-- 🔔 Bell Icon Notifikasi (Fase 6) -->
+                    <!-- Bell Icon Notifikasi -->
                     <a
                         href="/notifications"
                         use:inertia
                         class="relative inline-flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 transition-all"
                         aria-label="Notifikasi"
                     >
-                        <svg class="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                        <svg
+                            class="w-5 h-5 text-gray-600"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            stroke-width="2"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                            />
                         </svg>
                         {#if unreadNotifications > 0}
-                            <span class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-extrabold flex items-center justify-center shadow-md">
-                                {unreadNotifications > 99 ? '99+' : unreadNotifications}
+                            <span
+                                class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-extrabold flex items-center justify-center shadow-md"
+                            >
+                                {unreadNotifications > 99
+                                    ? '99+'
+                                    : unreadNotifications}
                             </span>
                         {/if}
                     </a>
 
                     <div class="hidden sm:flex items-center gap-3">
                         <div class="text-right">
-                            <p class="text-sm font-bold text-dark leading-tight truncate max-w-[180px]">
-                                @{user?.username || user?.name || 'user'}
+                            <p
+                                class="text-sm font-bold text-dark leading-tight truncate max-w-[180px]"
+                            >
+                                @{user?.username ||
+                                    user?.name ||
+                                    'user'}
                             </p>
-                            <p class="text-xs text-gray-500 leading-tight truncate max-w-[180px]">
+                            <p
+                                class="text-xs text-gray-500 leading-tight truncate max-w-[180px]"
+                            >
                                 {user?.email || '-'}
                             </p>
                         </div>
-                        <div class="w-9 h-9 rounded-full bg-pink-dark text-white flex items-center justify-center font-bold text-sm shadow-md flex-shrink-0">
-                            {user?.name?.charAt(0)?.toUpperCase() || '?'}
+                        <div
+                            class="w-9 h-9 rounded-full bg-pink-dark text-white flex items-center justify-center font-bold text-sm shadow-md flex-shrink-0"
+                        >
+                            {user?.name?.charAt(0)?.toUpperCase() ||
+                                '?'}
                         </div>
                     </div>
 
@@ -214,16 +355,45 @@
                         aria-label="Keluar dari akun"
                     >
                         {#if isLoggingOut}
-                            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            <svg
+                                class="w-4 h-4 animate-spin"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                            >
+                                <circle
+                                    class="opacity-25"
+                                    cx="12"
+                                    cy="12"
+                                    r="10"
+                                    stroke="currentColor"
+                                    stroke-width="4"
+                                ></circle>
+                                <path
+                                    class="opacity-75"
+                                    fill="currentColor"
+                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                                ></path>
                             </svg>
-                            <span class="hidden sm:inline">Keluar...</span>
+                            <span class="hidden sm:inline"
+                                >Keluar...</span
+                            >
                         {:else}
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            <svg
+                                class="w-4 h-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                                />
                             </svg>
-                            <span class="hidden sm:inline">Keluar</span>
+                            <span class="hidden sm:inline"
+                                >Keluar</span
+                            >
                         {/if}
                     </button>
                 </div>
@@ -231,31 +401,53 @@
 
             <!-- Content -->
             <main class="flex-1 min-w-0">
-                <!-- 🌐 GLOBAL FLASH STATUS -->
+                <!-- GLOBAL FLASH STATUS -->
                 {#if page.props.flash?.status}
                     <div
                         class="mb-5 bg-green-50 border-l-4 border-green-500 p-4 rounded-r-2xl flex items-start gap-3"
                         role="status"
                         aria-live="polite"
                     >
-                        <svg class="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                        <svg
+                            class="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                        >
+                            <path
+                                fill-rule="evenodd"
+                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                clip-rule="evenodd"
+                            />
                         </svg>
-                        <p class="text-sm text-green-700 font-bold">{page.props.flash.status}</p>
+                        <p
+                            class="text-sm text-green-700 font-bold"
+                        >
+                            {page.props.flash.status}
+                        </p>
                     </div>
                 {/if}
 
-                <!-- 🌐 GLOBAL FLASH ERROR -->
+                <!-- GLOBAL FLASH ERROR -->
                 {#if page.props.flash?.error}
                     <div
                         class="mb-5 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-2xl flex items-start gap-3"
                         role="alert"
                         aria-live="assertive"
                     >
-                        <svg class="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                        <svg
+                            class="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                        >
+                            <path
+                                fill-rule="evenodd"
+                                d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                clip-rule="evenodd"
+                            />
                         </svg>
-                        <p class="text-sm text-red-700 font-bold">{page.props.flash.error}</p>
+                        <p class="text-sm text-red-700 font-bold">
+                            {page.props.flash.error}
+                        </p>
                     </div>
                 {/if}
 
@@ -264,3 +456,11 @@
         </div>
     </div>
 </div>
+
+<!-- Toast global -->
+<ToastContainer />
+
+<!-- Banner kustom permintaan izin notifikasi -->
+{#if showNotificationBanner}
+    <NotificationPermissionBanner onDismiss={dismissNotificationBanner} />
+{/if}

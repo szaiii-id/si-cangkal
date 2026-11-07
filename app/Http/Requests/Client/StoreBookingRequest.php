@@ -25,9 +25,11 @@ class StoreBookingRequest extends FormRequest
     {
         $package = $this->getPackage();
 
-        // Pengecekan null eksplisit — hindari kombinasi `?->` + `??` dalam satu ekspresi.
-        $minPeserta = $package !== null ? $package->min_peserta : 1;
-        $maxPeserta = $package !== null ? $package->max_peserta : 1000;
+        // ✅ Logika baru: min_peserta dihapus, max_peserta hanya untuk rombongan
+        $maxPesertaRule = 'max:1000'; // Default (tidak dibatasi ketat)
+        if ($package !== null && $package->isRombongan() && $package->max_peserta) {
+            $maxPesertaRule = 'max:' . $package->max_peserta;
+        }
 
         return [
             // === Info booking ===
@@ -40,8 +42,8 @@ class StoreBookingRequest extends FormRequest
             'jumlah_peserta' => [
                 'required',
                 'integer',
-                'min:'.$minPeserta,
-                'max:'.$maxPeserta,
+                'min:1', // ✅ Ganti min:'.$minPeserta menjadi min:1
+                $maxPesertaRule,
             ],
             'catatan' => ['nullable', 'string', 'max:2000'],
 
@@ -69,8 +71,8 @@ class StoreBookingRequest extends FormRequest
 
             'jumlah_peserta.required' => 'Jumlah peserta wajib diisi.',
             'jumlah_peserta.integer' => 'Jumlah peserta harus berupa angka.',
-            'jumlah_peserta.min' => 'Jumlah peserta kurang dari minimal paket.',
-            'jumlah_peserta.max' => 'Jumlah peserta melebihi maksimal paket.',
+            'jumlah_peserta.min' => 'Jumlah peserta minimal 1 orang.',
+            'jumlah_peserta.max' => 'Jumlah peserta melebihi batas maksimal untuk paket ini.',
 
             'catatan.max' => 'Catatan maksimal 2000 karakter.',
 

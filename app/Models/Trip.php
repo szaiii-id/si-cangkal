@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Enums\TripMitraRole;
 use App\Enums\TripStatus;
 use App\Support\Timezone;
 use Database\Factories\TripFactory;
@@ -17,10 +16,14 @@ use Illuminate\Support\Carbon;
 /**
  * Model Trip — instance dari package yang benar-benar jalan.
  *
+ * Satu trip = satu mitra (`mitra_id`). Relasi mitra di-set sekali
+ * saat trip dibuat via `TripService::createFromBooking()`.
+ *
  * @property int $id
  * @property string $kode
  * @property int $booking_id
  * @property int $package_id
+ * @property int $mitra_id
  * @property array<string, mixed>|null $snapshot_package
  * @property Carbon $tanggal_mulai
  * @property Carbon $tanggal_selesai
@@ -31,7 +34,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon $updated_at
  * @property-read Booking|null $booking
  * @property-read Package|null $package
- * @property-read Collection<int, TripMitra> $mitras
+ * @property-read User|null $mitra
  * @property-read Collection<int, TripDay> $days
  *
  * @use HasFactory<TripFactory>
@@ -48,6 +51,7 @@ class Trip extends Model
         'kode',
         'booking_id',
         'package_id',
+        'mitra_id',
         'snapshot_package',
         'tanggal_mulai',
         'tanggal_selesai',
@@ -91,11 +95,13 @@ class Trip extends Model
     }
 
     /**
-     * @return HasMany<TripMitra, $this>
+     * Mitra pemilik trip ini (1 trip = 1 mitra).
+     *
+     * @return BelongsTo<User, $this>
      */
-    public function mitras(): HasMany
+    public function mitra(): BelongsTo
     {
-        return $this->hasMany(TripMitra::class)->orderBy('role');
+        return $this->belongsTo(User::class, 'mitra_id');
     }
 
     /**
@@ -159,6 +165,13 @@ class Trip extends Model
     }
 
     /**
+     * Pre-filter kasar: trip scheduled yang tanggal_mulai <= hari ini.
+     *
+     * Catatan: perbandingan `tanggal_mulai` (DATE) dengan `today`
+     * menggunakan timezone aplikasi (UTC). Untuk akurasi timezone
+     * trip, verifikasi tambahan dilakukan di `TripService::activateDueTrips()`
+     * via `Timezone::today($trip->timezoneOrDefault())`.
+     *
      * @param  Builder<Trip>  $query
      * @return Builder<Trip>
      */
@@ -188,45 +201,14 @@ class Trip extends Model
         return $this->status->canBeCancelled();
     }
 
-    public function canAssignMitra(): bool
-    {
-        return $this->status->canAssignMitra();
-    }
-
     /**
-     * Apakah trip punya minimal 1 mitra?
+     * Apakah trip sudah punya mitra.
+     *
+     * Wajib true sebelum trip bisa diaktifkan (lihat `TripService::activate()`).
      */
     public function hasMitra(): bool
     {
-        return $this->mitras()->exists();
-    }
-
-    /**
-     * Ambil mitra lead (kalau ada).
-     */
-    public function leadMitra(): ?TripMitra
-    {
-        return $this->mitras()
-            ->where('role', TripMitraRole::LEAD->value)
-            ->first();
-    }
-
-    // ==========================================
-    // HELPER — HONOR
-    // ==========================================
-
-    /**
-     * Hitung total honor semua mitra.
-     */
-    public function totalHonor(): float
-    {
-        $total = 0.0;
-
-        foreach ($this->mitras as $mitra) {
-            $total += $mitra->hitungHonorTotal($this->durasiHari());
-        }
-
-        return $total;
+        return $this->mitra_id !== null;
     }
 
     // ==========================================
@@ -251,18 +233,18 @@ class Trip extends Model
     }
 
     /**
-     * Apakah trip hari ini (berdasarkan timezone trip)?
+     * Apakah trip sedang berjalan hari ini (berdasarkan timezone trip)?
+     *
+     * Cek: `tanggal_mulai <= today <= tanggal_selesai`.
+     * Kondisi ini sudah mencakup edge case "hari pertama" dan
+     * "hari terakhir" trip.
      */
     public function isToday(): bool
     {
         $today = Timezone::today($this->timezoneOrDefault());
 
-        return $this->tanggal_mulai->isSameDay($today)
-            || $this->tanggal_selesai->isSameDay($today)
-            || (
-                $this->tanggal_mulai->lessThanOrEqualTo($today)
-                && $this->tanggal_selesai->greaterThanOrEqualTo($today)
-            );
+        return $this->tanggal_mulai->lessThanOrEqualTo($today)
+            && $this->tanggal_selesai->greaterThanOrEqualTo($today);
     }
 
     // ==========================================
@@ -280,19 +262,27 @@ class Trip extends Model
     }
 
     /**
-     * Ambil nama package dari snapshot (dengan fallback).
+     * Ambil nama package dari snapshot (dengan fallback ke relasi package).
      */
     public function snapshotNama(): string
     {
-        return $this->snapshot()['nama'] ?? $this->package->nama ?? 'Paket tidak diketahui';
+        return $this->snapshot()['nama']
+            ?? $this->package?->nama
+            ?? 'Paket tidak diketahui';
     }
 
     /**
-     * Ambil durasi hari dari snapshot (dengan fallback).
+     * Ambil durasi hari dari snapshot (dengan fallback ke `durasiHari()`).
      */
     public function snapshotDurasiHari(): int
     {
-        return (int) ($this->snapshot()['durasi_hari'] ?? $this->durasiHari());
+        $dariSnapshot = $this->snapshot()['durasi_hari'] ?? null;
+
+        if ($dariSnapshot !== null) {
+            return (int) $dariSnapshot;
+        }
+
+        return $this->durasiHari();
     }
 
     /**

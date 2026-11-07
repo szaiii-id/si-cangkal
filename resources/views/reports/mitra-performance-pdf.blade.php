@@ -68,7 +68,7 @@
                 <th style="width: 30%;">Nama Mitra</th>
                 <th style="width: 30%;">Email</th>
                 <th style="width: 15%; text-align: center;">Total Trip</th>
-                <th style="width: 20%; text-align: right;">Total Honor</th>
+                <th style="width: 20%; text-align: right;">Total Pendapatan</th>
             </tr>
         </thead>
         <tbody>
@@ -78,7 +78,7 @@
                 <td style="font-weight: bold;">{{ $m['name'] }}</td>
                 <td>{{ $m['email'] }}</td>
                 <td style="text-align: center;">{{ $m['total_trip'] }}</td>
-                <td style="text-align: right; font-weight: bold;">Rp {{ number_format($m['total_honor'], 0, ',', '.') }}</td>
+                <td style="text-align: right; font-weight: bold;">Rp {{ number_format($m['total_revenue'], 0, ',', '.') }}</td>
             </tr>
             @empty
             <tr>

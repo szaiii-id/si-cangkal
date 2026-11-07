@@ -66,12 +66,6 @@
         <a href="/admin/reports/mitra" class="px-5 py-2.5 rounded-full bg-white border border-gray-200 text-dark font-bold text-sm hover:bg-gray-50 transition-all shadow-sm whitespace-nowrap">
             Kinerja Mitra
         </a>
-        <a href="/admin/reports/daily" class="px-5 py-2.5 rounded-full bg-white border border-gray-200 text-dark font-bold text-sm hover:bg-gray-50 transition-all shadow-sm whitespace-nowrap">
-            Rekap Harian
-        </a>
-        <a href="/admin/reports/payout" class="px-5 py-2.5 rounded-full bg-white border border-gray-200 text-dark font-bold text-sm hover:bg-gray-50 transition-all shadow-sm whitespace-nowrap">
-            Payout
-        </a>
     </div>
 
     <!-- Filter Section -->
@@ -115,29 +109,13 @@
     </div>
 
     <!-- Kartu Ringkasan -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-1 gap-4 mb-6">
         <div class="bg-gradient-to-br from-pink-dark to-purple rounded-3xl p-5 shadow-lg relative overflow-hidden group">
             <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                 <svg class="w-16 h-16 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             </div>
             <p class="text-white/80 text-[11px] font-extrabold uppercase tracking-widest mb-1">Total Pendapatan</p>
             <p class="text-2xl sm:text-3xl font-extrabold text-white">{formatCurrency(data.total_revenue)}</p>
-        </div>
-
-        <div class="bg-white border border-gray-200 rounded-3xl p-5 shadow-sm relative overflow-hidden group">
-            <div class="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                <svg class="w-16 h-16 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-            </div>
-            <p class="text-gray-500 text-[11px] font-extrabold uppercase tracking-widest mb-1">Honor Mitra</p>
-            <p class="text-2xl sm:text-3xl font-extrabold text-red-700">{formatCurrency(data.total_honor)}</p>
-        </div>
-
-        <div class="bg-white border border-gray-200 rounded-3xl p-5 shadow-sm relative overflow-hidden group">
-            <div class="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                <svg class="w-16 h-16 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
-            </div>
-            <p class="text-gray-500 text-[11px] font-extrabold uppercase tracking-widest mb-1">Laba Kotor</p>
-            <p class="text-2xl sm:text-3xl font-extrabold text-green-700">{formatCurrency(data.gross_profit)}</p>
         </div>
     </div>
 
@@ -178,6 +156,7 @@
                         <th class="px-5 py-4">Kode</th>
                         <th class="px-5 py-4">Tanggal</th>
                         <th class="px-5 py-4">Client</th>
+                        <th class="px-5 py-4">Mitra</th>
                         <th class="px-5 py-4">Paket</th>
                         <th class="px-5 py-4 text-right">Total</th>
                         <th class="px-5 py-4 text-center">Status</th>
@@ -189,6 +168,7 @@
                             <td class="px-5 py-4 font-mono text-xs font-bold text-dark">{t.kode}</td>
                             <td class="px-5 py-4 text-gray-600">{t.tanggal}</td>
                             <td class="px-5 py-4 font-bold text-dark">{t.client}</td>
+                            <td class="px-5 py-4 font-bold text-dark">{t.mitra}</td>
                             <td class="px-5 py-4 text-gray-600 truncate max-w-[200px]">{t.paket}</td>
                             <td class="px-5 py-4 text-right font-extrabold text-dark">{formatCurrency(t.total)}</td>
                             <td class="px-5 py-4 text-center">
@@ -199,7 +179,7 @@
                         </tr>
                     {:else}
                         <tr>
-                            <td colspan="6" class="px-5 py-10 text-center text-gray-500 italic">Belum ada transaksi pada periode ini.</td>
+                            <td colspan="7" class="px-5 py-10 text-center text-gray-500 italic">Belum ada transaksi pada periode ini.</td>
                         </tr>
                     {/each}
                 </tbody>

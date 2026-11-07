@@ -2,24 +2,18 @@
 
 namespace App\Providers;
 
-use App\Repositories\Contracts\PaymentGatewayInterface;
 use App\Repositories\Contracts\BookingRepositoryInterface;
-use App\Repositories\Contracts\DailyReportRepositoryInterface;
 use App\Repositories\Contracts\PackageRepositoryInterface;
-use App\Repositories\Contracts\PayoutRepositoryInterface;
 use App\Repositories\Contracts\ProfileRepositoryInterface;
+use App\Repositories\Contracts\RefundRepositoryInterface;
 use App\Repositories\Contracts\TripRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
-use App\Repositories\Contracts\WalletRepositoryInterface;
 use App\Repositories\Eloquent\BookingRepository;
-use App\Repositories\Eloquent\DailyReportRepository;
 use App\Repositories\Eloquent\PackageRepository;
-use App\Repositories\Eloquent\PayoutRepository;
 use App\Repositories\Eloquent\ProfileRepository;
+use App\Repositories\Eloquent\RefundRepository;
 use App\Repositories\Eloquent\TripRepository;
 use App\Repositories\Eloquent\UserRepository;
-use App\Repositories\Eloquent\WalletRepository;
-use App\Services\Payment\XenditHttpGateway;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -29,11 +23,8 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
-class AppServiceProvider extends ServiceProvider
+final class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
     public function register(): void
     {
         // ==========================================
@@ -44,36 +35,15 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(PackageRepositoryInterface::class, PackageRepository::class);
         $this->app->bind(BookingRepositoryInterface::class, BookingRepository::class);
         $this->app->bind(TripRepositoryInterface::class, TripRepository::class);
-        $this->app->bind(DailyReportRepositoryInterface::class, DailyReportRepository::class);
-        $this->app->bind(WalletRepositoryInterface::class, WalletRepository::class);
-        $this->app->bind(PayoutRepositoryInterface::class, PayoutRepository::class);
-
-        // ==========================================
-        // PAYMENT GATEWAY BINDING
-        // ==========================================
-        // ✅ Binding interface → implementasi konkret.
-        // Untuk ganti gateway (Midtrans, OVO, dll.):
-        // 1. Buat class baru implement PaymentGatewayInterface.
-        // 2. Ganti 1 baris di bawah.
-        // 3. Tidak perlu ubah BookingService / PayoutService.
-        $this->app->bind(
-            PaymentGatewayInterface::class,
-            XenditHttpGateway::class,
-        );
+        $this->app->bind(RefundRepositoryInterface::class, RefundRepository::class);
     }
 
-    /**
-     * Bootstrap any application services.
-     */
     public function boot(): void
     {
         $this->configureDefaults();
         $this->configureRateLimiting();
     }
 
-    /**
-     * Configure default behaviors for production-ready applications.
-     */
     protected function configureDefaults(): void
     {
         Date::use(CarbonImmutable::class);
@@ -83,46 +53,35 @@ class AppServiceProvider extends ServiceProvider
         );
 
         Password::defaults(fn (): ?Password => app()->isProduction()
-            ? Password::min(12)
-                ->mixedCase()
-                ->letters()
-                ->numbers()
-                ->symbols()
-                ->uncompromised()
+            ? Password::min(12)->mixedCase()->letters()->numbers()->symbols()->uncompromised()
             : null,
         );
     }
 
-    /**
-     * Configure rate limiters untuk endpoint tertentu.
-     *
-     * Rate limiter ini di-define di sini agar:
-     * 1. Bisa di-override di test tanpa mengubah route.
-     * 2. Konsisten antara production, testing, dan E2E.
-     * 3. Route hanya perlu `throttle:contact` (named limiter).
-     */
     protected function configureRateLimiting(): void
     {
-        /**
-         * Rate limiter untuk form kontak.
-         *
-         * Limit:
-         * - Production: 3 request per menit per IP.
-         * - Testing (Pest): 3 request per menit per IP (agar bisa di-test).
-         * - E2E (Playwright): 1000 request per menit per IP (longgar).
-         *
-         * E2E menggunakan env `AUTH_THROTTLE_CONTACT_TEST_OVERRIDE=1000`
-         * (di-set di `playwright.config.ts`).
-         */
         RateLimiter::for('contact', function (Request $request) {
-            $override = config('AUTH_THROTTLE_CONTACT_TEST_OVERRIDE');
-
+            $override = config('auth-throttle.contact.test_override');
             if ($override !== null && $override !== '') {
                 return Limit::perMinute((int) $override)->by($request->ip());
             }
-
-            // Default: 3 request per menit per IP
             return Limit::perMinute(3)->by($request->ip());
+        });
+
+        RateLimiter::for('upload-proof', function (Request $request) {
+            $userId = $request->user()?->id;
+
+            return Limit::perMinute(5)->by(
+                $userId !== null ? "user:{$userId}" : "ip:{$request->ip()}",
+            );
+        });
+
+        RateLimiter::for('e-ticket-download', function (Request $request) {
+            $userId = $request->user()?->id;
+
+            return Limit::perMinute(10)->by(
+                $userId !== null ? "user:{$userId}" : "ip:{$request->ip()}",
+            );
         });
     }
 }

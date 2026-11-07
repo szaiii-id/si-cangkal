@@ -4,29 +4,39 @@ namespace App\Services\Package;
 
 use App\Enums\PackageStatus;
 use App\Models\Package;
+use App\Models\PackageDay;
+use App\Models\PackageFacility;
 use App\Models\User;
 use App\Repositories\Contracts\PackageRepositoryInterface;
+use App\Support\AuditLogger;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
-class PackageService
+/**
+ * Service pengelolaan paket wisata.
+ *
+ * Perubahan dari versi lama:
+ * - `updateWithRelations()` BARU: menangani update data utama + sinkronisasi
+ *   `days` & `facilities` dari JSON (dipindah dari controller, SOC/NF-03).
+ * - `AuditLogger` di semua transisi state (S-16).
+ * - `isRombongan()` dipertahankan sebagai helper validasi.
+ */
+final class PackageService
 {
     public function __construct(
-        protected PackageRepositoryInterface $packageRepository,
+        private readonly PackageRepositoryInterface $packageRepository,
     ) {}
 
     // ==========================================
     // READ
     // ==========================================
 
-    /**
-     * @param  array<string, mixed>  $filters
-     * @return LengthAwarePaginator<int, Package>
-     */
     public function paginate(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
         return $this->packageRepository->paginate($filters, $perPage);
@@ -36,7 +46,7 @@ class PackageService
     {
         $package = $this->packageRepository->findById($id);
 
-        if (! $package) {
+        if ($package === null) {
             throw ValidationException::withMessages([
                 'package' => ['Paket tidak ditemukan.'],
             ]);
@@ -45,9 +55,7 @@ class PackageService
         return $package;
     }
 
-    /**
-     * @return Collection<int, Package>
-     */
+    /** @return Collection<int, Package> */
     public function allAktif(): Collection
     {
         return $this->packageRepository->allAktif();
@@ -64,15 +72,21 @@ class PackageService
     // ==========================================
 
     /** @param array<string, mixed> $data */
-    public function create(array $data, User $admin): Package
+    public function create(array $data, User $mitra): Package
     {
         $this->validate($data);
 
-        return DB::transaction(function () use ($data, $admin) {
+        return DB::transaction(function () use ($data, $mitra): Package {
             $kode = $this->packageRepository->generateKode((int) now()->year);
             $slug = $this->generateUniqueSlug((string) $data['nama']);
 
+            $coverPath = null;
+            if (isset($data['cover_image']) && $data['cover_image'] instanceof UploadedFile) {
+                $coverPath = $data['cover_image']->store('packages', 'public');
+            }
+
             $package = $this->packageRepository->create([
+                'mitra_id' => $mitra->id,
                 'kode' => $kode,
                 'nama' => $data['nama'],
                 'slug' => $slug,
@@ -82,18 +96,18 @@ class PackageService
                 'durasi_malam' => $data['durasi_malam'],
                 'harga_per_orang' => $data['harga_per_orang'],
                 'harga_per_rombongan' => $data['harga_per_rombongan'] ?? null,
-                'min_peserta' => $data['min_peserta'] ?? 1,
-                'max_peserta' => $data['max_peserta'] ?? 20,
+                'max_peserta' => $data['max_peserta'] ?? null,
                 'timezone' => $data['timezone'],
-                'cover_image' => $data['cover_image'] ?? null,
+                'cover_image' => $coverPath,
                 'status' => PackageStatus::DRAFT->value,
-                'created_by' => $admin->id,
             ]);
 
-            Log::info('Paket baru dibuat', [
+            AuditLogger::log('package.created', [
+                'actor_id' => $mitra->id,
+                'actor_role' => 'mitra',
                 'package_id' => $package->id,
-                'kode' => $package->kode,
-                'created_by' => $admin->id,
+                'package_kode' => $package->kode,
+                'nama' => $package->nama,
             ]);
 
             return $package;
@@ -109,8 +123,7 @@ class PackageService
     {
         $this->validate($data, $package->id);
 
-        return DB::transaction(function () use ($package, $data) {
-            /** @var array<string, mixed> $updateData */
+        return DB::transaction(function () use ($package, $data): Package {
             $updateData = [
                 'nama' => $data['nama'],
                 'deskripsi' => $data['deskripsi'] ?? null,
@@ -119,8 +132,7 @@ class PackageService
                 'durasi_malam' => $data['durasi_malam'],
                 'harga_per_orang' => $data['harga_per_orang'],
                 'harga_per_rombongan' => $data['harga_per_rombongan'] ?? null,
-                'min_peserta' => $data['min_peserta'] ?? 1,
-                'max_peserta' => $data['max_peserta'] ?? 20,
+                'max_peserta' => $data['max_peserta'] ?? null,
                 'timezone' => $data['timezone'],
             ];
 
@@ -128,18 +140,83 @@ class PackageService
                 $updateData['slug'] = $this->generateUniqueSlug((string) $data['nama'], $package->id);
             }
 
-            if (array_key_exists('cover_image', $data)) {
-                $updateData['cover_image'] = $data['cover_image'];
+            if (isset($data['cover_image']) && $data['cover_image'] instanceof UploadedFile) {
+                if ($package->cover_image && Storage::disk('public')->exists($package->cover_image)) {
+                    Storage::disk('public')->delete($package->cover_image);
+                }
+                $updateData['cover_image'] = $data['cover_image']->store('packages', 'public');
             }
 
             $updated = $this->packageRepository->update($package, $updateData);
 
-            Log::info('Paket diupdate', [
+            AuditLogger::log('package.updated', [
+                'actor_id' => auth()->id(),
                 'package_id' => $updated->id,
-                'kode' => $updated->kode,
+                'package_kode' => $updated->kode,
             ]);
 
             return $updated;
+        });
+    }
+
+    /**
+     * Update paket + sinkronisasi hari & fasilitas sekaligus.
+     *
+     * Menggantikan logika panjang di `Mitra\PackageController@update`
+     * (pelanggaran NF-03 & SOC). Menerima payload JSON string
+     * (`days` dan `facilities`) dari frontend.
+     *
+     * @param  array<string, mixed>  $data
+     *
+     * @throws ValidationException
+     */
+    public function updateWithRelations(Package $package, array $data): Package
+    {
+        $this->validate($data, $package->id);
+
+        return DB::transaction(function () use ($package, $data): Package {
+            // 1. Update data utama
+            $updateData = [
+                'nama' => $data['nama'],
+                'deskripsi' => $data['deskripsi'] ?? null,
+                'kategori' => $data['kategori'],
+                'durasi_hari' => $data['durasi_hari'],
+                'durasi_malam' => $data['durasi_malam'],
+                'harga_per_orang' => $data['harga_per_orang'],
+                'harga_per_rombongan' => $data['harga_per_rombongan'] ?: null,
+                'max_peserta' => $data['harga_per_rombongan'] ? ($data['max_peserta'] ?? null) : null,
+                'timezone' => $data['timezone'],
+            ];
+
+            if ($package->nama !== $data['nama']) {
+                $updateData['slug'] = $this->generateUniqueSlug((string) $data['nama'], $package->id);
+            }
+
+            // 2. Upload cover baru
+            if (isset($data['cover_image']) && $data['cover_image'] instanceof UploadedFile) {
+                if ($package->cover_image && Storage::disk('public')->exists($package->cover_image)) {
+                    Storage::disk('public')->delete($package->cover_image);
+                }
+                $updateData['cover_image'] = $data['cover_image']->store('packages', 'public');
+            }
+
+            $package = $this->packageRepository->update($package, $updateData);
+
+            // 3. Sinkronisasi hari
+            $this->syncDays($package, $data['days'] ?? null);
+
+            // 4. Sinkronisasi fasilitas
+            $this->syncFacilities($package, $data['facilities'] ?? null);
+
+            AuditLogger::log('package.updated_with_relations', [
+                'actor_id' => auth()->id(),
+                'package_id' => $package->id,
+                'package_kode' => $package->kode,
+                'days_count' => is_string($data['days'] ?? null) ? count(json_decode($data['days'], true) ?? []) : 0,
+                'facilities_count' => is_string($data['facilities'] ?? null) ? count(json_decode($data['facilities'], true) ?? []) : 0,
+            ]);
+
+            return $package->refresh()->load(['days', 'facilities']);
         });
     }
 
@@ -172,9 +249,10 @@ class PackageService
             'status' => PackageStatus::AKTIF->value,
         ]);
 
-        Log::info('Paket dipublish', [
+        AuditLogger::log('package.published', [
+            'actor_id' => auth()->id(),
             'package_id' => $package->id,
-            'kode' => $package->kode,
+            'package_kode' => $package->kode,
         ]);
 
         return $package;
@@ -192,9 +270,10 @@ class PackageService
             'status' => PackageStatus::ARSIP->value,
         ]);
 
-        Log::info('Paket diarsipkan', [
+        AuditLogger::log('package.archived', [
+            'actor_id' => auth()->id(),
             'package_id' => $package->id,
-            'kode' => $package->kode,
+            'package_kode' => $package->kode,
         ]);
 
         return $package;
@@ -212,9 +291,10 @@ class PackageService
             'status' => PackageStatus::DRAFT->value,
         ]);
 
-        Log::info('Paket direstore dari arsip', [
+        AuditLogger::log('package.restored', [
+            'actor_id' => auth()->id(),
             'package_id' => $package->id,
-            'kode' => $package->kode,
+            'package_kode' => $package->kode,
         ]);
 
         return $package;
@@ -232,9 +312,10 @@ class PackageService
             ]);
         }
 
-        Log::warning('Paket dihapus (soft delete)', [
+        AuditLogger::log('package.deleted', [
+            'actor_id' => auth()->id(),
             'package_id' => $package->id,
-            'kode' => $package->kode,
+            'package_kode' => $package->kode,
         ]);
 
         $this->packageRepository->delete($package);
@@ -255,7 +336,6 @@ class PackageService
             $counter++;
 
             if ($counter > 1000) {
-                // Fallback: coba random sampai unik
                 do {
                     $slug = $base.'-'.Str::random(6);
                 } while ($this->packageRepository->slugExists($slug, $exceptId));
@@ -267,21 +347,87 @@ class PackageService
     }
 
     /**
-     * @param  array<string, mixed>  $data
+     * Sinkronisasi hari (delete + recreate).
      *
-     * @throws ValidationException
+     * @param  string|null  $rawJson
      */
-    protected function validate(array $data, ?int $exceptId = null): void
+    private function syncDays(Package $package, ?string $rawJson): void
     {
-        $minPeserta = (int) ($data['min_peserta'] ?? 1);
-        $maxPeserta = (int) ($data['max_peserta'] ?? 20);
+        $package->days()->delete();
 
-        if ($minPeserta > $maxPeserta) {
-            throw ValidationException::withMessages([
-                'min_peserta' => ['Minimal peserta tidak boleh lebih besar dari maksimal peserta.'],
-            ]);
+        if ($rawJson === null || $rawJson === '') {
+            return;
         }
 
+        $days = json_decode($rawJson, true);
+
+        if (! is_array($days)) {
+            return;
+        }
+
+        foreach (array_values($days) as $index => $day) {
+            if (! is_array($day) || ! isset($day['judul'])) {
+                continue;
+            }
+
+            PackageDay::create([
+                'package_id' => $package->id,
+                'hari_ke' => $index + 1,
+                'judul' => (string) $day['judul'],
+                'deskripsi' => $day['deskripsi'] ?? null,
+                'jam_mulai' => $day['jam_mulai'] ?? null,
+                'jam_selesai' => $day['jam_selesai'] ?? null,
+                'lokasi' => $day['lokasi'] ?? null,
+            ]);
+        }
+    }
+
+    /**
+     * Sinkronisasi fasilitas (delete + recreate).
+     *
+     * @param  string|null  $rawJson
+     */
+    private function syncFacilities(Package $package, ?string $rawJson): void
+    {
+        $package->facilities()->delete();
+
+        if ($rawJson === null || $rawJson === '') {
+            return;
+        }
+
+        $facilities = json_decode($rawJson, true);
+
+        if (! is_array($facilities)) {
+            return;
+        }
+
+        $urutan = ['include' => 0, 'exclude' => 0];
+
+        foreach ($facilities as $facility) {
+            if (! is_array($facility) || ! isset($facility['tipe'], $facility['nama'])) {
+                continue;
+            }
+
+            $tipe = (string) $facility['tipe'];
+
+            if (! isset($urutan[$tipe])) {
+                continue;
+            }
+
+            $urutan[$tipe]++;
+
+            PackageFacility::create([
+                'package_id' => $package->id,
+                'tipe' => $tipe,
+                'nama' => (string) $facility['nama'],
+                'urutan' => $urutan[$tipe],
+            ]);
+        }
+    }
+
+    /** @param array<string, mixed> $data */
+    private function validate(array $data, ?int $exceptId = null): void
+    {
         $durasiHari = (int) ($data['durasi_hari'] ?? 1);
         $durasiMalam = (int) ($data['durasi_malam'] ?? 0);
 
@@ -291,11 +437,12 @@ class PackageService
             ]);
         }
 
-        // ✅ FIX: guard null dulu, baru compare
-        if (isset($data['harga_per_rombongan'])) {
-            if ((float) $data['harga_per_rombongan'] <= 0) {
+        $hargaPerRombongan = $data['harga_per_rombongan'] ?? null;
+
+        if ($hargaPerRombongan !== null && (float) $hargaPerRombongan > 0) {
+            if (empty($data['max_peserta'])) {
                 throw ValidationException::withMessages([
-                    'harga_per_rombongan' => ['Harga per rombongan harus lebih dari 0.'],
+                    'max_peserta' => ['Max peserta wajib diisi untuk paket rombongan.'],
                 ]);
             }
         }

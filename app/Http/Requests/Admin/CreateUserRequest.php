@@ -18,31 +18,13 @@ class CreateUserRequest extends FormRequest
      */
     public function rules(): array
     {
-        $role = $this->input('role');
-
-        $rules = [
-            'role' => ['required', 'string', Rule::in(['admin', 'mitra'])],
+        return [
+            'role' => ['required', 'string', Rule::in(['admin'])], // ✅ Hanya admin
             'name' => ['required', 'string', 'max:255'],
             'username' => ['nullable', 'string', 'max:255', 'unique:users,username'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['nullable', 'string', Password::defaults()],
         ];
-
-        // Field profile hanya untuk mitra (opsional)
-        if ($role === 'mitra') {
-            $rules = array_merge($rules, [
-                'nama_penyedia_usaha' => ['nullable', 'string', 'max:255'],
-                'nomor_identitas' => ['nullable', 'string', 'max:255'],
-                'alamat' => ['nullable', 'string', 'max:1000'],
-                'telepon' => ['nullable', 'string', 'max:50'],
-                'provinsi' => ['nullable', 'string', 'max:255'],
-                'kota' => ['nullable', 'string', 'max:255'],
-                'kode_pos' => ['nullable', 'string', 'max:20'],
-                'deskripsi' => ['nullable', 'string', 'max:5000'],
-            ]);
-        }
-
-        return $rules;
     }
 
     /**
@@ -52,7 +34,7 @@ class CreateUserRequest extends FormRequest
     {
         return [
             'role.required' => 'Role wajib dipilih.',
-            'role.in' => 'Role tidak valid. Hanya admin atau mitra yang diizinkan.',
+            'role.in' => 'Role tidak valid. Hanya admin yang diizinkan.',
             'name.required' => 'Nama wajib diisi.',
             'email.required' => 'Email wajib diisi.',
             'email.email' => 'Format email tidak valid.',

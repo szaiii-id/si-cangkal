@@ -4,6 +4,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Mock Payment Toggle
+    |--------------------------------------------------------------------------
+    |
+    | Flag untuk mensimulasikan payment gateway tanpa memanggil API asli.
+    | HANYA untuk development. Wajib `false` di production.
+    |
+    */
+
+    'mock_payment' => (bool) env('MOCK_PAYMENT', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Name
     |--------------------------------------------------------------------------
     |
@@ -59,9 +71,11 @@ return [
     | Application Timezone
     |--------------------------------------------------------------------------
     |
-    | Here you may specify the default timezone for your application, which
-    | will be used by the PHP date and date-time functions. The timezone
-    | is set to "UTC" by default as it is suitable for most use cases.
+    | Timezone aplikasi diset ke UTC sesuai best practice: database
+    | menyimpan timestamp dalam UTC, dan konversi ke timezone lokal
+    | dilakukan lewat helper `App\Support\Timezone` berdasarkan
+    | timezone user/trip. JANGAN ubah ke WIB/WITA/WIT — itu akan
+    | membuat perbandingan tanggal lintas timezone kacau.
     |
     */
 
@@ -72,17 +86,18 @@ return [
     | Application Locale Configuration
     |--------------------------------------------------------------------------
     |
-    | The application locale determines the default locale that will be used
-    | by Laravel's translation / localization methods. This option can be
-    | set to any locale for which you plan to have translation strings.
+    | Locale default `id` (Bahasa Indonesia) agar format tanggal di
+    | PDF/UI (`translatedFormat`), pesan validasi default, dan output
+    | faker menggunakan Bahasa Indonesia. Override via APP_LOCALE
+    | bila perlu (mis. untuk multi-bahasa).
     |
     */
 
-    'locale' => env('APP_LOCALE', 'en'),
+    'locale' => env('APP_LOCALE', 'id'),
 
-    'fallback_locale' => env('APP_FALLBACK_LOCALE', 'en'),
+    'fallback_locale' => env('APP_FALLBACK_LOCALE', 'id'),
 
-    'faker_locale' => env('APP_FAKER_LOCALE', 'en_US'),
+    'faker_locale' => env('APP_FAKER_LOCALE', 'id_ID'),
 
     /*
     |--------------------------------------------------------------------------

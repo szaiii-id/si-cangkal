@@ -3,33 +3,29 @@
     import EmptyState from '@/global/EmptyState.svelte';
     import PageHeader from '@/global/PageHeader.svelte';
     import Pagination from '@/global/Pagination.svelte';
-    import { inertia, router, page } from '@inertiajs/svelte';
-    import type { AppNotification, PaginationMeta } from '@/types';
+    import { router, page } from '@inertiajs/svelte';
+    import type { NotificationsIndexProps } from '@/types/props';
+    import type { UserRole } from '@/types/models';
     import { formatDateTime } from '@/utils/formatDate';
     import { adminMenu, clientMenu, mitraMenu } from '@/utils/menus';
+    import { getTipeConfig } from '@/utils/notificationConfig';
 
     // ==========================================
     // PROPS
     // ==========================================
 
-    type NotificationItem = Pick<
-        AppNotification,
-        'id' | 'tipe' | 'judul' | 'pesan' | 'data' | 'read_at' | 'created_at'
-    >;
+    type NotificationItem =
+        NotificationsIndexProps['notifications']['data'][number];
 
-    let {
-        notifications,
-        unreadCount = 0,
-    }: {
-        notifications: PaginationMeta & { data: NotificationItem[] };
-        unreadCount: number;
-    } = $props();
+    let { notifications, unreadCount }: NotificationsIndexProps = $props();
 
     // ==========================================
     // DYNAMIC MENU
     // ==========================================
 
-    let role = $derived(page.props.auth?.user?.role);
+    let role: UserRole = $derived(
+        (page.props.auth?.user?.role ?? 'client') as UserRole,
+    );
 
     let activeMenu = $derived(
         role === 'admin'
@@ -43,15 +39,35 @@
     // HANDLERS
     // ==========================================
 
-    function markAsRead(id: string) {
+    /**
+     * Klik notifikasi:
+     * 1. Ambil `data.url` (kalau ada).
+     * 2. Kalau sudah dibaca → langsung redirect (kalau ada url).
+     * 3. Kalau belum dibaca → mark-as-read dulu, lalu redirect.
+     */
+    function handleNotificationClick(n: NotificationItem): void {
+        const url = (n.data as { url?: string } | null)?.url;
+
+        // Sudah dibaca → langsung redirect
+        if (n.read_at) {
+            if (url) router.visit(url);
+            return;
+        }
+
+        // Belum dibaca → mark dulu, lalu redirect
         router.post(
-            `/notifications/${id}/read`,
+            `/notifications/${n.id}/read`,
             {},
-            { preserveScroll: true },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    if (url) router.visit(url);
+                },
+            },
         );
     }
 
-    function markAllRead() {
+    function markAllRead(): void {
         router.post(
             '/notifications/mark-all-read',
             {},
@@ -60,44 +76,42 @@
     }
 </script>
 
-<svelte:head><title>Notifikasi | Titiktemu</title></svelte:head>
+<svelte:head>
+    <title>Notifikasi | Titiktemu</title>
+</svelte:head>
 
 <DashboardLayout title="Notifikasi" menuItems={activeMenu}>
-    <!-- Header -->
-    <div
-        class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6"
+    <PageHeader
+        title="Notifikasi"
+        description={`${unreadCount} belum dibaca`}
     >
-        <div>
-            <h1 class="text-2xl font-extrabold text-dark">Notifikasi</h1>
-            <p class="text-sm text-gray-500 mt-1">
-                {unreadCount} belum dibaca
-            </p>
-        </div>
-        {#if unreadCount > 0}
-            <button
-                type="button"
-                onclick={markAllRead}
-                class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-pink-dark text-white font-bold text-sm hover:bg-sun-dark transition-all shadow-md self-start sm:self-auto"
-            >
-                <svg
-                    class="w-4 h-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="2.5"
+        {#snippet actions()}
+            {#if unreadCount > 0}
+                <button
+                    type="button"
+                    onclick={markAllRead}
+                    class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-pink-dark text-white font-bold text-sm hover:bg-sun-dark transition-all shadow-md"
                 >
-                    <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M5 13l4 4L19 7"
-                    />
-                </svg>
-                Tandai Semua Dibaca
-            </button>
-        {/if}
-    </div>
+                    <svg
+                        class="w-4 h-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        stroke-width="2.5"
+                        aria-hidden="true"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M5 13l4 4L19 7"
+                        />
+                    </svg>
+                    Tandai Semua Dibaca
+                </button>
+            {/if}
+        {/snippet}
+    </PageHeader>
 
-    <!-- Card -->
     <div
         class="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden"
     >
@@ -110,18 +124,26 @@
         {:else}
             <div class="divide-y divide-gray-100">
                 {#each notifications.data as n (n.id)}
+                    {@const tipeConfig = getTipeConfig(n.tipe)}
+                    {@const hasUrl = !!(n.data as { url?: string } | null)
+                        ?.url}
                     <button
                         type="button"
-                        onclick={() => markAsRead(n.id)}
+                        onclick={() => handleNotificationClick(n)}
                         class="w-full text-left p-4 sm:p-5 hover:bg-gray-50/70 transition-colors {n.read_at
                             ? ''
                             : 'bg-blue/5'}"
+                        aria-label={hasUrl
+                            ? `${n.judul}. Klik untuk melihat detail.`
+                            : n.judul}
                     >
                         <div class="flex items-start gap-3">
                             <div
                                 class="w-10 h-10 rounded-xl {n.read_at
-                                    ? 'bg-gray-100 text-gray-500'
-                                    : 'bg-pink/10 text-pink-text'} flex items-center justify-center flex-shrink-0"
+                                    ? 'bg-gray-100 text-gray-400'
+                                    : tipeConfig.bg +
+                                      ' ' +
+                                      tipeConfig.text} flex items-center justify-center flex-shrink-0"
                             >
                                 <svg
                                     class="w-5 h-5"
@@ -129,39 +151,72 @@
                                     viewBox="0 0 24 24"
                                     stroke="currentColor"
                                     stroke-width="2"
+                                    aria-hidden="true"
                                 >
                                     <path
                                         stroke-linecap="round"
                                         stroke-linejoin="round"
-                                        d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                                        d={tipeConfig.icon}
                                     />
                                 </svg>
                             </div>
                             <div class="flex-1 min-w-0">
-                                <p class="text-sm font-bold text-dark">
-                                    {n.judul}
-                                </p>
-                                <p class="text-xs text-gray-600 mt-0.5">
+                                <div
+                                    class="flex items-start justify-between gap-2"
+                                >
+                                    <p
+                                        class="text-sm font-bold text-dark"
+                                    >
+                                        {n.judul}
+                                    </p>
+                                    {#if !n.read_at}
+                                        <span
+                                            class="w-2 h-2 rounded-full bg-pink-dark flex-shrink-0 mt-1.5"
+                                            aria-label="Belum dibaca"
+                                        ></span>
+                                    {/if}
+                                </div>
+                                <p
+                                    class="text-xs text-gray-600 mt-0.5"
+                                >
                                     {n.pesan}
                                 </p>
-                                <p
-                                    class="text-[11px] text-gray-400 mt-1"
+                                <div
+                                    class="flex items-center justify-between gap-2 mt-1"
                                 >
-                                    {formatDateTime(n.created_at)}
-                                </p>
+                                    <p
+                                        class="text-[11px] text-gray-400"
+                                    >
+                                        {formatDateTime(n.created_at)}
+                                    </p>
+                                    {#if hasUrl}
+                                        <span
+                                            class="inline-flex items-center gap-0.5 text-[11px] font-bold text-pink-text"
+                                        >
+                                            Lihat detail
+                                            <svg
+                                                class="w-3 h-3"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                                stroke="currentColor"
+                                                stroke-width="2.5"
+                                                aria-hidden="true"
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    d="M9 5l7 7-7 7"
+                                                />
+                                            </svg>
+                                        </span>
+                                    {/if}
+                                </div>
                             </div>
-                            {#if !n.read_at}
-                                <span
-                                    class="w-2 h-2 rounded-full bg-pink-dark flex-shrink-0 mt-2"
-                                    aria-label="Belum dibaca"
-                                ></span>
-                            {/if}
                         </div>
                     </button>
                 {/each}
             </div>
 
-            <!-- Pagination -->
             <Pagination meta={notifications} label="notifikasi" />
         {/if}
     </div>

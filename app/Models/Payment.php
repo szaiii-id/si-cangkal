@@ -11,12 +11,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
 /**
- * Model Payment — rekam jejak pembayaran via Xendit.
+ * Model Payment — rekam jejak pembayaran manual.
  *
  * @property int $id
  * @property int $booking_id
  * @property numeric-string $jumlah
  * @property PaymentMetode $metode
+ * @property string|null $channel_code
  * @property int|null $verified_by
  * @property Carbon|null $verified_at
  * @property string|null $catatan
@@ -39,6 +40,7 @@ class Payment extends Model
         'booking_id',
         'jumlah',
         'metode',
+        'channel_code',
         'verified_by',
         'verified_at',
         'catatan',

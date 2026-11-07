@@ -1,14 +1,15 @@
 <script lang="ts">
     import DashboardLayout from '@/components/layout/DashboardLayout.svelte';
     import BackButton from '@/global/BackButton.svelte';
+
     import { inertia, router } from '@inertiajs/svelte';
-    import type {
-        Package,
-        PackageFacility,
-    } from '@/types';
+
+    import type { Package, PackageFacility } from '@/types';
+
     import { formatCurrency } from '@/utils/formatCurrency';
     import { formatDurasi } from '@/utils/duration';
     import { todayInTimezone } from '@/utils/timezone';
+    import { showToast } from '@/utils/toast.svelte';
     import { clientMenu } from '@/utils/menus';
 
     // ==========================================
@@ -27,7 +28,6 @@
         | 'durasi_malam'
         | 'harga_per_orang'
         | 'harga_per_rombongan'
-        | 'min_peserta'
         | 'max_peserta'
         | 'timezone'
     > & {
@@ -44,7 +44,7 @@
 
     let form = $state({
         tanggal_keberangkatan: '',
-        jumlah_peserta: pkg.min_peserta,
+        jumlah_peserta: 1,
         catatan: '',
     });
 
@@ -59,6 +59,8 @@
 
     let errors = $state<Record<string, string>>({});
     let processing = $state(false);
+
+    let errorCount = $derived(Object.keys(errors).length);
 
     // ==========================================
     // MIN DATE — H+3 BERDASARKAN TIMEZONE PACKAGE
@@ -80,9 +82,28 @@
     // SYNC PARTICIPANTS
     // ==========================================
 
+    /**
+     * Sinkronkan array `participants` dengan `form.jumlah_peserta`.
+     *
+     * - Jika target > current: push entry kosong.
+     * - Jika target < current: slice (hapus entry terakhir).
+     * - Jika target == current: no-op.
+     *
+     * Guard `target < 1` mencegah array corrupt saat user input 0
+     * atau negatif (input type=number masih bisa).
+     */
     function syncParticipants() {
         const target = Number(form.jumlah_peserta);
+
+        if (!Number.isFinite(target) || target < 1) {
+            return;
+        }
+
         const current = participants.length;
+
+        if (target === current) {
+            return;
+        }
 
         if (target > current) {
             for (let i = current; i < target; i++) {
@@ -93,12 +114,21 @@
                     catatan: '',
                 });
             }
-        } else if (target < current) {
+        } else {
             participants = participants.slice(0, target);
         }
     }
 
+    /**
+     * Reaktif terhadap perubahan `form.jumlah_peserta`.
+     *
+     * `void form.jumlah_peserta;` WAJIB untuk memberi tahu Svelte 5
+     * bahwa `$effect` ini punya dependency eksplisit ke field tersebut.
+     * Tanpa ini, di beberapa versi Svelte 5, effect bisa tidak ter-trigger
+     * saat user mengubah jumlah peserta.
+     */
     $effect(() => {
+        void form.jumlah_peserta;
         syncParticipants();
     });
 
@@ -133,10 +163,11 @@
         }
 
         const jumlah = Number(form.jumlah_peserta);
-        if (jumlah < pkg.min_peserta) {
-            step1Errors.jumlah_peserta = `Minimal ${pkg.min_peserta} orang.`;
+        if (jumlah < 1) {
+            step1Errors.jumlah_peserta =
+                'Jumlah peserta minimal 1 orang.';
         }
-        if (jumlah > pkg.max_peserta) {
+        if (pkg.max_peserta && jumlah > pkg.max_peserta) {
             step1Errors.jumlah_peserta = `Maksimal ${pkg.max_peserta} orang.`;
         }
 
@@ -190,8 +221,16 @@
         };
 
         router.post(`/client/bookings/${pkg.id}`, payload, {
+            onSuccess: () => {
+                showToast(
+                    'Booking berhasil dibuat. Silakan transfer ke rekening Mitra.',
+                    'success',
+                );
+            },
             onError: (err) => {
                 errors = err as Record<string, string>;
+
+                // Kalau error di field step 1, balik ke step 1
                 const step1Fields = [
                     'tanggal_keberangkatan',
                     'jumlah_peserta',
@@ -203,6 +242,11 @@
                 ) {
                     step = 1;
                 }
+
+                showToast(
+                    'Terdapat kesalahan pada form. Periksa kembali.',
+                    'error',
+                );
                 processing = false;
             },
             onFinish: () => {
@@ -225,15 +269,13 @@
             year: 'numeric',
         }).format(date);
     }
-
-    let errorCount = $derived(Object.keys(errors).length);
 </script>
 
 <svelte:head>
-    <title>Booking {pkg.nama} | Titiktemu</title>
+    <title>Pesan {pkg.nama} | Titiktemu</title>
 </svelte:head>
 
-<DashboardLayout title="Form Booking" menuItems={clientMenu}>
+<DashboardLayout title="Form Pemesanan" menuItems={clientMenu}>
     <BackButton
         href={`/client/catalog/${pkg.slug}`}
         label="Kembali ke Detail Paket"
@@ -249,6 +291,9 @@
                     1
                         ? 'bg-pink-dark text-white shadow-md shadow-pink/30'
                         : 'bg-green text-white'}"
+                    aria-label={step > 1
+                        ? 'Langkah 1 selesai'
+                        : 'Langkah 1 aktif'}
                 >
                     {#if step > 1}
                         <svg
@@ -275,7 +320,7 @@
                         ? 'text-dark'
                         : 'text-gray-400'}"
                 >
-                    Info Booking
+                    Info Pemesanan
                 </span>
             </div>
 
@@ -292,6 +337,9 @@
                     2
                         ? 'bg-pink-dark text-white shadow-md shadow-pink/30'
                         : 'bg-gray-200 text-gray-500'}"
+                    aria-label={step === 2
+                        ? 'Langkah 2 aktif'
+                        : 'Langkah 2 belum aktif'}
                 >
                     2
                 </div>
@@ -311,6 +359,7 @@
     {#if errorCount > 0}
         <div
             class="max-w-3xl mx-auto mb-4 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-2xl flex items-start gap-3"
+            role="alert"
         >
             <svg
                 class="w-5 h-5 text-red-500 shrink-0 mt-0.5"
@@ -336,7 +385,7 @@
     {/if}
 
     <!-- ==========================================
-         STEP 1: Info Booking
+         STEP 1: Info Pemesanan
     ========================================== -->
     {#if step === 1}
         <div class="max-w-3xl mx-auto space-y-4">
@@ -405,7 +454,7 @@
                         <h3
                             class="text-base font-extrabold text-dark"
                         >
-                            Info Booking
+                            Info Pemesanan
                         </h3>
                         <p class="text-xs text-gray-500">
                             Tentukan tanggal & jumlah peserta
@@ -446,6 +495,7 @@
                             {#if errors.tanggal_keberangkatan}
                                 <p
                                     class="text-pink text-[11px] mt-1 font-bold"
+                                    aria-live="polite"
                                 >
                                     {errors.tanggal_keberangkatan}
                                 </p>
@@ -477,8 +527,8 @@
                                 id="jumlah_peserta"
                                 type="number"
                                 bind:value={form.jumlah_peserta}
-                                min={pkg.min_peserta}
-                                max={pkg.max_peserta}
+                                min={1}
+                                max={pkg.max_peserta ?? undefined}
                                 required
                                 class="w-full px-4 py-2.5 border rounded-xl bg-gray-50 text-sm font-medium focus:outline-none transition-all
                                     {errors.jumlah_peserta
@@ -488,15 +538,15 @@
                             {#if errors.jumlah_peserta}
                                 <p
                                     class="text-pink text-[11px] mt-1 font-bold"
+                                    aria-live="polite"
                                 >
                                     {errors.jumlah_peserta}
                                 </p>
-                            {:else}
+                            {:else if pkg.max_peserta}
                                 <p
                                     class="text-[11px] text-gray-500 mt-1"
                                 >
-                                    Min. {pkg.min_peserta} – Maks.
-                                    {pkg.max_peserta} orang
+                                    Maksimal {pkg.max_peserta} orang.
                                 </p>
                             {/if}
                         </div>
@@ -571,7 +621,7 @@
                 <h3
                     class="text-xs font-extrabold text-gray-500 uppercase tracking-widest mb-3"
                 >
-                    Ringkasan Booking
+                    Ringkasan Pemesanan
                 </h3>
                 <div
                     class="grid grid-cols-2 sm:grid-cols-3 gap-4"
@@ -655,13 +705,13 @@
                         onclick={backToStep1}
                         class="text-xs font-bold text-gray-500 hover:text-pink-text transition-colors whitespace-nowrap"
                     >
-                        Ubah Info Booking
+                        Ubah Info Pemesanan
                     </button>
                 </div>
 
                 <form novalidate onsubmit={handleSubmit}>
                     <div class="p-5 sm:p-6 space-y-4">
-                        {#each participants as participant, index}
+                        {#each participants as participant, index (index)}
                             <div
                                 class="border border-gray-200 rounded-2xl overflow-hidden"
                             >
@@ -713,6 +763,7 @@
                                         {#if errors[`participants.${index}.nama`]}
                                             <p
                                                 class="text-pink text-[11px] mt-1 font-bold"
+                                                aria-live="polite"
                                             >
                                                 {errors[
                                                     `participants.${index}.nama`
@@ -831,7 +882,7 @@
                             </span>
                         </div>
                         <p class="text-[11px] text-gray-500">
-                            Pembayaran aman via Xendit. Setelah booking dibuat, Anda akan diarahkan ke halaman pembayaran.
+                            Pembayaran dilakukan dengan transfer ke rekening Mitra. Setelah menekan tombol konfirmasi, Anda akan melihat instruksi transfer.
                         </p>
                     </div>
 
@@ -886,7 +937,7 @@
                                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
                                     ></path>
                                 </svg>
-                                Membuat Booking...
+                                Membuat Pesanan...
                             {:else}
                                 <svg
                                     class="w-4 h-4"
@@ -902,7 +953,7 @@
                                         d="M5 13l4 4L19 7"
                                     />
                                 </svg>
-                                Konfirmasi Booking
+                                Konfirmasi Pesanan
                             {/if}
                         </button>
                     </div>

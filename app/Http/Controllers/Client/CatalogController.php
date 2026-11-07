@@ -17,12 +17,6 @@ class CatalogController extends Controller
 
     /**
      * Halaman katalog paket wisata aktif.
-     *
-     * Filter:
-     * - search: nama / deskripsi
-     * - kategori: wisata_alam | budaya | kuliner | petualangan | lainnya
-     * - sort: nama | harga_per_orang | durasi_hari
-     * - direction: asc | desc
      */
     public function index(Request $request): InertiaResponse
     {
@@ -48,6 +42,9 @@ class CatalogController extends Controller
      *
      * Hanya paket dengan status aktif yang bisa dilihat.
      * Kalau paket tidak aktif → 404.
+     *
+     * Eager-load `mitra.profile` agar FE bisa menampilkan
+     * nama usaha (travel), telepon (untuk tombol WA), dan alamat.
      */
     public function show(Package $package): InertiaResponse
     {
@@ -55,8 +52,9 @@ class CatalogController extends Controller
         abort_unless($package->isAktif(), 404);
 
         $package->load([
-            'creator:id,name,email',
-            'days.costs',
+            'mitra:id,name,email',
+            'mitra.profile', 
+            'days',
             'facilities',
         ]);
 

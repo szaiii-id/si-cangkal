@@ -4,23 +4,22 @@ namespace App\Repositories\Eloquent;
 
 use App\Models\User;
 use App\Repositories\Contracts\UserRepositoryInterface;
+use App\Support\LikeEscaper;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
-class UserRepository implements UserRepositoryInterface
+/**
+ * Repository user.
+ *
+ * Perubahan dari versi lama:
+ * - `searchOperator()` diganti `LikeEscaper::operator()` + `LikeEscaper::contains()`
+ *   untuk mencegah wildcard injection (S-06).
+ * - `paginateMitras()` BARU untuk `Admin\MitraMonitoringController`.
+ */
+final class UserRepository implements UserRepositoryInterface
 {
-    /**
-     * Driver-aware search operator.
-     *
-     * PostgreSQL → `ilike` (case-insensitive)
-     * SQLite/MySQL → `like` (case-insensitive by default)
-     */
-    protected function searchOperator(): string
-    {
-        return DB::connection()->getDriverName() === 'pgsql' ? 'ilike' : 'like';
-    }
-
     /**
      * {@inheritDoc}
      */
@@ -68,6 +67,7 @@ class UserRepository implements UserRepositoryInterface
             'google_id' => $data['google_id'] ?? null,
             'role' => 'client',
             'must_change_password' => false,
+            'email_verified_at' => now(),
         ]);
     }
 
@@ -83,6 +83,7 @@ class UserRepository implements UserRepositoryInterface
             'password' => $data['password'],
             'role' => $data['role'],
             'must_change_password' => $data['must_change_password'] ?? true,
+            'email_verified_at' => now(),
         ]);
     }
 
@@ -127,16 +128,18 @@ class UserRepository implements UserRepositoryInterface
         int $perPage = 15,
         ?string $search = null,
     ): LengthAwarePaginator {
-        $operator = $this->searchOperator();
+        $operator = LikeEscaper::operator(DB::connection());
 
         return User::query()
             ->with('profile')
             ->whereIn('role', $roles)
-            ->when($search, function ($query, $search) use ($operator) {
-                $query->where(function ($q) use ($search, $operator) {
-                    $q->where('name', $operator, "%{$search}%")
-                        ->orWhere('email', $operator, "%{$search}%")
-                        ->orWhere('username', $operator, "%{$search}%");
+            ->when($search, function (Builder $query, string $search) use ($operator): void {
+                $escaped = LikeEscaper::contains($search);
+
+                $query->where(function (Builder $q) use ($escaped, $operator): void {
+                    $q->where('name', $operator, $escaped)
+                        ->orWhere('email', $operator, $escaped)
+                        ->orWhere('username', $operator, $escaped);
                 });
             })
             ->orderByDesc('created_at')
@@ -153,21 +156,21 @@ class UserRepository implements UserRepositoryInterface
         int $perPage = 15,
         ?string $search = null,
     ): LengthAwarePaginator {
-        $operator = $this->searchOperator();
+        return $this->paginateByRoles(['client'], $perPage, $search);
+    }
 
-        return User::query()
-            ->with('profile')
-            ->where('role', 'client')
-            ->when($search, function ($query, $search) use ($operator) {
-                $query->where(function ($q) use ($search, $operator) {
-                    $q->where('name', $operator, "%{$search}%")
-                        ->orWhere('email', $operator, "%{$search}%")
-                        ->orWhere('username', $operator, "%{$search}%");
-                });
-            })
-            ->orderByDesc('created_at')
-            ->paginate($perPage)
-            ->withQueryString();
+    /**
+     * Daftar mitra (untuk panel admin).
+     *
+     * Perbaikan dari `Admin\MitraMonitoringController@index` yang
+     * sebelumnya hardcoded `'ilike'` (tidak portabel) dan tidak
+     * escape wildcard.
+     *
+     * @return LengthAwarePaginator<int, User>
+     */
+    public function paginateMitras(int $perPage = 15, ?string $search = null): LengthAwarePaginator
+    {
+        return $this->paginateByRoles(['mitra'], $perPage, $search);
     }
 
     /**
@@ -176,7 +179,7 @@ class UserRepository implements UserRepositoryInterface
     public function emailExists(string $email, ?int $exceptUserId = null): bool
     {
         return User::where('email', $email)
-            ->when($exceptUserId, fn ($q) => $q->where('id', '!=', $exceptUserId))
+            ->when($exceptUserId, fn (Builder $q) => $q->where('id', '!=', $exceptUserId))
             ->exists();
     }
 
@@ -186,7 +189,7 @@ class UserRepository implements UserRepositoryInterface
     public function usernameExists(string $username, ?int $exceptUserId = null): bool
     {
         return User::where('username', $username)
-            ->when($exceptUserId, fn ($q) => $q->where('id', '!=', $exceptUserId))
+            ->when($exceptUserId, fn (Builder $q) => $q->where('id', '!=', $exceptUserId))
             ->exists();
     }
 
@@ -195,15 +198,16 @@ class UserRepository implements UserRepositoryInterface
      */
     public function searchByRole(string $role, string $search, int $limit = 10): Collection
     {
-        $operator = $this->searchOperator();
+        $operator = LikeEscaper::operator(DB::connection());
+        $escaped = LikeEscaper::contains($search);
 
         return User::query()
             ->where('role', $role)
-            ->when($search, function ($query, $search) use ($operator) {
-                $query->where(function ($q) use ($search, $operator) {
-                    $q->where('name', $operator, "%{$search}%")
-                        ->orWhere('email', $operator, "%{$search}%")
-                        ->orWhere('username', $operator, "%{$search}%");
+            ->when($search, function (Builder $query) use ($escaped, $operator): void {
+                $query->where(function (Builder $q) use ($escaped, $operator): void {
+                    $q->where('name', $operator, $escaped)
+                        ->orWhere('email', $operator, $escaped)
+                        ->orWhere('username', $operator, $escaped);
                 });
             })
             ->orderBy('name')

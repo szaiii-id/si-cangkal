@@ -39,10 +39,13 @@
                     Kelola, pantau, dan evaluasi seluruh dokumen perjanjian dan kerja sama secara digital, terpusat, dan sangat aman dalam satu platform modern.
                 </p>
 
-                <!-- Tombol Aksi (Sisa 1 tombol) -->
-                <div class="flex justify-center lg:justify-start">
+                <!-- Tombol Aksi -->
+                <div class="flex flex-col sm:flex-row justify-center lg:justify-start gap-3">
                     <a href="/register" class="bg-blue text-white px-8 py-4 rounded-full font-bold text-lg hover:bg-purple transition-all shadow-xl hover:shadow-blue/30 transform hover:-translate-y-1 text-center">
                         Daftar Sekarang
+                    </a>
+                    <a href="/register/mitra" class="bg-purple text-white px-8 py-4 rounded-full font-bold text-lg hover:bg-sun-dark transition-all shadow-xl hover:shadow-purple/30 transform hover:-translate-y-1 text-center">
+                        Daftar sebagai Mitra
                     </a>
                 </div>
             </div>

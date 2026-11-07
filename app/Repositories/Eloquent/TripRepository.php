@@ -6,23 +6,24 @@ use App\Enums\TripStatus;
 use App\Models\Trip;
 use App\Models\User;
 use App\Repositories\Contracts\TripRepositoryInterface;
+use App\Support\LikeEscaper;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
-class TripRepository implements TripRepositoryInterface
+/**
+ * Repository trip.
+ *
+ * Perubahan dari versi lama:
+ * - `searchOperator()` diganti `LikeEscaper::operator()` + `LikeEscaper::contains()`
+ *   (S-06).
+ * - `paginate()` menambahkan eager-load `days.trip` TIDAK dilakukan di sini
+ *   (itu tugas controller `show()`); `paginate()` cukup memuat relasi yang
+ *   dibutuhkan `TripResource` di level list (mitra, package, booking.client).
+ */
+final class TripRepository implements TripRepositoryInterface
 {
-    /**
-     * Driver-aware search operator.
-     *
-     * PostgreSQL → `ilike` (case-insensitive)
-     * SQLite/MySQL → `like` (case-insensitive by default)
-     */
-    protected function searchOperator(): string
-    {
-        return DB::connection()->getDriverName() === 'pgsql' ? 'ilike' : 'like';
-    }
-
     /**
      * {@inheritDoc}
      */
@@ -37,7 +38,6 @@ class TripRepository implements TripRepositoryInterface
         $sort = $filters['sort'] ?? 'tanggal_mulai';
         $direction = $filters['direction'] ?? 'desc';
 
-        // Whitelist kolom sort
         $allowedSorts = ['tanggal_mulai', 'tanggal_selesai', 'created_at', 'status', 'kode'];
         if (! in_array($sort, $allowedSorts, true)) {
             $sort = 'tanggal_mulai';
@@ -45,39 +45,36 @@ class TripRepository implements TripRepositoryInterface
 
         $direction = strtolower($direction) === 'asc' ? 'asc' : 'desc';
 
-        $operator = $this->searchOperator();
+        $operator = LikeEscaper::operator(DB::connection());
 
         return Trip::query()
             ->with([
                 'package:id,nama,kode,timezone',
                 'booking:id,kode,user_id',
                 'booking.client:id,name,email',
+                'mitra:id,name',
             ])
-            ->withCount('mitras')
-            ->when($search, function ($query, $search) use ($operator) {
-                $query->where(function ($q) use ($search, $operator) {
-                    $q->where('kode', $operator, "%{$search}%")
-                        ->orWhereHas('booking', function ($q) use ($search, $operator) {
-                            $q->where('kode', $operator, "%{$search}%");
+            ->when($search, function (Builder $query, string $search) use ($operator): void {
+                $escaped = LikeEscaper::contains($search);
+
+                $query->where(function (Builder $q) use ($escaped, $operator): void {
+                    $q->where('kode', $operator, $escaped)
+                        ->orWhereHas('booking', fn (Builder $b) => $b->where('kode', $operator, $escaped))
+                        ->orWhereHas('package', function (Builder $p) use ($escaped, $operator): void {
+                            $p->where('nama', $operator, $escaped)
+                                ->orWhere('kode', $operator, $escaped);
                         })
-                        ->orWhereHas('package', function ($q) use ($search, $operator) {
-                            $q->where('nama', $operator, "%{$search}%")
-                                ->orWhere('kode', $operator, "%{$search}%");
-                        })
-                        ->orWhereHas('booking.client', function ($q) use ($search, $operator) {
-                            $q->where('name', $operator, "%{$search}%")
-                                ->orWhere('email', $operator, "%{$search}%");
+                        ->orWhereHas('booking.client', function (Builder $c) use ($escaped, $operator): void {
+                            $c->where('name', $operator, $escaped)
+                                ->orWhere('email', $operator, $escaped);
                         });
                 });
             })
-            ->when($status, fn ($query, $status) => $query->where('status', $status))
-            ->when($packageId, fn ($query, $id) => $query->where('package_id', $id))
-            ->when($mitraId, fn ($query, $id) => $query->whereHas(
-                'mitras',
-                fn ($q) => $q->where('mitra_id', $id)
-            ))
-            ->when($tanggalDari, fn ($query, $tgl) => $query->where('tanggal_mulai', '>=', $tgl))
-            ->when($tanggalSampai, fn ($query, $tgl) => $query->where('tanggal_mulai', '<=', $tgl))
+            ->when($status, fn (Builder $q, string $s) => $q->where('status', $s))
+            ->when($packageId, fn (Builder $q, int $id) => $q->where('package_id', $id))
+            ->when($mitraId, fn (Builder $q, int $id) => $q->where('mitra_id', $id))
+            ->when($tanggalDari, fn (Builder $q, string $tgl) => $q->where('tanggal_mulai', '>=', $tgl))
+            ->when($tanggalSampai, fn (Builder $q, string $tgl) => $q->where('tanggal_mulai', '<=', $tgl))
             ->orderBy($sort, $direction)
             ->paginate($perPage)
             ->withQueryString();
@@ -88,10 +85,7 @@ class TripRepository implements TripRepositoryInterface
      */
     public function paginateForMitra(User $mitra, array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
-        return $this->paginate(
-            array_merge($filters, ['mitra_id' => $mitra->id]),
-            $perPage
-        );
+        return $this->paginate(array_merge($filters, ['mitra_id' => $mitra->id]), $perPage);
     }
 
     /**
@@ -103,9 +97,8 @@ class TripRepository implements TripRepositoryInterface
             'package:id,nama,kode,slug,timezone,cover_image',
             'booking:id,kode,user_id,tanggal_keberangkatan,jumlah_peserta,total_harga,status',
             'booking.client:id,name,email,username',
-            'mitras.mitra:id,name,email,username,timezone',
-            'mitras.assigner:id,name,email',
-            'days',
+            'mitra:id,name,email,username,timezone',
+            'days.trip',
         ])->find($id);
     }
 
@@ -114,7 +107,7 @@ class TripRepository implements TripRepositoryInterface
      */
     public function findByKode(string $kode): ?Trip
     {
-        return Trip::with(['package', 'booking.client', 'mitras.mitra', 'days'])
+        return Trip::with(['package', 'booking.client', 'mitra', 'days.trip'])
             ->where('kode', $kode)
             ->first();
     }
@@ -124,7 +117,7 @@ class TripRepository implements TripRepositoryInterface
      */
     public function findByBookingId(int $bookingId): ?Trip
     {
-        return Trip::with(['package', 'mitras.mitra', 'days'])
+        return Trip::with(['package', 'mitra', 'days.trip'])
             ->where('booking_id', $bookingId)
             ->first();
     }
@@ -153,15 +146,12 @@ class TripRepository implements TripRepositoryInterface
     public function kodeExists(string $kode, ?int $exceptId = null): bool
     {
         return Trip::where('kode', $kode)
-            ->when($exceptId, fn ($q) => $q->where('id', '!=', $exceptId))
+            ->when($exceptId, fn (Builder $q) => $q->where('id', '!=', $exceptId))
             ->exists();
     }
 
     /**
      * {@inheritDoc}
-     *
-     * Ambil nomor urut terbesar untuk tahun ini, lalu +1.
-     * Format: TRP-{tahun}-{3-digit-padded}
      */
     public function generateKode(int $tahun): string
     {
@@ -171,7 +161,7 @@ class TripRepository implements TripRepositoryInterface
         if (DB::connection()->getDriverName() === 'pgsql') {
             DB::selectOne(
                 'SELECT pg_advisory_xact_lock(?)',
-                [crc32("trip_kode_{$tahun}")]
+                [crc32("trip_kode_{$tahun}")],
             );
         }
 
@@ -192,23 +182,17 @@ class TripRepository implements TripRepositoryInterface
 
     /**
      * {@inheritDoc}
-     *
-     * Pre-filter kasar (SQL), timezone-aware di Service.
-     *
-     * @return Collection<int, Trip>
      */
     public function findScheduledDueToday(string $tanggal): Collection
     {
         return Trip::scheduled()
             ->where('tanggal_mulai', '<=', $tanggal)
-            ->with(['mitras', 'booking', 'package'])
+            ->with(['mitra', 'booking', 'package'])
             ->get();
     }
 
     /**
      * {@inheritDoc}
-     *
-     * @return array<string, int>
      */
     public function countByStatus(): array
     {
@@ -219,6 +203,7 @@ class TripRepository implements TripRepositoryInterface
             ->all();
 
         $result = [];
+
         foreach (TripStatus::cases() as $case) {
             $result[$case->value] = (int) ($counts[$case->value] ?? 0);
         }
@@ -228,19 +213,18 @@ class TripRepository implements TripRepositoryInterface
 
     /**
      * {@inheritDoc}
-     *
-     * @return array<string, int>
      */
     public function countByStatusForMitra(User $mitra): array
     {
         $counts = Trip::query()
-            ->whereHas('mitras', fn ($q) => $q->where('mitra_id', $mitra->id))
+            ->where('mitra_id', $mitra->id)
             ->selectRaw('status, count(*) as total')
             ->groupBy('status')
             ->pluck('total', 'status')
             ->all();
 
         $result = [];
+
         foreach (TripStatus::cases() as $case) {
             $result[$case->value] = (int) ($counts[$case->value] ?? 0);
         }

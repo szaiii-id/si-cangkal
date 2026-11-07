@@ -17,20 +17,12 @@
         bookingStatusBadge,
         tripStatusLabel,
         tripStatusBadge,
-        dailyReportStatusLabel,
-        dailyReportStatusBadge,
-        payoutStatusLabel,
-        payoutStatusBadge,
         packageStatusLabel,
         packageStatusBadge,
         packageKategoriLabel,
         packageKategoriBadge,
-        tripMitraRoleLabel,
-        tripMitraRoleBadge,
         packageFacilityTipeLabel,
         packageFacilityTipeBadge,
-        packageDayCostKategoriLabel,
-        packageDayCostKategoriBadge,
     } from '@/utils/enums';
 
     // ==========================================
@@ -40,13 +32,9 @@
     type BadgeVariant =
         | 'booking_status'
         | 'trip_status'
-        | 'daily_report_status'
-        | 'payout_status'
         | 'package_status'
         | 'package_kategori'
-        | 'trip_mitra_role'
-        | 'package_facility_tipe'
-        | 'package_day_cost_kategori';
+        | 'package_facility_tipe';
 
     type BadgeSize = 'sm' | 'md';
 
@@ -89,16 +77,6 @@
                     label: tripStatusLabel(val),
                     className: tripStatusBadge(val),
                 };
-            case 'daily_report_status':
-                return {
-                    label: dailyReportStatusLabel(val),
-                    className: dailyReportStatusBadge(val),
-                };
-            case 'payout_status':
-                return {
-                    label: payoutStatusLabel(val),
-                    className: payoutStatusBadge(val),
-                };
             case 'package_status':
                 return {
                     label: packageStatusLabel(val),
@@ -109,20 +87,10 @@
                     label: packageKategoriLabel(val),
                     className: packageKategoriBadge(val),
                 };
-            case 'trip_mitra_role':
-                return {
-                    label: tripMitraRoleLabel(val),
-                    className: tripMitraRoleBadge(val),
-                };
             case 'package_facility_tipe':
                 return {
                     label: packageFacilityTipeLabel(val),
                     className: packageFacilityTipeBadge(val),
-                };
-            case 'package_day_cost_kategori':
-                return {
-                    label: packageDayCostKategoriLabel(val),
-                    className: packageDayCostKategoriBadge(val),
                 };
         }
     }
@@ -146,12 +114,10 @@
     );
 
     let iconPath = $derived.by(() => {
-        if (icon === 'check')
-            return 'M5 13l4 4L19 7';
+        if (icon === 'check') return 'M5 13l4 4L19 7';
         if (icon === 'clock')
             return 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z';
-        if (icon === 'x')
-            return 'M6 18L18 6M6 6l12 12';
+        if (icon === 'x') return 'M6 18L18 6M6 6l12 12';
         if (icon === 'warning')
             return 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z';
         return null;

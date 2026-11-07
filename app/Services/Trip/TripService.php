@@ -11,9 +11,7 @@ use App\Models\PackageDay;
 use App\Models\Trip;
 use App\Models\TripDay;
 use App\Models\User;
-use App\Repositories\Contracts\DailyReportRepositoryInterface;
 use App\Repositories\Contracts\TripRepositoryInterface;
-use App\Services\Wallet\WalletService;
 use App\Support\Timezone;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -26,27 +24,17 @@ class TripService
 {
     public function __construct(
         protected TripRepositoryInterface $tripRepository,
-        protected DailyReportRepositoryInterface $dailyReportRepository,
-        protected WalletService $walletService,
     ) {}
 
     // ==========================================
     // READ
     // ==========================================
 
-    /**
-     * @param  array<string, mixed>  $filters
-     * @return LengthAwarePaginator<int, Trip>
-     */
     public function paginate(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
         return $this->tripRepository->paginate($filters, $perPage);
     }
 
-    /**
-     * @param  array<string, mixed>  $filters
-     * @return LengthAwarePaginator<int, Trip>
-     */
     public function paginateForMitra(User $mitra, array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
         return $this->tripRepository->paginateForMitra($mitra, $filters, $perPage);
@@ -58,7 +46,6 @@ class TripService
         if ($trip === null) {
             throw ValidationException::withMessages(['trip' => ['Trip tidak ditemukan.']]);
         }
-
         return $trip;
     }
 
@@ -67,13 +54,11 @@ class TripService
         return $this->tripRepository->findByBookingId($bookingId);
     }
 
-    /** @return array<string, int> */
     public function countByStatus(): array
     {
         return $this->tripRepository->countByStatus();
     }
 
-    /** @return array<string, int> */
     public function countByStatusForMitra(User $mitra): array
     {
         return $this->tripRepository->countByStatusForMitra($mitra);
@@ -98,12 +83,10 @@ class TripService
         }
 
         return DB::transaction(function () use ($booking): Trip {
-            // `$booking->package` dijamin ada (relasi belongsTo non-null
-            // untuk booking yang valid — sudah confirmed).
             /** @var Package $package */
             $package = $booking->package;
 
-            $package->loadMissing(['days.costs', 'facilities']);
+            $package->loadMissing(['days', 'facilities']);
             $snapshot = $this->buildSnapshot($package);
 
             $tanggalMulai = Carbon::parse($booking->tanggal_keberangkatan);
@@ -114,6 +97,7 @@ class TripService
                 'kode' => $kode,
                 'booking_id' => $booking->id,
                 'package_id' => $package->id,
+                'mitra_id' => $booking->mitra_id, // ✅ Set mitra_id dari booking
                 'snapshot_package' => $snapshot,
                 'tanggal_mulai' => $tanggalMulai->format('Y-m-d'),
                 'tanggal_selesai' => $tanggalSelesai->format('Y-m-d'),
@@ -130,15 +114,13 @@ class TripService
                 'booking_id' => $booking->id,
                 'booking_kode' => $booking->kode,
                 'package_id' => $package->id,
+                'mitra_id' => $trip->mitra_id,
             ]);
 
             return $trip->load(['package', 'booking.client', 'days']);
         });
     }
 
-    /**
-     * @return array<string, mixed>
-     */
     protected function buildSnapshot(Package $package): array
     {
         return [
@@ -207,9 +189,10 @@ class TripService
             ]);
         }
 
-        if (! $trip->hasMitra()) {
+        // ✅ Cek mitra_id (bukan hasMitra() yang memanggil relasi pivot)
+        if ($trip->mitra_id === null) {
             throw ValidationException::withMessages([
-                'status' => ['Trip harus punya minimal 1 mitra sebelum diaktifkan.'],
+                'status' => ['Trip harus punya mitra sebelum diaktifkan.'],
             ]);
         }
 
@@ -223,15 +206,15 @@ class TripService
                 ->where('status', TripDay::STATUS_PENDING)
                 ->update(['status' => TripDay::STATUS_IN_PROGRESS]);
 
-            Log::info('Trip diaktifkan', [
-                'trip_id' => $trip->id,
-                'kode' => $trip->kode,
-            ]);
+            Log::info('Trip diaktifkan', ['trip_id' => $trip->id, 'kode' => $trip->kode]);
 
             return $trip;
         });
     }
 
+    /**
+     * ✅ UBAH: Selesaikan trip langsung tanpa nunggu verifikasi daily report.
+     */
     public function complete(Trip $trip): Trip
     {
         if ($trip->status !== TripStatus::ACTIVE) {
@@ -240,30 +223,12 @@ class TripService
             ]);
         }
 
-        if (! $this->dailyReportRepository->allDaysVerifiedForTrip($trip)) {
-            $unverifiedDays = $this->dailyReportRepository->findUnverifiedDaysForTrip($trip);
-            $hariList = $unverifiedDays
-                ->map(fn (TripDay $day): string => "Hari {$day->hari_ke}")
-                ->implode(', ');
-
-            throw ValidationException::withMessages([
-                'status' => [
-                    'Trip belum bisa diselesaikan. Hari berikut belum punya laporan terverifikasi: '.$hariList,
-                ],
-            ]);
-        }
-
         return DB::transaction(function () use ($trip): Trip {
             $trip = $this->tripRepository->update($trip, [
                 'status' => TripStatus::COMPLETED->value,
             ]);
 
-            Log::info('Trip diselesaikan', [
-                'trip_id' => $trip->id,
-                'kode' => $trip->kode,
-            ]);
-
-            $this->walletService->creditHonorForTrip($trip);
+            Log::info('Trip diselesaikan', ['trip_id' => $trip->id, 'kode' => $trip->kode]);
 
             return $trip;
         });
@@ -315,13 +280,13 @@ class TripService
                     continue;
                 }
 
-                if (! $trip->hasMitra()) {
+                // ✅ Cek mitra_id langsung
+                if ($trip->mitra_id === null) {
                     $skippedNoMitra++;
                     Log::warning('Trip due tapi belum punya mitra', [
                         'trip_id' => $trip->id,
                         'kode' => $trip->kode,
                     ]);
-
                     continue;
                 }
 
@@ -337,10 +302,7 @@ class TripService
 
                 $activated++;
 
-                Log::info('Trip auto-activated', [
-                    'trip_id' => $trip->id,
-                    'kode' => $trip->kode,
-                ]);
+                Log::info('Trip auto-activated', ['trip_id' => $trip->id, 'kode' => $trip->kode]);
             } catch (Throwable $e) {
                 Log::error('Gagal auto-activate trip', [
                     'trip_id' => $trip->id,

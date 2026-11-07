@@ -1,16 +1,8 @@
 <script lang="ts">
     import DashboardLayout from '@/components/layout/DashboardLayout.svelte';
-    import { inertia, page } from '@inertiajs/svelte';
-    import type {
-        DailyReportStatus,
-        TripHonorTipe,
-        TripMitraRole,
-        TripStatus,
-    } from '@/types';
+    import { page } from '@inertiajs/svelte';
+    import type { TripStatus } from '@/types';
     import {
-        dailyReportStatusBadge,
-        dailyReportStatusLabel,
-        tripMitraRoleLabel,
         tripStatusBadge,
         tripStatusLabel,
     } from '@/utils/enums';
@@ -21,66 +13,37 @@
     // PROPS
     // ==========================================
 
-    type TodayTrip = {
-        id: number;
-        kode: string;
-        status: TripStatus;
-        package: { id: number; nama: string; kode: string } | null;
-        trip_mitra: {
-            role: TripMitraRole;
-            honor: string;
-            honor_tipe: TripHonorTipe;
-        } | null;
-        today_day: {
-            id: number;
-            hari_ke: number;
-            tanggal: string;
-            judul: string;
-            status: string;
-            has_report: boolean;
-            report_status: DailyReportStatus | null;
-        } | null;
+    type MitraStats = {
+        packages: { draft: number; aktif: number; arsip: number; total: number };
+        trips: { scheduled: number; active: number; completed: number; total: number };
+        bookings: { pending: number; confirmed: number; total: number };
+        total_revenue: number;
     };
 
-    type PendingReport = {
+    type RecentBooking = {
         id: number;
-        status: DailyReportStatus;
-        submitted_at: string;
-        trip_day: {
-            hari_ke: number;
-            tanggal: string;
-            judul: string;
-            trip: { id: number; kode: string; package: { nama: string } | null } | null;
-        } | null;
+        kode: string;
+        client: string;
+        paket: string;
+        total: number;
+        status: string;
+        tanggal: string;
     };
 
     let {
         stats = {
+            packages: { draft: 0, aktif: 0, arsip: 0, total: 0 },
             trips: { scheduled: 0, active: 0, completed: 0, total: 0 },
-            daily_reports: { submitted: 0, verified: 0, rejected: 0, total: 0 },
-            wallet: { saldo: 0, total_pendapatan: 0, total_dicairkan: 0 },
+            bookings: { pending: 0, confirmed: 0, total: 0 },
+            total_revenue: 0,
         },
-        todayTrips = [],
-        pendingReports = [],
+        recent_bookings = [],
     }: {
-        stats?: {
-            trips: { scheduled: number; active: number; completed: number; total: number };
-            daily_reports: { submitted: number; verified: number; rejected: number; total: number };
-            wallet: { saldo: number; total_pendapatan: number; total_dicairkan: number };
-        };
-        todayTrips?: TodayTrip[];
-        pendingReports?: PendingReport[];
+        stats?: MitraStats;
+        recent_bookings?: RecentBooking[];
     } = $props();
 
     let user = $derived(page.props.auth?.user);
-
-    // ==========================================
-    // DERIVED
-    // ==========================================
-
-    let needsReportToday = $derived(
-        todayTrips.filter((t) => t.today_day && !t.today_day.has_report),
-    );
 </script>
 
 <svelte:head>
@@ -88,220 +51,81 @@
 </svelte:head>
 
 <DashboardLayout title="Dashboard" menuItems={mitraMenu}>
-    <!-- WELCOME HEADER (Pink, sesuai tema) -->
+    <!-- HEADER -->
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
             <h1 class="text-2xl sm:text-3xl font-extrabold text-dark">
                 Halo, {user?.name ?? 'Mitra'}<span class="text-pink-dark">.</span>
             </h1>
-            <p class="text-gray-500 mt-1">Ini tugas dan ringkasan Anda hari ini.</p>
+            <p class="text-gray-500 mt-1">Ini ringkasan performa bisnis wisata Anda.</p>
         </div>
     </div>
 
-    <!-- ==========================================
-         PERLU TINDAKAN (Paling Atas)
-    ========================================== -->
-    {#if needsReportToday.length > 0}
-        <div class="mb-8 bg-sun/10 border-2 border-sun/30 rounded-3xl p-5 sm:p-6">
-            <div class="flex items-start gap-3 mb-4">
-                <div class="w-10 h-10 rounded-full bg-sun-dark text-white flex items-center justify-center flex-shrink-0 shadow-md">
-                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                </div>
-                <div class="flex-1">
-                    <h2 class="text-base font-extrabold text-sun-text">Perlu Tindakan Anda</h2>
-                    <p class="text-xs text-sun-text/80 mt-0.5">
-                        {needsReportToday.length} trip perlu laporan hari ini.
-                    </p>
-                </div>
+    <!-- RINGKASAN UTAMA (4 KARTU) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <!-- Total Pendapatan -->
+        <div class="bg-gradient-to-br from-green-dark to-green rounded-3xl p-5 shadow-lg relative overflow-hidden group">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <svg class="w-16 h-16 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             </div>
-
-            <div class="space-y-2">
-                {#each needsReportToday as trip (trip.id)}
-                    {#if trip.today_day}
-                        <a
-                            href={`/mitra/trips/${trip.id}/days/${trip.today_day.id}/report`}
-                            use:inertia
-                            class="block bg-white rounded-2xl p-3 hover:shadow-md transition-all group border border-gray-100"
-                        >
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-dark to-purple text-white flex items-center justify-center font-extrabold text-sm shadow-md flex-shrink-0">
-                                    {trip.package?.nama?.charAt(0)?.toUpperCase() ?? '?'}
-                                </div>
-                                <div class="flex-1 min-w-0">
-                                    <p class="text-sm font-extrabold text-dark truncate group-hover:text-pink-text transition-colors">
-                                        {trip.package?.nama ?? 'Trip'}
-                                    </p>
-                                    <p class="text-[11px] text-gray-500">
-                                        Hari {trip.today_day.hari_ke} — {trip.today_day.judul}
-                                    </p>
-                                </div>
-                                <div class="w-8 h-8 rounded-full bg-sun-dark text-white flex items-center justify-center flex-shrink-0">
-                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-                                    </svg>
-                                </div>
-                            </div>
-                        </a>
-                    {/if}
-                {/each}
-            </div>
+            <p class="text-white/80 text-[11px] font-extrabold uppercase tracking-widest mb-1">Total Pendapatan</p>
+            <p class="text-2xl font-extrabold text-white">{formatCurrency(stats.total_revenue)}</p>
         </div>
-    {/if}
 
-    <!-- ==========================================
-         TRIP HARI INI
-    ========================================== -->
-    {#if todayTrips.length > 0}
-        <div class="mb-8">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-lg font-extrabold text-dark">Trip Hari Ini</h2>
-                <a href="/mitra/trips" use:inertia class="inline-flex items-center gap-1.5 text-xs font-bold text-pink-text hover:text-sun-text transition-colors">
-                    Lihat Semua
-                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                    </svg>
-                </a>
+        <!-- Paket Wisata -->
+        <div class="bg-white border border-gray-200 rounded-3xl p-5 shadow-sm relative overflow-hidden group">
+            <div class="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                <svg class="w-16 h-16 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
             </div>
+            <p class="text-gray-500 text-[11px] font-extrabold uppercase tracking-widest mb-1">Paket Wisata</p>
+            <p class="text-2xl font-extrabold text-dark">{stats.packages.total}</p>
+            <a href="/mitra/packages" class="text-[10px] font-bold text-pink-text hover:underline mt-2 block">Kelola Paket</a>
+        </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {#each todayTrips as trip (trip.id)}
-                    <a
-                        href={`/mitra/trips/${trip.id}`}
-                        use:inertia
-                        class="block bg-white rounded-3xl border border-gray-200 shadow-sm p-5 hover:shadow-md hover:border-pink/30 transition-all group"
-                    >
-                        <div class="flex items-start gap-4">
-                            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-pink-dark to-purple text-white flex items-center justify-center font-extrabold text-lg shadow-md flex-shrink-0">
-                                {trip.package?.nama?.charAt(0)?.toUpperCase() ?? '?'}
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <div class="flex flex-wrap items-center gap-2 mb-1">
-                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold {tripStatusBadge(trip.status)}">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></span>
-                                        {tripStatusLabel(trip.status)}
-                                    </span>
-                                    {#if trip.trip_mitra}
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-pink/10 text-pink-text border border-pink/20">
-                                            {tripMitraRoleLabel(trip.trip_mitra.role)}
-                                        </span>
-                                    {/if}
-                                </div>
+        <!-- Trip -->
+        <div class="bg-white border border-gray-200 rounded-3xl p-5 shadow-sm relative overflow-hidden group">
+            <div class="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                <svg class="w-16 h-16 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </div>
+            <p class="text-gray-500 text-[11px] font-extrabold uppercase tracking-widest mb-1">Trip</p>
+            <p class="text-2xl font-extrabold text-dark">{stats.trips.total}</p>
+            <a href="/mitra/trips" class="text-[10px] font-bold text-blue-text hover:underline mt-2 block">Lihat Trip</a>
+        </div>
 
-                                <h3 class="text-sm font-extrabold text-dark group-hover:text-pink-text transition-colors truncate">
-                                    {trip.package?.nama ?? 'Trip'}
-                                </h3>
-                                <p class="text-[11px] text-gray-500 font-mono mt-0.5">{trip.kode}</p>
+        <!-- Booking -->
+        <div class="bg-white border border-gray-200 rounded-3xl p-5 shadow-sm relative overflow-hidden group">
+            <div class="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                <svg class="w-16 h-16 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+            </div>
+            <p class="text-gray-500 text-[11px] font-extrabold uppercase tracking-widest mb-1">Booking Masuk</p>
+            <p class="text-2xl font-extrabold text-dark">{stats.bookings.total}</p>
+            <a href="/mitra/bookings" class="text-[10px] font-bold text-purple-text hover:underline mt-2 block">Lihat Booking</a>
+        </div>
+    </div>
 
-                                {#if trip.today_day}
-                                    <div class="flex flex-wrap items-center gap-2 mt-2">
-                                        <span class="inline-flex items-center gap-1 text-xs text-gray-600">
-                                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                            </svg>
-                                            Hari {trip.today_day.hari_ke} — {trip.today_day.judul}
-                                        </span>
-                                        {#if trip.today_day.has_report && trip.today_day.report_status}
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold {dailyReportStatusBadge(trip.today_day.report_status)}">
-                                                {dailyReportStatusLabel(trip.today_day.report_status)}
-                                            </span>
-                                        {:else}
-                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-sun/10 text-sun-text border border-sun/20">
-                                                Belum lapor
-                                            </span>
-                                        {/if}
-                                    </div>
-                                {/if}
-                            </div>
+    <!-- BOOKING TERBARU -->
+    <div class="bg-white rounded-3xl border border-gray-200 shadow-sm p-5 sm:p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-base font-extrabold text-dark">Pesanan Terbaru</h3>
+            <a href="/mitra/bookings" class="text-xs font-bold text-pink-text hover:underline">Lihat Semua</a>
+        </div>
+        <div class="space-y-3">
+            {#each recent_bookings as b (b.id)}
+                <a href={`/mitra/bookings/${b.id}`} class="block p-3 rounded-xl hover:bg-gray-50 transition-colors border border-gray-100">
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="min-w-0">
+                            <p class="text-xs font-mono font-bold text-dark truncate">{b.kode}</p>
+                            <p class="text-[11px] text-gray-500 truncate">{b.client} — {b.paket}</p>
                         </div>
-                    </a>
-                {/each}
-            </div>
-        </div>
-    {/if}
-
-    <!-- ==========================================
-         WALLET CARD (Paling Bawah)
-    ========================================== -->
-    <div class="mb-6">
-        <a
-            href="/mitra/wallet"
-            use:inertia
-            data-testid="wallet-card"
-            class="block bg-gradient-to-br from-green-dark to-green rounded-3xl p-6 text-white shadow-lg hover:shadow-xl transition-all group"
-        >
-            <div class="flex items-start justify-between gap-3 mb-4">
-                <div>
-                    <p class="text-[10px] font-extrabold uppercase tracking-widest opacity-80 mb-1">Saldo Wallet</p>
-                    <p class="text-3xl sm:text-4xl font-extrabold">{formatCurrency(stats.wallet.saldo)}</p>
-                </div>
-                <div class="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center flex-shrink-0 group-hover:bg-white/30 transition-colors">
-                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                </div>
-            </div>
-            <div class="flex flex-col sm:flex-row gap-3 pt-4 border-t border-white/20">
-                <div class="flex-1">
-                    <p class="text-[10px] uppercase tracking-widest opacity-70">Total Pendapatan</p>
-                    <p class="text-sm font-bold">{formatCurrency(stats.wallet.total_pendapatan)}</p>
-                </div>
-                <div class="sm:border-l sm:border-white/20 sm:pl-3">
-                    <p class="text-[10px] uppercase tracking-widest opacity-70">Total Dicairkan</p>
-                    <p class="text-sm font-bold">{formatCurrency(stats.wallet.total_dicairkan)}</p>
-                </div>
-            </div>
-        </a>
-    </div>
-
-    <!-- ==========================================
-         LAPORAN PENDING (Jika Ada)
-    ========================================== -->
-    {#if pendingReports.length > 0}
-        <div class="mb-6">
-            <div class="flex items-center justify-between mb-3">
-                <h2 class="text-lg font-extrabold text-dark">Laporan Menunggu Verifikasi</h2>
-                <a href="/mitra/daily-reports?status=submitted" use:inertia class="inline-flex items-center gap-1.5 text-xs font-bold text-pink-text hover:text-sun-text transition-colors">
-                    Lihat Semua
-                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                    </svg>
-                </a>
-            </div>
-            <div class="space-y-2">
-                {#each pendingReports.slice(0, 3) as report (report.id)}
-                    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-xl bg-sun/10 text-sun-text flex items-center justify-center flex-shrink-0">
-                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <p class="text-sm font-bold text-dark truncate">{report.trip_day?.trip?.package?.nama ?? 'Trip'}</p>
-                                <p class="text-[11px] text-gray-500">Hari {report.trip_day?.hari_ke} — {report.trip_day?.judul}</p>
-                            </div>
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold {dailyReportStatusBadge(report.status)}">
-                                {dailyReportStatusLabel(report.status)}
-                            </span>
+                        <div class="text-right flex-shrink-0">
+                            <p class="text-xs font-bold text-dark">{formatCurrency(b.total)}</p>
+                            <span class="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-green-100 text-green-800 uppercase">{b.status}</span>
                         </div>
                     </div>
-                {/each}
-            </div>
+                </a>
+            {:else}
+                <p class="text-xs text-gray-500 italic text-center py-4">Belum ada pesanan terbaru.</p>
+            {/each}
         </div>
-    {/if}
-
-    <!-- ==========================================
-         PANEL INFO (Bawah)
-    ========================================== -->
-    <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-        <h2 class="text-lg font-bold text-dark mb-2">Panel Mitra</h2>
-        <p class="text-sm text-gray-600 leading-relaxed">
-            Gunakan menu di sidebar untuk melihat
-            <a href="/mitra/trips" use:inertia class="font-bold text-pink-text hover:text-sun-text">trip yang di-assign</a>,
-            <a href="/mitra/daily-reports" use:inertia class="font-bold text-pink-text hover:text-sun-text">laporan harian</a>,
-            <a href="/mitra/wallet" use:inertia class="font-bold text-pink-text hover:text-sun-text">wallet & pencairan</a>, dan mengelola profile usaha Anda.
-        </p>
     </div>
 </DashboardLayout>

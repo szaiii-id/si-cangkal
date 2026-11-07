@@ -11,7 +11,6 @@ use App\Services\User\UserService;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
@@ -50,20 +49,11 @@ class UserController extends Controller
     }
 
     /**
-     * Proses buat user baru (admin / mitra).
+     * Proses buat user baru (HANYA admin).
      */
     public function store(CreateUserRequest $request): RedirectResponse
     {
-        // FIX PHPStan: cast ke string + handle default arm
-        $role = (string) $request->validated('role');
-
-        $result = match ($role) {
-            'admin' => $this->userService->createAdmin($request->validated()),
-            'mitra' => $this->userService->createMitra($request->validated()),
-            default => throw ValidationException::withMessages([
-                'role' => ['Role tidak valid. Hanya admin atau mitra yang diizinkan.'],
-            ]),
-        };
+        $result = $this->userService->createAdmin($request->validated());
 
         // Simpan kredensial di session flash (hanya bisa dilihat 1x)
         return redirect()
@@ -75,7 +65,7 @@ class UserController extends Controller
                 'username' => $result['user']->username,
                 'password' => $result['plain_password'],
             ])
-            ->with('status', 'User berhasil dibuat.');
+            ->with('status', 'User admin berhasil dibuat.');
     }
 
     /**
@@ -131,14 +121,12 @@ class UserController extends Controller
                 'user_id' => $user->id,
                 'email' => $user->email,
                 'error' => $e->getMessage(),
-                'sql' => $e->getSql(),
                 'admin_id' => auth()->id(),
             ]);
 
             return back()->with(
                 'error',
-                'User tidak bisa dihapus karena masih terhubung ke data lain. '
-                .'Periksa relasi trip, laporan, atau wallet terlebih dahulu.'
+                'User tidak bisa dihapus karena masih terhubung ke data lain (misal: paket atau booking).'
             );
         }
     }

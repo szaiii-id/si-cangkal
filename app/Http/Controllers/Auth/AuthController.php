@@ -41,6 +41,14 @@ class AuthController extends Controller
     }
 
     /**
+     * Tampilkan Halaman Register Mitra (Svelte).
+     */
+    public function showRegisterMitra(): InertiaResponse
+    {
+        return Inertia::render('Auth/RegisterMitra');
+    }
+
+    /**
      * Proses pendaftaran Client secara manual.
      *
      * Client register mandiri → langsung login → dashboard client.
@@ -49,6 +57,22 @@ class AuthController extends Controller
     public function register(RegisterRequest $request): RedirectResponse
     {
         $user = $this->authService->registerClient($request->validated());
+
+        $redirect = $this->authService->resolveRedirectAfterLogin($user);
+
+        return redirect()->to($redirect['url']);
+    }
+
+    /**
+     * Proses pendaftaran Mitra secara manual.
+     *
+     * Mitra register mandiri → langsung login → onboarding XenPlatform.
+     * (Mitra baru belum punya sub-account, jadi akan diarahkan ke /mitra/onboarding
+     * oleh middleware EnsureXenPlatformLive.)
+     */
+    public function registerMitra(RegisterRequest $request): RedirectResponse
+    {
+        $user = $this->authService->registerMitra($request->validated());
 
         $redirect = $this->authService->resolveRedirectAfterLogin($user);
 

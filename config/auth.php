@@ -36,11 +36,11 @@ return [
     | Supported: "session"
     |
     */
-
     'guards' => [
         'web' => [
             'driver' => 'session',
             'provider' => 'users',
+            'remember' => (int) env('AUTH_REMEMBER_ME_MINUTES', 43200), 
         ],
     ],
 

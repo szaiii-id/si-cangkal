@@ -17,6 +17,7 @@ class BookingFactory extends Factory
     public function definition(): array
     {
         $jumlahPeserta = fake()->numberBetween(1, 10);
+        $package = Package::factory()->aktif();
 
         return [
             'kode' => 'BKG-'.now()->year.'-'.str_pad(
@@ -25,8 +26,9 @@ class BookingFactory extends Factory
                 '0',
                 STR_PAD_LEFT
             ),
-            'package_id' => Package::factory()->aktif(),
+            'package_id' => $package,
             'user_id' => User::factory()->client(),
+            'mitra_id' => User::factory()->mitraLive(), // ✅ TAMBAHAN
             'tanggal_keberangkatan' => now()->addDays(fake()->numberBetween(3, 30))->format('Y-m-d'),
             'jumlah_peserta' => $jumlahPeserta,
             'total_harga' => 850000 * $jumlahPeserta,
@@ -96,6 +98,7 @@ class BookingFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'package_id' => $package->id,
+            'mitra_id' => $package->mitra_id, // ✅ Warisi mitra dari paket
         ]);
     }
 

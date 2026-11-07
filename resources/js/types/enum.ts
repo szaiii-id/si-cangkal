@@ -1,8 +1,13 @@
 /**
- * Types untuk nilai enum PHP di sisi frontend.
+ * Union type & enum untuk status/kategori di backend.
  *
- * Mirror dari `app/Enums/*`.
- * Dipakai oleh utils/enums.ts & komponen Badge.
+ * ⚠️ File ini HANYA berisi union type (sesuai namanya).
+ * Tipe object seperti `Refund`, `Booking`, dsb
+ * dipindahkan ke `./models.ts` (sesuai PRD §4.4).
+ *
+ * Backward compat: `Refund` di-re-export dari `./models.ts`
+ * via barrel `./index.ts`, jadi import
+ * `import type { Refund } from '@/types'` tetap jalan.
  */
 
 // ==========================================
@@ -17,29 +22,13 @@ export type BookingStatus =
     | 'completed'
     | 'cancelled';
 
-/**
- * Metode pembayaran — full Xendit.
- *
- * Backend `App\Enums\PaymentMetode` sekarang HANYA punya case XENDIT.
- * Metode manual (transfer_bank, tunai, lainnya) sudah dihapus.
- */
-export type PaymentMetode = 'xendit';
+export type PaymentMetode = 'transfer_manual';
 
 // ==========================================
 // TRIP
 // ==========================================
 
 export type TripStatus = 'scheduled' | 'active' | 'completed' | 'cancelled';
-
-export type TripMitraRole = 'lead' | 'asisten';
-
-export type TripHonorTipe = 'flat' | 'per_hari';
-
-// ==========================================
-// DAILY REPORT
-// ==========================================
-
-export type DailyReportStatus = 'submitted' | 'verified' | 'rejected';
 
 // ==========================================
 // PACKAGE
@@ -56,32 +45,15 @@ export type PackageKategori =
 
 export type PackageFacilityTipe = 'include' | 'exclude';
 
-export type PackageDayCostKategori =
-    | 'transportasi'
-    | 'tiket'
-    | 'konsumsi'
-    | 'akomodasi'
-    | 'lainnya';
-
-export type PackageDayCostSatuan = 'total' | 'per_orang' | 'per_hari';
-
 // ==========================================
-// PAYOUT & WALLET
+// REFUND
 // ==========================================
 
-export type PayoutStatus = 'pending' | 'approved' | 'rejected' | 'paid';
+export type RefundStatus = 'PENDING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
 
-export type WalletTransactionKategori =
-    | 'honor_trip'
-    | 'payout'
-    | 'adjustment'
-    | 'refund';
-
-// ==========================================
-// TIMEZONE
-// ==========================================
-
-export type TimezoneOption = {
-    value: string;
-    label: string;
-};
+export type RefundReason =
+    | 'CANCELLATION'
+    | 'REQUESTED_BY_CUSTOMER'
+    | 'DUPLICATE'
+    | 'FRAUDULENT'
+    | 'OTHERS';

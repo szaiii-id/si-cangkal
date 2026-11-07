@@ -3,145 +3,157 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\ReportFilterRequest;
+use App\Models\Booking;
 use App\Models\Trip;
 use App\Services\Report\ReportService;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Inertia\Response;
+use Inertia\Response as InertiaResponse;
 use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
-class ReportController extends Controller
+/**
+ * Controller laporan untuk admin.
+ *
+ * Tanggung jawab:
+ * - Menampilkan halaman laporan (revenue, kinerja mitra).
+ * - Menyediakan export PDF/Excel.
+ * - Menyediakan manifest trip (PDF itinerary + daftar peserta).
+ *
+ * Otorisasi:
+ * - Semua method lewat `$this->authorize(...)` (S-02/S-03).
+ * - `exportTripManifest` didelegasikan ke `TripPolicy@downloadManifest`.
+ *
+ * Validasi:
+ * - Filter periode divalidasi lewat `ReportFilterRequest`
+ *   (`start_date`, `end_date`). Tanpa validasi, input aneh akan
+ *   menyebabkan error 500 di `Carbon::parse()` pada service.
+ */
+final class ReportController extends Controller
 {
     public function __construct(
-        protected ReportService $reportService,
+        private readonly ReportService $reportService,
     ) {}
 
     // ==========================================
-    // 1. PENDAPATAN
+    // 1. LAPORAN PENDAPATAN
     // ==========================================
-    public function index(Request $request): Response
+
+    /**
+     * Halaman laporan pendapatan.
+     */
+    public function index(ReportFilterRequest $request): InertiaResponse
     {
-        $startDate = $request->input('start_date', now()->startOfMonth()->format('Y-m-d'));
-        $endDate = $request->input('end_date', now()->endOfMonth()->format('Y-m-d'));
+        $this->authorize('viewAny', Booking::class);
+
+        $period = $request->period();
 
         return Inertia::render('Admin/Reports/Index', [
-            'data' => $this->reportService->getRevenueData($startDate, $endDate),
+            'data' => $this->reportService->getRevenueData(
+                $period['start_date'],
+                $period['end_date'],
+            ),
             'monthly_revenue' => $this->reportService->getMonthlyRevenue(),
-            'filters' => ['start_date' => $startDate, 'end_date' => $endDate],
+            'filters' => $period,
         ]);
     }
 
-    public function exportPdf(Request $request): HttpResponse
+    /**
+     * Export laporan pendapatan ke PDF.
+     */
+    public function exportPdf(ReportFilterRequest $request): HttpResponse
     {
-        $startDate = $request->input('start_date', now()->startOfMonth()->format('Y-m-d'));
-        $endDate = $request->input('end_date', now()->endOfMonth()->format('Y-m-d'));
+        $this->authorize('viewAny', Booking::class);
 
-        return $this->reportService->exportRevenuePdf($startDate, $endDate);
+        $period = $request->period();
+
+        return $this->reportService->exportRevenuePdf(
+            $period['start_date'],
+            $period['end_date'],
+        );
     }
 
-    public function exportExcel(Request $request): HttpResponse
+    /**
+     * Export laporan pendapatan ke Excel.
+     */
+    public function exportExcel(ReportFilterRequest $request): HttpResponse
     {
-        $startDate = $request->input('start_date', now()->startOfMonth()->format('Y-m-d'));
-        $endDate = $request->input('end_date', now()->endOfMonth()->format('Y-m-d'));
+        $this->authorize('viewAny', Booking::class);
 
-        return $this->reportService->exportRevenueExcel($startDate, $endDate);
+        $period = $request->period();
+
+        return $this->reportService->exportRevenueExcel(
+            $period['start_date'],
+            $period['end_date'],
+        );
     }
 
     // ==========================================
-    // 2. KINERJA MITRA
+    // 2. LAPORAN KINERJA MITRA
     // ==========================================
-    public function mitraPerformance(Request $request): Response
+
+    /**
+     * Halaman laporan kinerja mitra.
+     */
+    public function mitraPerformance(ReportFilterRequest $request): InertiaResponse
     {
-        $startDate = $request->input('start_date', now()->startOfMonth()->format('Y-m-d'));
-        $endDate = $request->input('end_date', now()->endOfMonth()->format('Y-m-d'));
+        $this->authorize('viewAny', Booking::class);
+
+        $period = $request->period();
 
         return Inertia::render('Admin/Reports/Mitra', [
-            'data' => $this->reportService->getMitraPerformanceData($startDate, $endDate),
-            'filters' => ['start_date' => $startDate, 'end_date' => $endDate],
+            'data' => $this->reportService->getMitraPerformanceData(
+                $period['start_date'],
+                $period['end_date'],
+            ),
+            'filters' => $period,
         ]);
     }
 
-    public function exportMitraPdf(Request $request): HttpResponse
+    /**
+     * Export laporan kinerja mitra ke PDF.
+     */
+    public function exportMitraPdf(ReportFilterRequest $request): HttpResponse
     {
-        $startDate = $request->input('start_date', now()->startOfMonth()->format('Y-m-d'));
-        $endDate = $request->input('end_date', now()->endOfMonth()->format('Y-m-d'));
+        $this->authorize('viewAny', Booking::class);
 
-        return $this->reportService->exportMitraPdf($startDate, $endDate);
+        $period = $request->period();
+
+        return $this->reportService->exportMitraPdf(
+            $period['start_date'],
+            $period['end_date'],
+        );
     }
 
-    public function exportMitraExcel(Request $request): HttpResponse
+    /**
+     * Export laporan kinerja mitra ke Excel.
+     */
+    public function exportMitraExcel(ReportFilterRequest $request): HttpResponse
     {
-        $startDate = $request->input('start_date', now()->startOfMonth()->format('Y-m-d'));
-        $endDate = $request->input('end_date', now()->endOfMonth()->format('Y-m-d'));
+        $this->authorize('viewAny', Booking::class);
 
-        return $this->reportService->exportMitraExcel($startDate, $endDate);
-    }
+        $period = $request->period();
 
-    // ==========================================
-    // 3. REKAP HARIAN
-    // ==========================================
-    public function dailyReports(Request $request): Response
-    {
-        $startDate = $request->input('start_date', now()->startOfMonth()->format('Y-m-d'));
-        $endDate = $request->input('end_date', now()->endOfMonth()->format('Y-m-d'));
-
-        return Inertia::render('Admin/Reports/Daily', [
-            'data' => $this->reportService->getDailyReportData($startDate, $endDate),
-            'filters' => ['start_date' => $startDate, 'end_date' => $endDate],
-        ]);
-    }
-
-    public function exportDailyPdf(Request $request): HttpResponse
-    {
-        $startDate = $request->input('start_date', now()->startOfMonth()->format('Y-m-d'));
-        $endDate = $request->input('end_date', now()->endOfMonth()->format('Y-m-d'));
-
-        return $this->reportService->exportDailyPdf($startDate, $endDate);
-    }
-
-    public function exportDailyExcel(Request $request): HttpResponse
-    {
-        $startDate = $request->input('start_date', now()->startOfMonth()->format('Y-m-d'));
-        $endDate = $request->input('end_date', now()->endOfMonth()->format('Y-m-d'));
-
-        return $this->reportService->exportDailyExcel($startDate, $endDate);
+        return $this->reportService->exportMitraExcel(
+            $period['start_date'],
+            $period['end_date'],
+        );
     }
 
     // ==========================================
-    // 4. PAYOUT
+    // 3. MANIFEST TRIP
     // ==========================================
-    public function payouts(Request $request): Response
-    {
-        $startDate = $request->input('start_date', now()->startOfMonth()->format('Y-m-d'));
-        $endDate = $request->input('end_date', now()->endOfMonth()->format('Y-m-d'));
 
-        return Inertia::render('Admin/Reports/Payout', [
-            'data' => $this->reportService->getPayoutData($startDate, $endDate),
-            'filters' => ['start_date' => $startDate, 'end_date' => $endDate],
-        ]);
-    }
-
-    public function exportPayoutPdf(Request $request): HttpResponse
-    {
-        $startDate = $request->input('start_date', now()->startOfMonth()->format('Y-m-d'));
-        $endDate = $request->input('end_date', now()->endOfMonth()->format('Y-m-d'));
-
-        return $this->reportService->exportPayoutPdf($startDate, $endDate);
-    }
-
-    public function exportPayoutExcel(Request $request): HttpResponse
-    {
-        $startDate = $request->input('start_date', now()->startOfMonth()->format('Y-m-d'));
-        $endDate = $request->input('end_date', now()->endOfMonth()->format('Y-m-d'));
-
-        return $this->reportService->exportPayoutExcel($startDate, $endDate);
-    }
-
-    // ==========================================
-    // 5. MANIFEST TRIP
-    // ==========================================
+    /**
+     * Export manifest trip (PDF itinerary + daftar peserta).
+     *
+     * Otorisasi:
+     * - `TripPolicy@downloadManifest` — admin boleh semua trip,
+     *   mitra hanya trip miliknya.
+     */
     public function exportTripManifest(Trip $trip): HttpResponse
     {
-        return $this->reportService->exportTripManifest($trip, auth()->user());
+        $this->authorize('downloadManifest', $trip);
+
+        return $this->reportService->exportTripManifest($trip);
     }
 }

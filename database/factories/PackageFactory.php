@@ -6,7 +6,6 @@ use App\Enums\PackageKategori;
 use App\Enums\PackageStatus;
 use App\Models\Package;
 use App\Models\PackageDay;
-use App\Models\PackageDayCost;
 use App\Models\PackageFacility;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -24,6 +23,7 @@ class PackageFactory extends Factory
         $durasiMalam = max(0, $durasiHari - 1);
 
         return [
+            'mitra_id' => User::factory()->mitraLive(), // ✅ Mitra wajib live
             'kode' => 'PKG-'.now()->year.'-'.str_pad(
                 (string) fake()->unique()->numberBetween(1, 999),
                 3,
@@ -37,13 +37,11 @@ class PackageFactory extends Factory
             'durasi_hari' => $durasiHari,
             'durasi_malam' => $durasiMalam,
             'harga_per_orang' => fake()->numberBetween(300_000, 3_000_000),
-            'harga_per_rombongan' => null,
-            'min_peserta' => 1,
-            'max_peserta' => fake()->numberBetween(10, 30),
+            'harga_per_rombongan' => null, // Default: per orang
+            'max_peserta' => null,         // Default: per orang (nullable)
             'timezone' => User::DEFAULT_TIMEZONE,
             'cover_image' => null,
             'status' => PackageStatus::DRAFT->value,
-            'created_by' => User::factory()->admin(),
         ];
     }
 
@@ -91,10 +89,22 @@ class PackageFactory extends Factory
         ]);
     }
 
-    public function createdBy(User $admin): static
+    public function forMitra(User $mitra): static
     {
         return $this->state(fn (array $attributes) => [
-            'created_by' => $admin->id,
+            'mitra_id' => $mitra->id,
+        ]);
+    }
+
+    /**
+     * State: Paket rombongan (harga fixed, max_peserta wajib diisi).
+     */
+    public function rombongan(float $harga = 5_000_000, int $maxPeserta = 20): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'harga_per_orang' => 0,
+            'harga_per_rombongan' => $harga,
+            'max_peserta' => $maxPeserta,
         ]);
     }
 
@@ -102,14 +112,10 @@ class PackageFactory extends Factory
     {
         return $this->afterCreating(function (Package $package) {
             for ($i = 1; $i <= $package->durasi_hari; $i++) {
-                $day = PackageDay::factory()->create([
+                PackageDay::factory()->create([
                     'package_id' => $package->id,
                     'hari_ke' => $i,
                 ]);
-
-                PackageDayCost::factory()
-                    ->count(fake()->numberBetween(2, 3))
-                    ->create(['package_day_id' => $day->id]);
             }
 
             PackageFacility::factory()

@@ -1,14 +1,7 @@
-export type User = {
-    id: number;
-    name: string;
-    email: string;
-    avatar?: string;
-    email_verified_at: string | null;
-    created_at: string;
-    updated_at: string;
-    [key: string]: unknown;
-};
+// resources/js/types/auth.ts
+//
+// Re-export `Auth` dan `AuthUser` dari `inertia.ts`.
+// `AuthUser` adalah subset user yang dikirim via shared props
+// (bukan full `User` model).
 
-export type Auth = {
-    user: User;
-};
+export type { Auth, AuthUser } from './inertia';

@@ -11,7 +11,7 @@ use Illuminate\Support\Carbon;
 class ActivateTripsCommand extends Command
 {
     /**
-     * Nama & signature command.
+     * Nama dan signature command.
      *
      * @var string
      */
@@ -30,7 +30,7 @@ class ActivateTripsCommand extends Command
      */
     public function handle(TripService $tripService): int
     {
-        $this->info('🔍 Mencari trip yang siap diaktifkan...');
+        $this->info('Mencari trip yang siap diaktifkan...');
 
         if ($this->option('dry-run')) {
             return $this->dryRun($tripService);
@@ -40,17 +40,17 @@ class ActivateTripsCommand extends Command
 
         // Output
         if ($result['activated'] === 0 && $result['skipped_no_mitra'] === 0) {
-            $this->info('✅ Tidak ada trip yang perlu diaktifkan.');
+            $this->info('Tidak ada trip yang perlu diaktifkan.');
 
             return self::SUCCESS;
         }
 
         if ($result['activated'] > 0) {
-            $this->info("✅ {$result['activated']} trip berhasil diaktifkan.");
+            $this->info("{$result['activated']} trip berhasil diaktifkan.");
         }
 
         if ($result['skipped_no_mitra'] > 0) {
-            $this->warn("⚠️  {$result['skipped_no_mitra']} trip dilewati karena belum punya mitra.");
+            $this->warn("{$result['skipped_no_mitra']} trip dilewati karena belum punya mitra.");
         }
 
         return self::SUCCESS;
@@ -64,7 +64,7 @@ class ActivateTripsCommand extends Command
         $today = now()->format('Y-m-d');
         $candidates = Trip::scheduled()
             ->where('tanggal_mulai', '<=', $today)
-            ->with(['mitras', 'package'])
+            ->with(['package', 'mitra'])
             ->get();
 
         $willActivate = 0;
@@ -81,18 +81,18 @@ class ActivateTripsCommand extends Command
 
             if (! $trip->hasMitra()) {
                 $skippedNoMitra++;
-                $this->line("⏭️  <fg=yellow>{$trip->kode}</> — belum punya mitra ({$trip->package?->nama})");
+                $this->line("<fg=yellow>{$trip->kode}</> - belum punya mitra ({$trip->package?->nama})");
 
                 continue;
             }
 
             $willActivate++;
-            $mitraCount = $trip->mitras->count();
-            $this->line("✅ <fg=green>{$trip->kode}</> — {$trip->package?->nama} ({$mitraCount} mitra)");
+            $mitraName = $trip->mitra?->name ?? "mitra_id={$trip->mitra_id}";
+            $this->line("<fg=green>{$trip->kode}</> - {$trip->package?->nama} (mitra: {$mitraName})");
         }
 
         $this->newLine();
-        $this->warn("⚠️  DRY RUN: {$willActivate} akan diaktifkan, {$skippedNoMitra} dilewati (tidak dieksekusi).");
+        $this->warn("DRY RUN: {$willActivate} akan diaktifkan, {$skippedNoMitra} dilewati (tidak dieksekusi).");
 
         return self::SUCCESS;
     }

@@ -4,7 +4,7 @@
  * Mirror dari `HandleInertiaRequests::share()`.
  */
 
-import type { AppNotification, User } from './models';
+import type { AppNotification } from './models';
 
 // ==========================================
 // FLASH
@@ -33,24 +33,35 @@ export type Credentials = {
 // AUTH
 // ==========================================
 
+/**
+ * User yang di-share via `HandleInertiaRequests`.
+ *
+ * ⚠️ Ini BUKAN `User` model lengkap — hanya subset yang dikirim
+ * oleh `HandleInertiaRequests::share()['auth']['user']`.
+ *
+ * Field yang TIDAK ada di sini (mis. `email_verified_at`,
+ * `created_at`, `updated_at`, `profile`) sengaja tidak disertakan
+ * karena backend tidak mengirimnya via shared props. Kalau butuh
+ * data itu, ambil dari endpoint lain (mis. `/profile`).
+ */
+export type AuthUser = {
+    id: number;
+    name: string;
+    username: string | null;
+    email: string;
+    role: 'admin' | 'mitra' | 'client';
+    timezone: string;
+    has_fcm_token: boolean;
+};
+
 export type Auth = {
-    user: User | null;
+    user: AuthUser | null;
 };
 
 // ==========================================
 // SHARED PROPS
 // ==========================================
 
-/**
- * Props yang di-share ke SEMUA halaman via `HandleInertiaRequests`.
- *
- * Akses di Svelte:
- *
- *     import { page } from '@inertiajs/svelte';
- *     const user = $derived(page.props.auth?.user);
- *     const flash = $derived(page.props.flash);
- *     const viewerTimezone = $derived(page.props.viewer_timezone);
- */
 export type SharedProps = {
     name: string;
     auth: Auth;
@@ -65,17 +76,6 @@ export type SharedProps = {
 // PAGE PROPS (extended)
 // ==========================================
 
-/**
- * Extended Page type dengan shared props.
- *
- * Dipakai kalau butuh akses `page.props` dengan type yang ketat.
- *
- * @example
- *   import type { PageWithSharedProps } from '@/types/inertia';
- *   import { page } from '@inertiajs/svelte';
- *
- *   const user = $derived((page as PageWithSharedProps).props.auth?.user);
- */
 export type PageWithSharedProps = {
     url: string;
     component: string;
@@ -83,7 +83,7 @@ export type PageWithSharedProps = {
 };
 
 // ==========================================
-// RE-EXPORT untuk kemudahan
+// RE-EXPORT
 // ==========================================
 
-export type { AppNotification, User };
+export type { AppNotification };

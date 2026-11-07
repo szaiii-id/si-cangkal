@@ -6,6 +6,7 @@ use App\Models\Profile;
 use App\Models\User;
 use App\Repositories\Contracts\ProfileRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
+use App\Services\Notification\NotificationDispatcher;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -17,6 +18,7 @@ class UserService
     public function __construct(
         protected UserRepositoryInterface $userRepository,
         protected ProfileRepositoryInterface $profileRepository,
+        protected NotificationDispatcher $notificationDispatcher,
     ) {}
 
     /**
@@ -59,58 +61,10 @@ class UserService
             return $user;
         });
 
+        // ✅ Notifikasi ke user baru (di luar transaksi)
+        $this->notifyNewAccount($user, $plainPassword);
+
         Log::info('User admin baru dibuat', [
-            'user_id' => $user->id,
-            'email' => $user->email,
-        ]);
-
-        return [
-            'user' => $user,
-            'plain_password' => $plainPassword,
-        ];
-    }
-
-    /**
-     * Buat user baru dengan role mitra.
-     *
-     * @param  array<string, mixed>  $data
-     * @return array{user: User, plain_password: string}
-     *
-     * @throws ValidationException
-     */
-    public function createMitra(array $data): array
-    {
-        $this->validateUnique($data);
-
-        $plainPassword = $data['password'] ?? $this->generatePassword();
-
-        $user = DB::transaction(function () use ($data, $plainPassword) {
-            $user = $this->userRepository->createUser([
-                'name' => $data['name'],
-                'username' => $data['username'] ?? null,
-                'email' => $data['email'],
-                'password' => $plainPassword,
-                'role' => 'mitra',
-                'must_change_password' => true,
-            ]);
-
-            $this->profileRepository->createForUser($user, [
-                'tipe' => 'mitra',
-                'nama_penyedia_usaha' => $data['nama_penyedia_usaha'] ?? null,
-                'nomor_identitas' => $data['nomor_identitas'] ?? null,
-                'alamat' => $data['alamat'] ?? null,
-                'telepon' => $data['telepon'] ?? null,
-                'provinsi' => $data['provinsi'] ?? null,
-                'kota' => $data['kota'] ?? null,
-                'kode_pos' => $data['kode_pos'] ?? null,
-                'logo' => $data['logo'] ?? null,
-                'deskripsi' => $data['deskripsi'] ?? null,
-            ]);
-
-            return $user;
-        });
-
-        Log::info('User mitra baru dibuat', [
             'user_id' => $user->id,
             'email' => $user->email,
         ]);
@@ -134,20 +88,15 @@ class UserService
         $this->validateUnique($data, $user->id);
 
         return DB::transaction(function () use ($user, $data, $profileData) {
-            // 1. Update data user
             $this->userRepository->updateUser($user, [
                 'name' => $data['name'] ?? $user->name,
                 'username' => $data['username'] ?? $user->username,
                 'email' => $data['email'] ?? $user->email,
             ]);
 
-            // 2. Eager load profile (fresh dari DB)
             $user->load('profile');
 
-            // 3. Update atau buat profile kalau ada data
             if (! empty($profileData)) {
-                // ✅ FIX PHPStan: narrow `$user->profile` ke `Profile|null`
-                // via docblock @var (karena HasOne<Profile, $this>).
                 /** @var Profile|null $profile */
                 $profile = $user->profile;
 
@@ -161,7 +110,6 @@ class UserService
                 }
             }
 
-            // 4. Return user dengan profile fresh
             return $user->refresh()->load('profile');
         });
     }
@@ -171,25 +119,9 @@ class UserService
      */
     public function deleteUser(User $user): void
     {
-        DB::transaction(function () use ($user) {   // ✅ Transaction atomic
-            // 1. Hapus relasi RESTRICT (wajib manual)
-            $user->payouts()->delete();
-            $user->tripMitras()->delete();
-
-            if ($user->mitraWallet()->exists()) {
-                $user->mitraWallet()->delete();
-            }
-
-            // 2. Hapus relasi non-cascade
-            $user->dailyReports()->each(function ($report) {
-                $report->media()->delete();
-                $report->delete();
-            });
-
-            // 3. Hapus user
+        DB::transaction(function () use ($user) {
             $this->userRepository->deleteUser($user);
 
-            // 4. Log SETELAH sukses
             Log::info('User dihapus oleh admin', [
                 'user_id' => $user->id,
                 'email' => $user->email,
@@ -248,6 +180,36 @@ class UserService
         ?string $search = null,
     ): LengthAwarePaginator {
         return $this->userRepository->paginateClients($perPage, $search);
+    }
+
+    // ==========================================
+    // NOTIFICATION HELPERS
+    // ==========================================
+
+    /**
+     * Notifikasi ke user baru bahwa akunnya sudah dibuat.
+     *
+     * ⚠️ Password TIDAK dikirim via notifikasi (keamanan).
+     * Admin harus menyampaikan password via jalur aman (WhatsApp/SMS).
+     */
+    private function notifyNewAccount(User $user, string $plainPassword): void
+    {
+        // Tentukan URL dashboard berdasarkan role
+        $dashboardUrl = match ($user->role) {
+            'admin' => '/admin/dashboard',
+            'mitra' => '/mitra/dashboard',
+            default => '/client/dashboard',
+        };
+
+        $this->notificationDispatcher->send(
+            user: $user,
+            tipe: 'account_created',
+            judul: 'Akun Anda Telah Dibuat',
+            pesan: "Akun Anda sudah aktif. Silakan login dan segera ganti password Anda.",
+            data: [
+                'url' => $dashboardUrl,
+            ],
+        );
     }
 
     /**

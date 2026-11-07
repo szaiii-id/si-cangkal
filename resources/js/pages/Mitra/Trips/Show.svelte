@@ -3,37 +3,24 @@
     import BackButton from '@/global/BackButton.svelte';
     import { inertia } from '@inertiajs/svelte';
     import type {
-        DailyReport,
         Package,
         Trip,
         TripDay,
-        TripHonorTipe,
-        TripMitra,
-        TripMitraRole,
         UserMini,
     } from '@/types';
     import {
-        dailyReportStatusBadge,
-        dailyReportStatusLabel,
-        tripMitraRoleBadge,
-        tripMitraRoleLabel,
         tripStatusBadge,
         tripStatusLabel,
     } from '@/utils/enums';
-    import { formatCurrency } from '@/utils/formatCurrency';
-    import { formatDate, formatDateTime } from '@/utils/formatDate';
-    import {
-        hitungDurasiHari,
-    } from '@/utils/duration';
-    import { parseRupiah } from '@/utils/form';
-    import { isTodayInTimezone, timezoneLabelLong } from '@/utils/timezone';
+    import { formatDate } from '@/utils/formatDate';
+    import { timezoneLabelLong } from '@/utils/timezone';
     import { mitraMenu } from '@/utils/menus';
 
     // ==========================================
     // PROPS
     // ==========================================
 
-    type TripDetail = Omit<Trip, 'package' | 'booking' | 'mitras' | 'days'> & {
+    type TripDetail = Omit<Trip, 'package' | 'booking' | 'mitra' | 'days'> & {
         package:
             | Pick<
                   Package,
@@ -50,52 +37,17 @@
                   > | null;
               }
             | null;
-        mitras: Array<
-            Omit<TripMitra, 'mitra'> & {
-                mitra:
-                    | Pick<
-                          UserMini,
-                          'id' | 'name' | 'email' | 'username'
-                      >
-                    | null;
-            }
-        >;
-        days: Array<
-            TripDay & {
-                daily_reports: Array<
-                    Omit<DailyReport, 'media'> & {
-                        media: Array<{
-                            id: number;
-                            path: string;
-                            urutan: number;
-                        }>;
-                    }
-                >;
-            }
-        >;
+        mitra:
+            | Pick<UserMini, 'id' | 'name' | 'email' | 'username'>
+            | null;
+        days: Array<TripDay>;
     };
 
-    type TripMitraAssignment = {
-        id: number;
-        role: TripMitraRole;
-        honor: string;
-        honor_tipe: TripHonorTipe;
-        instruksi: string | null;
-    };
-
-    let {
-        trip,
-        tripMitra,
-    }: {
-        trip: TripDetail;
-        tripMitra: TripMitraAssignment | null;
-    } = $props();
+    let { trip }: { trip: TripDetail } = $props();
 
     // ==========================================
     // DERIVED
     // ==========================================
-
-    let isActive = $derived(trip.status === 'active');
 
     let snapshot = $derived(trip.snapshot_package || {});
     let snapshotFacilities = $derived(
@@ -106,29 +58,8 @@
     );
 
     // ==========================================
-    // HELPERS — TIMEZONE AWARE (PRD §9.6)
+    // HELPERS
     // ==========================================
-
-    function isTripDayToday(day: TripDay): boolean {
-        return isTodayInTimezone(day.tanggal, trip.timezone);
-    }
-
-    function canReport(day: TripDetail['days'][0]): boolean {
-        if (!isActive) return false;
-        if (!isTripDayToday(day)) return false;
-
-        if (!day.daily_reports || day.daily_reports.length === 0) {
-            return true;
-        }
-        const latest = day.daily_reports[0];
-        return latest.status === 'rejected';
-    }
-
-    function hasReport(day: TripDetail['days'][0]): boolean {
-        return (
-            day.daily_reports && day.daily_reports.length > 0
-        );
-    }
 
     function dayStatusLabel(status: string): string {
         return (
@@ -153,28 +84,16 @@
             'bg-gray-100 text-gray-700 border border-gray-200'
         );
     }
-
-    function honorTotal(
-        honor: string,
-        tipe: TripHonorTipe,
-    ): number {
-        const h = parseRupiah(honor);
-        if (tipe === 'flat') return h;
-        return h * hitungDurasiHari(
-            trip.tanggal_mulai,
-            trip.tanggal_selesai,
-        );
-    }
 </script>
 
 <svelte:head>
-    <title>{trip.kode} | Titiktemu</title>
+    <title>Detail Perjalanan {trip.kode} | Titiktemu</title>
 </svelte:head>
 
-<DashboardLayout title="Detail Trip" menuItems={mitraMenu}>
+<DashboardLayout title="Detail Perjalanan" menuItems={mitraMenu}>
     <BackButton
         href="/mitra/trips"
-        label="Kembali ke Trip Saya"
+        label="Kembali ke Jadwal Perjalanan"
     />
 
     <!-- ==========================================
@@ -195,19 +114,10 @@
                 <span class="text-xs font-mono text-gray-500"
                     >{trip.kode}</span
                 >
-                {#if tripMitra}
-                    <span
-                        class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-extrabold {tripMitraRoleBadge(
-                            tripMitra.role,
-                        )}"
-                    >
-                        Anda: {tripMitraRoleLabel(tripMitra.role)}
-                    </span>
-                {/if}
             </div>
 
             <h1 class="text-2xl font-extrabold text-dark">
-                {(snapshot.nama as string) ?? trip.package?.nama ?? 'Trip'}
+                {(snapshot.nama as string) ?? trip.package?.nama ?? 'Paket Wisata'}
             </h1>
 
             <div>
@@ -229,7 +139,7 @@
                             d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
                         />
                     </svg>
-                    Cetak Laporan
+                    Cetak Daftar Peserta
                 </a>
             </div>
 
@@ -281,7 +191,7 @@
                     <p
                         class="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest mb-2"
                     >
-                        Client
+                        Pelanggan
                     </p>
                     <div class="flex items-center gap-3">
                         <div
@@ -316,7 +226,7 @@
         <!-- Kolom kiri (2/3) -->
         <div class="lg:col-span-2 space-y-6">
             <!-- ==========================================
-                 ITINERARY + DAILY REPORTS
+                 ITINERARY
             ========================================== -->
             <div
                 class="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden"
@@ -343,7 +253,7 @@
                     </div>
                     <div>
                         <h2 class="text-base font-extrabold text-dark">
-                            Itinerary & Laporan
+                            Rencana Perjalanan
                         </h2>
                         <p class="text-xs text-gray-500">
                             {trip.days.length} hari
@@ -356,13 +266,12 @@
                         <p
                             class="text-sm text-gray-500 italic text-center py-8"
                         >
-                            Itinerary belum tersedia.
+                            Rencana perjalanan belum tersedia.
                         </p>
                     {:else}
                         <div class="space-y-4">
                             {#each trip.days as day (day.id)}
                                 <div class="relative pl-8">
-                                    <!-- Timeline -->
                                     <div
                                         class="absolute left-3 top-0 bottom-0 w-0.5 bg-gray-200 {day.hari_ke ===
                                         1
@@ -397,16 +306,6 @@
                                                     day.status,
                                                 )}
                                             </span>
-                                            {#if isTripDayToday(day)}
-                                                <span
-                                                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple/10 text-purple-text border border-purple/20"
-                                                >
-                                                    <span
-                                                        class="w-1.5 h-1.5 rounded-full bg-purple animate-pulse"
-                                                    ></span>
-                                                    Hari ini
-                                                </span>
-                                            {/if}
                                         </div>
 
                                         <p
@@ -417,112 +316,10 @@
 
                                         {#if day.deskripsi}
                                             <p
-                                                class="text-sm text-gray-600 leading-relaxed mb-3"
+                                                class="text-sm text-gray-600 leading-relaxed"
                                             >
                                                 {day.deskripsi}
                                             </p>
-                                        {/if}
-
-                                        <!-- Daily Report -->
-                                        {#if hasReport(day)}
-                                            <div
-                                                class="mt-3 pl-3 border-l-2 border-pink/20"
-                                            >
-                                                {#each day.daily_reports as report (report.id)}
-                                                    <div
-                                                        class="bg-gray-50/70 rounded-xl p-3"
-                                                    >
-                                                        <div
-                                                            class="flex items-start gap-3 flex-wrap"
-                                                        >
-                                                            {#if report.media && report.media.length > 0}
-                                                                <div
-                                                                    class="flex gap-1.5 flex-shrink-0"
-                                                                >
-                                                                    {#each report.media.slice(0, 2) as media (media.id)}
-                                                                        <div
-                                                                            class="w-12 h-12 rounded-lg overflow-hidden border border-gray-200"
-                                                                        >
-                                                                            <img
-                                                                                src={`/storage/${media.path}`}
-                                                                                alt="Bukti"
-                                                                                class="w-full h-full object-cover"
-                                                                            />
-                                                                        </div>
-                                                                    {/each}
-                                                                </div>
-                                                            {/if}
-                                                            <div
-                                                                class="flex-1 min-w-0"
-                                                            >
-                                                                <div
-                                                                    class="flex flex-wrap items-center gap-2 mb-1"
-                                                                >
-                                                                    <span
-                                                                        class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold {dailyReportStatusBadge(
-                                                                            report.status,
-                                                                        )}"
-                                                                    >
-                                                                        {dailyReportStatusLabel(
-                                                                            report.status,
-                                                                        )}
-                                                                    </span>
-                                                                    <span
-                                                                        class="text-[10px] text-gray-600"
-                                                                    >
-                                                                        {formatDateTime(
-                                                                            report.submitted_at,
-                                                                        )}
-                                                                    </span>
-                                                                </div>
-                                                                {#if report.catatan}
-                                                                    <p
-                                                                        class="text-xs text-gray-600 line-clamp-2"
-                                                                    >
-                                                                        {report.catatan}
-                                                                    </p>
-                                                                {/if}
-                                                                {#if report.status === 'rejected' && report.rejection_reason}
-                                                                    <p
-                                                                        class="text-[11px] text-red-700 mt-1"
-                                                                    >
-                                                                        <strong
-                                                                            >Ditolak:</strong
-                                                                        >
-                                                                        {report.rejection_reason}
-                                                                    </p>
-                                                                {/if}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                {/each}
-                                            </div>
-                                        {/if}
-
-                                        <!-- Tombol Lapor -->
-                                        {#if canReport(day)}
-                                            <a
-                                                href={`/mitra/trips/${trip.id}/days/${day.id}/report`}
-                                                use:inertia
-                                                class="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-pink-dark text-white font-bold text-xs hover:bg-sun-dark transition-all shadow-md"
-                                            >
-                                                <svg
-                                                    class="w-3.5 h-3.5"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
-                                                    stroke="currentColor"
-                                                    stroke-width="2.5"
-                                                >
-                                                    <path
-                                                        stroke-linecap="round"
-                                                        stroke-linejoin="round"
-                                                        d="M12 4v16m8-8H4"
-                                                    />
-                                                </svg>
-                                                {hasReport(day)
-                                                    ? 'Upload Ulang'
-                                                    : 'Lapor Hari Ini'}
-                                            </a>
                                         {/if}
                                     </div>
                                 </div>
@@ -679,145 +476,69 @@
         <!-- Kolom kanan (1/3) -->
         <div class="lg:col-span-1">
             <div class="lg:sticky lg:top-24 space-y-4">
-                {#if tripMitra}
+                {#if trip.mitra}
                     <div
                         class="bg-white rounded-3xl border border-gray-200 shadow-sm p-5"
                     >
                         <h3
                             class="text-xs font-extrabold text-gray-500 uppercase tracking-widest mb-3"
                         >
-                            Tugas Saya
+                            Penyedia Perjalanan
                         </h3>
-                        <dl class="space-y-3 text-sm">
+                        <div class="flex items-center gap-3">
                             <div
-                                class="flex justify-between gap-3"
+                                class="w-10 h-10 rounded-full bg-gradient-to-br from-pink-dark to-purple text-white flex items-center justify-center font-bold text-sm flex-shrink-0"
                             >
-                                <dt class="text-gray-500">Role</dt>
-                                <dd class="text-right">
-                                    <span
-                                        class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-extrabold {tripMitraRoleBadge(
-                                            tripMitra.role,
-                                        )}"
-                                    >
-                                        {tripMitraRoleLabel(
-                                            tripMitra.role,
-                                        )}
-                                    </span>
-                                </dd>
+                                {trip.mitra.name.charAt(0).toUpperCase()}
                             </div>
-                            <div
-                                class="flex justify-between gap-3"
-                            >
-                                <dt class="text-gray-500">Honor</dt>
-                                <dd
-                                    class="font-bold text-dark text-right"
-                                >
-                                    {formatCurrency(
-                                        tripMitra.honor,
-                                    )}
-                                </dd>
-                            </div>
-                            <div
-                                class="flex justify-between gap-3"
-                            >
-                                <dt class="text-gray-500">
-                                    Tipe Honor
-                                </dt>
-                                <dd
-                                    class="font-bold text-dark text-right"
-                                >
-                                    {tripMitra.honor_tipe === 'flat'
-                                        ? 'Flat'
-                                        : 'Per Hari'}
-                                </dd>
-                            </div>
-                            <div
-                                class="flex justify-between gap-3 pt-3 border-t border-gray-100"
-                            >
-                                <dt
-                                    class="text-gray-500 font-bold"
-                                >
-                                    Total
-                                </dt>
-                                <dd
-                                    class="font-extrabold text-green-text text-right"
-                                >
-                                    {formatCurrency(
-                                        honorTotal(
-                                            tripMitra.honor,
-                                            tripMitra.honor_tipe,
-                                        ),
-                                    )}
-                                </dd>
-                            </div>
-                        </dl>
-
-                        {#if tripMitra.instruksi}
-                            <div
-                                class="mt-4 pt-4 border-t border-gray-100"
-                            >
+                            <div class="min-w-0">
                                 <p
-                                    class="text-[10px] font-extrabold text-blue-text uppercase tracking-widest mb-2"
+                                    class="text-sm font-bold text-dark truncate"
                                 >
-                                    Instruksi dari Admin
+                                    {trip.mitra.name}
                                 </p>
-                                <div
-                                    class="p-3 bg-blue/5 border border-blue/20 rounded-xl"
+                                <p
+                                    class="text-xs text-gray-500 truncate"
                                 >
-                                    <p
-                                        class="text-xs text-blue-text whitespace-pre-line leading-relaxed"
-                                    >
-                                        {tripMitra.instruksi}
-                                    </p>
-                                </div>
+                                    {trip.mitra.email}
+                                </p>
                             </div>
-                        {/if}
-                    </div>
-                {/if}
-
-                <!-- Rekan Tim -->
-                {#if trip.mitras.length > 1}
-                    <div
-                        class="bg-white rounded-3xl border border-gray-200 shadow-sm p-5"
-                    >
-                        <h3
-                            class="text-xs font-extrabold text-gray-500 uppercase tracking-widest mb-3"
-                        >
-                            Tim Trip
-                        </h3>
-                        <div class="space-y-2">
-                            {#each trip.mitras as tm (tm.id)}
-                                <div
-                                    class="flex items-center gap-2 p-2 rounded-xl bg-gray-50/70"
-                                >
-                                    <div
-                                        class="w-8 h-8 rounded-full bg-gradient-to-br from-pink-dark to-purple text-white flex items-center justify-center font-bold text-xs flex-shrink-0"
-                                    >
-                                        {tm.mitra?.name
-                                            ?.charAt(0)
-                                            ?.toUpperCase() ?? '?'}
-                                    </div>
-                                    <div class="flex-1 min-w-0">
-                                        <p
-                                            class="text-xs font-bold text-dark truncate"
-                                        >
-                                            {tm.mitra?.name ?? '-'}
-                                        </p>
-                                        <p
-                                            class="text-[10px] text-gray-500 truncate"
-                                        >
-                                            {tripMitraRoleLabel(
-                                                tm.role,
-                                            )}
-                                        </p>
-                                    </div>
-                                </div>
-                            {/each}
                         </div>
                     </div>
                 {/if}
 
-                <!-- Info -->
+                <div
+                    class="bg-white rounded-3xl border border-gray-200 shadow-sm p-5"
+                >
+                    <h3
+                        class="text-xs font-extrabold text-gray-500 uppercase tracking-widest mb-3"
+                    >
+                        Info Perjalanan
+                    </h3>
+                    <dl class="space-y-3 text-sm">
+                        <div class="flex justify-between gap-3">
+                            <dt class="text-gray-500">Kode</dt>
+                            <dd
+                                class="font-mono font-bold text-dark text-right"
+                            >
+                                {trip.kode}
+                            </dd>
+                        </div>
+                        <div class="flex justify-between gap-3">
+                            <dt class="text-gray-500">Status</dt>
+                            <dd class="text-right">
+                                <span
+                                    class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-extrabold {tripStatusBadge(
+                                        trip.status,
+                                    )}"
+                                >
+                                    {tripStatusLabel(trip.status)}
+                                </span>
+                            </dd>
+                        </div>
+                    </dl>
+                </div>
+
                 <div
                     class="bg-blue/5 border border-blue/20 rounded-3xl p-5"
                 >
@@ -839,19 +560,13 @@
                             <p
                                 class="text-xs font-extrabold text-blue-text mb-1"
                             >
-                                Cara Lapor
+                                Informasi
                             </p>
-                            <ol
-                                class="text-[11px] text-blue-text/80 space-y-0.5 list-decimal list-inside"
+                            <p
+                                class="text-[11px] text-blue-text/80 leading-relaxed"
                             >
-                                <li>Tunggu trip aktif (hari ini)</li>
-                                <li>
-                                    Klik "Lapor Hari Ini" di hari
-                                    yang sesuai
-                                </li>
-                                <li>Upload 1-2 foto bukti</li>
-                                <li>Tunggu verifikasi admin</li>
-                            </ol>
+                                Perjalanan ini dikelola sepenuhnya oleh Anda. Untuk perubahan jadwal atau pembatalan, silakan hubungi admin Titiktemu.
+                            </p>
                         </div>
                     </div>
                 </div>

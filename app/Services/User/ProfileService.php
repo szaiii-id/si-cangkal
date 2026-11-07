@@ -6,6 +6,7 @@ use App\Models\Profile;
 use App\Models\User;
 use App\Repositories\Contracts\ProfileRepositoryInterface;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -81,6 +82,40 @@ class ProfileService
         $profile = $user->profile;
 
         return $this->profileRepository->updateProfile($profile, $filtered);
+    }
+
+    /**
+     * Update rekening bank mitra.
+     *
+     * Menghapus semua rekening lama dan menyimpan yang baru.
+     * Dipisahkan dari Controller agar sesuai pola Service-Repository (SOC).
+     *
+     * @param  array<int, array<string, mixed>>  $accounts
+     */
+    public function updateBankAccounts(User $mitra, array $accounts): void
+    {
+        DB::transaction(function () use ($mitra, $accounts): void {
+            // Hapus semua rekening lama
+            $mitra->bankAccounts()->delete();
+
+            // Simpan rekening baru
+            foreach ($accounts as $index => $account) {
+                $mitra->bankAccounts()->create([
+                    'tipe' => $account['tipe'],
+                    'nama_penyedia' => $account['nama_penyedia'],
+                    'nomor_rekening' => $account['nomor_rekening'],
+                    'nama_pemilik' => $account['nama_pemilik'],
+                    // Rekening pertama otomatis menjadi utama
+                    'is_primary' => $index === 0,
+                ]);
+            }
+        });
+
+        // Audit log perubahan data finansial
+        Log::info('Mitra memperbarui data rekening bank', [
+            'user_id' => $mitra->id,
+            'total_rekening' => count($accounts),
+        ]);
     }
 
     /**

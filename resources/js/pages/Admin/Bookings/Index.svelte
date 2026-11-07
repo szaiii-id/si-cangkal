@@ -4,18 +4,22 @@
     import FilterBar from '@/global/FilterBar.svelte';
     import Pagination from '@/global/Pagination.svelte';
     import PageHeader from '@/global/PageHeader.svelte';
+
     import { inertia, router } from '@inertiajs/svelte';
-    import type {
-        Booking,
-        BookingStatus,
-        PaginationMeta,
-        StatusTab,
-    } from '@/types';
+
+    import type { AdminBookingIndexProps } from '@/types/props';
+    import type { StatusTab } from '@/types';
+
     import {
         bookingStatusBadge,
         bookingStatusLabel,
         bookingStatusShort,
     } from '@/utils/enums';
+    import {
+        BOOKING_STATUS_ORDER,
+        isPendingPayment,
+    } from '@/utils/bookingRules';
+    import { formatBookingCountdown } from '@/utils/countdown';
     import { formatCurrency } from '@/utils/formatCurrency';
     import { formatDate, formatDateTime } from '@/utils/formatDate';
     import { adminMenu } from '@/utils/menus';
@@ -26,15 +30,7 @@
 
     let {
         bookings,
-        filters = {
-            search: '',
-            status: '',
-            package_id: '',
-            tanggal_dari: '',
-            tanggal_sampai: '',
-            sort: 'created_at',
-            direction: 'desc',
-        },
+        filters,
         statusCounts = {
             pending_payment: 0,
             payment_verified: 0,
@@ -43,51 +39,24 @@
             completed: 0,
             cancelled: 0,
         },
-    }: {
-        bookings: PaginationMeta & {
-            data: Array<
-                Booking & {
-                    package?: {
-                        id: number;
-                        nama: string;
-                        kode: string;
-                        timezone: string;
-                    } | null;
-                    client?: {
-                        id: number;
-                        name: string;
-                        email: string;
-                    } | null;
-                }
-            >;
-        };
-        filters: {
-            search: string;
-            status: string;
-            package_id: string;
-            tanggal_dari: string;
-            tanggal_sampai: string;
-            sort: string;
-            direction: string;
-        };
-        statusCounts: Record<string, number>;
-    } = $props();
+    }: AdminBookingIndexProps = $props();
 
     // ==========================================
     // STATE
     // ==========================================
 
-    // Filter state — di-init dari props `filters` (initial value).
-    // Setelah user ubah filter → router.get() → Inertia reload → komponen
-    // re-mount → state re-init dari filters baru. Jadi tidak perlu sync.
     // svelte-ignore state_referenced_locally
     let search = $state(filters.search ?? '');
     // svelte-ignore state_referenced_locally
     let selectedStatus = $state(filters.status ?? '');
     // svelte-ignore state_referenced_locally
-    let selectedTanggalDari = $state(filters.tanggal_dari ?? '');
+    let selectedTanggalDari = $state(
+        filters.tanggal_dari ?? '',
+    );
     // svelte-ignore state_referenced_locally
-    let selectedTanggalSampai = $state(filters.tanggal_sampai ?? '');
+    let selectedTanggalSampai = $state(
+        filters.tanggal_sampai ?? '',
+    );
     let searchTimeout: ReturnType<typeof setTimeout>;
 
     // ==========================================
@@ -105,32 +74,26 @@
         };
     }
 
+    function navigate() {
+        router.get('/admin/bookings', buildQuery(), {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+        });
+    }
+
     function handleSearch() {
         clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            router.get('/admin/bookings', buildQuery(), {
-                preserveState: true,
-                preserveScroll: true,
-                replace: true,
-            });
-        }, 300);
+        searchTimeout = setTimeout(navigate, 300);
     }
 
     function changeStatus(status: string) {
         selectedStatus = status;
-        router.get('/admin/bookings', buildQuery(), {
-            preserveState: true,
-            preserveScroll: true,
-            replace: true,
-        });
+        navigate();
     }
 
     function applyAdvancedFilter() {
-        router.get('/admin/bookings', buildQuery(), {
-            preserveState: true,
-            preserveScroll: true,
-            replace: true,
-        });
+        navigate();
     }
 
     function clearFilters() {
@@ -158,79 +121,75 @@
     );
 
     let totalAll = $derived(
-        Object.values(statusCounts).reduce((sum, n) => sum + n, 0),
+        Object.values(statusCounts).reduce(
+            (sum: number, n: number) => sum + n,
+            0,
+        ),
     );
 
     // ==========================================
     // STATUS TABS
     // ==========================================
 
-    const bookingStatusKeys: BookingStatus[] = [
-        'pending_payment',
-        'payment_verified',
-        'confirmed',
-        'in_progress',
-        'completed',
-        'cancelled',
-    ];
-
     let statusTabs: StatusTab[] = $derived([
         { value: '', label: 'Semua', count: totalAll },
-        ...bookingStatusKeys
-            .filter(
-                (s) =>
-                    statusCounts[s] > 0 || selectedStatus === s,
-            )
-            .map((s) => ({
+        ...BOOKING_STATUS_ORDER.filter(
+            (s) => statusCounts[s] > 0 || selectedStatus === s,
+        ).map(
+            (s): StatusTab => ({
                 value: s,
                 label: bookingStatusShort(s),
                 count: statusCounts[s] ?? 0,
-            })),
+            }),
+        ),
     ]);
 
     // ==========================================
-    // HELPERS
+    // HELPERS — TIME-BASED
     // ==========================================
 
-    function isUrgent(booking: {
+    /**
+     * Badge untuk pesanan pending yang hampir expired atau sudah overdue.
+     *
+     * Memakai `formatBookingCountdown()` agar konsisten dengan halaman lain.
+     */
+    function pendingBadge(booking: {
         status: string;
         expired_at: string | null;
-    }): boolean {
-        if (
-            booking.status !== 'pending_payment' ||
-            !booking.expired_at
-        )
-            return false;
-        const now = new Date().getTime();
-        const expired = new Date(booking.expired_at).getTime();
-        const diff = expired - now;
-        return diff > 0 && diff < 6 * 60 * 60 * 1000;
-    }
+    }): {
+        type: 'urgent' | 'overdue' | null;
+        label: string;
+    } {
+        if (!isPendingPayment(booking.status as any)) {
+            return { type: null, label: '' };
+        }
 
-    function isOverdue(booking: {
-        status: string;
-        expired_at: string | null;
-    }): boolean {
-        if (
-            booking.status !== 'pending_payment' ||
-            !booking.expired_at
-        )
-            return false;
-        return (
-            new Date(booking.expired_at).getTime() <
-            new Date().getTime()
-        );
+        const countdown = formatBookingCountdown(booking.expired_at);
+
+        if (countdown === null) {
+            return { type: null, label: '' };
+        }
+
+        if (countdown.isExpired) {
+            return { type: 'overdue', label: 'Overdue' };
+        }
+
+        if (countdown.isExpiringSoon) {
+            return { type: 'urgent', label: 'Hampir expired' };
+        }
+
+        return { type: null, label: '' };
     }
 </script>
 
 <svelte:head>
-    <title>Booking Management | Titiktemu</title>
+    <title>Daftar Pesanan | Titiktemu</title>
 </svelte:head>
 
-<DashboardLayout title="Booking" menuItems={adminMenu}>
+<DashboardLayout title="Pesanan" menuItems={adminMenu}>
     <PageHeader
-        title="Booking Management"
-        description="Kelola semua booking dari client — verifikasi, konfirmasi, atau batalkan."
+        title="Daftar Pesanan"
+        description="Pantau semua pesanan yang masuk dari pelanggan."
     />
 
     <!-- Card -->
@@ -241,7 +200,7 @@
         <FilterBar
             bind:search
             onSearch={handleSearch}
-            searchPlaceholder="Cari kode booking, nama client, atau paket..."
+            searchPlaceholder="Cari kode pesanan, nama pelanggan, atau paket..."
             statusTabs={statusTabs}
             bind:selectedStatus
             onStatusChange={changeStatus}
@@ -260,11 +219,11 @@
             <EmptyState
                 icon="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
                 title={hasActiveFilters
-                    ? 'Tidak ada booking ditemukan'
-                    : 'Belum ada booking'}
+                    ? 'Tidak ada pesanan ditemukan'
+                    : 'Belum ada pesanan'}
                 description={hasActiveFilters
                     ? 'Coba ubah filter atau kata kunci pencarian Anda.'
-                    : 'Booking dari client akan muncul di sini.'}
+                    : 'Pesanan dari pelanggan akan muncul di sini.'}
                 hasFilters={hasActiveFilters}
                 onClear={clearFilters}
             />
@@ -278,12 +237,12 @@
                             <th
                                 class="text-left px-6 py-4 font-extrabold text-gray-500 text-[10px] uppercase tracking-widest"
                             >
-                                Booking
+                                Pesanan
                             </th>
                             <th
                                 class="text-left px-6 py-4 font-extrabold text-gray-500 text-[10px] uppercase tracking-widest hidden md:table-cell"
                             >
-                                Client
+                                Pelanggan
                             </th>
                             <th
                                 class="text-left px-6 py-4 font-extrabold text-gray-500 text-[10px] uppercase tracking-widest hidden lg:table-cell"
@@ -309,10 +268,11 @@
                     </thead>
                     <tbody class="divide-y divide-gray-100">
                         {#each bookings.data as booking (booking.id)}
+                            {@const badge = pendingBadge(booking)}
+
                             <tr
-                                class="group hover:bg-gray-50/70 transition-colors {isOverdue(
-                                    booking,
-                                )
+                                class="group hover:bg-gray-50/70 transition-colors {badge.type ===
+                                'overdue'
                                     ? 'bg-red-50/30'
                                     : ''}"
                             >
@@ -332,9 +292,10 @@
                                         <p
                                             class="text-[11px] text-gray-500 mt-0.5"
                                         >
-                                            {booking.jumlah_peserta} peserta
+                                            {booking.jumlah_peserta}
+                                            peserta
                                         </p>
-                                        {#if isUrgent(booking)}
+                                        {#if badge.type === 'urgent'}
                                             <span
                                                 class="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-sun/10 text-sun-text border border-sun/20"
                                             >
@@ -344,6 +305,7 @@
                                                     viewBox="0 0 24 24"
                                                     stroke="currentColor"
                                                     stroke-width="2.5"
+                                                    aria-hidden="true"
                                                 >
                                                     <path
                                                         stroke-linecap="round"
@@ -351,10 +313,9 @@
                                                         d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                                                     />
                                                 </svg>
-                                                Hampir expired
+                                                {badge.label}
                                             </span>
-                                        {/if}
-                                        {#if isOverdue(booking)}
+                                        {:else if badge.type === 'overdue'}
                                             <span
                                                 class="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-red-50 text-red-700 border border-red-200"
                                             >
@@ -364,6 +325,7 @@
                                                     viewBox="0 0 24 24"
                                                     stroke="currentColor"
                                                     stroke-width="2.5"
+                                                    aria-hidden="true"
                                                 >
                                                     <path
                                                         stroke-linecap="round"
@@ -371,7 +333,7 @@
                                                         d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
                                                     />
                                                 </svg>
-                                                Overdue
+                                                {badge.label}
                                             </span>
                                         {/if}
                                     </div>
@@ -421,13 +383,15 @@
                                             booking.tanggal_keberangkatan,
                                         )}
                                     </p>
-                                    <p
-                                        class="text-[10px] text-gray-500 mt-0.5"
-                                    >
-                                        Dibuat {formatDateTime(
-                                            booking.created_at,
-                                        )}
-                                    </p>
+                                    {#if booking.created_at}
+                                        <p
+                                            class="text-[10px] text-gray-500 mt-0.5"
+                                        >
+                                            Dibuat {formatDateTime(
+                                                booking.created_at,
+                                            )}
+                                        </p>
+                                    {/if}
                                 </td>
                                 <td
                                     class="px-6 py-4 text-right hidden sm:table-cell"
@@ -467,6 +431,7 @@
                                                 viewBox="0 0 24 24"
                                                 stroke="currentColor"
                                                 stroke-width="2.5"
+                                                aria-hidden="true"
                                             >
                                                 <path
                                                     stroke-linecap="round"
@@ -490,7 +455,7 @@
             </div>
 
             <!-- Pagination -->
-            <Pagination meta={bookings} label="booking" />
+            <Pagination meta={bookings} label="pesanan" />
         {/if}
     </div>
 </DashboardLayout>

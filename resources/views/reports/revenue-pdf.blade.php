@@ -16,7 +16,7 @@
         
         /* HEADER */
         .header {
-            border-bottom: 3px solid #db2777; /* Warna Pink */
+            border-bottom: 3px solid #db2777;
             padding-bottom: 15px;
             margin-bottom: 20px;
         }
@@ -62,7 +62,7 @@
             border-radius: 8px;
             padding: 15px;
             text-align: center;
-            width: 33%;
+            width: 100%;
         }
         .summary-label {
             font-size: 10px;
@@ -77,8 +77,6 @@
             color: #111827;
             margin: 0;
         }
-        .summary-value.green { color: #059669; }
-        .summary-value.red { color: #dc2626; }
         
         /* TABEL */
         .table-title {
@@ -145,7 +143,7 @@
             <tr>
                 <td>
                     <h1 class="company-name">TITIKTEMU.</h1>
-                    <p class="report-title">Laporan Pendapatan & Keuangan</p>
+                    <p class="report-title">Laporan Pendapatan</p>
                 </td>
                 <td style="text-align: right;">
                     <p class="report-period">Periode:</p>
@@ -165,14 +163,6 @@
                 <p class="summary-label">Total Pendapatan</p>
                 <p class="summary-value">Rp {{ number_format($data['total_revenue'], 0, ',', '.') }}</p>
             </td>
-            <td class="summary-card">
-                <p class="summary-label">Total Honor Mitra</p>
-                <p class="summary-value red">Rp {{ number_format($data['total_honor'], 0, ',', '.') }}</p>
-            </td>
-            <td class="summary-card" style="border-color: #a7f3d0; background-color: #ecfdf5;">
-                <p class="summary-label" style="color: #047857;">Laba Kotor</p>
-                <p class="summary-value green">Rp {{ number_format($data['gross_profit'], 0, ',', '.') }}</p>
-            </td>
         </tr>
     </table>
 
@@ -184,6 +174,7 @@
                 <th>Kode</th>
                 <th>Tanggal</th>
                 <th>Client</th>
+                <th>Mitra</th>
                 <th>Paket</th>
                 <th style="text-align: right;">Total</th>
                 <th style="text-align: center;">Status</th>
@@ -195,6 +186,7 @@
                 <td style="font-weight: bold; color: #374151;">{{ $t['kode'] }}</td>
                 <td>{{ \Carbon\Carbon::parse($t['tanggal'])->translatedFormat('d M Y') }}</td>
                 <td>{{ $t['client'] }}</td>
+                <td>{{ $t['mitra'] ?? '-' }}</td>
                 <td>{{ $t['paket'] }}</td>
                 <td style="text-align: right; font-weight: bold;">Rp {{ number_format($t['total'], 0, ',', '.') }}</td>
                 <td style="text-align: center;">
@@ -209,7 +201,7 @@
             </tr>
             @empty
             <tr>
-                <td colspan="6" style="text-align: center; color: #9ca3af; padding: 20px;">
+                <td colspan="7" style="text-align: center; color: #9ca3af; padding: 20px;">
                     Tidak ada transaksi pada periode ini.
                 </td>
             </tr>

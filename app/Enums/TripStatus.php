@@ -7,21 +7,25 @@ namespace App\Enums;
  *
  * Alur normal:
  *
- *     scheduled → active → completed
+ *     scheduled -> active -> completed
  *
  * Alur pembatalan:
  *
- *     scheduled → cancelled  (admin cancel sebelum trip jalan)
- *     active    → cancelled  (admin cancel saat trip jalan — jarang)
+ *     scheduled -> cancelled  (admin/mitra cancel sebelum trip jalan)
+ *     active    -> cancelled  (admin/mitra cancel saat trip jalan — jarang)
  *
  * Transisi otomatis:
- * - `scheduled` → `active`    : saat tanggal_mulai <= Timezone::today(trip.timezone)
- *                               DAN trip sudah punya minimal 1 mitra
- * - `active`    → `completed` : saat semua daily report verified (Fase 4)
+ * - `scheduled` -> `active`    : saat tanggal_mulai <= Timezone::today(trip.timezone)
+ *                                DAN `mitra_id` sudah terisi.
+ * - `active`    -> `completed` : saat mitra menandai trip selesai via
+ *                                `TripService::complete()` (manual, tidak
+ *                                menunggu daily report).
  *
  * Catatan:
  * - Trip tidak pernah dihapus — hanya `cancelled`.
  * - Perubahan status di-handle oleh Service (bukan otomatis di DB).
+ * - Satu trip hanya punya SATU mitra (`mitra_id`), di-set sekali saat
+ *   trip dibuat dari booking (`TripService::createFromBooking`).
  */
 enum TripStatus: string
 {
@@ -78,16 +82,6 @@ enum TripStatus: string
      * Trip bisa cancel selama belum `completed`/`cancelled`.
      */
     public function canBeCancelled(): bool
-    {
-        return in_array($this, [self::SCHEDULED, self::ACTIVE], true);
-    }
-
-    /**
-     * Apakah trip bisa di-assign mitra?
-     *
-     * Mitra hanya bisa di-assign sebelum trip `completed`/`cancelled`.
-     */
-    public function canAssignMitra(): bool
     {
         return in_array($this, [self::SCHEDULED, self::ACTIVE], true);
     }

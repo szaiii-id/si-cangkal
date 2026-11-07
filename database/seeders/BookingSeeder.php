@@ -3,325 +3,215 @@
 namespace Database\Seeders;
 
 use App\Enums\BookingStatus;
-use App\Enums\PaymentMetode;
 use App\Models\Booking;
 use App\Models\BookingParticipant;
 use App\Models\Package;
-use App\Models\Payment;
-use App\Models\Trip;
 use App\Models\User;
-use App\Services\ETicket\ETicketService;
-use App\Services\Trip\TripService;
-use App\Support\Timezone;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 
 class BookingSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        $admin = User::where('email', 'admin@titiktemu.test')->first();
-        $client = User::where('email', 'client@titiktemu.test')->first();
-
-        if (! $admin || ! $client) {
-            $this->command->warn('⚠️  Admin atau client tidak ditemukan. Jalankan UserSeeder dulu.');
-
-            return;
-        }
-
-        $paketPasarTerapung = Package::where('kode', 'PKG-'.now()->year.'-001')->first();
-        $paketHutanKalimantan = Package::where('kode', 'PKG-'.now()->year.'-002')->first();
-
-        if (! $paketPasarTerapung || ! $paketHutanKalimantan) {
-            $this->command->warn('⚠️  Paket tidak ditemukan. Jalankan PackageSeeder dulu.');
-
-            return;
-        }
-
-        // HAPUS TRIP LAMA (STALE DATA)
-        $staleTripCount = Trip::query()->count();
-        if ($staleTripCount > 0) {
-            Trip::query()->forceDelete();
-            $this->command->info("🗑️  Menghapus {$staleTripCount} trip lama (stale).");
-        }
-
-        // 1. BOOKING PENDING PAYMENT
-        $this->seedBooking([
-            'kode' => 'BKG-'.now()->year.'-001',
-            'package' => $paketPasarTerapung,
-            'client' => $client,
-            'tanggal_keberangkatan' => now()->addDays(14)->format('Y-m-d'),
-            'jumlah_peserta' => 2,
-            'status' => BookingStatus::PENDING_PAYMENT,
-            'catatan' => null,
-            'participants' => [
-                ['nama' => 'Budi Client', 'umur' => 30, 'no_hp' => '081234567890', 'catatan' => null],
-                ['nama' => 'Ani Client', 'umur' => 28, 'no_hp' => '081234567891', 'catatan' => 'Alergi seafood'],
+        // ========================================
+        // 12 BOOKING REALISTIS
+        // ========================================
+        $bookings = [
+            // ---- PENDING PAYMENT (belum bayar) ----
+            [
+                'kode' => 'BKG-' . now()->year . '-001',
+                'client_email' => 'rina.kartika@gmail.com',
+                'package_kode' => 'PKG-' . now()->year . '-001',
+                'tanggal_keberangkatan' => now()->addDays(21)->format('Y-m-d'),
+                'status' => BookingStatus::PENDING_PAYMENT,
+                'expired_at' => now()->addHours(24),
+                'participants' => [
+                    ['nama' => 'Rina Kartika Sari', 'umur' => 35, 'no_hp' => '081234567001', 'catatan' => null],
+                    ['nama' => 'Dimas Saputra', 'umur' => 38, 'no_hp' => '081234567002', 'catatan' => 'Suami, alergi seafood'],
+                ],
+                'catatan' => 'Mohon dijemput pagi karena flight pagi.',
             ],
-            'payment' => null,
-        ]);
-
-        // 2. BOOKING PAYMENT VERIFIED
-        $this->seedBooking([
-            'kode' => 'BKG-'.now()->year.'-002',
-            'package' => $paketHutanKalimantan,
-            'client' => $client,
-            'tanggal_keberangkatan' => now()->addDays(21)->format('Y-m-d'),
-            'jumlah_peserta' => 4,
-            'status' => BookingStatus::PAYMENT_VERIFIED,
-            'catatan' => 'Mohon disiapkan tenda tambahan.',
-            'participants' => [
-                ['nama' => 'Budi Client', 'umur' => 30, 'no_hp' => '081234567890', 'catatan' => null],
-                ['nama' => 'Ani Client', 'umur' => 28, 'no_hp' => '081234567891', 'catatan' => null],
-                ['nama' => 'Citra Client', 'umur' => 25, 'no_hp' => '081234567892', 'catatan' => 'Vegetarian'],
-                ['nama' => 'Dani Client', 'umur' => 35, 'no_hp' => '081234567893', 'catatan' => null],
+            [
+                'kode' => 'BKG-' . now()->year . '-002',
+                'client_email' => 'andi.pratama@yahoo.com',
+                'package_kode' => 'PKG-' . now()->year . '-004',
+                'tanggal_keberangkatan' => now()->addDays(18)->format('Y-m-d'),
+                'status' => BookingStatus::PENDING_PAYMENT,
+                'expired_at' => now()->addHours(24),
+                'participants' => [
+                    ['nama' => 'Andi Pratama', 'umur' => 32, 'no_hp' => '081234567003', 'catatan' => null],
+                    ['nama' => 'Lina Marlina', 'umur' => 30, 'no_hp' => '081234567004', 'catatan' => 'Istri'],
+                    ['nama' => 'Raka Pratama', 'umur' => 8, 'no_hp' => null, 'catatan' => 'Anak, tidak kuat dingin'],
+                    ['nama' => 'Sinta Pratama', 'umur' => 6, 'no_hp' => null, 'catatan' => 'Anak'],
+                ],
+                'catatan' => 'Keluarga dengan 2 anak kecil, butuh kursi tambahan.',
             ],
-            'payment' => [
-                'jumlah' => null,
-                'metode' => PaymentMetode::XENDIT,
-                'verified_by' => $admin,
-                'verified_at' => Carbon::now()->subHours(6),
-                'catatan' => 'Pembayaran via Xendit (seed).',
+
+            // ---- PENDING (sudah upload bukti, menunggu verifikasi) ----
+            [
+                'kode' => 'BKG-' . now()->year . '-003',
+                'client_email' => 'siti.nurhaliza@gmail.com',
+                'package_kode' => 'PKG-' . now()->year . '-006',
+                'tanggal_keberangkatan' => now()->addDays(14)->format('Y-m-d'),
+                'status' => BookingStatus::PENDING_PAYMENT,
+                'expired_at' => now()->addHours(20),
+                'payment_proof_path' => 'payment_proofs/dummy-proof-001.jpg',
+                'participants' => [
+                    ['nama' => 'Siti Nurhaliza', 'umur' => 28, 'no_hp' => '081234567005', 'catatan' => null],
+                    ['nama' => 'Ahmad Fauzi', 'umur' => 30, 'no_hp' => '081234567006', 'catatan' => 'Suami, vegetarian'],
+                ],
             ],
-        ]);
 
-        // 3. BOOKING PAYMENT VERIFIED
-        $this->seedBooking([
-            'kode' => 'BKG-'.now()->year.'-003',
-            'package' => $paketPasarTerapung,
-            'client' => $client,
-            'tanggal_keberangkatan' => now()->addDays(30)->format('Y-m-d'),
-            'jumlah_peserta' => 3,
-            'status' => BookingStatus::PAYMENT_VERIFIED,
-            'catatan' => null,
-            'participants' => [
-                ['nama' => 'Budi Client', 'umur' => 30, 'no_hp' => '081234567890', 'catatan' => null],
-                ['nama' => 'Ani Client', 'umur' => 28, 'no_hp' => '081234567891', 'catatan' => null],
-                ['nama' => 'Eka Client', 'umur' => 22, 'no_hp' => '081234567894', 'catatan' => null],
+            // ---- PAYMENT VERIFIED ----
+            [
+                'kode' => 'BKG-' . now()->year . '-004',
+                'client_email' => 'budi.hartono@gmail.com',
+                'package_kode' => 'PKG-' . now()->year . '-002',
+                'tanggal_keberangkatan' => now()->addDays(10)->format('Y-m-d'),
+                'status' => BookingStatus::PAYMENT_VERIFIED,
+                'participants' => [
+                    ['nama' => 'Budi Hartono', 'umur' => 45, 'no_hp' => '081234567007', 'catatan' => 'Memiliki riwayat asma'],
+                    ['nama' => 'Ratna Sari', 'umur' => 42, 'no_hp' => '081234567008', 'catatan' => null],
+                    ['nama' => 'Kevin Hartono', 'umur' => 15, 'no_hp' => null, 'catatan' => 'Remaja'],
+                ],
             ],
-            'payment' => [
-                'jumlah' => null,
-                'metode' => PaymentMetode::XENDIT,
-                'verified_by' => $admin,
-                'verified_at' => Carbon::now()->subDays(2),
-                'catatan' => 'Pembayaran via Xendit (seed).',
+
+            // ---- CONFIRMED ----
+            [
+                'kode' => 'BKG-' . now()->year . '-005',
+                'client_email' => 'dewi.lestari@gmail.com',
+                'package_kode' => 'PKG-' . now()->year . '-005',
+                'tanggal_keberangkatan' => now()->addDays(7)->format('Y-m-d'),
+                'status' => BookingStatus::CONFIRMED,
+                'participants' => [
+                    ['nama' => 'Dewi Lestari', 'umur' => 29, 'no_hp' => '081234567009', 'catatan' => null],
+                    ['nama' => 'Bagas Saputra', 'umur' => 31, 'no_hp' => '081234567010', 'catatan' => null],
+                    ['nama' => 'Citra Dewi', 'umur' => 27, 'no_hp' => '081234567011', 'catatan' => 'Teman, alergi kacang'],
+                    ['nama' => 'Dian Sastro', 'umur' => 33, 'no_hp' => '081234567012', 'catatan' => null],
+                ],
+                'catatan' => 'Rombongan kantor, mohon invoice terpisah.',
             ],
-        ]);
-
-        // 4. BOOKING PAYMENT VERIFIED (tanggal dekat)
-        $this->seedBooking([
-            'kode' => 'BKG-'.now()->year.'-004',
-            'package' => $paketHutanKalimantan,
-            'client' => $client,
-            'tanggal_keberangkatan' => now()->addDays(5)->format('Y-m-d'),
-            'jumlah_peserta' => 2,
-            'status' => BookingStatus::PAYMENT_VERIFIED,
-            'catatan' => null,
-            'participants' => [
-                ['nama' => 'Budi Client', 'umur' => 30, 'no_hp' => '081234567890', 'catatan' => null],
-                ['nama' => 'Ani Client', 'umur' => 28, 'no_hp' => '081234567891', 'catatan' => null],
+            [
+                'kode' => 'BKG-' . now()->year . '-006',
+                'client_email' => 'reza.aditya@outlook.com',
+                'package_kode' => 'PKG-' . now()->year . '-003',
+                'tanggal_keberangkatan' => now()->addDays(5)->format('Y-m-d'),
+                'status' => BookingStatus::CONFIRMED,
+                'participants' => [
+                    ['nama' => 'Reza Aditya', 'umur' => 26, 'no_hp' => '081234567013', 'catatan' => null],
+                    ['nama' => 'Maya Sari', 'umur' => 25, 'no_hp' => '081234567014', 'catatan' => 'Pacar'],
+                ],
             ],
-            'payment' => [
-                'jumlah' => null,
-                'metode' => PaymentMetode::XENDIT,
-                'verified_by' => $admin,
-                'verified_at' => Carbon::now()->subDays(1),
-                'catatan' => 'Pembayaran via Xendit (seed).',
+
+            // ---- IN PROGRESS (sedang berjalan) ----
+            [
+                'kode' => 'BKG-' . now()->year . '-007',
+                'client_email' => 'maya.anggraini@gmail.com',
+                'package_kode' => 'PKG-' . now()->year . '-006',
+                'tanggal_keberangkatan' => now()->subDays(1)->format('Y-m-d'),
+                'status' => BookingStatus::IN_PROGRESS,
+                'participants' => [
+                    ['nama' => 'Maya Anggraini', 'umur' => 34, 'no_hp' => '081234567015', 'catatan' => null],
+                    ['nama' => 'Fajar Nugroho', 'umur' => 36, 'no_hp' => '081234567016', 'catatan' => null],
+                    ['nama' => 'Aisyah Putri', 'umur' => 7, 'no_hp' => null, 'catatan' => 'Anak, alergi susu'],
+                    ['nama' => 'Rizky Pratama', 'umur' => 5, 'no_hp' => null, 'catatan' => 'Anak'],
+                ],
             ],
-        ]);
 
-        // 5. BOOKING CANCELLED
-        $this->seedBooking([
-            'kode' => 'BKG-'.now()->year.'-005',
-            'package' => $paketPasarTerapung,
-            'client' => $client,
-            'tanggal_keberangkatan' => now()->addDays(10)->format('Y-m-d'),
-            'jumlah_peserta' => 2,
-            'status' => BookingStatus::CANCELLED,
-            'catatan' => '['.now()->subDays(3)->format('Y-m-d H:i').'] Client minta pembatalan karena perubahan jadwal.',
-            'participants' => [
-                ['nama' => 'Budi Client', 'umur' => 30, 'no_hp' => '081234567890', 'catatan' => null],
-                ['nama' => 'Ani Client', 'umur' => 28, 'no_hp' => '081234567891', 'catatan' => null],
+            // ---- COMPLETED (selesai) ----
+            [
+                'kode' => 'BKG-' . now()->year . '-008',
+                'client_email' => 'fajar.nugroho@gmail.com',
+                'package_kode' => 'PKG-' . now()->year . '-001',
+                'tanggal_keberangkatan' => now()->subDays(7)->format('Y-m-d'),
+                'status' => BookingStatus::COMPLETED,
+                'participants' => [
+                    ['nama' => 'Fajar Nugroho', 'umur' => 36, 'no_hp' => '081234567017', 'catatan' => null],
+                    ['nama' => 'Sri Wahyuni', 'umur' => 34, 'no_hp' => '081234567018', 'catatan' => 'Istri'],
+                    ['nama' => 'Bayu Nugroho', 'umur' => 10, 'no_hp' => null, 'catatan' => 'Anak'],
+                ],
             ],
-            'payment' => null,
-        ]);
-
-        // 6. BOOKING E2E CONFIRMED (khusus test)
-        $this->seedBooking([
-            'kode' => 'BKG-'.now()->year.'-E2E-CONFIRMED',
-            'package' => $paketPasarTerapung,
-            'client' => $client,
-            'tanggal_keberangkatan' => Timezone::today('Asia/Makassar')->toDateString(),
-            'jumlah_peserta' => 2,
-            'status' => BookingStatus::CONFIRMED,
-            'catatan' => 'Booking seed untuk E2E — jangan diubah.',
-            'participants' => [
-                ['nama' => 'E2E Client 1', 'umur' => 30, 'no_hp' => '081111111111', 'catatan' => null],
-                ['nama' => 'E2E Client 2', 'umur' => 28, 'no_hp' => '082222222222', 'catatan' => null],
+            [
+                'kode' => 'BKG-' . now()->year . '-009',
+                'client_email' => 'rina.kartika@gmail.com',
+                'package_kode' => 'PKG-' . now()->year . '-002',
+                'tanggal_keberangkatan' => now()->subDays(14)->format('Y-m-d'),
+                'status' => BookingStatus::COMPLETED,
+                'participants' => [
+                    ['nama' => 'Rina Kartika Sari', 'umur' => 35, 'no_hp' => '081234567001', 'catatan' => null],
+                    ['nama' => 'Dimas Saputra', 'umur' => 38, 'no_hp' => '081234567002', 'catatan' => null],
+                ],
             ],
-            'payment' => [
-                'jumlah' => null,
-                'metode' => PaymentMetode::XENDIT,
-                'verified_by' => $admin,
-                'verified_at' => Carbon::now()->subDays(1),
-                'catatan' => 'Pembayaran via Xendit (E2E seed).',
+
+            // ---- CANCELLED ----
+            [
+                'kode' => 'BKG-' . now()->year . '-010',
+                'client_email' => 'andi.pratama@yahoo.com',
+                'package_kode' => 'PKG-' . now()->year . '-003',
+                'tanggal_keberangkatan' => now()->addDays(3)->format('Y-m-d'),
+                'status' => BookingStatus::CANCELLED,
+                'participants' => [
+                    ['nama' => 'Andi Pratama', 'umur' => 32, 'no_hp' => '081234567003', 'catatan' => null],
+                    ['nama' => 'Lina Marlina', 'umur' => 30, 'no_hp' => '081234567004', 'catatan' => null],
+                ],
+                'catatan' => 'Dibatalkan karena ada urusan mendadak. Mohon refund.',
             ],
-        ]);
+            [
+                'kode' => 'BKG-' . now()->year . '-011',
+                'client_email' => 'siti.nurhaliza@gmail.com',
+                'package_kode' => 'PKG-' . now()->year . '-004',
+                'tanggal_keberangkatan' => now()->addDays(4)->format('Y-m-d'),
+                'status' => BookingStatus::CANCELLED,
+                'participants' => [
+                    ['nama' => 'Siti Nurhaliza', 'umur' => 28, 'no_hp' => '081234567005', 'catatan' => null],
+                    ['nama' => 'Ahmad Fauzi', 'umur' => 30, 'no_hp' => '081234567006', 'catatan' => null],
+                ],
+                'catatan' => 'Auto-cancel: melebihi batas waktu pembayaran 24 jam.',
+            ],
+        ];
 
-        $this->command->info('✅ BookingSeeder selesai: 5 booking demo + 1 booking E2E CONFIRMED.');
-        $this->command->info('   Booking #3 & #4 berstatus PAYMENT_VERIFIED.');
-        $this->command->info('   Booking #6 (E2E) berstatus CONFIRMED — trip otomatis dibuat.');
+        foreach ($bookings as $data) {
+            $client = User::where('email', $data['client_email'])->first();
+            $package = Package::where('kode', $data['package_kode'])->first();
 
-        $this->backfillMissingTrips();
-    }
-
-    /**
-     * Helper: seed satu booking lengkap (dengan participants & payment).
-     *
-     * @param  array{
-     *     kode: string,
-     *     package: Package,
-     *     client: User,
-     *     tanggal_keberangkatan: string,
-     *     jumlah_peserta: int,
-     *     status: BookingStatus,
-     *     catatan?: string|null,
-     *     participants: array<int, array{nama: string, umur?: int|null, no_hp?: string|null, catatan?: string|null}>,
-     *     payment: array{
-     *         jumlah?: float|int|null,
-     *         metode: PaymentMetode,
-     *         verified_by?: User|null,
-     *         verified_at?: Carbon|null,
-     *         catatan?: string|null,
-     *     }|null,
-     * }  $data
-     */
-    protected function seedBooking(array $data): void
-    {
-        /** @var Package $package */
-        $package = $data['package'];
-
-        /** @var User $client */
-        $client = $data['client'];
-
-        $totalHarga = $package->harga_per_rombongan && (float) $package->harga_per_rombongan > 0
-            ? (float) $package->harga_per_rombongan
-            : (float) $package->harga_per_orang * $data['jumlah_peserta'];
-
-        $expiredAt = $data['status'] === BookingStatus::PENDING_PAYMENT
-            ? now()->addHours(24)
-            : null;
-
-        $isPgsql = DB::connection()->getDriverName() === 'pgsql';
-        $lockKey = crc32('booking_creation_global');
-        $hasLock = false;
-
-        if ($isPgsql) {
-            DB::selectOne('SELECT pg_advisory_lock(?)', [$lockKey]);
-            $hasLock = true;
-        }
-
-        try {
-            $booking = Booking::where('kode', $data['kode'])->first();
-
-            if ($booking === null) {
-                $booking = Booking::create([
-                    'kode' => $data['kode'],
-                    'package_id' => $package->id,
-                    'user_id' => $client->id,
-                    'tanggal_keberangkatan' => $data['tanggal_keberangkatan'],
-                    'jumlah_peserta' => $data['jumlah_peserta'],
-                    'total_harga' => $totalHarga,
-                    'status' => $data['status']->value,
-                    'expired_at' => $expiredAt,
-                    'catatan' => $data['catatan'] ?? null,
-                ]);
-            } else {
-                $booking->update([
-                    'package_id' => $package->id,
-                    'user_id' => $client->id,
-                    'tanggal_keberangkatan' => $data['tanggal_keberangkatan'],
-                    'jumlah_peserta' => $data['jumlah_peserta'],
-                    'total_harga' => $totalHarga,
-                    'status' => $data['status']->value,
-                    'expired_at' => $expiredAt,
-                    'catatan' => $data['catatan'] ?? null,
-                ]);
+            if (! $client || ! $package) {
+                $this->command->warn("⚠️ Skip {$data['kode']}: client/package tidak ditemukan.");
+                continue;
             }
 
-            BookingParticipant::where('booking_id', $booking->id)->delete();
+            $jumlahPeserta = count($data['participants']);
+            $totalHarga = $package->calculateTotalHarga($jumlahPeserta);
 
+            $booking = Booking::updateOrCreate(
+                ['kode' => $data['kode']],
+                [
+                    'package_id' => $package->id,
+                    'user_id' => $client->id,
+                    'mitra_id' => $package->mitra_id,
+                    'tanggal_keberangkatan' => $data['tanggal_keberangkatan'],
+                    'jumlah_peserta' => $jumlahPeserta,
+                    'total_harga' => $totalHarga,
+                    'status' => $data['status']->value,
+                    'payment_proof_path' => $data['payment_proof_path'] ?? null,
+                    'payment_verified_at' => in_array($data['status'], [BookingStatus::CONFIRMED, BookingStatus::IN_PROGRESS, BookingStatus::COMPLETED]) ? now() : null,
+                    'expired_at' => $data['expired_at'] ?? null,
+                    'catatan' => $data['catatan'] ?? null,
+                ]
+            );
+
+            // Hapus peserta lama, buat ulang
+            BookingParticipant::where('booking_id', $booking->id)->delete();
             foreach ($data['participants'] as $p) {
                 BookingParticipant::create([
                     'booking_id' => $booking->id,
                     'nama' => $p['nama'],
-                    'umur' => $p['umur'] ?? null,
-                    'no_hp' => $p['no_hp'] ?? null,
-                    'catatan' => $p['catatan'] ?? null,
+                    'umur' => $p['umur'],
+                    'no_hp' => $p['no_hp'],
+                    'catatan' => $p['catatan'],
                 ]);
             }
-
-            if ($data['payment'] !== null) {
-                /** @var array{jumlah?: float|int|null, metode: PaymentMetode, verified_by?: User|null, verified_at?: Carbon|null, catatan?: string|null} $paymentData */
-                $paymentData = $data['payment'];
-
-                $verifiedById = isset($paymentData['verified_by'])
-                    ? $paymentData['verified_by']->id
-                    : null;
-
-                Payment::updateOrCreate(
-                    ['booking_id' => $booking->id],
-                    [
-                        'jumlah' => $paymentData['jumlah'] ?? $totalHarga,
-                        'metode' => $paymentData['metode']->value,
-                        'verified_by' => $verifiedById,
-                        'verified_at' => $paymentData['verified_at'] ?? null,
-                        'catatan' => $paymentData['catatan'] ?? null,
-                    ]
-                );
-            }
-        } finally {
-            if ($hasLock) {
-                DB::selectOne('SELECT pg_advisory_unlock(?)', [$lockKey]);
-            }
-        }
-    }
-
-    /**
-     * Backfill Trip untuk booking confirmed yang belum punya trip.
-     */
-    protected function backfillMissingTrips(): void
-    {
-        $tripService = app(TripService::class);
-        $eTicketService = app(ETicketService::class);
-
-        $missing = Booking::where('status', BookingStatus::CONFIRMED->value)
-            ->where('kode', 'like', 'BKG-%-E2E-CONFIRMED')
-            ->whereDoesntHave('trip')
-            ->get();
-
-        if ($missing->isEmpty()) {
-            return;
         }
 
-        $this->command->info("🔧 Menemukan {$missing->count()} booking E2E confirmed tanpa trip. Membuat trip...");
-
-        foreach ($missing as $booking) {
-            try {
-                $trip = $tripService->createFromBooking($booking);
-                try {
-                    $eTicketService->generateForTrip($trip);
-                } catch (\Throwable $e) {
-                    $this->command->warn("   ⚠️ E-Ticket gagal untuk {$booking->kode}: {$e->getMessage()}");
-                }
-                $this->command->info("   ✅ Trip {$trip->kode} dibuat untuk booking {$booking->kode} (mulai: {$trip->tanggal_mulai->format('Y-m-d')})");
-            } catch (\Throwable $e) {
-                $this->command->error("   ❌ Gagal membuat trip untuk {$booking->kode}: {$e->getMessage()}");
-            }
-        }
+        $this->command->info('✅ BookingSeeder selesai (11 booking, berbagai status).');
     }
 }

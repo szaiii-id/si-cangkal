@@ -4,37 +4,67 @@ namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
 use App\Services\ETicket\ETicketService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
-class ETicketController extends Controller
+/**
+ * Controller unduh E-Ticket untuk client.
+ *
+ * Perubahan dari versi lama:
+ * - File E-Ticket sekarang ada di disk `local` (S-10, B-01).
+ * - Otorisasi eksplisit via `BookingPolicy@downloadETicket` (S-02).
+ * - Response `StreamedResponse` (bukan `BinaryFileResponse`)
+ *   agar konsisten dengan pola disk abstrak.
+ *
+ * Catatan:
+ * - Method `download` memakai `ETicketService::pdfAbsolutePath()`
+ *   untuk memvalidasi keberadaan file sebelum stream.
+ * - Bila `ETicket` tidak ditemukan → 404.
+ * - Bila file hilang dari disk (edge case) → 404 dengan pesan
+ *   redirect ramah (bukan stack trace).
+ */
+final class ETicketController extends Controller
 {
-    public function __construct(protected ETicketService $eTicketService) {}
+    public function __construct(
+        private readonly ETicketService $eTicketService,
+    ) {}
 
-    public function download(Request $request, string $uuid): BinaryFileResponse
+    public function download(Request $request, string $uuid): StreamedResponse|RedirectResponse
     {
         $ticket = $this->eTicketService->findByUuid($uuid);
 
-        // abort_unless membutuhkan bool — pakai perbandingan eksplisit
-        // agar PHPStan tidak komplain (ETicket|null → bool).
         abort_if($ticket === null, 404);
 
-        // Setelah abort_if, PHPStan yakin $ticket bukan null.
-        abort_unless(
-            $ticket->booking !== null
-            && $ticket->booking->user_id === $request->user()?->id,
-            403,
+        if ($ticket->booking === null) {
+            abort(404);
+        }
+
+        $this->authorize('downloadETicket', $ticket->booking);
+
+        $absolutePath = $this->eTicketService->pdfAbsolutePath($ticket);
+
+        if ($absolutePath === null) {
+            abort(404, 'File E-Ticket tidak ditemukan. Silakan hubungi mitra.');
+        }
+
+        $tripKode = $ticket->trip?->kode ?? 'unknown';
+
+        return response()->streamDownload(
+            static function () use ($absolutePath): void {
+                $stream = fopen($absolutePath, 'rb');
+
+                if ($stream === false) {
+                    return;
+                }
+
+                fpassthru($stream);
+                fclose($stream);
+            },
+            "e-ticket-{$tripKode}.pdf",
+            [
+                'Content-Type' => 'application/pdf',
+            ],
         );
-
-        // pdf_path dijamin string (NOT NULL di DB, non-nullable di docblock
-        // model ETicket). Pengecekan null tidak perlu.
-
-        $path = Storage::disk('public')->path($ticket->pdf_path);
-        abort_unless(file_exists($path), 404);
-
-        abort_if($ticket->trip === null, 404);
-
-        return response()->download($path, "e-ticket-{$ticket->trip->kode}.pdf");
     }
 }

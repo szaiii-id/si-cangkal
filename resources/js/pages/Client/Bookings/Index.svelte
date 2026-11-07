@@ -5,18 +5,25 @@
     import Pagination from '@/global/Pagination.svelte';
     import SearchInput from '@/global/SearchInput.svelte';
     import StatusTabs from '@/global/StatusTabs.svelte';
-    import { inertia, router } from '@inertiajs/svelte';
+
+    import { router } from '@inertiajs/svelte';
+
     import type {
         Booking,
-        BookingStatus,
         PaginationMeta,
         StatusTab,
     } from '@/types';
+
     import {
         bookingStatusBadge,
         bookingStatusLabel,
         bookingStatusShort,
     } from '@/utils/enums';
+    import {
+        BOOKING_STATUS_ORDER,
+        isPendingPayment,
+    } from '@/utils/bookingRules';
+    import { formatBookingCountdown } from '@/utils/countdown';
     import { formatCurrency } from '@/utils/formatCurrency';
     import { formatDate } from '@/utils/formatDate';
     import { clientMenu } from '@/utils/menus';
@@ -80,9 +87,6 @@
     // STATE
     // ==========================================
 
-    // Filter state — di-init dari props `filters` (initial value).
-    // Setelah user ubah filter → router.get() → Inertia reload → komponen
-    // re-mount → state re-init dari filters baru. Jadi tidak perlu sync.
     // svelte-ignore state_referenced_locally
     let search = $state(filters.search ?? '');
     // svelte-ignore state_referenced_locally
@@ -144,83 +148,39 @@
     // STATUS TABS
     // ==========================================
 
-    const bookingStatusKeys: BookingStatus[] = [
-        'pending_payment',
-        'payment_verified',
-        'confirmed',
-        'in_progress',
-        'completed',
-        'cancelled',
-    ];
-
     let totalAll = $derived(
-        Object.values(statusCounts).reduce((sum, n) => sum + n, 0),
+        Object.values(statusCounts).reduce(
+            (sum: number, n: number) => sum + n,
+            0,
+        ),
     );
 
     let statusTabs: StatusTab[] = $derived([
         { value: '', label: 'Semua', count: totalAll },
-        ...bookingStatusKeys
-            .filter(
-                (s) =>
-                    statusCounts[s] > 0 || selectedStatus === s,
-            )
-            .map((s) => ({
+        ...BOOKING_STATUS_ORDER.filter(
+            (s) => statusCounts[s] > 0 || selectedStatus === s,
+        ).map(
+            (s): StatusTab => ({
                 value: s,
                 label: bookingStatusShort(s),
                 count: statusCounts[s] ?? 0,
-            })),
+            }),
+        ),
     ]);
-
-    // ==========================================
-    // HELPERS — COUNTDOWN
-    // ==========================================
-
-    function countdownLabel(
-        expiredAt: string | null,
-        status: string,
-    ): string | null {
-        if (status !== 'pending_payment' || !expiredAt) return null;
-
-        const now = new Date().getTime();
-        const expired = new Date(expiredAt).getTime();
-        const diff = expired - now;
-
-        if (diff <= 0) return 'Expired';
-
-        const hours = Math.floor(diff / (1000 * 60 * 60));
-        const minutes = Math.floor(
-            (diff % (1000 * 60 * 60)) / (1000 * 60),
-        );
-
-        if (hours > 0) return `${hours} jam ${minutes} menit`;
-        return `${minutes} menit`;
-    }
-
-    function isExpiringSoon(
-        expiredAt: string | null,
-        status: string,
-    ): boolean {
-        if (status !== 'pending_payment' || !expiredAt) return false;
-        const now = new Date().getTime();
-        const expired = new Date(expiredAt).getTime();
-        const diff = expired - now;
-        return diff > 0 && diff < 6 * 60 * 60 * 1000;
-    }
 </script>
 
 <svelte:head>
-    <title>Booking Saya | Titiktemu</title>
+    <title>Pesanan Saya | Titiktemu</title>
 </svelte:head>
 
-<DashboardLayout title="Booking Saya" menuItems={clientMenu}>
+<DashboardLayout title="Pesanan Saya" menuItems={clientMenu}>
     <PageHeader
-        title="Booking Saya"
-        description="Kelola dan pantau semua booking wisata Anda"
+        title="Pesanan Saya"
+        description="Lihat dan pantau semua pesanan perjalanan Anda."
     >
         {#snippet actions()}
             <a
                 href="/client/catalog"
-                use:inertia
                 class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-pink-dark text-white font-bold text-sm hover:bg-sun-dark transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
             >
                 <svg
@@ -237,7 +197,7 @@
                         d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                     />
                 </svg>
-                Jelajah Paket
+                Cari Paket Wisata
             </a>
         {/snippet}
     </PageHeader>
@@ -258,7 +218,7 @@
         <SearchInput
             bind:value={search}
             oninput={handleSearch}
-            placeholder="Cari kode booking atau nama paket..."
+            placeholder="Cari kode pesanan atau nama paket..."
         />
     </div>
 
@@ -270,11 +230,11 @@
             <EmptyState
                 icon="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
                 title={hasActiveFilters
-                    ? 'Tidak ada booking ditemukan'
-                    : 'Belum ada booking'}
+                    ? 'Tidak ada pesanan ditemukan'
+                    : 'Belum ada pesanan'}
                 description={hasActiveFilters
                     ? 'Coba ubah filter atau kata kunci pencarian Anda.'
-                    : 'Mulai jelajahi paket wisata dan buat booking pertama Anda.'}
+                    : 'Mulai jelajahi paket wisata dan buat pesanan pertama Anda.'}
                 hasFilters={hasActiveFilters}
                 onClear={clearFilters}
             />
@@ -282,9 +242,14 @@
     {:else}
         <div class="space-y-4">
             {#each bookings.data as booking (booking.id)}
+                {@const countdown = isPendingPayment(
+                    booking.status,
+                )
+                    ? formatBookingCountdown(booking.expired_at)
+                    : null}
+
                 <a
                     href={`/client/bookings/${booking.id}`}
-                    use:inertia
                     class="group block bg-white rounded-3xl border border-gray-200 shadow-sm hover:shadow-md hover:border-pink/30 transition-all overflow-hidden"
                 >
                     <div class="p-5 sm:p-6">
@@ -373,13 +338,10 @@
                                 </div>
 
                                 <!-- Countdown -->
-                                {#if booking.status === 'pending_payment' && booking.expired_at}
+                                {#if countdown}
                                     <div
                                         class="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold
-                                            {isExpiringSoon(
-                                                booking.expired_at,
-                                                booking.status,
-                                            )
+                                            {countdown.isExpiringSoon
                                                 ? 'bg-red-50 text-red-700 border border-red-200'
                                                 : 'bg-sun/10 text-sun-text border border-sun/20'}"
                                     >
@@ -397,10 +359,7 @@
                                                 d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                                             />
                                         </svg>
-                                        Sisa waktu: {countdownLabel(
-                                            booking.expired_at,
-                                            booking.status,
-                                        )}
+                                        Sisa waktu: {countdown.label}
                                     </div>
                                 {/if}
                             </div>
@@ -450,7 +409,7 @@
         <div
             class="mt-6 bg-white rounded-3xl border border-gray-200 shadow-sm"
         >
-            <Pagination meta={bookings} label="booking" />
+            <Pagination meta={bookings} label="pesanan" />
         </div>
     {/if}
 </DashboardLayout>

@@ -1,30 +1,46 @@
 /**
  * Types untuk entitas Model dari backend.
  *
- * Mirror dari `app/Models/*`.
- * Dipakai di props halaman (Inertia).
+ * Mirror dari `app/Models/*` + `app/Http/Resources/*`.
  *
- * Catatan:
- * - Field `decimal` (harga, honor, saldo) di-serialize sebagai STRING oleh
- *   Laravel (karena cast `decimal:2`). Pakai `formatCurrency` untuk tampilkan.
- * - Field `date` / `timestamp` di-serialize sebagai STRING (ISO 8601).
- * - Relasi opsional (`?`) karena tidak semua endpoint eager-load relasi.
+ * ⚠️ PENTING — sesuai PRD FE v2.1 §4.4 dan refactor backend v3.0:
+ * Ada DUA tipe per entitas:
+ *
+ * 1. `XxxResource`  → dari API Resource (mix camel/snake, subset)
+ * 2. `XxxEloquent`  → dari Eloquent mentah (snake_case semua)
+ *
+ * Pemetaan endpoint:
+ *
+ * | Endpoint | Kirim |
+ * |---|---|
+ * | Client\BookingController@show | BookingResource (has_payment_proof, statusLabel) |
+ * | Admin\BookingController@show  | BookingResource |
+ * | Client\BookingController@index | Booking Eloquent |
+ * | Admin\BookingController@index  | Booking Eloquent |
+ * | Mitra\BookingController@*      | Booking Eloquent |
+ * | Admin\TripMonitoringController | Trip Eloquent |
+ * | Mitra\TripController           | Trip Eloquent |
+ * | Admin\RefundController         | Refund Eloquent |
+ * | Mitra\RefundController         | Refund Eloquent |
+ * | Mitra\PackageController        | Package Eloquent |
+ * | Client\CatalogController       | Package Eloquent |
+ * | Admin\UserController           | User Eloquent |
+ * | Admin\ClientController         | User Eloquent |
+ * | Admin\MitraMonitoringController| User Eloquent |
+ *
+ * Tipe lama (`Booking`, `Package`, `Trip`, `Refund`, `Payment`)
+ * DIPERTAHANKAN sebagai alias untuk backward compat.
  */
 
 import type {
     BookingStatus,
-    DailyReportStatus,
-    PackageDayCostKategori,
-    PackageDayCostSatuan,
     PackageFacilityTipe,
     PackageKategori,
     PackageStatus,
     PaymentMetode,
-    PayoutStatus,
-    TripHonorTipe,
-    TripMitraRole,
+    RefundReason,
+    RefundStatus,
     TripStatus,
-    WalletTransactionKategori,
 } from './enum';
 
 // ==========================================
@@ -43,6 +59,7 @@ export type User = {
     email_verified_at: string | null;
     created_at: string;
     updated_at: string;
+    has_fcm_token: boolean;
     profile?: Profile | null;
 };
 
@@ -62,9 +79,6 @@ export type Profile = {
     meta: Record<string, unknown> | null;
 };
 
-/**
- * User ringkas (untuk relasi di Booking, Trip, dll).
- */
 export type UserMini = {
     id: number;
     name: string;
@@ -72,12 +86,62 @@ export type UserMini = {
     username: string | null;
 };
 
+export type UserWithEmail = Pick<User, 'id' | 'name' | 'email'>;
+
+export type UserWithUsername = Pick<
+    User,
+    'id' | 'name' | 'email' | 'username'
+>;
+
+// ==========================================
+// BANK ACCOUNT
+// ==========================================
+
+/**
+ * Bank account dari Eloquent mentah (snake_case).
+ *
+ * Dipakai oleh: `Mitra\OnboardingController@index` (Eloquent).
+ */
+export type MitraBankAccount = {
+    id: number;
+    user_id: number;
+    tipe: 'bank' | 'ewallet';
+    nama_penyedia: string;
+    nomor_rekening: string;
+    nama_pemilik: string;
+    is_primary: boolean;
+    created_at: string;
+    updated_at: string;
+};
+
+/**
+ * Bank account dari `MitraBankAccountResource` (camelCase).
+ *
+ * Dipakai oleh: `BookingResource.mitra.bankAccounts`
+ * (endpoint `Client\BookingController@show`).
+ */
+export type BankAccount = {
+    id: number;
+    tipe: 'bank' | 'ewallet';
+    namaPenyedia: string;
+    nomorRekening: string;
+    namaPemilik: string;
+    isPrimary: boolean;
+};
+
 // ==========================================
 // PACKAGE
 // ==========================================
 
-export type Package = {
+/**
+ * Package dari Eloquent mentah (snake_case semua).
+ *
+ * Dipakai oleh: `Mitra\PackageController@show/edit`,
+ * `Client\CatalogController@show/index`, `BookingResource.package`.
+ */
+export type PackageEloquent = {
     id: number;
+    mitra_id: number;
     kode: string;
     nama: string;
     slug: string;
@@ -87,18 +151,47 @@ export type Package = {
     durasi_malam: number;
     harga_per_orang: string;
     harga_per_rombongan: string | null;
-    min_peserta: number;
-    max_peserta: number;
+    max_peserta: number | null;
     timezone: string;
     cover_image: string | null;
     status: PackageStatus;
-    created_by: number;
     created_at: string;
     updated_at: string;
     deleted_at: string | null;
 
     // Relasi opsional
-    creator?: UserMini | null;
+    mitra?: UserMini | null;
+    days?: PackageDay[];
+    facilities?: PackageFacility[];
+};
+
+/**
+ * Package dari `PackageResource` (future).
+ *
+ * Saat ini belum dipakai endpoint aktif. Disiapkan untuk masa depan
+ * jika backend migrasi dari Eloquent ke Resource.
+ */
+export type PackageResource = {
+    id: number;
+    mitra_id: number;
+    kode: string;
+    nama: string;
+    slug: string;
+    deskripsi: string | null;
+    kategori: PackageKategori;
+    durasi_hari: number;
+    durasi_malam: number;
+    harga_per_orang: string;
+    harga_per_rombongan: string | null;
+    max_peserta: number | null;
+    isRombongan: boolean;
+    timezone: string;
+    cover_image: string | null;
+    status: PackageStatus;
+    created_at: string;
+
+    // Relasi opsional
+    mitra?: UserWithEmail | null;
     days?: PackageDay[];
     facilities?: PackageFacility[];
 };
@@ -112,17 +205,6 @@ export type PackageDay = {
     jam_mulai: string | null;
     jam_selesai: string | null;
     lokasi: string | null;
-    costs?: PackageDayCost[];
-};
-
-export type PackageDayCost = {
-    id: number;
-    package_day_id: number;
-    nama_biaya: string;
-    kategori: PackageDayCostKategori;
-    jumlah: string;
-    satuan: PackageDayCostSatuan;
-    catatan: string | null;
 };
 
 export type PackageFacility = {
@@ -133,49 +215,31 @@ export type PackageFacility = {
     urutan: number;
 };
 
-/**
- * HPP hasil perhitungan `Package::calculateHpp()`.
- */
-export type PackageHpp = {
-    total: number;
-    per_kategori: Record<string, number>;
-    breakdown: Array<{
-        hari_ke: number;
-        nama_biaya: string;
-        kategori: string;
-        jumlah: number;
-        satuan: string;
-        subtotal: number;
-    }>;
-};
-
-/**
- * Margin hasil perhitungan `Package::calculateMargin()`.
- */
-export type PackageMargin = {
-    hpp_total: number;
-    hpp_per_orang: number;
-    harga_jual_per_orang: number;
-    margin_per_orang: number;
-    margin_persen: number;
-};
-
 // ==========================================
 // BOOKING
 // ==========================================
 
-export type Booking = {
+/**
+ * Booking dari Eloquent mentah (snake_case semua).
+ *
+ * Dipakai oleh:
+ * - `Mitra\BookingController@index/show`
+ * - `Admin\BookingController@index`
+ * - `Client\BookingController@index`
+ */
+export type BookingEloquent = {
     id: number;
     kode: string;
     package_id: number;
     user_id: number;
-    tanggal_keberangkatan: string; // DATE
+    mitra_id: number;
+    tanggal_keberangkatan: string;
     jumlah_peserta: number;
     total_harga: string;
     status: BookingStatus;
-    // ✅ BARU — Xendit Invoice tracking
-    xendit_invoice_id: string | null;
-    xendit_invoice_url: string | null;
+    payment_proof_path: string | null;
+    payment_verified_at: string | null;
+    payment_reject_reason: string | null;
     expired_at: string | null;
     catatan: string | null;
     created_at: string;
@@ -183,12 +247,68 @@ export type Booking = {
     deleted_at: string | null;
 
     // Relasi opsional
-    package?: Package | null;
+    package?: PackageEloquent | null;
     client?: UserMini | null;
+    mitra?: (UserMini & { bankAccounts?: MitraBankAccount[] }) | null;
     participants?: BookingParticipant[];
-    payments?: Payment[];
+    payments?: PaymentEloquent[];
+    refunds?: RefundEloquent[];
 };
 
+/**
+ * Booking dari `BookingResource` (mix camelCase & snake_case).
+ *
+ * ⚠️ BREAKING CHANGES dari refactor backend:
+ * - `payment_proof_path` → `has_payment_proof` (boolean, keamanan S-09)
+ * - Tambah `statusLabel` (dari `BookingStatus::label()`)
+ * - `participants` → `BookingParticipantResource[]` (bukan Eloquent)
+ * - `payments`     → `PaymentResource[]` (bukan Eloquent)
+ * - `refunds`      → `RefundResource[]` (bukan Eloquent)
+ *
+ * Dipakai oleh: `Client\BookingController@show`, `Admin\BookingController@show`.
+ */
+export type BookingResource = {
+    id: number;
+    kode: string;
+    status: BookingStatus;
+    statusLabel: string;
+    tanggal_keberangkatan: string;
+    jumlah_peserta: number;
+    total_harga: string;
+    has_payment_proof: boolean;
+    expired_at: string | null;
+    catatan: string | null;
+    created_at: string;
+
+    // Relasi opsional
+    package?: {
+        id: number;
+        nama: string;
+        kode: string;
+        slug: string;
+        timezone: string;
+        harga_per_orang: string;
+        harga_per_rombongan: string | null;
+        durasi_hari: number;
+        durasi_malam: number;
+        cover_image: string | null;
+    } | null;
+    client?: UserWithUsername | null;
+    mitra?: (UserMini & { bankAccounts: BankAccount[] }) | null;
+    participants?: BookingParticipantResource[];
+    payments?: PaymentResource[];
+    refunds?: RefundResource[];
+};
+
+// ==========================================
+// BOOKING PARTICIPANT
+// ==========================================
+
+/**
+ * Peserta dari Eloquent mentah (snake_case).
+ *
+ * Dipakai oleh: `BookingEloquent.participants` (endpoint mitra).
+ */
 export type BookingParticipant = {
     id: number;
     booking_id: number;
@@ -199,20 +319,40 @@ export type BookingParticipant = {
 };
 
 /**
- * Payment — rekam jejak pembayaran via Xendit.
+ * Peserta dari `BookingParticipantResource`.
  *
- * Catatan:
- * - Full Xendit, tidak ada lagi upload bukti manual.
- * - Field `bank_pengirim`, `nama_pengirim`, `bukti_transfer` sudah DIHAPUS
- *   dari database (lihat migration `payments`).
- * - `verified_at` diisi OTOMATIS oleh webhook Xendit (`invoice.paid`).
- * - `catatan` berisi info invoice ID dari Xendit.
+ * ⚠️ Breaking changes:
+ * - `booking_id` TIDAK dikirim (di-strip dari Resource)
+ * - Tambah `umurLabel` (string siap tampil, mis. "35 thn")
+ * - Tambah `has_catatan` (boolean)
+ *
+ * Dipakai oleh: `BookingResource.participants` (endpoint client/admin).
  */
-export type Payment = {
+export type BookingParticipantResource = {
+    id: number;
+    nama: string;
+    umur: number | null;
+    umurLabel: string;
+    no_hp: string | null;
+    catatan: string | null;
+    has_catatan: boolean;
+};
+
+// ==========================================
+// PAYMENT
+// ==========================================
+
+/**
+ * Payment dari Eloquent mentah (snake_case).
+ *
+ * Dipakai oleh: `BookingEloquent.payments` (endpoint mitra).
+ */
+export type PaymentEloquent = {
     id: number;
     booking_id: number;
     jumlah: string;
     metode: PaymentMetode;
+    channel_code: string | null;
     verified_by: number | null;
     verified_at: string | null;
     catatan: string | null;
@@ -223,18 +363,43 @@ export type Payment = {
     verifier?: UserMini | null;
 };
 
+/**
+ * Payment dari `PaymentResource` (mix camelCase).
+ *
+ * ⚠️ `verifier` bisa `null` (jika tidak di-eager-load).
+ *
+ * Dipakai oleh: `BookingResource.payments` (endpoint client/admin).
+ */
+export type PaymentResource = {
+    id: number;
+    jumlah: string;
+    jumlahRupiah: string;
+    metode: PaymentMetode;
+    metodeLabel: string;
+    isVerified: boolean;
+    verified_at: string | null;
+    catatan: string | null;
+    verifier?: UserWithEmail | null;
+};
+
 // ==========================================
 // TRIP
 // ==========================================
 
-export type Trip = {
+/**
+ * Trip dari Eloquent mentah (snake_case semua).
+ *
+ * Dipakai oleh: `Mitra\TripController@show`, `Admin\TripMonitoringController@show`.
+ */
+export type TripEloquent = {
     id: number;
     kode: string;
     booking_id: number;
     package_id: number;
+    mitra_id: number;
     snapshot_package: Record<string, unknown>;
-    tanggal_mulai: string; // DATE
-    tanggal_selesai: string; // DATE
+    tanggal_mulai: string;
+    tanggal_selesai: string;
     jumlah_peserta: number;
     timezone: string;
     status: TripStatus;
@@ -242,145 +407,73 @@ export type Trip = {
     updated_at: string;
 
     // Relasi opsional
-    package?: Package | null;
-    booking?: Booking | null;
-    mitras?: TripMitra[];
+    package?: PackageEloquent | null;
+    booking?: BookingEloquent | null;
+    mitra?: UserMini | null;
     days?: TripDay[];
 };
 
-export type TripMitra = {
+/**
+ * Trip dari `TripResource` (mix camelCase & snake_case).
+ *
+ * Sebagian besar field snake_case (kolom DB), hanya
+ * `snapshotNama`, `snapshotDurasiHari`, dan `statusLabel` yang camelCase.
+ */
+export type TripResource = {
     id: number;
-    trip_id: number;
-    mitra_id: number;
-    role: TripMitraRole;
-    honor: string;
-    honor_tipe: TripHonorTipe;
-    instruksi: string | null;
-    assigned_by: number | null;
-    assigned_at: string | null;
+    kode: string;
+    booking_id: number;
+    package_id: number;
+    mitra_id: number | null;
+    tanggal_mulai: string;
+    tanggal_selesai: string;
+    jumlah_peserta: number;
+    timezone: string;
+    status: TripStatus;
+    statusLabel: string;
+    snapshot_nama: string;
+    snapshot_durasi_hari: number;
     created_at: string;
-    updated_at: string;
 
     // Relasi opsional
-    mitra?: UserMini | null;
-    assigner?: UserMini | null;
+    package?: Pick<
+        PackageResource,
+        'id' | 'nama' | 'kode' | 'slug' | 'timezone' | 'cover_image'
+    > | null;
+    booking?: {
+        id: number;
+        kode: string;
+        jumlah_peserta: number;
+        tanggal_keberangkatan: string;
+        status: BookingStatus;
+        client: UserWithEmail | null;
+    } | null;
+    mitra?: UserWithEmail | null;
+    days?: TripDay[];
 };
 
 export type TripDay = {
     id: number;
     trip_id: number;
     hari_ke: number;
-    tanggal: string; // DATE
+    tanggal: string;
     judul: string;
     deskripsi: string | null;
     status: 'pending' | 'in_progress' | 'completed';
     created_at: string;
     updated_at: string;
-
-    // Relasi opsional
-    daily_reports?: DailyReport[];
-};
-
-// ==========================================
-// DAILY REPORT
-// ==========================================
-
-export type DailyReport = {
-    id: number;
-    trip_day_id: number;
-    mitra_id: number;
-    catatan: string | null;
-    status: DailyReportStatus;
-    submitted_at: string | null;
-    verified_by: number | null;
-    verified_at: string | null;
-    rejection_reason: string | null;
-    created_at: string;
-    updated_at: string;
-
-    // Relasi opsional
-    trip_day?: TripDay | null;
-    mitra?: UserMini | null;
-    verifier?: UserMini | null;
-    media?: DailyReportMedia[];
-};
-
-export type DailyReportMedia = {
-    id: number;
-    daily_report_id: number;
-    path: string;
-    urutan: number;
-    created_at: string;
-};
-
-// ==========================================
-// WALLET & PAYOUT
-// ==========================================
-
-export type MitraWallet = {
-    id: number;
-    mitra_id: number;
-    saldo: string;
-    total_pendapatan: string;
-    total_dicairkan: string;
-    created_at: string;
-    updated_at: string;
-};
-
-export type WalletTransaction = {
-    id: number;
-    wallet_id: number;
-    tipe: 'credit' | 'debit';
-    jumlah: string;
-    saldo_setelah: string;
-    kategori: WalletTransactionKategori;
-    referensi_type: string | null;
-    referensi_id: number | null;
-    deskripsi: string;
-    created_at: string;
-};
-
-/**
- * Payout — pengajuan pencairan honor mitra.
- *
- * Catatan:
- * - Field `xendit_payout_id` & `xendit_payout_status` ditambahkan untuk
- *   tracking transfer via Xendit Disbursement API.
- * - Status `paid` di-set OTOMATIS oleh webhook Xendit (`payout.succeeded`).
- * - Status `rejected` bisa dari admin manual ATAU webhook `payout.failed`.
- * - `xendit_payout_status` berisi status mentah dari Xendit:
- *   `PENDING`, `SUCCEEDED`, `FAILED`.
- */
-export type Payout = {
-    id: number;
-    kode: string;
-    mitra_id: number;
-    jumlah: string;
-    bank_tujuan: string;
-    no_rekening: string;
-    nama_pemilik: string;
-    status: PayoutStatus;
-    // ✅ BARU — Xendit Payout tracking
-    xendit_payout_id: string | null;
-    xendit_payout_status: string | null;
-    requested_at: string | null;
-    reviewed_by: number | null;
-    reviewed_at: string | null;
-    paid_at: string | null;
-    rejection_reason: string | null;
-    catatan: string | null;
-    created_at: string;
-    updated_at: string;
-
-    // Relasi opsional
-    mitra?: UserMini | null;
-    reviewer?: UserMini | null;
 };
 
 // ==========================================
 // E-TICKET
 // ==========================================
 
+/**
+ * E-Ticket dari Eloquent mentah (snake_case).
+ *
+ * Dipakai oleh: endpoint admin yang perlu lihat raw e-ticket.
+ * ⚠️ BUKAN untuk client — client pakai `ETicketInfo`.
+ */
 export type ETicket = {
     id: number;
     uuid: string;
@@ -392,8 +485,84 @@ export type ETicket = {
     created_at: string;
 
     // Relasi opsional
-    trip?: Trip | null;
-    booking?: Booking | null;
+    trip?: TripEloquent | null;
+    booking?: BookingEloquent | null;
+};
+
+/**
+ * E-Ticket info untuk props client.
+ *
+ * Backend `Client\BookingController@show` mengirim objek ini
+ * (bukan full ETicket model).
+ */
+export type ETicketInfo = {
+    uuid: string;
+    download_url: string;
+    generated_at: string | null;
+};
+
+// ==========================================
+// REFUND
+// ==========================================
+
+/**
+ * Refund dari Eloquent mentah (snake_case).
+ *
+ * Dipakai oleh: `Mitra\RefundController@index`,
+ * `Admin\RefundController@index`.
+ */
+export type RefundEloquent = {
+    id: number;
+    booking_id: number;
+    mitra_id: number;
+    amount: string;
+    currency: string;
+    reason: RefundReason;
+    status: RefundStatus;
+    failure_code: string | null;
+    refund_fee_amount: string | null;
+    initiated_by_mitra: number | null;
+    catatan: string | null;
+    created_at: string;
+    updated_at: string;
+
+    // Relasi opsional
+    booking?: BookingEloquent | null;
+    mitra?: UserMini | null;
+};
+
+/**
+ * Refund dari `RefundResource` (mix camelCase & snake_case).
+ *
+ * Dipakai oleh: `BookingResource.refunds`.
+ */
+export type RefundResource = {
+    id: number;
+    booking_id: number;
+    mitra_id: number | null;
+    amount: string;
+    amountRupiah: string;
+    currency: string;
+    reason: RefundReason;
+    reasonLabel: string;
+    status: RefundStatus;
+    statusLabel: string;
+    isFinal: boolean;
+    failure_code: string | null;
+    refund_fee_amount: string | null;
+    refundFeeRupiah: string;
+    catatan: string | null;
+    created_at: string;
+
+    // Relasi opsional
+    mitra?: UserWithEmail | null;
+    mitraInitiator?: UserWithEmail | null;
+    booking?: {
+        id: number;
+        kode: string;
+        total_harga: string;
+        status: BookingStatus;
+    } | null;
 };
 
 // ==========================================
@@ -401,7 +570,7 @@ export type ETicket = {
 // ==========================================
 
 export type AppNotification = {
-    id: string; // UUID
+    id: string;
     user_id: number;
     tipe: string;
     judul: string;
@@ -410,3 +579,32 @@ export type AppNotification = {
     read_at: string | null;
     created_at: string;
 };
+
+// ==========================================
+// ALIAS BACKWARD COMPAT
+// ==========================================
+//
+// Tipe lama yang dipakai file FE existing.
+// Akan dihapus di Fase 3 setelah semua file termigrasi.
+//
+// Pemetaan:
+// - `Booking`  → `BookingEloquent` (dipakai endpoint mitra, snake_case)
+// - `Package`  → `PackageEloquent`
+// - `Trip`     → `TripEloquent`
+// - `Refund`   → `RefundEloquent`
+// - `Payment`  → `PaymentEloquent`
+
+/** @deprecated Gunakan `BookingResource` (client/admin) atau `BookingEloquent` (mitra). */
+export type Booking = BookingEloquent;
+
+/** @deprecated Gunakan `PackageResource` atau `PackageEloquent`. */
+export type Package = PackageEloquent;
+
+/** @deprecated Gunakan `TripResource` atau `TripEloquent`. */
+export type Trip = TripEloquent;
+
+/** @deprecated Gunakan `RefundResource` atau `RefundEloquent`. */
+export type Refund = RefundEloquent;
+
+/** @deprecated Gunakan `PaymentResource` atau `PaymentEloquent`. */
+export type Payment = PaymentEloquent;

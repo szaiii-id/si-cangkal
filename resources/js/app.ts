@@ -1,4 +1,6 @@
-import { createInertiaApp } from '@inertiajs/svelte';
+import { createInertiaApp, router } from '@inertiajs/svelte';
+import { showToast } from '@/utils/toast.svelte';
+import { onForegroundMessage } from '@/utils/firebase';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -11,62 +13,85 @@ const VIEWER_TZ_COOKIE = 'viewer_timezone';
 
 /**
  * Set cookie `viewer_timezone` berdasarkan timezone browser.
- *
- * Cookie ini dibaca server-side (HandleInertiaRequests) untuk
- * mengisi shared prop `viewer_timezone`, yang dipakai frontend
- * untuk konversi tanggal di UI (list umum) dan label timezone
- * di momen kritis.
- *
- * Mengapa cookie, bukan localStorage?
- * - Cookie otomatis terkirim di setiap request (server bisa baca).
- * - localStorage hanya client-side, server tidak bisa akses.
- *
- * Mengapa bukan server-side?
- * - Browser timezone tidak terkirim di HTTP header standar.
- * - Harus di-set manual via JS (Intl API).
- *
- * Idempotent: kalau cookie sudah ada & sama, tidak set ulang.
- * Gagal senyap: kalau Intl API tidak support, biarkan server fallback.
  */
 function syncViewerTimezoneCookie(): void {
     try {
         const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-        // Browser tidak support Intl → biarkan server fallback
-        if (!tz) {
-            return;
-        }
+        if (!tz) return;
 
         const encoded = encodeURIComponent(tz);
 
-        // Cek apakah cookie sudah ada & sama → hindari Set-Cookie berulang
         const existing = document.cookie
             .split('; ')
             .find((row) => row.startsWith(`${VIEWER_TZ_COOKIE}=`))
             ?.split('=')[1];
 
-        if (existing === encoded) {
-            return;
-        }
+        if (existing === encoded) return;
 
-        // Set cookie: berlaku 1 tahun, path root, SameSite Lax
-        const maxAge = 60 * 60 * 24 * 365; // detik
-        const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+        const maxAge = 60 * 60 * 24 * 365;
+        const secure =
+            window.location.protocol === 'https:' ? '; Secure' : '';
 
-        document.cookie = [
-            `${VIEWER_TZ_COOKIE}=${encoded}`,
-            `max-age=${maxAge}`,
-            'path=/',
-            'SameSite=Lax',
-        ].join('; ') + secure;
+        document.cookie =
+            [
+                `${VIEWER_TZ_COOKIE}=${encoded}`,
+                `max-age=${maxAge}`,
+                'path=/',
+                'SameSite=Lax',
+            ].join('; ') + secure;
     } catch {
-        // Abaikan — server akan fallback ke user timezone atau default
+        // Abaikan — server akan fallback
     }
 }
 
-// Panggil SEBELUM createInertiaApp supaya request pertama
-// sudah membawa cookie viewer_timezone.
+/**
+ * Global error handler Inertia.
+ */
+function setupGlobalErrorHandler(): void {
+    router.on('error', (event) => {
+        const errors = event.detail.errors;
+
+        if (errors?.rate_limit) {
+            showGlobalAlert(errors.rate_limit, 'warning');
+        }
+    });
+}
+
+/**
+ * Handler notifikasi FCM saat user sedang membuka aplikasi (foreground).
+ * Menampilkan toast, bukan notifikasi OS (karena tab sudah aktif).
+ */
+function setupForegroundFcmHandler(): void {
+    onForegroundMessage((payload) => {
+        const p = payload as {
+            notification?: { title?: string; body?: string };
+            data?: { url?: string };
+        };
+
+        const title = p.notification?.title ?? 'Notifikasi Baru';
+        const body = p.notification?.body ?? '';
+
+        showToast(`${title}: ${body}`, 'info');
+    });
+}
+
+/**
+ * Tampilkan notifikasi global via toast.
+ */
+function showGlobalAlert(
+    message: string,
+    variant: 'warning' | 'error' | 'success' | 'info' = 'warning',
+): void {
+    showToast(message, variant);
+}
+
+// ==========================================
+// BOOTSTRAP
+// ==========================================
+
 syncViewerTimezoneCookie();
+setupGlobalErrorHandler();
+setupForegroundFcmHandler();
 
 void createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),

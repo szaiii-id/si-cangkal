@@ -5,20 +5,21 @@ namespace App\Enums;
 /**
  * Status siklus hidup sebuah booking.
  *
- * Alur normal:
+ * Alur normal (runtime):
  *
- *     pending_payment → payment_verified → confirmed → in_progress → completed
+ *     pending_payment -> confirmed -> in_progress -> completed
  *
  * Alur pembatalan:
  *
- *     pending_payment → cancelled  (auto-expired 24 jam / client cancel)
- *     payment_verified → cancelled (admin cancel)
- *     confirmed → cancelled         (admin cancel, sebelum trip)
+ *     pending_payment -> cancelled  (auto-expired 24 jam / client cancel)
+ *     payment_verified -> cancelled (legacy, admin cancel)
+ *     confirmed -> cancelled         (admin/mitra cancel, sebelum trip)
  *
  * Catatan:
- * - `payment_verified` dan `confirmed` sengaja dipisah supaya admin bisa
- *   verifikasi pembayaran dulu, baru konfirmasi booking (misal sambil
- *   koordinasi dengan mitra).
+ * - `payment_verified` DIPERTAHANKAN untuk kompatibilitas data legacy
+ *   (seeder, migrasi lama). Flow runtime saat ini TIDAK men-set status
+ *   ini: saat mitra memverifikasi pembayaran, status langsung menjadi
+ *   `confirmed` (lihat BookingPaymentService::verifyPayment).
  * - `in_progress` dan `completed` di-set otomatis oleh scheduler trip
  *   (Fase 3), bukan manual.
  */
@@ -65,6 +66,9 @@ enum BookingStatus: string
      * Apakah booking masih bisa di-cancel oleh client?
      *
      * Client hanya bisa cancel sebelum status `confirmed`.
+     * Status `PAYMENT_VERIFIED` (legacy) diperlakukan seperti
+     * `PENDING_PAYMENT` karena di flow runtime tidak pernah ada
+     * pembayaran yang benar-benar diverifikasi pada status ini.
      */
     public function canBeCancelledByClient(): bool
     {

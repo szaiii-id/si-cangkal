@@ -5,11 +5,9 @@ namespace App\Models;
 use App\Support\Timezone;
 use Database\Factories\TripDayFactory;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /**
@@ -25,7 +23,6 @@ use Illuminate\Support\Carbon;
  * @property Carbon $created_at
  * @property Carbon $updated_at
  * @property-read Trip|null $trip
- * @property-read Collection<int, DailyReport> $dailyReports
  *
  * @use HasFactory<TripDayFactory>
  */
@@ -73,14 +70,6 @@ class TripDay extends Model
     public function trip(): BelongsTo
     {
         return $this->belongsTo(Trip::class);
-    }
-
-    /**
-     * @return HasMany<DailyReport, $this>
-     */
-    public function dailyReports(): HasMany
-    {
-        return $this->hasMany(DailyReport::class);
     }
 
     // ==========================================
@@ -247,41 +236,5 @@ class TripDay extends Model
         }
 
         return (string) $day['lokasi'];
-    }
-
-    // ==========================================
-    // HELPER — DAILY REPORTS (Fase 4)
-    // ==========================================
-
-    /**
-     * Apakah hari ini punya minimal 1 daily report?
-     */
-    public function hasDailyReports(): bool
-    {
-        return $this->dailyReports()->exists();
-    }
-
-    /**
-     * Apakah ada daily report yang sudah verified untuk hari ini?
-     */
-    public function hasVerifiedReport(): bool
-    {
-        return $this->dailyReports()
-            ->where('status', DailyReport::STATUS_VERIFIED)
-            ->exists();
-    }
-
-    /**
-     * Apakah semua report di hari ini sudah verified?
-     */
-    public function allReportsVerified(): bool
-    {
-        $reports = $this->dailyReports;
-
-        if ($reports->isEmpty()) {
-            return false;
-        }
-
-        return $reports->every(fn (DailyReport $report): bool => $report->isVerified());
     }
 }

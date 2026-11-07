@@ -6,11 +6,23 @@ use App\Enums\BookingStatus;
 use App\Models\Booking;
 use App\Models\User;
 use App\Repositories\Contracts\BookingRepositoryInterface;
+use App\Support\LikeEscaper;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
-class BookingRepository implements BookingRepositoryInterface
+/**
+ * Repository booking.
+ *
+ * Perubahan dari versi lama:
+ * - `'%{$search}%'` -> `LikeEscaper::contains()` + `LikeEscaper::operator()`
+ *   (S-06).
+ * - `paginate()` dan `paginateForClient()` sekarang menambahkan
+ *   `with(['mitra:id,name'])` secara eksplisit (B-03) agar tidak
+ *   memicu lazy load di `BookingResource`.
+ */
+final class BookingRepository implements BookingRepositoryInterface
 {
     /**
      * {@inheritDoc}
@@ -21,39 +33,44 @@ class BookingRepository implements BookingRepositoryInterface
         $status = $filters['status'] ?? null;
         $packageId = $filters['package_id'] ?? null;
         $userId = $filters['user_id'] ?? null;
+        $mitraId = $filters['mitra_id'] ?? null;
         $tanggalDari = $filters['tanggal_dari'] ?? null;
         $tanggalSampai = $filters['tanggal_sampai'] ?? null;
         $sort = $filters['sort'] ?? 'created_at';
         $direction = $filters['direction'] ?? 'desc';
 
-        // Whitelist kolom sort
         $allowedSorts = ['created_at', 'tanggal_keberangkatan', 'total_harga', 'status', 'kode'];
         if (! in_array($sort, $allowedSorts, true)) {
             $sort = 'created_at';
         }
 
         $direction = strtolower($direction) === 'asc' ? 'asc' : 'desc';
+        $operator = LikeEscaper::operator(DB::connection());
 
         return Booking::query()
-            ->with(['package:id,nama,kode,timezone', 'client:id,name,email'])
-            ->when($search, function ($query, $search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('kode', 'ilike', "%{$search}%")
-                        ->orWhereHas('client', function ($q) use ($search) {
-                            $q->where('name', 'ilike', "%{$search}%")
-                                ->orWhere('email', 'ilike', "%{$search}%");
+            ->with([
+                'package:id,nama,kode,timezone',
+                'client:id,name,email',
+                'mitra:id,name',
+            ])
+            ->when($search, function (Builder $query, string $search) use ($operator): void {
+                $escaped = LikeEscaper::contains($search);
+
+                $query->where(function (Builder $q) use ($escaped, $operator): void {
+                    $q->where('kode', $operator, $escaped)
+                        ->orWhereHas('client', function (Builder $c) use ($escaped, $operator): void {
+                            $c->where('name', $operator, $escaped)
+                                ->orWhere('email', $operator, $escaped);
                         })
-                        ->orWhereHas('package', function ($q) use ($search) {
-                            $q->where('nama', 'ilike', "%{$search}%")
-                                ->orWhere('kode', 'ilike', "%{$search}%");
-                        });
+                        ->orWhereHas('package', fn (Builder $p) => $p->where('nama', $operator, $escaped));
                 });
             })
-            ->when($status, fn ($query, $status) => $query->where('status', $status))
-            ->when($packageId, fn ($query, $id) => $query->where('package_id', $id))
-            ->when($userId, fn ($query, $id) => $query->where('user_id', $id))
-            ->when($tanggalDari, fn ($query, $tgl) => $query->where('tanggal_keberangkatan', '>=', $tgl))
-            ->when($tanggalSampai, fn ($query, $tgl) => $query->where('tanggal_keberangkatan', '<=', $tgl))
+            ->when($status, fn (Builder $q, string $s) => $q->where('status', $s))
+            ->when($packageId, fn (Builder $q, int $id) => $q->where('package_id', $id))
+            ->when($userId, fn (Builder $q, int $id) => $q->where('user_id', $id))
+            ->when($mitraId, fn (Builder $q, int $id) => $q->where('mitra_id', $id))
+            ->when($tanggalDari, fn (Builder $q, string $tgl) => $q->where('tanggal_keberangkatan', '>=', $tgl))
+            ->when($tanggalSampai, fn (Builder $q, string $tgl) => $q->where('tanggal_keberangkatan', '<=', $tgl))
             ->orderBy($sort, $direction)
             ->paginate($perPage)
             ->withQueryString();
@@ -64,10 +81,7 @@ class BookingRepository implements BookingRepositoryInterface
      */
     public function paginateForClient(User $client, array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
-        return $this->paginate(
-            array_merge($filters, ['user_id' => $client->id]),
-            $perPage
-        );
+        return $this->paginate(array_merge($filters, ['user_id' => $client->id]), $perPage);
     }
 
     /**
@@ -80,6 +94,7 @@ class BookingRepository implements BookingRepositoryInterface
             'client:id,name,email,username',
             'participants',
             'payments.verifier:id,name,email',
+            'mitra.bankAccounts',
         ])->find($id);
     }
 
@@ -126,29 +141,12 @@ class BookingRepository implements BookingRepositoryInterface
     {
         return Booking::withTrashed()
             ->where('kode', $kode)
-            ->when($exceptId, fn ($q) => $q->where('id', '!=', $exceptId))
+            ->when($exceptId, fn (Builder $q) => $q->where('id', '!=', $exceptId))
             ->exists();
     }
 
     /**
      * {@inheritDoc}
-     *
-     * Ambil nomor urut terbesar untuk tahun ini, lalu +1.
-     * Format: BKG-{tahun}-{3-digit-padded}
-     *
-     * ✅ FIX RACE: Lock key diubah dari `booking_kode_{tahun}` menjadi
-     * `booking_creation_global` — SAMA dengan `BookingSeeder::seedBooking()`.
-     *
-     * Ini penting karena:
-     * - `BookingSeeder` insert `BKG-2026-001` hardcode via `create()`.
-     * - `generateKode()` dipanggil di `BookingService::create()`.
-     * - Jika lock key BEDA, keduanya bisa jalan paralel → race →
-     *   `generateKode()` return `BKG-2026-001` (tabel kosong) →
-     *   `BookingSeeder` insert `BKG-2026-001` → duplicate.
-     *
-     * Dengan lock key SAMA (`booking_creation_global`), keduanya
-     * tidak bisa insert paralel — `generateKode()` akan menunggu
-     * sampai `BookingSeeder` selesai, lalu return `BKG-2026-002+`.
      */
     public function generateKode(int $tahun): string
     {
@@ -156,11 +154,7 @@ class BookingRepository implements BookingRepositoryInterface
         $expectedLength = strlen($prefix) + 3;
 
         if (DB::connection()->getDriverName() === 'pgsql') {
-            // ✅ FIX RACE: Lock key GLOBAL — sama dengan BookingSeeder
-            DB::selectOne(
-                'SELECT pg_advisory_xact_lock(?)',
-                [crc32('booking_creation_global')]
-            );
+            DB::selectOne('SELECT pg_advisory_xact_lock(?)', [crc32('booking_creation_global')]);
         }
 
         $lastKode = Booking::withTrashed()
@@ -174,15 +168,12 @@ class BookingRepository implements BookingRepositoryInterface
         }
 
         $lastNumber = (int) substr((string) $lastKode, -3);
-        $nextNumber = $lastNumber + 1;
 
-        return $prefix.str_pad((string) $nextNumber, 3, '0', STR_PAD_LEFT);
+        return $prefix.str_pad((string) ($lastNumber + 1), 3, '0', STR_PAD_LEFT);
     }
 
     /**
      * {@inheritDoc}
-     *
-     * @return Collection<int, Booking>
      */
     public function findExpired(): Collection
     {
@@ -191,8 +182,6 @@ class BookingRepository implements BookingRepositoryInterface
 
     /**
      * {@inheritDoc}
-     *
-     * @return array<string, int>
      */
     public function countByStatus(): array
     {
@@ -203,6 +192,7 @@ class BookingRepository implements BookingRepositoryInterface
             ->all();
 
         $result = [];
+
         foreach (BookingStatus::cases() as $case) {
             $result[$case->value] = (int) ($counts[$case->value] ?? 0);
         }
@@ -212,8 +202,6 @@ class BookingRepository implements BookingRepositoryInterface
 
     /**
      * {@inheritDoc}
-     *
-     * @return array<string, int>
      */
     public function countByStatusForClient(User $client): array
     {
@@ -225,6 +213,7 @@ class BookingRepository implements BookingRepositoryInterface
             ->all();
 
         $result = [];
+
         foreach (BookingStatus::cases() as $case) {
             $result[$case->value] = (int) ($counts[$case->value] ?? 0);
         }

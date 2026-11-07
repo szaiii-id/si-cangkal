@@ -11,6 +11,11 @@ use Illuminate\Support\Carbon;
 /**
  * Model ETicket — tiket digital untuk client.
  *
+ * File PDF dan QR disimpan di disk `local` (privat), tidak bisa
+ * diakses lewat URL `/storage/...`. Akses hanya lewat route privat
+ * `client.e-tickets.download` yang diperiksa Policy
+ * `BookingPolicy@downloadETicket` (S-09/S-10/B-01).
+ *
  * @property int $id
  * @property string $uuid
  * @property int $trip_id
@@ -20,6 +25,8 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $generated_at
  * @property Carbon $created_at
  * @property Carbon $updated_at
+ * @property-read Trip|null $trip
+ * @property-read Booking|null $booking
  */
 class ETicket extends Model
 {
@@ -66,14 +73,5 @@ class ETicket extends Model
     public function booking(): BelongsTo
     {
         return $this->belongsTo(Booking::class);
-    }
-
-    // ==========================================
-    // HELPER
-    // ==========================================
-
-    public function pdfUrl(): string
-    {
-        return asset('storage/'.$this->pdf_path);
     }
 }

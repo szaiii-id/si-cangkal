@@ -19,6 +19,7 @@ use Illuminate\Support\Carbon;
  * Model Package — paket wisata template.
  *
  * @property int $id
+ * @property int $mitra_id
  * @property string $kode
  * @property string $nama
  * @property string $slug
@@ -28,16 +29,14 @@ use Illuminate\Support\Carbon;
  * @property int $durasi_malam
  * @property numeric-string $harga_per_orang
  * @property numeric-string|null $harga_per_rombongan
- * @property int $min_peserta
- * @property int $max_peserta
+ * @property int|null $max_peserta
  * @property string $timezone
  * @property string|null $cover_image
  * @property PackageStatus $status
- * @property int $created_by
  * @property Carbon $created_at
  * @property Carbon $updated_at
  * @property Carbon|null $deleted_at
- * @property-read User|null $creator
+ * @property-read User|null $mitra
  * @property-read Collection<int, PackageDay> $days
  * @property-read Collection<int, PackageFacility> $facilities
  * @property-read Collection<int, Booking> $bookings
@@ -53,6 +52,7 @@ class Package extends Model
 
     /** @var list<string> */
     protected $fillable = [
+        'mitra_id',
         'kode',
         'nama',
         'slug',
@@ -62,12 +62,10 @@ class Package extends Model
         'durasi_malam',
         'harga_per_orang',
         'harga_per_rombongan',
-        'min_peserta',
-        'max_peserta',
+        'max_peserta', // nullable (hanya wajib jika rombongan)
         'timezone',
         'cover_image',
         'status',
-        'created_by',
     ];
 
     /**
@@ -82,7 +80,6 @@ class Package extends Model
             'durasi_malam' => 'integer',
             'harga_per_orang' => 'decimal:2',
             'harga_per_rombongan' => 'decimal:2',
-            'min_peserta' => 'integer',
             'max_peserta' => 'integer',
             'deleted_at' => 'datetime',
         ];
@@ -93,11 +90,13 @@ class Package extends Model
     // ==========================================
 
     /**
+     * Mitra pemilik paket ini.
+     *
      * @return BelongsTo<User, $this>
      */
-    public function creator(): BelongsTo
+    public function mitra(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'created_by');
+        return $this->belongsTo(User::class, 'mitra_id');
     }
 
     /**
@@ -156,7 +155,7 @@ class Package extends Model
     }
 
     // ==========================================
-    // HELPER — STATUS
+    // HELPER — STATUS & VALIDASI HARGA
     // ==========================================
 
     public function isAktif(): bool
@@ -179,95 +178,27 @@ class Package extends Model
         return $this->days()->exists();
     }
 
-    // ==========================================
-    // HELPER — HPP & MARGIN
-    // ==========================================
-
     /**
-     * Hitung total HPP (Harga Pokok Penjualan) paket ini.
-     *
-     * @return array{
-     *     total: float,
-     *     per_kategori: array<string, float>,
-     *     breakdown: array<int, array{
-     *         hari_ke: int,
-     *         nama_biaya: string,
-     *         kategori: string,
-     *         jumlah: float,
-     *         satuan: string,
-     *         subtotal: float
-     *     }>
-     * }
+     * Apakah paket ini menggunakan harga per rombongan (fixed)?
      */
-    public function calculateHpp(): array
+    public function isRombongan(): bool
     {
-        $days = $this->relationLoaded('days')
-            ? $this->days
-            : $this->days()->with('costs')->get();
-
-        $total = 0.0;
-        $perKategori = [];
-        $breakdown = [];
-
-        foreach ($days as $day) {
-            foreach ($day->costs as $cost) {
-                $subtotal = $cost->subtotal($this->max_peserta, $this->durasi_hari);
-
-                $total += $subtotal;
-
-                // cost->kategori sudah cast enum, tidak perlu instanceof
-                $kategori = $cost->kategori->value;
-
-                // cost->satuan sudah cast enum, tidak perlu instanceof
-                $satuan = $cost->satuan->value;
-
-                $perKategori[$kategori] = ($perKategori[$kategori] ?? 0.0) + $subtotal;
-
-                $breakdown[] = [
-                    'hari_ke' => $day->hari_ke,
-                    'nama_biaya' => $cost->nama_biaya,
-                    'kategori' => $kategori,
-                    'jumlah' => (float) $cost->jumlah,
-                    'satuan' => $satuan,
-                    'subtotal' => $subtotal,
-                ];
-            }
-        }
-
-        return [
-            'total' => $total,
-            'per_kategori' => $perKategori,
-            'breakdown' => $breakdown,
-        ];
+        return $this->harga_per_rombongan !== null && (float) $this->harga_per_rombongan > 0;
     }
 
     /**
-     * @return array{
-     *     hpp_total: float,
-     *     hpp_per_orang: float,
-     *     harga_jual_per_orang: float,
-     *     margin_per_orang: float,
-     *     margin_persen: float
-     * }
+     * Hitung total harga berdasarkan jumlah peserta.
+     * Aturan PRD §13.1:
+     * - Jika rombongan, harga fixed (abaikan jumlah peserta).
+     * - Jika per orang, kalikan dengan jumlah peserta.
      */
-    public function calculateMargin(): array
+    public function calculateTotalHarga(int $jumlahPeserta): float
     {
-        $hpp = $this->calculateHpp();
-        $hppPerOrang = $this->max_peserta > 0
-            ? $hpp['total'] / $this->max_peserta
-            : 0.0;
+        if ($this->isRombongan()) {
+            return (float) $this->harga_per_rombongan;
+        }
 
-        $hargaJual = (float) $this->harga_per_orang;
-        $margin = $hargaJual - $hppPerOrang;
-        $marginPersen = $hargaJual > 0 ? ($margin / $hargaJual) * 100 : 0.0;
-
-        return [
-            'hpp_total' => $hpp['total'],
-            'hpp_per_orang' => $hppPerOrang,
-            'harga_jual_per_orang' => $hargaJual,
-            'margin_per_orang' => $margin,
-            'margin_persen' => $marginPersen,
-        ];
+        return (float) $this->harga_per_orang * $jumlahPeserta;
     }
 
     public function timezoneOrDefault(): string

@@ -4,7 +4,6 @@ namespace Database\Factories;
 
 use App\Models\Package;
 use App\Models\PackageDay;
-use App\Models\PackageDayCost;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -38,14 +37,5 @@ class PackageDayFactory extends Factory
             'jam_mulai' => null,
             'jam_selesai' => null,
         ]);
-    }
-
-    public function denganCosts(): static
-    {
-        return $this->afterCreating(function (PackageDay $day) {
-            PackageDayCost::factory()
-                ->count(fake()->numberBetween(2, 3))
-                ->create(['package_day_id' => $day->id]);
-        });
     }
 }

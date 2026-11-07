@@ -9,17 +9,29 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
-class TripController extends Controller
+/**
+ * Controller trip untuk mitra.
+ *
+ * Perubahan dari versi lama:
+ * - `abort_unless($trip->mitra_id === $request->user()->id, 403)`
+ *   diganti `$this->authorize('view', $trip)` (S-02/S-03).
+ * - `show()` menambahkan eager-load `days.trip` (B-03) — wajib
+ *   agar `TripDayResource` tidak memicu N+1 saat memanggil
+ *   `jamMulai()`, `isToday()`, dsb.
+ * - `index()` memanggil `$this->authorize('viewAny', Trip::class)`
+ *   untuk konsistensi (walaupun middleware role:mitra sudah
+ *   menjaga, Policy adalah defense in depth).
+ */
+final class TripController extends Controller
 {
     public function __construct(
-        protected TripService $tripService,
+        private readonly TripService $tripService,
     ) {}
 
-    /**
-     * Daftar trip yang di-assign ke mitra yang login.
-     */
     public function index(Request $request): InertiaResponse
     {
+        $this->authorize('viewAny', Trip::class);
+
         $mitra = $request->user();
 
         $filters = [
@@ -30,47 +42,26 @@ class TripController extends Controller
         ];
 
         $perPage = (int) $request->input('per_page', 10);
-        $trips = $this->tripService->paginateForMitra($mitra, $filters, $perPage);
 
         return Inertia::render('Mitra/Trips/Index', [
-            'trips' => $trips,
+            'trips' => $this->tripService->paginateForMitra($mitra, $filters, $perPage),
             'filters' => $filters,
             'statusCounts' => $this->tripService->countByStatusForMitra($mitra),
         ]);
     }
 
-    /**
-     * Detail trip untuk mitra.
-     *
-     * Guard: hanya mitra yang di-assign ke trip ini.
-     */
-    public function show(Request $request, Trip $trip): InertiaResponse
+    public function show(Trip $trip): InertiaResponse
     {
-        $mitra = $request->user();
+        $this->authorize('view', $trip);
 
-        // Guard: mitra harus di-assign ke trip ini
-        $isAssigned = $trip->mitras()
-            ->where('mitra_id', $mitra->id)
-            ->exists();
-
-        abort_unless($isAssigned, 403, 'Anda tidak di-assign ke trip ini.');
-
-        // Eager load relasi
         $trip->load([
             'package:id,nama,kode,slug,timezone,cover_image',
             'booking.client:id,name,email',
-            'mitras.mitra:id,name,email,username',
-            'days.dailyReports' => function ($q) use ($mitra) {
-                $q->where('mitra_id', $mitra->id)->with('media');
-            },
+            'days.trip',
         ]);
-
-        // Ambil assignment mitra ini
-        $tripMitra = $trip->mitras->firstWhere('mitra_id', $mitra->id);
 
         return Inertia::render('Mitra/Trips/Show', [
             'trip' => $trip,
-            'tripMitra' => $tripMitra,
         ]);
     }
 }

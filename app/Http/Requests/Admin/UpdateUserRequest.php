@@ -18,8 +18,6 @@ class UpdateUserRequest extends FormRequest
      */
     public function rules(): array
     {
-        // ✅ FIX PHPStan: `route('user')` return object|string|null.
-        // Kita hanya ambil ID kalau tipenya User (route model binding).
         $routeUser = $this->route('user');
         $userId = $routeUser instanceof User ? $routeUser->id : null;
 
@@ -33,16 +31,13 @@ class UpdateUserRequest extends FormRequest
                 'required', 'string', 'email', 'max:255',
                 Rule::unique('users', 'email')->ignore($userId),
             ],
-            // Profile (opsional)
+            // Profile (hanya field relevan untuk admin)
             'profile' => ['nullable', 'array'],
-            'profile.nama_penyedia_usaha' => ['nullable', 'string', 'max:255'],
-            'profile.nomor_identitas' => ['nullable', 'string', 'max:255'],
             'profile.alamat' => ['nullable', 'string', 'max:1000'],
             'profile.telepon' => ['nullable', 'string', 'max:50'],
             'profile.provinsi' => ['nullable', 'string', 'max:255'],
             'profile.kota' => ['nullable', 'string', 'max:255'],
             'profile.kode_pos' => ['nullable', 'string', 'max:20'],
-            'profile.deskripsi' => ['nullable', 'string', 'max:5000'],
         ];
     }
 

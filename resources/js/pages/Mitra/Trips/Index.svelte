@@ -5,13 +5,10 @@
     import Pagination from '@/global/Pagination.svelte';
     import SearchInput from '@/global/SearchInput.svelte';
     import StatusTabs from '@/global/StatusTabs.svelte';
-    import { inertia, router } from '@inertiajs/svelte';
-    import type {
-        PaginationMeta,
-        StatusTab,
-        Trip,
-        TripStatus,
-    } from '@/types';
+    import { router, inertia } from '@inertiajs/svelte';
+    import type { MitraTripIndexProps } from '@/types/props';
+    import type { TripStatus } from '@/types/enum';
+    import type { StatusTab } from '@/types';
     import {
         tripStatusBadge,
         tripStatusLabel,
@@ -19,73 +16,31 @@
     } from '@/utils/enums';
     import { formatDate } from '@/utils/formatDate';
     import { formatDurasiFromRange } from '@/utils/duration';
-    import { isDateInRange, todayInTimezone } from '@/utils/timezone';
+    import {
+        isDateInRange,
+        todayInTimezone,
+    } from '@/utils/timezone';
     import { mitraMenu } from '@/utils/menus';
 
     // ==========================================
     // PROPS
     // ==========================================
 
-    type TripItem = Pick<
-        Trip,
-        | 'id'
-        | 'kode'
-        | 'tanggal_mulai'
-        | 'tanggal_selesai'
-        | 'jumlah_peserta'
-        | 'timezone'
-        | 'status'
-    > & {
-        mitras_count: number;
-        package: {
-            id: number;
-            nama: string;
-            kode: string;
-            timezone: string;
-        } | null;
-        booking: {
-            id: number;
-            kode: string;
-            client: {
-                id: number;
-                name: string;
-                email: string;
-            } | null;
-        } | null;
-    };
-
     let {
         trips,
-        filters = {
-            search: '',
-            status: '',
-            sort: 'tanggal_mulai',
-            direction: 'desc',
-        },
+        filters,
         statusCounts = {
             scheduled: 0,
             active: 0,
             completed: 0,
             cancelled: 0,
         },
-    }: {
-        trips: PaginationMeta & { data: TripItem[] };
-        filters: {
-            search: string;
-            status: string;
-            sort: string;
-            direction: string;
-        };
-        statusCounts: Record<string, number>;
-    } = $props();
+    }: MitraTripIndexProps = $props();
 
     // ==========================================
     // STATE
     // ==========================================
 
-    // Filter state — di-init dari props `filters` (initial value).
-    // Setelah user ubah filter → router.get() → Inertia reload → komponen
-    // re-mount → state re-init dari filters baru. Jadi tidak perlu sync.
     // svelte-ignore state_referenced_locally
     let search = $state(filters.search ?? '');
     // svelte-ignore state_referenced_locally
@@ -144,7 +99,10 @@
     );
 
     let totalAll = $derived(
-        Object.values(statusCounts).reduce((sum, n) => sum + n, 0),
+        Object.values(statusCounts).reduce(
+            (sum, n) => sum + n,
+            0,
+        ),
     );
 
     // ==========================================
@@ -176,12 +134,11 @@
     // HELPERS — TIMEZONE AWARE
     // ==========================================
 
-    /**
-     * Cek apakah trip sedang berjalan hari ini (timezone-aware).
-     *
-     * PRD §9.6: "hari ini" dihitung di trip.timezone.
-     */
-    function isTripToday(trip: TripItem): boolean {
+    function isTripToday(trip: {
+        timezone: string;
+        tanggal_mulai: string;
+        tanggal_selesai: string;
+    }): boolean {
         const today = todayInTimezone(trip.timezone);
         return isDateInRange(
             today,
@@ -192,13 +149,13 @@
 </script>
 
 <svelte:head>
-    <title>Trip Saya | Titiktemu</title>
+    <title>Jadwal Perjalanan | Titiktemu</title>
 </svelte:head>
 
-<DashboardLayout title="Trip Saya" menuItems={mitraMenu}>
+<DashboardLayout title="Jadwal Perjalanan" menuItems={mitraMenu}>
     <PageHeader
-        title="Trip Saya"
-        description="Daftar trip yang Anda ikuti sebagai mitra"
+        title="Jadwal Perjalanan"
+        description="Daftar jadwal perjalanan (trip) yang sedang Anda kelola."
     />
 
     <!-- Card -->
@@ -225,11 +182,11 @@
             <EmptyState
                 icon="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 title={hasActiveFilters
-                    ? 'Tidak ada trip ditemukan'
-                    : 'Belum ada trip'}
+                    ? 'Tidak ada jadwal ditemukan'
+                    : 'Belum ada jadwal perjalanan'}
                 description={hasActiveFilters
                     ? 'Coba ubah filter atau kata kunci pencarian Anda.'
-                    : 'Trip yang Anda ikuti akan muncul di sini setelah di-assign admin.'}
+                    : 'Jadwal perjalanan akan muncul di sini setelah Anda menerima pesanan.'}
                 hasFilters={hasActiveFilters}
                 onClear={clearFilters}
             />
@@ -281,7 +238,7 @@
                                     <h3
                                         class="text-sm font-extrabold text-dark truncate group-hover:text-pink-text transition-colors"
                                     >
-                                        {trip.package?.nama ?? 'Trip'}
+                                        {trip.package?.nama ?? 'Paket'}
                                     </h3>
                                     <p
                                         class="text-[11px] text-gray-500 font-mono mt-0.5"

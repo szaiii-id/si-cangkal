@@ -2,17 +2,12 @@
 
 use App\Http\Controllers\Admin\BookingController as AdminBookingController;
 use App\Http\Controllers\Admin\ClientController;
-use App\Http\Controllers\Admin\DailyReportController as AdminDailyReportController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
-use App\Http\Controllers\Admin\PackageController;
-use App\Http\Controllers\Admin\PackageDayController;
-use App\Http\Controllers\Admin\PackageDayCostController;
-use App\Http\Controllers\Admin\PackageFacilityController;
-use App\Http\Controllers\Admin\PayoutController as AdminPayoutController;
+use App\Http\Controllers\Admin\MitraMonitoringController;
+use App\Http\Controllers\Admin\RefundController as AdminRefundController;
 use App\Http\Controllers\Admin\ReportController;
-use App\Http\Controllers\Admin\TripController;
+use App\Http\Controllers\Admin\TripMonitoringController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
-use App\Http\Controllers\Api\XenditWebhookController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\ChangePasswordController;
 use App\Http\Controllers\Auth\PasswordResetController;
@@ -22,267 +17,281 @@ use App\Http\Controllers\Client\DashboardController as ClientDashboardController
 use App\Http\Controllers\Client\ETicketController;
 use App\Http\Controllers\Client\ProfileController as ClientProfileController;
 use App\Http\Controllers\LandingPage\ContactController;
-use App\Http\Controllers\Mitra\DailyReportController as MitraDailyReportController;
+use App\Http\Controllers\Mitra\BookingController as MitraBookingController;
 use App\Http\Controllers\Mitra\DashboardController as MitraDashboardController;
+use App\Http\Controllers\Mitra\ManualBookingController;
+use App\Http\Controllers\Mitra\OnboardingController;
+use App\Http\Controllers\Mitra\PackageController as MitraPackageController;
+use App\Http\Controllers\Mitra\PackageDayController as MitraPackageDayController;
+use App\Http\Controllers\Mitra\PackageFacilityController as MitraPackageFacilityController;
 use App\Http\Controllers\Mitra\PasswordController as MitraPasswordController;
-use App\Http\Controllers\Mitra\PayoutController as MitraPayoutController;
 use App\Http\Controllers\Mitra\ProfileController as MitraProfileController;
+use App\Http\Controllers\Mitra\RefundController as MitraRefundController;
 use App\Http\Controllers\Mitra\TripController as MitraTripController;
-use App\Http\Controllers\Mitra\WalletController as MitraWalletController;
-use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\Notification\FcmTokenController;
+use App\Http\Controllers\Notification\NotificationController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-// ==========================================
-// HALAMAN LANDING UTAMA
-// ==========================================
-Route::get('/', function () {
-    return Inertia::render('Welcome');
-})->name('home');
+/*
+|--------------------------------------------------------------------------
+| PUBLIC ROUTES
+|--------------------------------------------------------------------------
+|
+| Route yang bisa diakses tanpa login.
+|
+*/
 
-// ==========================================
-// FORM KONTAK
-// ==========================================
+Route::get('/', fn () => Inertia::render('Welcome'))->name('home');
+
 Route::post('/contact', [ContactController::class, 'store'])
     ->middleware('throttle:contact')
     ->name('contact.store');
 
-// ==========================================
-// XENDIT WEBHOOK (Server-to-Server)
-// ==========================================
-// CSRF dikecualikan via bootstrap/app.php:
-//   $middleware->preventRequestForgery(except: ['xendit/webhook']);
-// Keamanan dijaga via validasi x-callback-token di XenditWebhookController.
-Route::post('/xendit/webhook', [XenditWebhookController::class, 'handle'])
-    ->name('xendit.webhook');
+/*
+|--------------------------------------------------------------------------
+| AUTH ROUTES (GUEST ONLY)
+|--------------------------------------------------------------------------
+|
+| Route autentikasi yang hanya bisa diakses jika BELUM login.
+|
+*/
 
-// ==========================================
-// RUTE GUEST (Hanya untuk yang BELUM login)
-// ==========================================
 Route::middleware('guest')->group(function () {
+    // Login manual
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-    Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
-
     Route::post('/login', [AuthController::class, 'login'])
         ->middleware('auth.throttle:login');
+
+    // Register client
+    Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
     Route::post('/register', [AuthController::class, 'register'])
         ->middleware('auth.throttle:register');
 
+    // Register mitra
+    Route::get('/register/mitra', [AuthController::class, 'showRegisterMitra'])->name('register.mitra');
+    Route::post('/register/mitra', [AuthController::class, 'registerMitra'])
+        ->middleware('auth.throttle:register');
+
+    // Login via Google (SSO)
     Route::get('/auth/google', [AuthController::class, 'redirectToGoogle'])->name('google.login');
     Route::get('/auth/google/callback', [AuthController::class, 'handleGoogleCallback']);
 
+    // Forgot / reset password
     Route::get('/forgot-password', [PasswordResetController::class, 'create'])->name('password.request');
     Route::post('/forgot-password', [PasswordResetController::class, 'store'])
         ->middleware('auth.throttle:forgot-password');
+
     Route::get('/reset-password/{token}', [PasswordResetController::class, 'edit'])->name('password.reset');
     Route::post('/reset-password', [PasswordResetController::class, 'update'])
         ->middleware('auth.throttle:reset-password');
 });
 
-// ==========================================
-// RUTE AUTH (Hanya untuk yang SUDAH login)
-// ==========================================
+/*
+|--------------------------------------------------------------------------
+| AUTHENTICATED ROUTES
+|--------------------------------------------------------------------------
+|
+| Route yang memerlukan login. Dibagi per role di bawah.
+|
+*/
+
 Route::middleware('auth')->group(function () {
 
-    // Logout
+    // --------------------------------------
+    // LOGOUT & GANTI PASSWORD
+    // --------------------------------------
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-    // --------------------------------------
-    // Rute Ganti Password (Shared - semua role)
-    // --------------------------------------
-    Route::get('/change-password', [ChangePasswordController::class, 'edit'])
-        ->name('password.change');
-    Route::put('/change-password', [ChangePasswordController::class, 'update'])
-        ->name('password.change.update');
+    Route::get('/change-password', [ChangePasswordController::class, 'edit'])->name('password.change');
+    Route::put('/change-password', [ChangePasswordController::class, 'update'])->name('password.change.update');
 
     // --------------------------------------
-    // NOTIFIKASI (Fase 6 — semua role)
+    // NOTIFICATIONS (SEMUA ROLE)
     // --------------------------------------
-    Route::get('/notifications', [NotificationController::class, 'index'])
-        ->name('notifications.index');
-    Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])
-        ->name('notifications.mark-all-read');
-    Route::post('/notifications/{notification}/read', [NotificationController::class, 'markAsRead'])
-        ->name('notifications.read');
+    Route::prefix('notifications')->name('notifications.')->group(function () {
+        Route::get('/', [NotificationController::class, 'index'])->name('index');
+        Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('mark-all-read');
+        Route::post('/{notification}/read', [NotificationController::class, 'markAsRead'])->name('read');
+        Route::post('/fcm', [FcmTokenController::class, 'update'])->name('fcm.update');
+    });
 
-    // --------------------------------------
-    // Rute Admin
-    // --------------------------------------
+    // ======================================
+    // ADMIN
+    // ======================================
     Route::middleware(['password.changed', 'role:admin'])
         ->prefix('admin')
         ->name('admin.')
         ->group(function () {
-            Route::get('/dashboard', [AdminDashboardController::class, 'index'])
-                ->name('dashboard');
 
-            // Manajemen User (admin + mitra)
-            Route::get('/users', [AdminUserController::class, 'index'])->name('users.index');
-            Route::get('/users/create', [AdminUserController::class, 'create'])->name('users.create');
-            Route::post('/users', [AdminUserController::class, 'store'])->name('users.store');
-            Route::get('/users/{user}/edit', [AdminUserController::class, 'edit'])->name('users.edit');
-            Route::put('/users/{user}', [AdminUserController::class, 'update'])->name('users.update');
-            Route::delete('/users/{user}', [AdminUserController::class, 'destroy'])->name('users.destroy');
-            Route::post('/users/{user}/reset-password', [AdminUserController::class, 'resetPassword'])->name('users.reset-password');
+            // Dashboard
+            Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
-            // Daftar Client (read-only)
+            // User management
+            Route::prefix('users')->name('users.')->group(function () {
+                Route::get('/', [AdminUserController::class, 'index'])->name('index');
+                Route::get('/create', [AdminUserController::class, 'create'])->name('create');
+                Route::post('/', [AdminUserController::class, 'store'])->name('store');
+                Route::get('/{user}/edit', [AdminUserController::class, 'edit'])->name('edit');
+                Route::put('/{user}', [AdminUserController::class, 'update'])->name('update');
+                Route::delete('/{user}', [AdminUserController::class, 'destroy'])->name('destroy');
+                Route::post('/{user}/reset-password', [AdminUserController::class, 'resetPassword'])->name('reset-password');
+            });
+
+            // Monitoring mitra
+            Route::get('/mitras', [MitraMonitoringController::class, 'index'])->name('mitras.index');
+
+            // Monitoring client
             Route::get('/clients', [ClientController::class, 'index'])->name('clients.index');
 
-            // ==========================================
-            // PAKET WISATA (Fase 1)
-            // ==========================================
-            Route::get('/packages', [PackageController::class, 'index'])->name('packages.index');
-            Route::get('/packages/create', [PackageController::class, 'create'])->name('packages.create');
-            Route::post('/packages', [PackageController::class, 'store'])->name('packages.store');
-            Route::get('/packages/{package}', [PackageController::class, 'show'])->name('packages.show');
-            Route::get('/packages/{package}/edit', [PackageController::class, 'edit'])->name('packages.edit');
-            Route::put('/packages/{package}', [PackageController::class, 'update'])->name('packages.update');
-            Route::delete('/packages/{package}', [PackageController::class, 'destroy'])->name('packages.destroy');
-            Route::post('/packages/{package}/publish', [PackageController::class, 'publish'])->name('packages.publish');
-            Route::post('/packages/{package}/archive', [PackageController::class, 'archive'])->name('packages.archive');
-            Route::post('/packages/{package}/restore', [PackageController::class, 'restore'])->name('packages.restore');
-            Route::post('/packages/{package}/days', [PackageDayController::class, 'store'])->name('packages.days.store');
-            Route::put('/package-days/{day}', [PackageDayController::class, 'update'])->name('package-days.update');
-            Route::delete('/package-days/{day}', [PackageDayController::class, 'destroy'])->name('package-days.destroy');
-            Route::post('/package-days/{day}/costs', [PackageDayCostController::class, 'store'])->name('package-days.costs.store');
-            Route::put('/package-day-costs/{cost}', [PackageDayCostController::class, 'update'])->name('package-day-costs.update');
-            Route::delete('/package-day-costs/{cost}', [PackageDayCostController::class, 'destroy'])->name('package-day-costs.destroy');
-            Route::post('/packages/{package}/facilities', [PackageFacilityController::class, 'store'])->name('packages.facilities.store');
-            Route::put('/package-facilities/{facility}', [PackageFacilityController::class, 'update'])->name('package-facilities.update');
-            Route::delete('/package-facilities/{facility}', [PackageFacilityController::class, 'destroy'])->name('package-facilities.destroy');
+            // Monitoring booking
+            Route::prefix('bookings')->name('bookings.')->group(function () {
+                Route::get('/', [AdminBookingController::class, 'index'])->name('index');
+                Route::get('/{booking}', [AdminBookingController::class, 'show'])->name('show');
+                Route::get('/{booking}/payment-proof', [AdminBookingController::class, 'downloadProof'])
+                    ->middleware('throttle:10,1')
+                    ->name('payment-proof');
+                Route::post('/{booking}/regenerate-eticket', [AdminBookingController::class, 'regenerateETicket'])
+                    ->name('regenerate-eticket');
+            });
 
-            // ==========================================
-            // BOOKING (Fase 2)
-            // ==========================================
-            Route::get('/bookings', [AdminBookingController::class, 'index'])->name('bookings.index');
-            Route::get('/bookings/{booking}', [AdminBookingController::class, 'show'])->name('bookings.show');
-            // ✅ Route verify-payment DIHAPUS — verifikasi otomatis via Xendit Webhook
-            Route::post('/bookings/{booking}/confirm', [AdminBookingController::class, 'confirm'])->name('bookings.confirm');
-            Route::post('/bookings/{booking}/cancel', [AdminBookingController::class, 'cancel'])->name('bookings.cancel');
+            // Monitoring refund (read-only)
+            // Catatan: admin TIDAK bisa approve/reject — itu tanggung jawab mitra.
+            // Route `show` dihapus karena halaman `Admin/Refunds/Show` tidak ada.
+            Route::get('/refunds', [AdminRefundController::class, 'index'])->name('refunds.index');
 
-            // ==========================================
-            // TRIP & DISPATCH (Fase 3)
-            // ==========================================
-            Route::get('/trips', [TripController::class, 'index'])->name('trips.index');
-            Route::get('/trips/{trip}', [TripController::class, 'show'])->name('trips.show');
-            Route::post('/trips/{trip}/activate', [TripController::class, 'activate'])->name('trips.activate');
-            Route::post('/trips/{trip}/complete', [TripController::class, 'complete'])->name('trips.complete');
-            Route::post('/trips/{trip}/cancel', [TripController::class, 'cancel'])->name('trips.cancel');
-            Route::post('/trips/{trip}/assign-mitra', [TripController::class, 'assignMitra'])->name('trips.assign-mitra');
-            Route::put('/trips/{trip}/mitras/{tripMitra}', [TripController::class, 'updateMitra'])->name('trips.update-mitra');
-            Route::delete('/trips/{trip}/mitras/{tripMitra}', [TripController::class, 'unassignMitra'])->name('trips.unassign-mitra');
+            // Monitoring trip
+            Route::prefix('trips')->name('trips.')->group(function () {
+                Route::get('/', [TripMonitoringController::class, 'index'])->name('index');
+                Route::get('/{trip}', [TripMonitoringController::class, 'show'])->name('show');
+                Route::get('/{trip}/manifest', [ReportController::class, 'exportTripManifest'])->name('manifest');
+            });
 
-            // ✅ Manifest pindah ke ReportController
-            Route::get('/trips/{trip}/manifest', [ReportController::class, 'exportTripManifest'])->name('trips.manifest');
-
-            // ==========================================
-            // DAILY REPORT (Fase 4)
-            // ==========================================
-            Route::get('/daily-reports', [AdminDailyReportController::class, 'index'])->name('daily-reports.index');
-            Route::post('/daily-reports/{report}/verify', [AdminDailyReportController::class, 'verify'])->name('daily-reports.verify');
-            Route::post('/daily-reports/{report}/reject', [AdminDailyReportController::class, 'reject'])->name('daily-reports.reject');
-
-            // ==========================================
-            // PAYOUT (Fase 5)
-            // ==========================================
-            Route::get('/payouts', [AdminPayoutController::class, 'index'])->name('payouts.index');
-            Route::post('/payouts/{payout}/approve', [AdminPayoutController::class, 'approve'])->name('payouts.approve');
-            Route::post('/payouts/{payout}/reject', [AdminPayoutController::class, 'reject'])->name('payouts.reject');
-            // ✅ Route mark-paid DIHAPUS — status paid di-set otomatis via Xendit Webhook
-
-            // ==========================================
-            // LAPORAN (Fase 7)
-            // ==========================================
+            // Laporan
             Route::prefix('reports')->name('reports.')->group(function () {
                 Route::get('/', [ReportController::class, 'index'])->name('index');
                 Route::get('/export-pdf', [ReportController::class, 'exportPdf'])->name('export-pdf');
                 Route::get('/export-excel', [ReportController::class, 'exportExcel'])->name('export-excel');
 
-                // Laporan Kinerja Mitra
                 Route::get('/mitra', [ReportController::class, 'mitraPerformance'])->name('mitra');
                 Route::get('/mitra/export-pdf', [ReportController::class, 'exportMitraPdf'])->name('mitra.export-pdf');
                 Route::get('/mitra/export-excel', [ReportController::class, 'exportMitraExcel'])->name('mitra.export-excel');
-
-                // Laporan Harian
-                Route::get('/daily', [ReportController::class, 'dailyReports'])->name('daily');
-                Route::get('/daily/export-pdf', [ReportController::class, 'exportDailyPdf'])->name('daily.export-pdf');
-                Route::get('/daily/export-excel', [ReportController::class, 'exportDailyExcel'])->name('daily.export-excel');
-
-                // Laporan Payout
-                Route::get('/payout', [ReportController::class, 'payouts'])->name('payout');
-                Route::get('/payout/export-pdf', [ReportController::class, 'exportPayoutPdf'])->name('payout.export-pdf');
-                Route::get('/payout/export-excel', [ReportController::class, 'exportPayoutExcel'])->name('payout.export-excel');
             });
-        }); // ✅ Tutup grup 'admin'
+        });
 
-    // --------------------------------------
-    // Rute Mitra
-    // --------------------------------------
+    // ======================================
+    // MITRA
+    // ======================================
     Route::middleware(['password.changed', 'role:mitra'])
         ->prefix('mitra')
         ->name('mitra.')
         ->group(function () {
-            Route::get('/dashboard', [MitraDashboardController::class, 'index'])->name('dashboard');
-            Route::get('/profile', [MitraProfileController::class, 'edit'])->name('profile.edit');
-            Route::put('/profile', [MitraProfileController::class, 'update'])->name('profile.update');
-            Route::get('/password', [MitraPasswordController::class, 'edit'])->name('password.edit');
-            Route::put('/password', [MitraPasswordController::class, 'update'])->name('password.update');
 
-            // ==========================================
-            // TRIP (Fase 3)
-            // ==========================================
-            Route::get('/trips', [MitraTripController::class, 'index'])->name('trips.index');
-            Route::get('/trips/{trip}', [MitraTripController::class, 'show'])->name('trips.show');
+            // Onboarding (di luar `mitra.complete` — agar mitra baru bisa isi data)
+            Route::get('/onboarding', [OnboardingController::class, 'index'])->name('onboarding.index');
+            Route::post('/onboarding', [OnboardingController::class, 'store'])->name('onboarding.store');
 
-            // ✅ Manifest pindah ke ReportController
-            Route::get('/trips/{trip}/manifest', [ReportController::class, 'exportTripManifest'])->name('trips.manifest');
+            // Route di bawah ini memerlukan onboarding selesai
+            Route::middleware('mitra.complete')->group(function () {
 
-            // ==========================================
-            // DAILY REPORT (Fase 4)
-            // ==========================================
-            Route::get('/trips/{trip}/days/{tripDay}/report', [MitraDailyReportController::class, 'create'])->name('daily-reports.create');
-            Route::post('/trips/{trip}/days/{tripDay}/report', [MitraDailyReportController::class, 'store'])->name('daily-reports.store');
-            Route::get('/daily-reports', [MitraDailyReportController::class, 'index'])->name('daily-reports.index');
+                // Dashboard
+                Route::get('/dashboard', [MitraDashboardController::class, 'index'])->name('dashboard');
 
-            // ==========================================
-            // WALLET & PAYOUT (Fase 5)
-            // ==========================================
-            Route::get('/wallet', [MitraWalletController::class, 'index'])->name('wallet.index');
-            Route::get('/payouts', [MitraPayoutController::class, 'index'])->name('payouts.index');
-            Route::get('/payouts/create', [MitraPayoutController::class, 'create'])->name('payouts.create');
-            Route::post('/payouts', [MitraPayoutController::class, 'store'])->name('payouts.store');
-        }); // ✅ Tutup grup 'mitra'
+                // Profile
+                Route::get('/profile', [MitraProfileController::class, 'edit'])->name('profile.edit');
+                Route::put('/profile', [MitraProfileController::class, 'update'])->name('profile.update');
+                Route::put('/profile/bank-accounts', [MitraProfileController::class, 'updateBankAccounts'])
+                    ->name('profile.bank-accounts.update');
 
-    // --------------------------------------
-    // Rute Client
-    // --------------------------------------
+                // Password
+                Route::get('/password', [MitraPasswordController::class, 'edit'])->name('password.edit');
+                Route::put('/password', [MitraPasswordController::class, 'update'])->name('password.update');
+
+                // Package CRUD
+                Route::resource('packages', MitraPackageController::class);
+                Route::post('/packages/{package}/publish', [MitraPackageController::class, 'publish'])->name('packages.publish');
+                Route::post('/packages/{package}/archive', [MitraPackageController::class, 'archive'])->name('packages.archive');
+                Route::post('/packages/{package}/restore', [MitraPackageController::class, 'restore'])->name('packages.restore');
+
+                // Pesanan manual
+                Route::get('/packages/{package}/manual-booking', [ManualBookingController::class, 'create'])->name('packages.manual-booking.create');
+                Route::post('/packages/{package}/manual-booking', [ManualBookingController::class, 'store'])->name('packages.manual-booking.store');
+
+                // Itinerary (days)
+                Route::post('/packages/{package}/days', [MitraPackageDayController::class, 'store'])->name('packages.days.store');
+                Route::put('/package-days/{day}', [MitraPackageDayController::class, 'update'])->name('package-days.update');
+                Route::delete('/package-days/{day}', [MitraPackageDayController::class, 'destroy'])->name('package-days.destroy');
+
+                // Fasilitas
+                Route::post('/packages/{package}/facilities', [MitraPackageFacilityController::class, 'store'])->name('packages.facilities.store');
+                Route::put('/package-facilities/{facility}', [MitraPackageFacilityController::class, 'update'])->name('package-facilities.update');
+                Route::delete('/package-facilities/{facility}', [MitraPackageFacilityController::class, 'destroy'])->name('package-facilities.destroy');
+
+                // Trip
+                Route::get('/trips', [MitraTripController::class, 'index'])->name('trips.index');
+                Route::get('/trips/{trip}', [MitraTripController::class, 'show'])->name('trips.show');
+
+                // Booking
+                Route::prefix('bookings')->name('bookings.')->group(function () {
+                    Route::get('/', [MitraBookingController::class, 'index'])->name('index');
+                    Route::get('/{booking}', [MitraBookingController::class, 'show'])->name('show');
+                    Route::post('/{booking}/cancel', [MitraBookingController::class, 'cancel'])->name('cancel');
+                    Route::post('/{booking}/verify', [MitraBookingController::class, 'verifyPayment'])->name('verify');
+                    Route::post('/{booking}/reject', [MitraBookingController::class, 'rejectPayment'])->name('reject');
+
+                    Route::post('/{booking}/upload-proof', [MitraBookingController::class, 'uploadProof'])
+                        ->middleware('throttle:5,1')
+                        ->name('upload-proof');
+
+                    Route::get('/{booking}/payment-proof', [MitraBookingController::class, 'downloadProof'])
+                        ->middleware('throttle:10,1')
+                        ->name('payment-proof');
+                });
+
+                // Refund
+                Route::get('/refunds', [MitraRefundController::class, 'index'])->name('refunds.index');
+                Route::post('/refunds/{refund}/approve', [MitraRefundController::class, 'approve'])->name('refunds.approve');
+                Route::post('/refunds/{refund}/reject', [MitraRefundController::class, 'reject'])->name('refunds.reject');
+            });
+        });
+
+    // ======================================
+    // CLIENT
+    // ======================================
     Route::middleware(['password.changed', 'role:client'])
         ->prefix('client')
         ->name('client.')
         ->group(function () {
+
+            // Dashboard & profile
             Route::get('/dashboard', [ClientDashboardController::class, 'index'])->name('dashboard');
             Route::get('/profile', [ClientProfileController::class, 'edit'])->name('profile');
             Route::put('/profile', [ClientProfileController::class, 'update'])->name('profile.update');
 
-            // ==========================================
-            // CATALOG (Fase 2)
-            // ==========================================
+            // Katalog
             Route::get('/catalog', [CatalogController::class, 'index'])->name('catalog.index');
             Route::get('/catalog/{package:slug}', [CatalogController::class, 'show'])->name('catalog.show');
 
-            // ==========================================
-            // BOOKING (Fase 2)
-            // ==========================================
-            Route::get('/bookings', [ClientBookingController::class, 'index'])->name('bookings.index');
-            Route::get('/bookings/create/{package}', [ClientBookingController::class, 'create'])->name('bookings.create');
-            Route::post('/bookings/{package}', [ClientBookingController::class, 'store'])->name('bookings.store');
-            Route::get('/bookings/{booking}', [ClientBookingController::class, 'show'])->name('bookings.show');
-            // ✅ Route upload-payment-proof DIHAPUS — client diarahkan ke Xendit Invoice
-            Route::post('/bookings/{booking}/cancel', [ClientBookingController::class, 'cancel'])->name('bookings.cancel');
+            // Booking
+            Route::prefix('bookings')->name('bookings.')->group(function () {
+                Route::get('/', [ClientBookingController::class, 'index'])->name('index');
+                Route::get('/create/{package}', [ClientBookingController::class, 'create'])->name('create');
+                Route::post('/{package}', [ClientBookingController::class, 'store'])->name('store');
+                Route::get('/{booking}', [ClientBookingController::class, 'show'])->name('show');
+                Route::post('/{booking}/cancel', [ClientBookingController::class, 'cancel'])->name('cancel');
 
-            // ==========================================
-            // E-TICKET (Fase 6)
-            // ==========================================
-            Route::get('/e-tickets/{uuid}/download', [ETicketController::class, 'download'])->name('e-tickets.download');
-        }); // ✅ Tutup grup 'client'
+                Route::post('/{booking}/upload-proof', [ClientBookingController::class, 'uploadProof'])
+                    ->middleware('throttle:5,1')
+                    ->name('upload-proof');
 
-}); // ✅ Tutup grup 'auth'
+                Route::get('/{booking}/payment-proof', [ClientBookingController::class, 'downloadProof'])
+                    ->middleware('throttle:10,1')
+                    ->name('payment-proof');
+            });
+
+            // E-Ticket download (file di disk local, route privat + throttle)
+            Route::get('/e-tickets/{uuid}/download', [ETicketController::class, 'download'])
+                ->middleware('throttle:10,1')
+                ->name('e-tickets.download');
+        });
+});

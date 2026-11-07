@@ -4,20 +4,42 @@ namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Client\StoreBookingRequest;
+use App\Http\Requests\Client\UploadPaymentProofRequest;
+use App\Http\Resources\BookingResource;
 use App\Models\Booking;
-use App\Models\ETicket;
 use App\Models\Package;
-use App\Services\Booking\BookingService;
+use App\Services\Booking\BookingCancellationService;
+use App\Services\Booking\BookingCreationService;
+use App\Services\Booking\BookingPaymentService;
+use App\Services\Booking\BookingQueryService;
+use App\Support\Storage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
-use Symfony\Component\HttpFoundation\Response; // ✅ TAMBAHKAN INI
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
-class BookingController extends Controller
+/**
+ * Controller booking untuk client.
+ *
+ * Perubahan dari versi lama:
+ * - `BookingService` dipecah ke 4 service (PRD 5.7).
+ * - `abort_unless` / `authorizeOwnership` -> `$this->authorize` (Policy).
+ * - Validasi upload bukti via `UploadPaymentProofRequest` (S-08).
+ * - Route download bukti transfer privat ditambahkan (S-09/B-01).
+ * - Controller < 100 baris per method (NF-03).
+ * - `Storage::disk()` diganti `App\Support\Storage::disk()` agar
+ *   type-safe (FilesystemAdapter) dan Intelephense mengenali
+ *   method `download()`.
+ */
+final class BookingController extends Controller
 {
     public function __construct(
-        protected BookingService $bookingService,
+        private readonly BookingQueryService $bookingQueryService,
+        private readonly BookingCreationService $bookingCreationService,
+        private readonly BookingPaymentService $bookingPaymentService,
+        private readonly BookingCancellationService $bookingCancellationService,
     ) {}
 
     public function index(Request $request): InertiaResponse
@@ -32,12 +54,11 @@ class BookingController extends Controller
         ];
 
         $perPage = (int) $request->input('per_page', 10);
-        $bookings = $this->bookingService->paginateForClient($client, $filters, $perPage);
 
         return Inertia::render('Client/Bookings/Index', [
-            'bookings' => $bookings,
+            'bookings' => $this->bookingQueryService->paginateForClient($client, $filters, $perPage),
             'filters' => $filters,
-            'statusCounts' => $this->bookingService->countByStatusForClient($client),
+            'statusCounts' => $this->bookingQueryService->countByStatusForClient($client),
         ]);
     }
 
@@ -52,68 +73,102 @@ class BookingController extends Controller
         ]);
     }
 
-    /**
-     * Simpan booking baru & redirect ke Xendit Invoice.
-     */
-    // ✅ UBAH RETURN TYPE: Tambahkan Symfony Response
-    public function store(StoreBookingRequest $request, Package $package): Response|InertiaResponse|RedirectResponse
+    public function store(StoreBookingRequest $request, Package $package): RedirectResponse
     {
-        $booking = $this->bookingService->create(
+        $booking = $this->bookingCreationService->create(
             package: $package,
             client: $request->user(),
             data: $request->validated(),
         );
 
-        // ✅ Gunakan Inertia::location() agar browser melakukan navigasi penuh
-        if ($booking->xendit_invoice_url !== null) {
-            return Inertia::location($booking->xendit_invoice_url);
-        }
-
-        // Fallback jika gagal
         return redirect()
             ->route('client.bookings.show', $booking->id)
-            ->with('status', 'Booking berhasil dibuat, tapi invoice pembayaran gagal dibuat otomatis.');
+            ->with('status', 'Booking berhasil dibuat. Silakan transfer ke rekening Mitra.');
     }
 
     public function show(Request $request, Booking $booking): InertiaResponse
     {
-        $this->authorizeOwnership($request, $booking);
+        $this->authorize('view', $booking);
 
         $booking->load([
             'package:id,nama,kode,slug,timezone,harga_per_orang,harga_per_rombongan,durasi_hari,durasi_malam,cover_image',
             'participants',
             'payments.verifier:id,name,email',
+            'mitra:id,name',
+            'mitra.profile',
+            'mitra.bankAccounts',
+            'refunds' => fn ($query) => $query->latest('id')->limit(1),
         ]);
 
-        $eticket = ETicket::where('booking_id', $booking->id)->first();
+        $eticket = $this->bookingQueryService->getETicketForBooking($booking);
 
         return Inertia::render('Client/Bookings/Show', [
-            'booking' => $booking,
-            'eticket' => $eticket ? [
-                'uuid' => $eticket->uuid,
-                'pdf_url' => asset('storage/'.$eticket->pdf_path),
-                'generated_at' => $eticket->generated_at?->toIso8601String(),
-            ] : null,
+            'booking' => (new BookingResource($booking))->resolve(),
+            'eticket' => $eticket !== null
+                ? [
+                    'uuid' => $eticket->uuid,
+                    'download_url' => route('client.e-tickets.download', $eticket->uuid),
+                    'generated_at' => $eticket->generated_at?->toIso8601String(),
+                ]
+                : null,
+            'refunds' => $booking->refunds
+                ->map(fn ($refund) => [
+                    'id' => $refund->id,
+                    'amount' => (string) $refund->amount,
+                    'status' => $refund->status->value,
+                    'created_at' => $refund->created_at?->toIso8601String(),
+                ])
+                ->values()
+                ->all(),
         ]);
     }
 
     public function cancel(Request $request, Booking $booking): RedirectResponse
     {
-        $this->authorizeOwnership($request, $booking);
+        $this->authorize('cancelByClient', $booking);
 
-        $this->bookingService->cancelByClient($booking);
+        try {
+            $this->bookingCancellationService->cancelByClient($booking);
 
-        return redirect()
-            ->route('client.bookings.show', $booking->id)
-            ->with('status', 'Booking berhasil dibatalkan.');
+            return redirect()
+                ->route('client.bookings.show', $booking->id)
+                ->with('status', 'Booking berhasil dibatalkan.');
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors());
+        }
     }
 
-    protected function authorizeOwnership(Request $request, Booking $booking): void
+    public function uploadProof(UploadPaymentProofRequest $request, Booking $booking): RedirectResponse
     {
-        abort_unless(
-            $booking->user_id === $request->user()->id,
-            403,
-            'Anda tidak memiliki akses ke booking ini.'
+        $this->authorize('uploadProof', $booking);
+
+        $this->bookingPaymentService->uploadProof(
+            $booking,
+            $request->file('payment_proof'),
         );
+
+        return back()->with('status', 'Bukti transfer berhasil diunggah. Menunggu verifikasi Mitra.');
+    }
+
+    /**
+     * Akses privat bukti transfer (S-09/B-01).
+     *
+     * File disimpan di disk `local` sehingga tidak bisa diakses via
+     * `/storage/`. Route ini adalah satu-satunya jalan untuk client
+     * melihat kembali bukti transfer yang ia unggah.
+     */
+    public function downloadProof(Booking $booking): StreamedResponse
+    {
+        $this->authorize('view', $booking);
+
+        $path = $booking->payment_proof_path;
+
+        abort_if($path === null || $path === '', 404);
+
+        $disk = Storage::disk(BookingPaymentService::PROOF_DISK);
+
+        abort_unless($disk->exists($path), 404);
+
+        return $disk->download($path, 'bukti-transfer-'.$booking->kode.'.'.pathinfo($path, PATHINFO_EXTENSION));
     }
 }

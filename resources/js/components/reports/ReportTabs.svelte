@@ -4,8 +4,6 @@
     const tabs = [
         { key: 'pendapatan', label: 'Pendapatan', href: '/admin/reports' },
         { key: 'mitra', label: 'Kinerja Mitra', href: '/admin/reports/mitra' },
-        { key: 'daily', label: 'Rekap Harian', href: '/admin/reports/daily' },
-        { key: 'payout', label: 'Payout', href: '/admin/reports/payout' },
     ];
 </script>
 

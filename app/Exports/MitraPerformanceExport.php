@@ -11,7 +11,6 @@ use Maatwebsite\Excel\Concerns\WithMapping;
 class MitraPerformanceExport implements FromCollection, WithHeadings, WithMapping
 {
     protected string $startDate;
-
     protected string $endDate;
 
     public function __construct(string $startDate, string $endDate)
@@ -20,37 +19,32 @@ class MitraPerformanceExport implements FromCollection, WithHeadings, WithMappin
         $this->endDate = $endDate;
     }
 
-    /**
-     * @return Collection<int, User>
-     */
     public function collection(): Collection
     {
         return User::where('role', 'mitra')
-            ->withCount(['tripMitras as total_trip' => function ($q) {
-                $q->whereHas('trip', function ($tq) {
-                    $tq->where('status', 'completed')
-                        ->whereBetween('tanggal_mulai', [$this->startDate, $this->endDate]);
-                });
+            ->withCount(['trips as total_trip' => function ($q) {
+                $q->where('status', 'completed')
+                  ->whereBetween('tanggal_mulai', [$this->startDate, $this->endDate]);
             }])
-            ->withSum(['tripMitras as total_honor' => function ($q) {
-                $q->whereHas('trip', function ($tq) {
-                    $tq->where('status', 'completed')
-                        ->whereBetween('tanggal_mulai', [$this->startDate, $this->endDate]);
-                });
-            }], 'honor')
-            ->orderByDesc('total_honor')
+            ->withSum(['mitraBookings as total_revenue' => function ($q) {
+                $q->whereIn('status', ['confirmed', 'completed'])
+                  ->whereBetween('created_at', [$this->startDate.' 00:00:00', $this->endDate.' 23:59:59']);
+            }], 'total_harga')
+            ->orderByDesc('total_revenue')
             ->get();
     }
 
     public function headings(): array
     {
-        return ['ID Mitra', 'Nama Mitra', 'Email', 'Total Trip Selesai', 'Total Honor Diterima'];
+        return [
+            'ID Mitra',
+            'Nama Mitra',
+            'Email',
+            'Total Trip Selesai',
+            'Total Revenue (Rp)',
+        ];
     }
 
-    /**
-     * @param  User  $mitra
-     * @return array<int, mixed>
-     */
     public function map($mitra): array
     {
         return [
@@ -58,7 +52,7 @@ class MitraPerformanceExport implements FromCollection, WithHeadings, WithMappin
             $mitra->name,
             $mitra->email,
             $mitra->total_trip ?? 0,
-            $mitra->total_honor ?? 0,
+            (float) ($mitra->total_revenue ?? 0),
         ];
     }
 }

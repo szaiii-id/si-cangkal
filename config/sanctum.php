@@ -61,11 +61,15 @@ return [
     | security scanning initiatives maintained by open source platforms
     | that notify developers if they commit tokens into repositories.
     |
-    | See: https://docs.github.com/en/code-security/secret-scanning/about-secret-scanning
+    | Nilai default `ttm_` (Titiktemu) memudahkan secret scanner (GitHub,
+    | GitGuardian, dll.) mendeteksi token yang bocor di repository publik.
+    | Override via SANCTUM_TOKEN_PREFIX di .env bila perlu.
+    |
+    | Lihat: https://docs.github.com/en/code-security/secret-scanning/about-secret-scanning
     |
     */
 
-    'token_prefix' => env('SANCTUM_TOKEN_PREFIX', ''),
+    'token_prefix' => env('SANCTUM_TOKEN_PREFIX', 'ttm_'),
 
     /*
     |--------------------------------------------------------------------------

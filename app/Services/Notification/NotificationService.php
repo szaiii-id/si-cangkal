@@ -6,10 +6,21 @@ use App\Models\AppNotification;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
-class NotificationService
+/**
+ * NotificationService — Pengelola Notifikasi In-App (Database).
+ *
+ * Fokus HANYA pada penyimpanan dan pembacaan notifikasi dari tabel
+ * `notifications` (schema custom `AppNotification`).
+ *
+ * TIDAK bertanggung jawab untuk push notification (FCM) —
+ * itu tugas `FirebaseNotificationService` dan `NotificationDispatcher`.
+ */
+final class NotificationService
 {
     /**
-     * @param  array<string, mixed>  $data
+     * Simpan notifikasi in-app baru.
+     *
+     * @param  array<string, mixed>  $data  Metadata tambahan (mis. booking_id).
      */
     public function create(
         User $user,
@@ -46,6 +57,9 @@ class NotificationService
             ->paginate($perPage);
     }
 
+    /**
+     * Hitung notifikasi yang belum dibaca.
+     */
     public function unreadCount(User $user): int
     {
         return AppNotification::query()
@@ -54,6 +68,9 @@ class NotificationService
             ->count();
     }
 
+    /**
+     * Tandai satu notifikasi sebagai sudah dibaca.
+     */
     public function markAsRead(AppNotification $notif): void
     {
         if ($notif->isRead()) {
@@ -63,6 +80,9 @@ class NotificationService
         $notif->update(['read_at' => now()]);
     }
 
+    /**
+     * Tandai SEMUA notifikasi user sebagai sudah dibaca.
+     */
     public function markAllAsRead(User $user): void
     {
         AppNotification::query()

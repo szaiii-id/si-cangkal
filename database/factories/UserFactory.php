@@ -12,14 +12,9 @@ use Illuminate\Support\Str;
  */
 class UserFactory extends Factory
 {
-    /**
-     * Password default yang di-cache agar tidak di-hash berulang kali.
-     */
     protected static ?string $password = null;
 
     /**
-     * Define the model's default state.
-     *
      * @return array<string, mixed>
      */
     public function definition(): array
@@ -33,13 +28,11 @@ class UserFactory extends Factory
             'google_id' => null,
             'role' => 'client',
             'timezone' => User::DEFAULT_TIMEZONE,
+            'must_change_password' => false,
             'remember_token' => Str::random(10),
         ];
     }
 
-    /**
-     * State: user belum verifikasi email.
-     */
     public function unverified(): static
     {
         return $this->state(fn (array $attributes) => [
@@ -47,9 +40,6 @@ class UserFactory extends Factory
         ]);
     }
 
-    /**
-     * State: user dengan role admin.
-     */
     public function admin(): static
     {
         return $this->state(fn (array $attributes) => [
@@ -57,9 +47,6 @@ class UserFactory extends Factory
         ]);
     }
 
-    /**
-     * State: user dengan role mitra.
-     */
     public function mitra(): static
     {
         return $this->state(fn (array $attributes) => [
@@ -67,9 +54,6 @@ class UserFactory extends Factory
         ]);
     }
 
-    /**
-     * State: user dengan role client.
-     */
     public function client(): static
     {
         return $this->state(fn (array $attributes) => [
@@ -77,9 +61,6 @@ class UserFactory extends Factory
         ]);
     }
 
-    /**
-     * State: user yang login via Google (tanpa password).
-     */
     public function googleUser(): static
     {
         return $this->state(fn (array $attributes) => [

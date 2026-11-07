@@ -3,6 +3,7 @@
 namespace App\Services\Auth;
 
 use App\Models\User;
+use App\Repositories\Contracts\ProfileRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
@@ -15,8 +16,10 @@ class AuthService
 {
     protected UserRepositoryInterface $userRepository;
 
-    public function __construct(UserRepositoryInterface $userRepository)
-    {
+    public function __construct(
+        UserRepositoryInterface $userRepository,
+        protected ProfileRepositoryInterface $profileRepository,
+    ) {
         $this->userRepository = $userRepository;
     }
 
@@ -28,6 +31,34 @@ class AuthService
     public function registerClient(array $data): User
     {
         $user = $this->userRepository->createClient($data);
+
+        Auth::login($user);
+
+        return $user;
+    }
+
+    /**
+     * Logika untuk mendaftarkan Mitra baru.
+     *
+     * Mitra daftar mandiri → role 'mitra' → profile dibuat kosong
+     * (diisi nanti di /mitra/onboarding) → langsung login.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function registerMitra(array $data): User
+    {
+        $user = $this->userRepository->createUser([
+            'name' => $data['name'],
+            'username' => $data['username'] ?? null,
+            'email' => $data['email'],
+            'password' => $data['password'],
+            'role' => 'mitra',
+            'must_change_password' => false,
+        ]);
+
+        $this->profileRepository->createForUser($user, [
+            'tipe' => 'mitra',
+        ]);
 
         Auth::login($user);
 

@@ -10,6 +10,7 @@
         StatusTab,
         Trip,
         TripStatus,
+        UserMini,
     } from '@/types';
     import {
         tripStatusBadge,
@@ -45,7 +46,6 @@
         trips: PaginationMeta & {
             data: Array<
                 Trip & {
-                    mitras_count: number;
                     package?: {
                         id: number;
                         nama: string;
@@ -61,6 +61,7 @@
                             email: string;
                         } | null;
                     } | null;
+                    mitra?: Pick<UserMini, 'id' | 'name'> | null;
                 }
             >;
         };
@@ -79,9 +80,6 @@
     // STATE
     // ==========================================
 
-    // Filter state — di-init dari props `filters` (initial value).
-    // Setelah user ubah filter → router.get() → Inertia reload → komponen
-    // re-mount → state re-init dari filters baru. Jadi tidak perlu sync.
     // svelte-ignore state_referenced_locally
     let search = $state(filters.search ?? '');
     // svelte-ignore state_referenced_locally
@@ -181,11 +179,6 @@
     // HELPERS — TIMEZONE AWARE
     // ==========================================
 
-    /**
-     * Cek apakah trip sedang berjalan hari ini, berdasarkan timezone trip.
-     *
-     * PRD §9.6: "hari ini" dihitung di trip.timezone, bukan browser.
-     */
     function isTripToday(trip: Trip): boolean {
         const tz = trip.timezone;
         const today = todayInTimezone(tz);
@@ -194,13 +187,13 @@
 </script>
 
 <svelte:head>
-    <title>Trip Management | Titiktemu</title>
+    <title>Jadwal Perjalanan | Titiktemu</title>
 </svelte:head>
 
-<DashboardLayout title="Trip" menuItems={adminMenu}>
+<DashboardLayout title="Jadwal Perjalanan" menuItems={adminMenu}>
     <PageHeader
-        title="Trip Management"
-        description="Kelola trip yang sedang berjalan — assign mitra, aktifkan, atau selesaikan."
+        title="Jadwal Perjalanan"
+        description="Pantau semua jadwal perjalanan (trip) yang sedang berjalan."
     />
 
     <!-- Card -->
@@ -211,7 +204,7 @@
         <FilterBar
             bind:search
             onSearch={handleSearch}
-            searchPlaceholder="Cari kode trip, kode booking, paket, atau nama client..."
+            searchPlaceholder="Cari kode trip, kode pesanan, paket, atau nama pelanggan..."
             statusTabs={statusTabs}
             bind:selectedStatus
             onStatusChange={changeStatus}
@@ -230,11 +223,11 @@
             <EmptyState
                 icon="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 title={hasActiveFilters
-                    ? 'Tidak ada trip ditemukan'
-                    : 'Belum ada trip'}
+                    ? 'Tidak ada jadwal ditemukan'
+                    : 'Belum ada jadwal'}
                 description={hasActiveFilters
                     ? 'Coba ubah filter atau kata kunci pencarian Anda.'
-                    : 'Trip akan otomatis dibuat saat booking client dikonfirmasi.'}
+                    : 'Jadwal perjalanan akan otomatis dibuat saat pesanan pelanggan dikonfirmasi.'}
                 hasFilters={hasActiveFilters}
                 onClear={clearFilters}
             />
@@ -248,12 +241,12 @@
                             <th
                                 class="text-left px-6 py-4 font-extrabold text-gray-500 text-[10px] uppercase tracking-widest"
                             >
-                                Trip
+                                Perjalanan
                             </th>
                             <th
                                 class="text-left px-6 py-4 font-extrabold text-gray-500 text-[10px] uppercase tracking-widest hidden md:table-cell"
                             >
-                                Client
+                                Pelanggan
                             </th>
                             <th
                                 class="text-left px-6 py-4 font-extrabold text-gray-500 text-[10px] uppercase tracking-widest hidden lg:table-cell"
@@ -385,42 +378,16 @@
                                 <td
                                     class="px-6 py-4 text-center hidden sm:table-cell"
                                 >
-                                    {#if trip.mitras_count > 0}
+                                    {#if trip.mitra}
                                         <span
                                             class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-green/10 text-green-text border border-green/20"
                                         >
-                                            <svg
-                                                class="w-3 h-3"
-                                                fill="none"
-                                                viewBox="0 0 24 24"
-                                                stroke="currentColor"
-                                                stroke-width="2.5"
-                                            >
-                                                <path
-                                                    stroke-linecap="round"
-                                                    stroke-linejoin="round"
-                                                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
-                                                />
-                                            </svg>
-                                            {trip.mitras_count}
+                                            {trip.mitra.name}
                                         </span>
                                     {:else}
                                         <span
                                             class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-red-50 text-red-700 border border-red-200"
                                         >
-                                            <svg
-                                                class="w-3 h-3"
-                                                fill="none"
-                                                viewBox="0 0 24 24"
-                                                stroke="currentColor"
-                                                stroke-width="2.5"
-                                            >
-                                                <path
-                                                    stroke-linecap="round"
-                                                    stroke-linejoin="round"
-                                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                                                />
-                                            </svg>
                                             Belum ada
                                         </span>
                                     {/if}
@@ -473,7 +440,7 @@
             </div>
 
             <!-- Pagination -->
-            <Pagination meta={trips} label="trip" />
+            <Pagination meta={trips} label="perjalanan" />
         {/if}
     </div>
 </DashboardLayout>

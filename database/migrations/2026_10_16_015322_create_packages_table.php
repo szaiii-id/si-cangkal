@@ -10,6 +10,11 @@ return new class extends Migration
     {
         Schema::create('packages', function (Blueprint $table) {
             $table->id();
+            
+            // Relasi Mitra
+            $table->foreignId('mitra_id')
+                ->constrained('users')
+                ->restrictOnDelete();
 
             $table->string('kode', 50)->unique();
             $table->string('nama');
@@ -24,23 +29,16 @@ return new class extends Migration
             $table->decimal('harga_per_orang', 12, 2);
             $table->decimal('harga_per_rombongan', 12, 2)->nullable();
 
-            $table->unsignedSmallInteger('min_peserta')->default(1);
-            $table->unsignedSmallInteger('max_peserta')->default(20);
+            $table->unsignedSmallInteger('max_peserta')->nullable();
 
             $table->string('timezone', 50)->default('Asia/Makassar');
-
             $table->string('cover_image')->nullable();
-
             $table->string('status', 20)->default('draft');
-
-            $table->foreignId('created_by')
-                ->constrained('users')
-                ->restrictOnDelete();
 
             $table->timestamps();
             $table->softDeletes();
 
-            $table->index('status');
+            $table->index(['mitra_id', 'status']);
             $table->index('kategori');
         });
     }

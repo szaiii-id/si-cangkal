@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { inertia, router, page } from '@inertiajs/svelte';
+    import { router, page } from '@inertiajs/svelte';
     import { calculatePasswordStrength, isPasswordMismatch } from '../../utils/passwordStrength';
 
     let { mustChangePassword = false }: { mustChangePassword?: boolean } = $props();

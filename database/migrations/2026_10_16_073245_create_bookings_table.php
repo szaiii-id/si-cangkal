@@ -6,71 +6,37 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     *
-     * Tabel `bookings` — pesanan client untuk sebuah paket wisata.
-     *
-     * Alur status:
-     *   pending_payment → payment_verified → confirmed → in_progress → completed
-     *                                                       ↘ cancelled
-     *
-     * Catatan timezone:
-     * - `tanggal_keberangkatan` adalah DATE murni (netral timezone).
-     * - `expired_at` adalah TIMESTAMP UTC (created_at + 24 jam).
-     * - `created_at`, `updated_at`, `deleted_at` UTC.
-     *
-     * Catatan soft delete:
-     * - Booking yang sudah ada tidak boleh dihapus permanen.
-     * - Soft delete untuk audit trail.
-     *
-     * Catatan enum:
-     * - `status` disimpan sebagai string + PHP Enum cast di model.
-     *
-     * Catatan Xendit:
-     * - `xendit_invoice_id` & `xendit_invoice_url` disimpan untuk tracking
-     *   dan redirect client ke halaman pembayaran Xendit.
-     */
     public function up(): void
     {
         Schema::create('bookings', function (Blueprint $table) {
             $table->id();
+            $table->string('kode', 50)->unique();
 
-            // Identitas
-            $table->string('kode', 50)->unique();         // BKG-2026-001
+            $table->foreignId('package_id')->constrained('packages')->restrictOnDelete();
+            $table->foreignId('user_id')->constrained('users')->restrictOnDelete();
+            
+            // Relasi Mitra (Denormalisasi)
+            $table->foreignId('mitra_id')->constrained('users')->restrictOnDelete();
 
-            // Relasi
-            $table->foreignId('package_id')
-                ->constrained('packages')
-                ->restrictOnDelete();
-
-            $table->foreignId('user_id')                  // client
-                ->constrained('users')
-                ->restrictOnDelete();
-
-            // Detail booking
-            $table->date('tanggal_keberangkatan');        // DATE murni
+            $table->date('tanggal_keberangkatan');
             $table->unsignedSmallInteger('jumlah_peserta');
             $table->decimal('total_harga', 12, 2);
 
-            // Status
             $table->string('status', 30)->default('pending_payment');
-            // pending_payment | payment_verified | confirmed | in_progress | completed | cancelled
 
-            // Menyimpan ID Invoice dari Xendit & URL untuk redirect client
-            $table->string('xendit_invoice_id')->nullable()->after('status');
-            $table->string('xendit_invoice_url', 500)->nullable()->after('xendit_invoice_id');
+            // Pembayaran Manual
+            $table->string('payment_proof_path')->nullable()->after('status');
+            $table->timestamp('payment_verified_at')->nullable()->after('payment_proof_path');
+            $table->text('payment_reject_reason')->nullable()->after('payment_verified_at');
 
-            // Auto-expire
-            $table->timestamp('expired_at')->nullable();  // UTC, created_at + 24h
-
-            // Catatan client
+            $table->timestamp('expired_at')->nullable();
             $table->text('catatan')->nullable();
 
             $table->timestamps();
             $table->softDeletes();
 
-            // Index untuk query umum
+            $table->index(['mitra_id', 'status']);
+            $table->index(['mitra_id', 'created_at']);
             $table->index('status');
             $table->index('user_id');
             $table->index('package_id');
@@ -79,9 +45,6 @@ return new class extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('bookings');

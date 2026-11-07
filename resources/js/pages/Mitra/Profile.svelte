@@ -2,8 +2,9 @@
     import DashboardLayout from '@/components/layout/DashboardLayout.svelte';
     import PageHeader from '@/global/PageHeader.svelte';
     import ImageUploader from '@/global/ImageUploader.svelte';
-    import { inertia, router, page } from '@inertiajs/svelte';
-    import type { Profile } from '@/types';
+    import { router, page } from '@inertiajs/svelte';
+    import type { Profile, BankAccount } from '@/types';
+    import { showToast } from '@/utils/toast.svelte';
     import { mitraMenu } from '@/utils/menus';
 
     // ==========================================
@@ -26,17 +27,16 @@
 
     let {
         profile,
+        bankAccounts = [],
     }: {
         profile: ProfileData | null;
+        bankAccounts?: BankAccount[];
     } = $props();
 
     // ==========================================
-    // STATE
+    // STATE - PROFILE
     // ==========================================
 
-    // Form state — di-init dari props `profile` (initial value).
-    // Setelah submit → router.post → Inertia reload → komponen re-mount
-    // → form re-init. Jadi tidak perlu sync via $effect.
     // svelte-ignore state_referenced_locally
     let form = $state({
         nama_penyedia_usaha: profile?.nama_penyedia_usaha ?? '',
@@ -62,10 +62,48 @@
     let user = $derived(page.props.auth?.user);
 
     // ==========================================
-    // SUBMIT
+    // STATE - BANK ACCOUNTS
+    // ==========================================
+    
+    type BankFormItem = {
+        tipe: 'bank' | 'ewallet';
+        namaPenyedia: string;
+        nomorRekening: string;
+        namaPemilik: string;
+    };
+
+    // Pastikan data dari backend benar-benar array
+    let safeAccounts: any[] = [];
+    if (Array.isArray(bankAccounts)) {
+        safeAccounts = bankAccounts;
+    } else if (bankAccounts && typeof bankAccounts === 'object' && 'data' in bankAccounts) {
+        safeAccounts = (bankAccounts as any).data;
+    }
+
+    let bankForm = $state<{ accounts: BankFormItem[]; password: string }>({
+        accounts: safeAccounts.length > 0 
+            ? safeAccounts.map(a => ({ 
+                tipe: a.tipe, 
+                // Antisipasi jika backend mengirim snake_case (nama_penyedia) atau camelCase (namaPenyedia)
+                namaPenyedia: a.namaPenyedia ?? a.nama_penyedia ?? '', 
+                nomorRekening: a.nomorRekening ?? a.nomor_rekening ?? '', 
+                namaPemilik: a.namaPemilik ?? a.nama_pemilik ?? '' 
+            })) 
+            : [{ tipe: 'bank', namaPenyedia: '', nomorRekening: '', namaPemilik: '' }],
+        password: '' 
+    });
+    
+    let bankErrors = $state<Record<string, string>>({});
+    let bankProcessing = $state(false);
+
+    const BANK_OPTIONS = ['BCA', 'BNI', 'BRI', 'MANDIRI', 'PERMATA', 'CIMB', 'DANAMON', 'BSI'];
+    const EWALLET_OPTIONS = ['DANA', 'OVO', 'SHOPEEPAY', 'LINKAJA', 'GOPAY'];
+
+    // ==========================================
+    // HANDLERS - PROFILE
     // ==========================================
 
-    function handleSubmit(e: SubmitEvent) {
+    function handleSubmitProfile(e: SubmitEvent) {
         e.preventDefault();
         errors = {};
         processing = true;
@@ -89,482 +127,294 @@
             forceFormData: true,
             onError: (err) => {
                 errors = err as Record<string, string>;
+                showToast('Gagal menyimpan profil. Periksa kembali.', 'error');
                 processing = false;
+            },
+            onSuccess: () => {
+                showToast('Profil berhasil diperbarui.', 'success');
             },
             onFinish: () => {
                 processing = false;
             },
         });
     }
+
+    // ==========================================
+    // HANDLERS - BANK ACCOUNTS
+    // ==========================================
+
+    function addBankAccount() {
+        bankForm.accounts.push({ 
+            tipe: 'bank', 
+            namaPenyedia: '', 
+            nomorRekening: '', 
+            namaPemilik: '' 
+        });
+    }
+
+    function removeBankAccount(index: number) {
+        if (bankForm.accounts.length > 1) {
+            bankForm.accounts.splice(index, 1);
+        } else {
+            showToast('Minimal harus ada 1 rekening.', 'warning');
+        }
+    }
+
+    function handleNomorRekeningInput(index: number, value: string) {
+        bankForm.accounts[index].nomorRekening = value.replace(/\D/g, '');
+    }
+
+    function handleTipeChange(index: number, newTipe: string) {
+        bankForm.accounts[index].tipe = newTipe as 'bank' | 'ewallet';
+        bankForm.accounts[index].namaPenyedia = '';
+    }
+
+    function handleSubmitBank(e: SubmitEvent) {
+        e.preventDefault();
+        bankErrors = {};
+        bankProcessing = true;
+
+        // Konversi kembali ke snake_case sebelum dikirim ke Backend
+        const payload = {
+            password: bankForm.password,
+            accounts: bankForm.accounts.map(acc => ({
+                tipe: acc.tipe,
+                nama_penyedia: acc.namaPenyedia,
+                nomor_rekening: acc.nomorRekening,
+                nama_pemilik: acc.namaPemilik,
+            }))
+        };
+
+        router.put('/mitra/profile/bank-accounts', payload, {
+            preserveScroll: true,
+            onError: (err) => {
+                bankErrors = err as Record<string, string>;
+                showToast('Gagal memperbarui rekening. Pastikan password benar.', 'error');
+                bankProcessing = false;
+            },
+            onSuccess: () => {
+                bankForm.password = '';
+                showToast('Data rekening berhasil diperbarui.', 'success');
+            },
+            onFinish: () => {
+                bankProcessing = false;
+            },
+        });
+    }
 </script>
 
 <svelte:head>
-    <title>Profile Usaha | Titiktemu</title>
+    <title>Profil Usaha | Titiktemu</title>
 </svelte:head>
 
-<DashboardLayout title="Profile Usaha" menuItems={mitraMenu}>
+<DashboardLayout title="Profil Usaha" menuItems={mitraMenu}>
     <PageHeader
-        title="Profile Usaha"
-        description="Kelola informasi usaha Anda. Data ini akan ditampilkan ke client."
+        title="Profil Usaha"
+        description="Kelola informasi usaha dan rekening pembayaran Anda."
     />
 
-    <!-- Error Alert -->
-    {#if errorCount > 0}
-        <div
-            class="mb-5 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-2xl flex items-start gap-3"
-        >
-            <svg
-                class="w-5 h-5 text-red-500 shrink-0 mt-0.5"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                aria-hidden="true"
-            >
-                <path
-                    fill-rule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                    clip-rule="evenodd"
-                />
-            </svg>
-            <div>
-                <p class="text-sm text-red-700 font-bold">
-                    Terdapat {errorCount} kesalahan pada form
-                </p>
-                <p class="text-xs text-red-600 mt-0.5">
-                    Silakan periksa kembali data yang Anda masukkan.
-                </p>
-            </div>
-        </div>
-    {/if}
-
-    <form onsubmit={handleSubmit} class="max-w-4xl mx-auto space-y-5">
-        <!-- ==========================================
-             CARD HEADER: Logo + Info Usaha
-        ========================================== -->
-        <div
-            class="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden"
-        >
-            <div class="p-5 sm:p-6">
-                <div
-                    class="flex flex-col sm:flex-row items-center sm:items-start gap-5"
-                >
-                    <!-- Logo Uploader -->
-                    <div class="shrink-0 w-full sm:w-32">
-                        <ImageUploader
-                            bind:files={logoFiles}
-                            existingUrls={existingLogo}
-                            maxFiles={1}
-                            maxSizeMB={2}
-                            accept="image/jpeg,image/png,image/svg+xml,image/webp"
-                            single
-                            label="Logo Usaha"
-                            validationLabel="logo"
-                            error={errors.logo}
-                            onRemoveExisting={() => {
-                                existingLogo = [];
-                            }}
-                        />
-                    </div>
-
-                    <!-- Info -->
-                    <div
-                        class="flex-1 min-w-0 text-center sm:text-left"
-                    >
-                        <div
-                            class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue/10 text-blue text-[10px] font-extrabold mb-2"
-                        >
-                            <svg
-                                class="w-3 h-3"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                                stroke-width="2.5"
-                                aria-hidden="true"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                                />
-                            </svg>
-                            MITRA
-                        </div>
-                        <h2
-                            class="text-xl font-extrabold text-dark truncate"
-                            data-testid="display-nama-usaha" 
-                        >
-                            {form.nama_penyedia_usaha ||
-                                user?.name ||
-                                'Nama Usaha'}
-                        </h2>
-                        <p class="text-sm text-gray-500 truncate mt-0.5">
-                            {user?.email}
-                        </p>
-                        <p
-                            class="text-xs text-gray-500 mt-2 leading-relaxed"
-                        >
-                            Logo disarankan rasio 1:1, format
-                            JPG/PNG/SVG/WEBP, maks 2MB.
-                        </p>
-                    </div>
-                </div>
-
-                {#if errors.logo}
-                    <p
-                        class="text-pink text-[11px] mt-3 font-bold text-center sm:text-left"
-                    >
-                        {errors.logo}
-                    </p>
-                {/if}
-            </div>
-        </div>
-
-        <!-- ==========================================
-             CARD: Data Usaha
-        ========================================== -->
-        <div
-            class="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden"
-        >
-            <div
-                class="p-5 sm:p-6 border-b border-gray-100 flex items-center gap-3"
-            >
-                <div
-                    class="w-9 h-9 rounded-2xl bg-blue/10 text-blue flex items-center justify-center shrink-0"
-                >
-                    <svg
-                        class="w-4 h-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        aria-hidden="true"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                        />
-                    </svg>
-                </div>
-                <div>
-                    <h3 class="text-base font-extrabold text-dark">
-                        Data Usaha
-                    </h3>
-                    <p class="text-xs text-gray-500">
-                        Informasi utama usaha Anda
-                    </p>
-                </div>
-            </div>
-
-            <div class="p-5 sm:p-6 space-y-5">
-                <!-- Nama Usaha -->
-                <div>
-                    <label
-                        for="nama_penyedia_usaha"
-                        class="block text-xs font-bold text-dark mb-1.5"
-                    >
-                        Nama Usaha
-                    </label>
-                    <input
-                        id="nama_penyedia_usaha"
-                        type="text"
-                        bind:value={form.nama_penyedia_usaha}
-                        placeholder={user?.name ?? 'Nama usaha Anda'}
-                        class="w-full px-4 py-2.5 border rounded-xl bg-gray-50 text-sm font-medium placeholder-gray-400 focus:outline-none transition-all
-                            {errors.nama_penyedia_usaha
-                            ? 'border-red-300 bg-red-50 focus:ring-2 focus:ring-red-100 focus:border-red-500'
-                            : 'border-gray-200 focus:ring-2 focus:ring-pink/10 focus:border-pink focus:bg-white'}"
-                    />
-                    <p class="text-[11px] text-gray-500 mt-1">
-                        Kosongkan untuk menggunakan nama Anda (<strong
-                            >{user?.name}</strong
-                        >).
-                    </p>
-                    {#if errors.nama_penyedia_usaha}
-                        <p class="text-pink text-[11px] mt-1 font-bold">
-                            {errors.nama_penyedia_usaha}
-                        </p>
-                    {/if}
-                </div>
-
-                <!-- Nomor Identitas -->
-                <div>
-                    <label
-                        for="nomor_identitas"
-                        class="block text-xs font-bold text-dark mb-1.5"
-                    >
-                        Nomor Identitas
-                    </label>
-                    <input
-                        id="nomor_identitas"
-                        type="text"
-                        bind:value={form.nomor_identitas}
-                        placeholder="NIK atau NPWP"
-                        class="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm font-medium placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink/10 focus:border-pink focus:bg-white transition-all"
-                    />
-                    {#if errors.nomor_identitas}
-                        <p class="text-pink text-[11px] mt-1 font-bold">
-                            {errors.nomor_identitas}
-                        </p>
-                    {/if}
-                </div>
-
-                <!-- Deskripsi -->
-                <div>
-                    <label
-                        for="deskripsi"
-                        class="block text-xs font-bold text-dark mb-1.5"
-                    >
-                        Deskripsi Usaha
-                    </label>
-                    <textarea
-                        id="deskripsi"
-                        bind:value={form.deskripsi}
-                        rows="3"
-                        placeholder="Ceritakan singkat tentang usaha Anda..."
-                        class="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm font-medium placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink/10 focus:border-pink focus:bg-white transition-all resize-none"
-                    ></textarea>
-                    {#if errors.deskripsi}
-                        <p class="text-pink text-[11px] mt-1 font-bold">
-                            {errors.deskripsi}
-                        </p>
-                    {/if}
-                </div>
-            </div>
-        </div>
-
-        <!-- ==========================================
-             CARD: Kontak & Alamat
-        ========================================== -->
-        <div
-            class="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden"
-        >
-            <div
-                class="p-5 sm:p-6 border-b border-gray-100 flex items-center gap-3"
-            >
-                <div
-                    class="w-9 h-9 rounded-2xl bg-purple/10 text-purple flex items-center justify-center shrink-0"
-                >
-                    <svg
-                        class="w-4 h-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        aria-hidden="true"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                        />
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                        />
-                    </svg>
-                </div>
-                <div>
-                    <h3 class="text-base font-extrabold text-dark">
-                        Kontak & Alamat
-                    </h3>
-                    <p class="text-xs text-gray-500">
-                        Informasi kontak dan lokasi usaha
-                    </p>
-                </div>
-            </div>
-
-            <div class="p-5 sm:p-6 space-y-5">
-                <!-- Telepon -->
-                <div>
-                    <label
-                        for="telepon"
-                        class="block text-xs font-bold text-dark mb-1.5"
-                    >
-                        Telepon
-                    </label>
-                    <input
-                        id="telepon"
-                        type="text"
-                        bind:value={form.telepon}
-                        placeholder="+62 812 3456 7890"
-                        class="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm font-medium placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink/10 focus:border-pink focus:bg-white transition-all"
-                    />
-                    {#if errors.telepon}
-                        <p class="text-pink text-[11px] mt-1 font-bold">
-                            {errors.telepon}
-                        </p>
-                    {/if}
-                </div>
-
-                <!-- Alamat -->
-                <div>
-                    <label
-                        for="alamat"
-                        class="block text-xs font-bold text-dark mb-1.5"
-                    >
-                        Alamat
-                    </label>
-                    <textarea
-                        id="alamat"
-                        bind:value={form.alamat}
-                        rows="2"
-                        placeholder="Alamat lengkap"
-                        class="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm font-medium placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink/10 focus:border-pink focus:bg-white transition-all resize-none"
-                    ></textarea>
-                    {#if errors.alamat}
-                        <p class="text-pink text-[11px] mt-1 font-bold">
-                            {errors.alamat}
-                        </p>
-                    {/if}
-                </div>
-
-                <!-- Grid 3 kolom -->
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div class="max-w-4xl mx-auto space-y-8 pb-10">
+        
+        <!-- ========================================== -->
+        <!-- FORM 1: PROFIL USAHA -->
+        <!-- ========================================== -->
+        <form onsubmit={handleSubmitProfile} class="space-y-5">
+            <!-- Error Alert Profil -->
+            {#if errorCount > 0}
+                <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-2xl flex items-start gap-3">
+                    <svg class="w-5 h-5 text-red-500 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg>
                     <div>
-                        <label
-                            for="provinsi"
-                            class="block text-xs font-bold text-dark mb-1.5"
-                        >
-                            Provinsi
-                        </label>
-                        <input
-                            id="provinsi"
-                            type="text"
-                            bind:value={form.provinsi}
-                            placeholder="Contoh: Bali"
-                            class="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm font-medium placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink/10 focus:border-pink focus:bg-white transition-all"
-                        />
-                        {#if errors.provinsi}
-                            <p
-                                class="text-pink text-[11px] mt-1 font-bold"
-                            >
-                                {errors.provinsi}
-                            </p>
-                        {/if}
-                    </div>
-                    <div>
-                        <label
-                            for="kota"
-                            class="block text-xs font-bold text-dark mb-1.5"
-                        >
-                            Kota
-                        </label>
-                        <input
-                            id="kota"
-                            type="text"
-                            bind:value={form.kota}
-                            placeholder="Contoh: Denpasar"
-                            class="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm font-medium placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink/10 focus:border-pink focus:bg-white transition-all"
-                        />
-                        {#if errors.kota}
-                            <p
-                                class="text-pink text-[11px] mt-1 font-bold"
-                            >
-                                {errors.kota}
-                            </p>
-                        {/if}
-                    </div>
-                    <div>
-                        <label
-                            for="kode_pos"
-                            class="block text-xs font-bold text-dark mb-1.5"
-                        >
-                            Kode Pos
-                        </label>
-                        <input
-                            id="kode_pos"
-                            type="text"
-                            bind:value={form.kode_pos}
-                            placeholder="80119"
-                            class="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm font-medium placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink/10 focus:border-pink focus:bg-white transition-all"
-                        />
-                        {#if errors.kode_pos}
-                            <p
-                                class="text-pink text-[11px] mt-1 font-bold"
-                            >
-                                {errors.kode_pos}
-                            </p>
-                        {/if}
+                        <p class="text-sm text-red-700 font-bold">Terdapat {errorCount} kesalahan pada form profil</p>
+                        <p class="text-xs text-red-600 mt-0.5">Silakan periksa kembali data yang Anda masukkan.</p>
                     </div>
                 </div>
-            </div>
-        </div>
+            {/if}
 
-        <!-- ==========================================
-             ACTIONS (sticky bottom)
-        ========================================== -->
-        <div class="sticky bottom-3 sm:bottom-4 z-10">
-            <div
-                class="bg-white rounded-3xl border border-gray-200 shadow-lg p-4 flex flex-col-reverse sm:flex-row gap-2"
-            >
-                <a
-                    href="/mitra/dashboard"
-                    use:inertia
-                    class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-white border border-gray-200 text-dark font-bold text-sm hover:bg-gray-50 transition-all"
-                >
-                    <svg
-                        class="w-4 h-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        stroke-width="2.5"
-                        aria-hidden="true"
+            <div class="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
+                <div class="p-5 sm:p-6 border-b border-gray-100 flex items-center justify-between">
+                    <div>
+                        <h2 class="text-lg font-extrabold text-dark">Informasi Usaha</h2>
+                        <p class="text-xs text-gray-500">Data ini akan ditampilkan ke pelanggan.</p>
+                    </div>
+                    <button
+                        type="submit"
+                        disabled={processing}
+                        class="px-6 py-2 bg-pink-dark text-white text-sm font-bold rounded-full hover:bg-sun-dark disabled:opacity-50 transition-all shadow-md"
                     >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M6 18L18 6M6 6l12 12"
-                        />
-                    </svg>
-                    Batal
-                </a>
-                <button
-                    type="submit"
-                    disabled={processing}
-                    class="flex-1 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-pink-dark text-white font-bold text-sm hover:bg-sun-dark transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-                >
-                    {#if processing}
-                        <svg
-                            class="w-4 h-4 animate-spin"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            aria-hidden="true"
-                        >
-                            <circle
-                                class="opacity-25"
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                stroke-width="4"
-                            ></circle>
-                            <path
-                                class="opacity-75"
-                                fill="currentColor"
-                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                            ></path>
-                        </svg>
-                        Menyimpan...
-                    {:else}
-                        <svg
-                            class="w-4 h-4"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            stroke-width="2.5"
-                            aria-hidden="true"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                d="M5 13l4 4L19 7"
+                        {processing ? 'Menyimpan...' : 'Simpan Profil'}
+                    </button>
+                </div>
+
+                <div class="p-5 sm:p-6 space-y-5">
+                    <!-- Logo -->
+                    <div class="flex flex-col sm:flex-row items-center sm:items-start gap-5 border-b border-gray-100 pb-5">
+                        <div class="shrink-0 w-full sm:w-32">
+                            <ImageUploader
+                                bind:files={logoFiles}
+                                existingUrls={existingLogo}
+                                maxFiles={1}
+                                maxSizeMB={2}
+                                accept="image/jpeg,image/png,image/webp"
+                                single
+                                label="Logo Usaha"
+                                validationLabel="logo"
+                                error={errors.logo}
+                                onRemoveExisting={() => existingLogo = []}
                             />
-                        </svg>
-                        Simpan Perubahan
-                    {/if}
-                </button>
+                        </div>
+                        <div class="flex-1 text-center sm:text-left">
+                            <p class="text-sm font-bold text-dark">Logo Usaha</p>
+                            <p class="text-xs text-gray-500 mt-1">Disarankan rasio 1:1, format JPG/PNG/WEBP, maks 2MB.</p>
+                            {#if errors.logo}
+                                <p class="text-pink text-[11px] mt-1 font-bold">{errors.logo}</p>
+                            {/if}
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <div>
+                            <label for="nama_penyedia_usaha" class="block text-xs font-bold text-dark mb-1.5">Nama Usaha</label>
+                            <input id="nama_penyedia_usaha" type="text" bind:value={form.nama_penyedia_usaha} placeholder={user?.name ?? 'Nama usaha Anda'} class="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm focus:ring-2 focus:ring-pink/20" />
+                            {#if errors.nama_penyedia_usaha}<p class="text-pink text-[11px] mt-1 font-bold">{errors.nama_penyedia_usaha}</p>{/if}
+                        </div>
+                        <div>
+                            <label for="nomor_identitas" class="block text-xs font-bold text-dark mb-1.5">Nomor Identitas</label>
+                            <input id="nomor_identitas" type="text" bind:value={form.nomor_identitas} placeholder="NIK atau NPWP" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm focus:ring-2 focus:ring-pink/20" />
+                            {#if errors.nomor_identitas}<p class="text-pink text-[11px] mt-1 font-bold">{errors.nomor_identitas}</p>{/if}
+                        </div>
+                        <div>
+                            <label for="telepon" class="block text-xs font-bold text-dark mb-1.5">Telepon</label>
+                            <input id="telepon" type="text" bind:value={form.telepon} placeholder="+62 812 3456 7890" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm focus:ring-2 focus:ring-pink/20" />
+                            {#if errors.telepon}<p class="text-pink text-[11px] mt-1 font-bold">{errors.telepon}</p>{/if}
+                        </div>
+                        <div>
+                            <label for="kode_pos" class="block text-xs font-bold text-dark mb-1.5">Kode Pos</label>
+                            <input id="kode_pos" type="text" bind:value={form.kode_pos} placeholder="80119" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm focus:ring-2 focus:ring-pink/20" />
+                            {#if errors.kode_pos}<p class="text-pink text-[11px] mt-1 font-bold">{errors.kode_pos}</p>{/if}
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label for="alamat" class="block text-xs font-bold text-dark mb-1.5">Alamat</label>
+                            <textarea id="alamat" bind:value={form.alamat} rows="2" placeholder="Alamat lengkap" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm focus:ring-2 focus:ring-pink/20"></textarea>
+                            {#if errors.alamat}<p class="text-pink text-[11px] mt-1 font-bold">{errors.alamat}</p>{/if}
+                        </div>
+                        <div>
+                            <label for="provinsi" class="block text-xs font-bold text-dark mb-1.5">Provinsi</label>
+                            <input id="provinsi" type="text" bind:value={form.provinsi} placeholder="Contoh: Bali" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm focus:ring-2 focus:ring-pink/20" />
+                            {#if errors.provinsi}<p class="text-pink text-[11px] mt-1 font-bold">{errors.provinsi}</p>{/if}
+                        </div>
+                        <div>
+                            <label for="kota" class="block text-xs font-bold text-dark mb-1.5">Kota</label>
+                            <input id="kota" type="text" bind:value={form.kota} placeholder="Contoh: Denpasar" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm focus:ring-2 focus:ring-pink/20" />
+                            {#if errors.kota}<p class="text-pink text-[11px] mt-1 font-bold">{errors.kota}</p>{/if}
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label for="deskripsi" class="block text-xs font-bold text-dark mb-1.5">Deskripsi Usaha</label>
+                            <textarea id="deskripsi" bind:value={form.deskripsi} rows="3" placeholder="Ceritakan singkat tentang usaha Anda..." class="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm focus:ring-2 focus:ring-pink/20"></textarea>
+                            {#if errors.deskripsi}<p class="text-pink text-[11px] mt-1 font-bold">{errors.deskripsi}</p>{/if}
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>
-    </form>
+        </form>
+
+        <!-- ========================================== -->
+        <!-- FORM 2: REKENING BANK -->
+        <!-- ========================================== -->
+        <form onsubmit={handleSubmitBank} class="space-y-5">
+            <div class="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
+                <div class="p-5 sm:p-6 border-b border-gray-100 bg-sun/5">
+                    <h2 class="text-lg font-extrabold text-sun-text flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
+                        Rekening Pembayaran
+                    </h2>
+                    <p class="text-xs text-gray-600 mt-1">Perubahan data rekening memerlukan konfirmasi password demi keamanan Anda.</p>
+                </div>
+
+                <div class="p-5 sm:p-6 space-y-4">
+                    {#each bankForm.accounts as account, i}
+                        <div class="p-4 border border-gray-200 rounded-2xl bg-gray-50/50 relative">
+                            <div class="flex justify-between items-center mb-3">
+                                <h3 class="text-sm font-bold text-dark">
+                                    Rekening {i + 1} 
+                                    {#if i === 0}
+                                        <span class="text-green-600 text-xs ml-1">(Utama)</span>
+                                    {/if}
+                                </h3>
+                                {#if bankForm.accounts.length > 1}
+                                    <button type="button" onclick={() => removeBankAccount(i)} class="text-red-500 text-xs font-bold hover:underline">Hapus</button>
+                                {/if}
+                            </div>
+                            
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-[11px] font-bold text-dark mb-1">Tipe</label>
+                                    <select value={account.tipe} onchange={(e) => handleTipeChange(i, (e.target as HTMLSelectElement).value)} class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+                                        <option value="bank">Bank</option>
+                                        <option value="ewallet">E-Wallet</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-dark mb-1">Nama Bank / E-Wallet</label>
+                                    <select bind:value={account.namaPenyedia} class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+                                        <option value="">Pilih...</option>
+                                        {#if account.tipe === 'bank'}
+                                            {#each BANK_OPTIONS as bank}<option value={bank}>{bank}</option>{/each}
+                                        {:else}
+                                            {#each EWALLET_OPTIONS as wallet}<option value={wallet}>{wallet}</option>{/each}
+                                        {/if}
+                                    </select>
+                                    {#if bankErrors[`accounts.${i}.nama_penyedia`]}<p class="text-pink text-[10px] mt-1 font-bold">{bankErrors[`accounts.${i}.nama_penyedia`]}</p>{/if}
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-dark mb-1">Nomor Rekening</label>
+                                    <input type="text" inputmode="numeric" value={account.nomorRekening} oninput={(e) => handleNomorRekeningInput(i, (e.target as HTMLInputElement).value)} class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" placeholder="1234567890" />
+                                    {#if bankErrors[`accounts.${i}.nomor_rekening`]}<p class="text-pink text-[10px] mt-1 font-bold">{bankErrors[`accounts.${i}.nomor_rekening`]}</p>{/if}
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-dark mb-1">Nama Pemilik</label>
+                                    <input type="text" bind:value={account.namaPemilik} class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" placeholder="Budi Santoso" />
+                                    {#if bankErrors[`accounts.${i}.nama_pemilik`]}<p class="text-pink text-[10px] mt-1 font-bold">{bankErrors[`accounts.${i}.nama_pemilik`]}</p>{/if}
+                                </div>
+                            </div>
+                        </div>
+                    {/each}
+
+                    <button type="button" onclick={addBankAccount} class="w-full py-2.5 border-2 border-dashed border-gray-300 rounded-xl text-sm font-bold text-gray-500 hover:border-pink hover:text-pink transition-all">
+                        + Tambah Rekening Lain
+                    </button>
+
+                    <!-- Input Password Konfirmasi -->
+                    <div class="pt-4 border-t border-gray-200 mt-4 bg-red-50/50 p-4 rounded-xl border border-red-100">
+                        <label for="confirm_password" class="block text-xs font-bold text-red-700 mb-1.5 flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                            Konfirmasi Password
+                        </label>
+                        <input 
+                            id="confirm_password" 
+                            type="password" 
+                            bind:value={bankForm.password} 
+                            placeholder="Masukkan password akun Anda saat ini"
+                            class="w-full px-4 py-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-red-200 {bankErrors.password ? 'border-red-300 bg-red-50' : 'border-red-200 bg-white'}" 
+                        />
+                        {#if bankErrors.password}
+                            <p class="text-pink text-[11px] mt-1.5 font-bold">{bankErrors.password}</p>
+                        {:else}
+                            <p class="text-[11px] text-red-500 mt-1.5">Demi keamanan, Anda wajib memasukkan password untuk mengubah rekening.</p>
+                        {/if}
+                    </div>
+                </div>
+
+                <div class="p-4 sm:p-5 bg-gray-50 border-t border-gray-100 flex justify-end">
+                    <button
+                        type="submit"
+                        disabled={bankProcessing}
+                        class="px-6 py-2.5 bg-pink-dark text-white text-sm font-bold rounded-full hover:bg-sun-dark disabled:opacity-50 transition-all shadow-md"
+                    >
+                        {bankProcessing ? 'Menyimpan...' : 'Simpan Perubahan Rekening'}
+                    </button>
+                </div>
+            </div>
+        </form>
+
+    </div>
 </DashboardLayout>

@@ -18,29 +18,18 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 /**
  * Model Booking — pesanan client untuk sebuah paket wisata.
  *
- * Relasi:
- * - belongsTo Package
- * - belongsTo User (client, via user_id)
- * - hasMany BookingParticipant
- * - hasMany Payment (praktik: 1 booking = 1 payment)
- * - hasOne Trip (Fase 3)
- *
- * Cast:
- * - status → BookingStatus enum
- * - tanggal_keberangkatan → date (DATE murni, netral timezone)
- * - expired_at → datetime (UTC)
- * - total_harga → decimal:2
- *
  * @property int $id
  * @property string $kode
  * @property int $package_id
  * @property int $user_id
+ * @property int|null $mitra_id
  * @property CarbonImmutable|null $tanggal_keberangkatan
  * @property int $jumlah_peserta
  * @property string $total_harga
  * @property BookingStatus $status
- * @property string|null $xendit_invoice_id
- * @property string|null $xendit_invoice_url
+ * @property string|null $payment_proof_path
+ * @property CarbonImmutable|null $payment_verified_at
+ * @property string|null $payment_reject_reason
  * @property CarbonImmutable|null $expired_at
  * @property string|null $catatan
  * @property CarbonImmutable|null $created_at
@@ -48,8 +37,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property CarbonImmutable|null $deleted_at
  * @property-read Package|null $package
  * @property-read User|null $client
+ * @property-read User|null $mitra
  * @property-read Collection<int, BookingParticipant> $participants
  * @property-read Collection<int, Payment> $payments
+ * @property-read Collection<int, Refund> $refunds
  * @property-read Trip|null $trip
  *
  * @use HasFactory<BookingFactory>
@@ -62,27 +53,25 @@ class Booking extends Model
     use SoftDeletes;
 
     /**
-     * Atribut yang dapat diisi secara massal.
-     *
      * @var list<string>
      */
     protected $fillable = [
         'kode',
         'package_id',
         'user_id',
+        'mitra_id',
         'tanggal_keberangkatan',
         'jumlah_peserta',
         'total_harga',
         'status',
-        'xendit_invoice_id',
-        'xendit_invoice_url',
+        'payment_proof_path',
+        'payment_verified_at',
+        'payment_reject_reason',
         'expired_at',
         'catatan',
     ];
 
     /**
-     * Casting atribut.
-     *
      * @return array<string, string>
      */
     protected function casts(): array
@@ -91,6 +80,7 @@ class Booking extends Model
             'status' => BookingStatus::class,
             'tanggal_keberangkatan' => 'date',
             'expired_at' => 'datetime',
+            'payment_verified_at' => 'datetime',
             'jumlah_peserta' => 'integer',
             'total_harga' => 'decimal:2',
             'deleted_at' => 'datetime',
@@ -102,8 +92,6 @@ class Booking extends Model
     // ==========================================
 
     /**
-     * Paket wisata yang dipesan.
-     *
      * @return BelongsTo<Package, $this>
      */
     public function package(): BelongsTo
@@ -122,8 +110,16 @@ class Booking extends Model
     }
 
     /**
-     * Daftar peserta booking.
+     * Mitra pemilik paket/trip ini (denormalisasi).
      *
+     * @return BelongsTo<User, $this>
+     */
+    public function mitra(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'mitra_id');
+    }
+
+    /**
      * @return HasMany<BookingParticipant, $this>
      */
     public function participants(): HasMany
@@ -132,8 +128,6 @@ class Booking extends Model
     }
 
     /**
-     * Daftar pembayaran booking.
-     *
      * @return HasMany<Payment, $this>
      */
     public function payments(): HasMany
@@ -142,8 +136,14 @@ class Booking extends Model
     }
 
     /**
-     * Trip yang dihasilkan dari booking ini (1:1).
-     *
+     * @return HasMany<Refund, $this>
+     */
+    public function refunds(): HasMany
+    {
+        return $this->hasMany(Refund::class);
+    }
+
+    /**
      * @return HasOne<Trip, $this>
      */
     public function trip(): HasOne
@@ -210,25 +210,16 @@ class Booking extends Model
     // HELPER — STATUS
     // ==========================================
 
-    /**
-     * Apakah booking masih bisa di-cancel oleh client?
-     */
     public function canBeCancelledByClient(): bool
     {
         return $this->status->canBeCancelledByClient();
     }
 
-    /**
-     * Apakah booking sudah final (completed/cancelled)?
-     */
     public function isFinal(): bool
     {
         return $this->status->isFinal();
     }
 
-    /**
-     * Apakah booking sudah lewat expired_at?
-     */
     public function isExpired(): bool
     {
         if ($this->expired_at === null) {
@@ -243,9 +234,6 @@ class Booking extends Model
     // HELPER — HARGA
     // ==========================================
 
-    /**
-     * Hitung total harga booking berdasarkan package & jumlah peserta.
-     */
     public function calculateTotalHarga(): float
     {
         $package = $this->package;
@@ -254,24 +242,14 @@ class Booking extends Model
             return 0.0;
         }
 
-        if ($package->harga_per_rombongan !== null && (float) $package->harga_per_rombongan > 0) {
-            return (float) $package->harga_per_rombongan;
-        }
-
-        return (float) $package->harga_per_orang * $this->jumlah_peserta;
+        return $package->calculateTotalHarga($this->jumlah_peserta);
     }
 
-    /**
-     * Format total harga sebagai string Rupiah.
-     */
     public function totalHargaRupiah(): string
     {
         return 'Rp '.number_format((float) $this->total_harga, 0, ',', '.');
     }
 
-    /**
-     * Berapa lama lagi (jam) sebelum expired?
-     */
     public function hoursUntilExpired(): ?int
     {
         if ($this->expired_at === null || $this->status !== BookingStatus::PENDING_PAYMENT) {
@@ -287,23 +265,13 @@ class Booking extends Model
     // HELPER — TIMEZONE
     // ==========================================
 
-    /**
-     * Ambil tanggal keberangkatan dalam format `YYYY-MM-DD`.
-     *
-     * `tanggal_keberangkatan` adalah DATE murni (netral timezone),
-     * jadi return string apa adanya.
-     */
     public function tanggalKeberangkatanLocal(): string
     {
         $value = $this->tanggal_keberangkatan;
 
-        // Setelah cast 'date', nilai berupa CarbonImmutable.
         return $value?->format('Y-m-d') ?? '';
     }
 
-    /**
-     * Timezone acuan untuk booking ini (dari package).
-     */
     public function timezone(): string
     {
         return $this->package?->timezone ?: Timezone::DEFAULT;

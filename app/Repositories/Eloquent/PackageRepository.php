@@ -5,11 +5,20 @@ namespace App\Repositories\Eloquent;
 use App\Enums\PackageStatus;
 use App\Models\Package;
 use App\Repositories\Contracts\PackageRepositoryInterface;
+use App\Support\LikeEscaper;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
-class PackageRepository implements PackageRepositoryInterface
+/**
+ * Repository paket wisata.
+ *
+ * Perubahan dari versi lama:
+ * - `'%{$search}%'` -> `LikeEscaper::contains()` + `LikeEscaper::operator()`
+ *   (S-06).
+ */
+final class PackageRepository implements PackageRepositoryInterface
 {
     /**
      * {@inheritDoc}
@@ -19,30 +28,32 @@ class PackageRepository implements PackageRepositoryInterface
         $search = $filters['search'] ?? null;
         $status = $filters['status'] ?? null;
         $kategori = $filters['kategori'] ?? null;
+        $mitraId = $filters['mitra_id'] ?? null;
         $sort = $filters['sort'] ?? 'created_at';
         $direction = $filters['direction'] ?? 'desc';
 
-        // Whitelist kolom sort untuk cegah SQL injection
         $allowedSorts = ['created_at', 'nama', 'harga_per_orang', 'durasi_hari', 'status'];
         if (! in_array($sort, $allowedSorts, true)) {
             $sort = 'created_at';
         }
 
         $direction = strtolower($direction) === 'asc' ? 'asc' : 'desc';
-
-        $searchOperator = DB::connection()->getDriverName() === 'pgsql' ? 'ilike' : 'like';
+        $operator = LikeEscaper::operator(DB::connection());
 
         return Package::query()
-            ->with(['creator:id,name,email'])
-            ->when($search, function ($query, $search) use ($searchOperator) {
-                $query->where(function ($q) use ($search, $searchOperator) {
-                    $q->where('nama', $searchOperator, "%{$search}%")
-                        ->orWhere('kode', $searchOperator, "%{$search}%")
-                        ->orWhere('deskripsi', $searchOperator, "%{$search}%");
+            ->with(['mitra:id,name,email'])
+            ->when($search, function (Builder $query, string $search) use ($operator): void {
+                $escaped = LikeEscaper::contains($search);
+
+                $query->where(function (Builder $q) use ($escaped, $operator): void {
+                    $q->where('nama', $operator, $escaped)
+                        ->orWhere('kode', $operator, $escaped)
+                        ->orWhere('deskripsi', $operator, $escaped);
                 });
             })
-            ->when($status, fn ($query, $status) => $query->where('status', $status))
-            ->when($kategori, fn ($query, $kategori) => $query->where('kategori', $kategori))
+            ->when($status, fn (Builder $q, string $s) => $q->where('status', $s))
+            ->when($kategori, fn (Builder $q, string $k) => $q->where('kategori', $k))
+            ->when($mitraId, fn (Builder $q, int $id) => $q->where('mitra_id', $id))
             ->orderBy($sort, $direction)
             ->paginate($perPage)
             ->withQueryString();
@@ -53,7 +64,7 @@ class PackageRepository implements PackageRepositoryInterface
      */
     public function findById(int $id): ?Package
     {
-        return Package::with(['creator:id,name,email', 'days.costs', 'facilities'])->find($id);
+        return Package::with(['mitra:id,name,email', 'days', 'facilities'])->find($id);
     }
 
     /**
@@ -61,7 +72,7 @@ class PackageRepository implements PackageRepositoryInterface
      */
     public function findBySlug(string $slug): ?Package
     {
-        return Package::with(['days.costs', 'facilities'])
+        return Package::with(['days', 'facilities'])
             ->where('slug', $slug)
             ->first();
     }
@@ -106,7 +117,7 @@ class PackageRepository implements PackageRepositoryInterface
     public function slugExists(string $slug, ?int $exceptId = null): bool
     {
         return Package::where('slug', $slug)
-            ->when($exceptId, fn ($q) => $q->where('id', '!=', $exceptId))
+            ->when($exceptId, fn (Builder $q) => $q->where('id', '!=', $exceptId))
             ->exists();
     }
 
@@ -116,21 +127,16 @@ class PackageRepository implements PackageRepositoryInterface
     public function kodeExists(string $kode, ?int $exceptId = null): bool
     {
         return Package::where('kode', $kode)
-            ->when($exceptId, fn ($q) => $q->where('id', '!=', $exceptId))
+            ->when($exceptId, fn (Builder $q) => $q->where('id', '!=', $exceptId))
             ->exists();
     }
 
     /**
      * {@inheritDoc}
-     *
-     * Ambil nomor urut terbesar untuk tahun ini, lalu +1.
-     * Contoh: kalau sudah ada PKG-2026-005, return PKG-2026-006.
      */
     public function generateKode(int $tahun): string
     {
         $prefix = "PKG-{$tahun}-";
-
-        // Cari kode dengan prefix yang sama, urut descending
         $lastKode = Package::withTrashed()
             ->where('kode', 'like', "{$prefix}%")
             ->orderByDesc('kode')
@@ -140,29 +146,21 @@ class PackageRepository implements PackageRepositoryInterface
             return $prefix.'001';
         }
 
-        // Ambil 3 digit terakhir
-        $lastNumber = (int) substr($lastKode, -3);
-        $nextNumber = $lastNumber + 1;
+        $lastNumber = (int) substr((string) $lastKode, -3);
 
-        return $prefix.str_pad((string) $nextNumber, 3, '0', STR_PAD_LEFT);
+        return $prefix.str_pad((string) ($lastNumber + 1), 3, '0', STR_PAD_LEFT);
     }
 
     /**
      * {@inheritDoc}
-     *
-     * @return Collection<int, Package>
      */
     public function allAktif(): Collection
     {
-        return Package::aktif()
-            ->orderBy('nama')
-            ->get();
+        return Package::aktif()->orderBy('nama')->get();
     }
 
     /**
      * {@inheritDoc}
-     *
-     * @return array<string, int>
      */
     public function countByStatus(): array
     {
@@ -172,7 +170,6 @@ class PackageRepository implements PackageRepositoryInterface
             ->pluck('total', 'status')
             ->all();
 
-        // Pastikan semua status ada, default 0
         return [
             PackageStatus::DRAFT->value => (int) ($counts[PackageStatus::DRAFT->value] ?? 0),
             PackageStatus::AKTIF->value => (int) ($counts[PackageStatus::AKTIF->value] ?? 0),

@@ -5,12 +5,10 @@
     import Pagination from '@/global/Pagination.svelte';
     import SearchInput from '@/global/SearchInput.svelte';
     import { inertia, router } from '@inertiajs/svelte';
+    import type { ClientCatalogIndexProps } from '@/types/props';
     import type {
-        Package,
         PackageKategori,
-        PaginationMeta,
-        KategoriOption,
-    } from '@/types';
+    } from '@/types/enum';
     import {
         packageKategoriBadge,
         packageKategoriLabel,
@@ -25,48 +23,17 @@
 
     let {
         packages,
-        filters = {
-            search: '',
-            kategori: '',
-            sort: 'nama',
-            direction: 'asc',
-        },
-    }: {
-        packages: PaginationMeta & {
-            data: Array<
-                Pick<
-                    Package,
-                    | 'id'
-                    | 'kode'
-                    | 'nama'
-                    | 'slug'
-                    | 'deskripsi'
-                    | 'kategori'
-                    | 'durasi_hari'
-                    | 'durasi_malam'
-                    | 'harga_per_orang'
-                    | 'harga_per_rombongan'
-                    | 'min_peserta'
-                    | 'max_peserta'
-                    | 'timezone'
-                    | 'cover_image'
-                    | 'created_at'
-                >
-            >;
-        };
-        filters: {
-            search: string;
-            kategori: string;
-            sort: string;
-            direction: string;
-        };
-    } = $props();
+        filters,
+    }: ClientCatalogIndexProps = $props();
 
     // ==========================================
     // OPTIONS
     // ==========================================
 
-    const kategoriOptions: KategoriOption[] = [
+    const kategoriOptions: Array<{
+        value: PackageKategori | '';
+        label: string;
+    }> = [
         { value: '', label: 'Semua Kategori' },
         { value: 'wisata_alam', label: 'Wisata Alam' },
         { value: 'budaya', label: 'Budaya' },
@@ -120,15 +87,13 @@
         );
     }
 
-function handleSearch(value: string) {
-    console.log('[DEBUG] handleSearch called with:', value);  // ← TAMBAH
-    search = value;
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(() => {
-        console.log('[DEBUG] navigate called, search=', search);  // ← TAMBAH
-        navigate();
-    }, 300);
-}
+    function handleSearch(value: string) {
+        search = value;
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            navigate();
+        }, 300);
+    }
 
     function handleKategoriChange(e: Event) {
         const target = e.target as HTMLSelectElement;
@@ -201,7 +166,7 @@ function handleSearch(value: string) {
                     class="w-full px-4 py-3 border border-gray-200 rounded-2xl bg-gray-50 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-pink/10 focus:border-pink focus:bg-white transition-all cursor-pointer"
                     aria-label="Filter kategori"
                 >
-                    {#each kategoriOptions as opt}
+                    {#each kategoriOptions as opt (opt.value)}
                         <option value={opt.value}>{opt.label}</option>
                     {/each}
                 </select>
@@ -215,7 +180,7 @@ function handleSearch(value: string) {
                     class="w-full px-4 py-3 border border-gray-200 rounded-2xl bg-gray-50 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-pink/10 focus:border-pink focus:bg-white transition-all cursor-pointer"
                     aria-label="Urutkan"
                 >
-                    {#each sortOptions as opt}
+                    {#each sortOptions as opt (opt.value)}
                         <option value={opt.value}>{opt.label}</option>
                     {/each}
                 </select>

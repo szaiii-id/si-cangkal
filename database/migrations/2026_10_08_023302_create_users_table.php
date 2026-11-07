@@ -6,9 +6,6 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('users', function (Blueprint $table) {
@@ -20,7 +17,9 @@ return new class extends Migration
             $table->string('password')->nullable();
             $table->string('google_id')->unique()->nullable();
             $table->enum('role', ['admin', 'mitra', 'client'])->default('client');
+            $table->string('timezone', 50)->default('Asia/Makassar'); 
             $table->boolean('must_change_password')->default(false);
+            $table->string('fcm_token')->nullable(); 
             $table->rememberToken();
             $table->timestamps();
         });
@@ -41,9 +40,6 @@ return new class extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('users');
