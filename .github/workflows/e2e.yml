@@ -268,7 +268,7 @@ jobs:
           AUTH_THROTTLE_RESET_DECAY: 60
           AUTH_THROTTLE_RESET_PASSWORD_TEST_OVERRIDE: 5
           AUTH_THROTTLE_CONTACT_TEST_OVERRIDE: 1000
-        run: bun run test:e2e:rate-limit -- --project=${{ matrix.browser }} --workers=1
+        run: bun run test:e2e:rate-limit -- --project=rate-limit-${{ matrix.browser }} --workers=1
 
       - name: Upload Playwright report
         if: always()

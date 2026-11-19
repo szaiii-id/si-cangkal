@@ -126,13 +126,33 @@ export default defineConfig({
             use: { ...devices['Desktop Firefox'] },
             testIgnore: /rate-limit\.spec\.ts/,
         },
-        // WebKit hanya di CI
         ...(CI.isCI
             ? [
                   {
                       name: 'webkit',
                       use: { ...devices['Desktop Safari'] },
                       testIgnore: /rate-limit\.spec\.ts/,
+                  },
+              ]
+            : []),
+
+        // Project khusus Rate Limit (tanpa testIgnore)
+        {
+            name: 'rate-limit-chromium',
+            use: { ...devices['Desktop Chrome'] },
+            testMatch: /rate-limit\.spec\.ts/,
+        },
+        {
+            name: 'rate-limit-firefox',
+            use: { ...devices['Desktop Firefox'] },
+            testMatch: /rate-limit\.spec\.ts/,
+        },
+        ...(CI.isCI
+            ? [
+                  {
+                      name: 'rate-limit-webkit',
+                      use: { ...devices['Desktop Safari'] },
+                      testMatch: /rate-limit\.spec\.ts/,
                   },
               ]
             : []),
