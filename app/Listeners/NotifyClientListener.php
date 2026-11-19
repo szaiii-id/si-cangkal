@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Log;
 /**
  * Listener: handle event BookingConfirmed.
  *
- * ⚠️ SEBELUMNYA: Mengirim email via `BookingConfirmedNotification`.
+ *   SEBELUMNYA: Mengirim email via `BookingConfirmedNotification`.
  * SEKARANG: Email DIHAPUS karena notifikasi ke Client sudah ditangani
  * oleh `BookingPaymentService::notifyClientPaymentConfirmed()` via
  * `NotificationDispatcher` (In-App + Push FCM).
@@ -21,7 +21,9 @@ use Illuminate\Support\Facades\Log;
 final class NotifyClientListener implements ShouldQueue
 {
     public ?string $connection = null;
+
     public string $queue = 'default';
+
     public int $tries = 3;
 
     /**
@@ -35,7 +37,7 @@ final class NotifyClientListener implements ShouldQueue
     /**
      * Tangani event BookingConfirmed.
      *
-     * ✅ Notifikasi Client (In-App + FCM) sudah dikirim oleh
+     *  Notifikasi Client (In-App + FCM) sudah dikirim oleh
      *    `BookingPaymentService::notifyClientPaymentConfirmed()`.
      *    Jadi listener ini TIDAK perlu mengirim email lagi.
      */

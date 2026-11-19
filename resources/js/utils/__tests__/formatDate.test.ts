@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
     formatDate,
     formatDateTime,
@@ -6,125 +6,122 @@ import {
     formatTime,
 } from '../formatDate';
 
-// ============================================================
-// KATEGORI 1 — formatDate (tanggal murni)
-// ============================================================
+describe('FormatDate & Time Utilities', () => {
+    // ==========================================
+    // 1. formatDate() - Tanggal Murni (DATE)
+    // ==========================================
+    describe('formatDate()', () => {
+        it('harus memformat string YYYY-MM-DD dengan benar tanpa pergeseran timezone', () => {
+            // Meskipun mesin test berjalan di UTC, WIB, atau WITA, 
+            // hasilnya harus tetap "16 Okt 2026"
+            expect(formatDate('2026-10-16')).toBe('16 Okt 2026');
+            expect(formatDate('2026-01-01')).toBe('1 Jan 2026');
+            expect(formatDate('2026-12-31')).toBe('31 Des 2026');
+        });
 
-describe('formatDate', () => {
-    it('mengembalikan "—" untuk input null/undefined/empty', () => {
-        expect(formatDate(null)).toBe('—');
-        expect(formatDate(undefined)).toBe('—');
-        expect(formatDate('')).toBe('—');
+        it('harus menangani objek Date dengan benar', () => {
+            const date = new Date('2026-10-16T12:00:00Z');
+            expect(formatDate(date)).toBe('16 Okt 2026');
+        });
+
+        it('harus mengembalikan "—" untuk input null/undefined/invalid', () => {
+            expect(formatDate(null)).toBe('—');
+            expect(formatDate(undefined)).toBe('—');
+            expect(formatDate('')).toBe('—');
+            expect(formatDate('bukan-tanggal')).toBe('—');
+        });
     });
 
-    it('mengembalikan "—" untuk input invalid', () => {
-        expect(formatDate('bukan tanggal')).toBe('—');
+    // ==========================================
+    // 2. formatDateTime() - Timestamp UTC ke Timezone
+    // ==========================================
+    describe('formatDateTime()', () => {
+        it('harus mengonversi UTC ke WITA (Asia/Makassar) dengan benar', () => {
+            // 07:00 UTC = 15:00 WITA
+            expect(
+                formatDateTime('2026-10-16T07:00:00Z', 'Asia/Makassar')
+            ).toBe('16 Okt 2026, 15:00');
+        });
+
+        it('harus mengonversi UTC ke WIB (Asia/Jakarta) dengan benar', () => {
+            // 07:00 UTC = 14:00 WIB
+            expect(
+                formatDateTime('2026-10-16T07:00:00Z', 'Asia/Jakarta')
+            ).toBe('16 Okt 2026, 14:00');
+        });
+
+        it('harus mengonversi UTC ke WIT (Asia/Jayapura) dengan benar', () => {
+            // 07:00 UTC = 16:00 WIT
+            expect(
+                formatDateTime('2026-10-16T07:00:00Z', 'Asia/Jayapura')
+            ).toBe('16 Okt 2026, 16:00');
+        });
+
+        it('harus mengembalikan "—" untuk input invalid', () => {
+            expect(formatDateTime(null)).toBe('—');
+            expect(formatDateTime('invalid-date')).toBe('—');
+        });
     });
 
-    it('memformat string DATE "YYYY-MM-DD" tanpa pergeseran timezone', () => {
-        expect(formatDate('2026-10-16')).toBe('16 Okt 2026');
-        expect(formatDate('2026-01-01')).toBe('1 Jan 2026');
+    // ==========================================
+    // 3. formatDateTimeTz() - Dengan Label Timezone
+    // ==========================================
+    describe('formatDateTimeTz()', () => {
+        it('harus menambahkan label WITA dengan benar', () => {
+            expect(
+                formatDateTimeTz('2026-10-16T07:00:00Z', 'Asia/Makassar')
+            ).toBe('16 Okt 2026, 15:00 WITA');
+        });
+
+        it('harus menambahkan label WIB dengan benar', () => {
+            expect(
+                formatDateTimeTz('2026-10-16T07:00:00Z', 'Asia/Jakarta')
+            ).toBe('16 Okt 2026, 14:00 WIB');
+        });
+
+        it('harus menampilkan timezone asing apa adanya jika tidak ada di daftar label', () => {
+            // Jika input 'Europe/Paris', label TZ_LABELS tidak ada.
+            // Maka tidak ada tambahan label WIB/WITA/WIT, atau sesuaikan ekspektasi.
+            const result = formatDateTimeTz('2026-10-16T07:00:00Z', 'Europe/Paris');
+            // Ekspektasi: 09:00 waktu Paris (CEST di bulan Oktober)
+            expect(result).toContain('16 Okt 2026');
+            expect(result).not.toContain('WIB');
+            expect(result).not.toContain('WITA');
+        });
+
+        it('harus mengembalikan "—" untuk input invalid', () => {
+            expect(formatDateTimeTz(null)).toBe('—');
+        });
     });
 
-    it('memformat Date object', () => {
-        const date = new Date(Date.UTC(2026, 9, 16, 12, 0, 0)); // 16 Okt 2026
-        // Format tergantung locale, tapi harus mengandung "Okt 2026"
-        expect(formatDate(date)).toContain('2026');
-    });
-});
+    // ==========================================
+    // 4. formatTime() - Jam Saja
+    // ==========================================
+    describe('formatTime()', () => {
+        it('harus mengembalikan format "HH:mm" langsung jika input sudah berupa jam (Edge Case)', () => {
+            // Ini untuk kolom TIME di DB (misal jam_mulai itinerary)
+            expect(formatTime('08:30')).toBe('08:30');
+            expect(formatTime('14:00:00')).toBe('14:00');
+        });
 
-// ============================================================
-// KATEGORI 2 — formatDateTime (tanggal + waktu)
-// ============================================================
+        it('harus mengonversi timestamp UTC ke jam lokal', () => {
+            expect(formatTime('2026-10-16T07:00:00Z', 'Asia/Makassar')).toBe('15:00');
+        });
 
-describe('formatDateTime', () => {
-    it('mengembalikan "—" untuk input invalid', () => {
-        expect(formatDateTime(null)).toBe('—');
-        expect(formatDateTime(undefined)).toBe('—');
-        expect(formatDateTime('')).toBe('—');
-        expect(formatDateTime('bukan tanggal')).toBe('—');
-    });
-
-    it('memformat timestamp UTC dalam timezone default (browser)', () => {
-        // Tanpa timezone, hasil bergantung pada environment
-        // Tapi harus mengandung pola tanggal
-        const result = formatDateTime('2026-10-16T07:00:00Z');
-        expect(result).not.toBe('—');
-        expect(result).toContain('2026');
+        it('harus mengembalikan "—" untuk input invalid', () => {
+            expect(formatTime(null)).toBe('—');
+            expect(formatTime('bukan-jam')).toBe('—');
+        });
     });
 
-    it('memformat timestamp UTC dalam timezone Asia/Makassar', () => {
-        // 07:00 UTC = 15:00 WITA
-        const result = formatDateTime('2026-10-16T07:00:00Z', 'Asia/Makassar');
-        expect(result).toContain('16 Okt 2026');
-        expect(result).toContain('15:00');
-    });
-
-    it('memformat timestamp UTC dalam timezone Asia/Jakarta', () => {
-        // 07:00 UTC = 14:00 WIB
-        const result = formatDateTime('2026-10-16T07:00:00Z', 'Asia/Jakarta');
-        expect(result).toContain('14:00');
-    });
-});
-
-// ============================================================
-// KATEGORI 3 — formatDateTimeTz (dengan label timezone)
-// ============================================================
-
-describe('formatDateTimeTz', () => {
-    it('mengembalikan "—" untuk input invalid', () => {
-        expect(formatDateTimeTz(null)).toBe('—');
-        expect(formatDateTimeTz('bukan tanggal')).toBe('—');
-    });
-
-    it('menambahkan label WITA untuk Asia/Makassar', () => {
-        const result = formatDateTimeTz('2026-10-16T07:00:00Z', 'Asia/Makassar');
-        expect(result).toContain('WITA');
-        expect(result).toContain('15:00');
-    });
-
-    it('menambahkan label WIB untuk Asia/Jakarta', () => {
-        const result = formatDateTimeTz('2026-10-16T07:00:00Z', 'Asia/Jakarta');
-        expect(result).toContain('WIB');
-    });
-
-    it('menambahkan label WIT untuk Asia/Jayapura', () => {
-        // 07:00 UTC = 16:00 WIT
-        const result = formatDateTimeTz('2026-10-16T07:00:00Z', 'Asia/Jayapura');
-        expect(result).toContain('WIT');
-        expect(result).toContain('16:00');
-    });
-
-    it('TIDAK menambahkan label timezone jika timezone tidak dikenal', () => {
-        const result = formatDateTimeTz('2026-10-16T07:00:00Z', 'Europe/London');
-        expect(result).not.toContain('WIB');
-        expect(result).not.toContain('WITA');
-        expect(result).not.toContain('WIT');
-    });
-});
-
-// ============================================================
-// KATEGORI 4 — formatTime (jam saja)
-// ============================================================
-
-describe('formatTime', () => {
-    it('mengembalikan "—" untuk input kosong/invalid', () => {
-        expect(formatTime(null)).toBe('—');
-        expect(formatTime(undefined)).toBe('—');
-        expect(formatTime('')).toBe('—');
-        expect(formatTime('bukan jam')).toBe('—');
-    });
-
-    it('mengembalikan string "HH:mm" dari input TIME database', () => {
-        expect(formatTime('08:00')).toBe('08:00');
-        expect(formatTime('17:30')).toBe('17:30');
-        expect(formatTime('08:00:00')).toBe('08:00');
-    });
-
-    it('memformat timestamp UTC ke jam dalam timezone tertentu', () => {
-        // 07:00 UTC = 15:00 WITA
-        expect(formatTime('2026-10-16T07:00:00Z', 'Asia/Makassar')).toBe('15:00');
-        // 07:00 UTC = 14:00 WIB
-        expect(formatTime('2026-10-16T07:00:00Z', 'Asia/Jakarta')).toBe('14:00');
+    // ==========================================
+    // 5. Edge Cases - Mengunci Timezone Mesin Test
+    // ==========================================
+    describe('Timezone Robustness (Machine Independent)', () => {
+        it('formatDate() harus independen dari timezone mesin (TZ)', () => {
+            // Memastikan formatDate('2026-01-01') TIDAK menghasilkan 
+            // "31 Des 2025" jika mesin test berada di timezone negatif (misal US).
+            expect(formatDate('2026-01-01')).toBe('1 Jan 2026');
+        });
     });
 });

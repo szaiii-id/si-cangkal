@@ -1,10 +1,9 @@
 <script lang="ts">
-    import DashboardLayout from '@/components/layout/DashboardLayout.svelte';
-    import PageHeader from '@/global/PageHeader.svelte';
+    import ClientLayout from '@/components/layout/ClientLayout.svelte';
     import { router } from '@inertiajs/svelte';
     import type { User } from '@/types';
     import { hasFormChanges } from '@/utils/form';
-    import { clientMenu } from '@/utils/menus';
+    import { showToast } from '@/utils/toast.svelte';
 
     // ==========================================
     // PROPS
@@ -20,16 +19,12 @@
     // STATE
     // ==========================================
 
-    // Form state — di-init dari props `initialUser` (initial value).
-    // Setelah submit → router.put → Inertia reload → komponen re-mount
-    // → form re-init. Jadi tidak perlu sync via $effect.
     // svelte-ignore state_referenced_locally
     let form = $state({
         name: initialUser.name,
         username: initialUser.username ?? '',
     });
 
-    // Snapshot nilai awal untuk "has changes" check.
     // svelte-ignore state_referenced_locally
     let initialForm = {
         name: initialUser.name,
@@ -55,8 +50,12 @@
 
         router.put('/client/profile', form, {
             preserveScroll: true,
+            onSuccess: () => {
+                showToast('Profil berhasil diperbarui.', 'success');
+            },
             onError: (err) => {
                 errors = err as Record<string, string>;
+                showToast('Gagal menyimpan profil. Periksa kembali.', 'error');
                 processing = false;
             },
             onFinish: () => {
@@ -73,141 +72,81 @@
 </script>
 
 <svelte:head>
-    <title>Profile Saya | Titiktemu</title>
+    <title>Profil Saya | SI-CANGKAL</title>
 </svelte:head>
 
-<DashboardLayout title="Profile Saya" menuItems={clientMenu}>
-    <PageHeader
-        title="Profile Saya"
-        description="Kelola informasi akun Anda. Email tidak dapat diubah."
-    />
-
-    <!-- Error Alert -->
-    {#if errorCount > 0}
-        <div
-            class="mb-5 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-2xl flex items-start gap-3"
-        >
-            <svg
-                class="w-5 h-5 text-red-500 shrink-0 mt-0.5"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                aria-hidden="true"
-            >
-                <path
-                    fill-rule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                    clip-rule="evenodd"
+<ClientLayout title="Profil Saya">
+    
+    <div class="max-w-3xl mx-auto space-y-8 pb-10 mt-4">
+        
+        <!-- HEADER PROFIL (Gaya Bento / Overlapping) -->
+        <div class="relative bg-white rounded-[2rem] overflow-hidden shadow-xl border border-gray-100 group">
+            
+            <!-- Background Image -->
+            <div class="h-48 sm:h-56 w-full relative bg-gray-200">
+                <img 
+                    src="https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=2070&auto=format&fit=crop" 
+                    alt="Cover" 
+                    class="w-full h-full object-cover"
                 />
-            </svg>
-            <div>
-                <p class="text-sm text-red-700 font-bold">
-                    Terdapat {errorCount} kesalahan pada form
-                </p>
-                <p class="text-xs text-red-600 mt-0.5">
-                    Silakan periksa kembali data yang Anda masukkan.
-                </p>
+                <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
             </div>
-        </div>
-    {/if}
 
-    <form onsubmit={handleSubmit} class="max-w-2xl mx-auto space-y-5">
-        <!-- ==========================================
-             CARD HEADER: Avatar + Info
-        ========================================== -->
-        <div
-            class="bg-linear-to-br from-green-dark to-blue rounded-3xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden"
-        >
-            <div
-                class="absolute -top-12 -right-12 w-40 h-40 bg-white/10 rounded-full"
-                aria-hidden="true"
-            ></div>
-            <div
-                class="absolute -bottom-12 -left-12 w-32 h-32 bg-white/10 rounded-full"
-                aria-hidden="true"
-            ></div>
-
-            <div class="relative z-10 flex items-center gap-5">
-                <div
-                    class="w-20 h-20 rounded-3xl bg-white/20 backdrop-blur-sm flex items-center justify-center font-extrabold text-3xl shadow-lg shrink-0 border-2 border-white/30"
-                    data-testid="avatar-preview"
-                >
+            <!-- Avatar (Overlapping) -->
+            <div class="absolute top-32 sm:top-40 left-6 sm:left-8 z-10">
+                <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-blue-dark text-white flex items-center justify-center font-extrabold text-4xl shadow-xl border-4 border-white">
                     {form.name?.charAt(0)?.toUpperCase() || '?'}
                 </div>
+            </div>
 
-                <div class="flex-1 min-w-0">
-                    <div
-                        class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/20 text-white text-[10px] font-extrabold mb-1.5"
-                    >
-                        <svg
-                            class="w-3 h-3"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            stroke-width="2.5"
-                            aria-hidden="true"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                            />
-                        </svg>
-                        CLIENT
+            <!-- Info Bawah -->
+            <div class="pt-16 pb-6 px-6 sm:px-8 relative z-10">
+                <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                    
+                    <!-- Kiri: Nama & Username -->
+                    <div>
+                        <h2 class="text-2xl sm:text-3xl font-extrabold text-dark truncate">
+                            {form.name || 'Client'}
+                        </h2>
+                        <p class="text-sm text-gray-500 font-medium mt-1">@{form.username || 'username'}</p>
+                        
+                        <!-- Badge & Email -->
+                        <div class="flex flex-wrap items-center gap-3 mt-3">
+                            <span class="inline-flex items-center gap-1.5 text-xs font-bold text-gray-600">
+                                <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                {initialUser.email}
+                            </span>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-md bg-blue/10 text-blue-text text-[10px] font-extrabold uppercase tracking-wider">
+                                Client
+                            </span>
+                        </div>
                     </div>
-                    <h2 class="text-2xl font-extrabold truncate">
-                        {form.name || 'Client'}
-                    </h2>
-                    <p class="text-sm text-white/80 truncate">
-                        @{form.username || 'username'}
-                    </p>
+
+                    <!-- Kanan: Tombol Aksi (Scroll ke Form) -->
+                    <div class="flex items-center gap-2 shrink-0 sm:mt-2">
+                        <a href="#form-edit" class="inline-flex items-center justify-center px-6 py-2.5 rounded-full bg-dark text-white text-sm font-bold hover:bg-dark/90 transition-all shadow-md">
+                            Edit Profil
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- ==========================================
-             CARD: Form Edit
-        ========================================== -->
-        <div
-            class="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden"
-        >
-            <div
-                class="p-5 sm:p-6 border-b border-gray-100 flex items-center gap-3"
-            >
-                <div
-                    class="w-9 h-9 rounded-2xl bg-blue/10 text-blue flex items-center justify-center shrink-0"
-                >
-                    <svg
-                        class="w-4 h-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        aria-hidden="true"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                        />
-                    </svg>
+        <!-- FORM EDIT (Gaya Card Putih Bersih) -->
+        <div id="form-edit" class="bg-white rounded-[2rem] p-6 sm:p-8 shadow-sm border border-gray-100 scroll-mt-24">
+            <h3 class="text-lg font-extrabold text-dark mb-6">Informasi Akun</h3>
+            
+            {#if errorCount > 0}
+                <div class="mb-6 bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl text-sm font-bold">
+                    Terdapat {errorCount} kesalahan pada form.
                 </div>
-                <div>
-                    <h3 class="text-base font-extrabold text-dark">
-                        Edit Profile
-                    </h3>
-                    <p class="text-xs text-gray-500">
-                        Ubah nama & username Anda
-                    </p>
-                </div>
-            </div>
+            {/if}
 
-            <div class="p-5 sm:p-6 space-y-5">
+            <form onsubmit={handleSubmit} class="space-y-5">
+                
                 <!-- Nama Lengkap -->
                 <div>
-                    <label
-                        for="name"
-                        class="block text-xs font-bold text-dark mb-1.5"
-                    >
+                    <label for="name" class="block text-xs font-bold text-dark mb-1.5">
                         Nama Lengkap <span class="text-pink">*</span>
                     </label>
                     <input
@@ -216,73 +155,45 @@
                         bind:value={form.name}
                         required
                         placeholder="Nama lengkap"
-                        class="w-full px-4 py-2.5 border rounded-xl bg-gray-50 text-sm font-medium placeholder-gray-400 focus:outline-none transition-all
-                            {errors.name
-                            ? 'border-red-300 bg-red-50 focus:ring-2 focus:ring-red-100 focus:border-red-500'
-                            : 'border-gray-200 focus:ring-2 focus:ring-pink/10 focus:border-pink focus:bg-white'}"
+                        class="w-full px-4 py-3 border rounded-xl bg-gray-50 text-sm font-medium placeholder-gray-400 focus:outline-none transition-all
+                            {errors.name 
+                            ? 'border-red-300 bg-red-50 focus:ring-2 focus:ring-red-100 focus:border-red-500' 
+                            : 'border-gray-200 focus:ring-2 focus:ring-blue/20 focus:border-blue focus:bg-white'}"
                     />
                     {#if errors.name}
-                        <p class="text-pink text-[11px] mt-1 font-bold">
-                            {errors.name}
-                        </p>
+                        <p class="text-pink text-[11px] mt-1 font-bold">{errors.name}</p>
                     {/if}
                 </div>
 
                 <!-- Username -->
                 <div>
-                    <label
-                        for="username"
-                        class="block text-xs font-bold text-dark mb-1.5"
-                    >
+                    <label for="username" class="block text-xs font-bold text-dark mb-1.5">
                         Username
                     </label>
                     <div class="relative">
-                        <span
-                            class="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-400 pointer-events-none"
-                            >@</span
-                        >
+                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-400 pointer-events-none">@</span>
                         <input
                             id="username"
                             type="text"
                             bind:value={form.username}
                             placeholder="username unik"
-                            class="w-full pl-9 pr-4 py-2.5 border rounded-xl bg-gray-50 text-sm font-medium placeholder-gray-400 focus:outline-none transition-all
-                                {errors.username
-                                ? 'border-red-300 bg-red-50 focus:ring-2 focus:ring-red-100 focus:border-red-500'
-                                : 'border-gray-200 focus:ring-2 focus:ring-pink/10 focus:border-pink focus:bg-white'}"
+                            class="w-full pl-9 pr-4 py-3 border rounded-xl bg-gray-50 text-sm font-medium placeholder-gray-400 focus:outline-none transition-all
+                                {errors.username 
+                                ? 'border-red-300 bg-red-50 focus:ring-2 focus:ring-red-100 focus:border-red-500' 
+                                : 'border-gray-200 focus:ring-2 focus:ring-blue/20 focus:border-blue focus:bg-white'}"
                         />
                     </div>
                     {#if errors.username}
-                        <p class="text-pink text-[11px] mt-1 font-bold">
-                            {errors.username}
-                        </p>
+                        <p class="text-pink text-[11px] mt-1 font-bold">{errors.username}</p>
                     {/if}
                 </div>
 
-                <!-- Email (read-only) -->
+                <!-- Email (Read-only) -->
                 <div>
-                    <label
-                        for="email"
-                        class="block text-xs font-bold text-dark mb-1.5 flex items-center gap-1.5"
-                    >
+                    <label for="email" class="block text-xs font-bold text-dark mb-1.5 flex items-center gap-2">
                         Email
-                        <span
-                            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 text-[10px] font-bold"
-                        >
-                            <svg
-                                class="w-2.5 h-2.5"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                                stroke-width="2.5"
-                                aria-hidden="true"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                                />
-                            </svg>
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 text-[10px] font-bold">
+                            <svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
                             Read-only
                         </span>
                     </label>
@@ -292,85 +203,34 @@
                         value={initialUser.email}
                         readonly
                         disabled
-                        class="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-100 text-sm font-medium text-gray-500 cursor-not-allowed"
+                        class="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-100 text-sm font-medium text-gray-500 cursor-not-allowed"
                     />
-                    <p class="text-[11px] text-gray-500 mt-1">
-                        Email tidak dapat diubah. Hubungi admin jika
-                        perlu diperbarui.
-                    </p>
+                    <p class="text-[11px] text-gray-500 mt-1">Email tidak dapat diubah. Hubungi admin jika perlu diperbarui.</p>
                 </div>
-            </div>
-        </div>
 
-        <!-- Actions -->
-        <div class="flex flex-col-reverse sm:flex-row gap-2">
-            <button
-                type="button"
-                onclick={resetForm}
-                disabled={!hasChanges || processing}
-                class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-white border border-gray-200 text-dark font-bold text-sm hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-                <svg
-                    class="w-4 h-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="2.5"
-                    aria-hidden="true"
-                >
-                    <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                    />
-                </svg>
-                Reset
-            </button>
-            <button
-                type="submit"
-                disabled={processing || !hasChanges}
-                class="flex-1 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-pink-dark text-white font-bold text-sm hover:bg-sun-dark transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-            >
-                {#if processing}
-                    <svg
-                        class="w-4 h-4 animate-spin"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
+                <!-- Actions -->
+                <div class="pt-4 border-t border-gray-100 flex flex-col-reverse sm:flex-row justify-end gap-2 mt-6">
+                    <button
+                        type="button"
+                        onclick={resetForm}
+                        disabled={!hasChanges || processing}
+                        class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-white border border-gray-200 text-dark font-bold text-sm hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        <circle
-                            class="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            stroke-width="4"
-                        ></circle>
-                        <path
-                            class="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                        ></path>
-                    </svg>
-                    Menyimpan...
-                {:else}
-                    <svg
-                        class="w-4 h-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        stroke-width="2.5"
-                        aria-hidden="true"
+                        Reset
+                    </button>
+                    <button
+                        type="submit"
+                        disabled={processing || !hasChanges}
+                        class="inline-flex items-center justify-center gap-2 px-8 py-2.5 rounded-full bg-blue-dark text-white font-bold text-sm hover:bg-blue transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M5 13l4 4L19 7"
-                        />
-                    </svg>
-                    Simpan Perubahan
-                {/if}
-            </button>
+                        {#if processing}
+                            Menyimpan...
+                        {:else}
+                            Simpan Perubahan
+                        {/if}
+                    </button>
+                </div>
+            </form>
         </div>
-    </form>
-</DashboardLayout>
+    </div>
+</ClientLayout>

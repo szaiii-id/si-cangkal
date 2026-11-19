@@ -6,7 +6,7 @@ use App\Models\Profile;
 use App\Models\User;
 use App\Repositories\Contracts\ProfileRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
-use App\Services\Notification\NotificationDispatcher;
+use App\Services\Notification\Contracts\NotificationDispatcherInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -18,7 +18,7 @@ class UserService
     public function __construct(
         protected UserRepositoryInterface $userRepository,
         protected ProfileRepositoryInterface $profileRepository,
-        protected NotificationDispatcher $notificationDispatcher,
+        protected NotificationDispatcherInterface $notificationDispatcher,
     ) {}
 
     /**
@@ -61,7 +61,7 @@ class UserService
             return $user;
         });
 
-        // ✅ Notifikasi ke user baru (di luar transaksi)
+        //  Notifikasi ke user baru (di luar transaksi)
         $this->notifyNewAccount($user, $plainPassword);
 
         Log::info('User admin baru dibuat', [
@@ -189,7 +189,7 @@ class UserService
     /**
      * Notifikasi ke user baru bahwa akunnya sudah dibuat.
      *
-     * ⚠️ Password TIDAK dikirim via notifikasi (keamanan).
+     *   Password TIDAK dikirim via notifikasi (keamanan).
      * Admin harus menyampaikan password via jalur aman (WhatsApp/SMS).
      */
     private function notifyNewAccount(User $user, string $plainPassword): void
@@ -205,7 +205,7 @@ class UserService
             user: $user,
             tipe: 'account_created',
             judul: 'Akun Anda Telah Dibuat',
-            pesan: "Akun Anda sudah aktif. Silakan login dan segera ganti password Anda.",
+            pesan: 'Akun Anda sudah aktif. Silakan login dan segera ganti password Anda.',
             data: [
                 'url' => $dashboardUrl,
             ],

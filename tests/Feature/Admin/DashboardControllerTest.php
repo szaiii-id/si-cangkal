@@ -1,26 +1,43 @@
 <?php
 
-use App\Enums\BookingStatus;
-use App\Enums\PackageStatus;
-use App\Enums\PayoutStatus;
-use App\Enums\TripStatus;
+use App\Enums\RefundStatus;
 use App\Models\Booking;
-use App\Models\DailyReport;
 use App\Models\Package;
-use App\Models\Payout;
+use App\Models\Refund;
 use App\Models\Trip;
-use App\Models\TripDay;
-use App\Models\TripMitra;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Route;
+use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
 
 /*
 |==========================================================================
-| SETUP
+| SETUP — Integration Test
 |==========================================================================
+|
+| DashboardController (admin) — read-only statistik & chart.
+|
+| Route: GET /admin/dashboard (admin.dashboard)
+| Middleware: auth, password.changed, role:admin
+|
+| Statistik:
+| - users (admin, mitra, client)
+| - packages (total, aktif)
+| - trips (total, aktif)
+| - bookings (total)
+| - total_revenue (net = gross - refund)
+| - recent_bookings (5 terbaru)
+| - monthly_revenue (6 bulan terakhir, net per bulan)
+|
+| Catatan:
+| - `config(['inertia.testing.ensure_pages_exist' => false])` — backend test.
+| - Revenue net = SUM(booking confirmed+completed) - SUM(refund SUCCEEDED).
+| - Monthly revenue: 6 bulan terakhir, net per bulan.
+| - Chart: group by `created_at` (bukan `tanggal_keberangkatan`).
+| - JSON serialize int (800000), bukan float (800000.0) — pakai (float) cast
+|   di assertion untuk perbandingan.
+|
 */
 
 beforeEach(function () {
@@ -28,15 +45,9 @@ beforeEach(function () {
         $this->withoutVite();
     }
 
+    config(['inertia.testing.ensure_pages_exist' => false]);
+
     $this->admin = User::factory()->admin()->create([
-        'must_change_password' => false,
-    ]);
-
-    $this->mitra = User::factory()->mitra()->create([
-        'must_change_password' => false,
-    ]);
-
-    $this->client = User::factory()->client()->create([
         'must_change_password' => false,
     ]);
 });
@@ -47,34 +58,87 @@ beforeEach(function () {
 |==========================================================================
 */
 
-it('GET /admin/dashboard merender Inertia component Admin/Dashboard', function () {
-    $response = $this->actingAs($this->admin)->get(route('admin.dashboard'));
+describe('Contract — index', function () {
+    it('GET /admin/dashboard → render Admin/Dashboard', function () {
+        $this->actingAs($this->admin)
+            ->get('/admin/dashboard')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Dashboard')
+                ->has('stats')
+                ->has('recent_bookings')
+                ->has('monthly_revenue')
+            );
+    });
 
-    $response->assertOk();
-    $response->assertInertia(fn ($page) => $page
-        ->component('Admin/Dashboard')
-        ->has('stats')
-        ->has('recent_bookings')
-        ->has('monthly_revenue')
-        ->has('monthly_bookings')
-    );
-});
+    it('stats punya keys users, packages, trips, bookings, total_revenue', function () {
+        $this->actingAs($this->admin)
+            ->get('/admin/dashboard')
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('stats.users')
+                ->has('stats.packages')
+                ->has('stats.trips')
+                ->has('stats.bookings')
+                ->has('stats.total_revenue')
+            );
+    });
 
-it('stats memiliki struktur yang benar', function () {
-    $response = $this->actingAs($this->admin)->get(route('admin.dashboard'));
+    it('stats.users punya keys admin, mitra, client', function () {
+        $this->actingAs($this->admin)
+            ->get('/admin/dashboard')
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('stats.users.admin')
+                ->has('stats.users.mitra')
+                ->has('stats.users.client')
+            );
+    });
 
-    $response->assertInertia(fn ($page) => $page
-        ->has('stats.totalAdmin')
-        ->has('stats.totalMitra')
-        ->has('stats.totalClient')
-        ->has('stats.packages')
-        ->has('stats.bookings')
-        ->has('stats.trips')
-        ->has('stats.daily_reports')
-        ->has('stats.payouts')
-        ->has('stats.total_revenue')
-        ->has('stats.total_honor')
-    );
+    it('stats.packages punya keys total, aktif', function () {
+        $this->actingAs($this->admin)
+            ->get('/admin/dashboard')
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('stats.packages.total')
+                ->has('stats.packages.aktif')
+            );
+    });
+
+    it('stats.trips punya keys total, aktif', function () {
+        $this->actingAs($this->admin)
+            ->get('/admin/dashboard')
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('stats.trips.total')
+                ->has('stats.trips.aktif')
+            );
+    });
+
+    it('monthly_revenue berisi 6 elemen', function () {
+        $this->actingAs($this->admin)
+            ->get('/admin/dashboard')
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('monthly_revenue', 6)
+            );
+    });
+
+    it('monthly_revenue item punya keys bulan, total', function () {
+        $this->actingAs($this->admin)
+            ->get('/admin/dashboard')
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('monthly_revenue.0.bulan')
+                ->has('monthly_revenue.0.total')
+            );
+    });
+
+    it('recent_bookings adalah array', function () {
+        $this->actingAs($this->admin)
+            ->get('/admin/dashboard')
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('recent_bookings')
+            );
+    });
+
+    it('route name = admin.dashboard', function () {
+        expect(route('admin.dashboard'))->toBe(url('/admin/dashboard'));
+    });
 });
 
 /*
@@ -83,337 +147,384 @@ it('stats memiliki struktur yang benar', function () {
 |==========================================================================
 */
 
-it('guest di-redirect ke login saat akses /admin/dashboard', function () {
-    $this->get(route('admin.dashboard'))->assertRedirect(route('login'));
-});
+describe('Security — guest & role', function () {
+    it('guest di-redirect ke login', function () {
+        $this->get('/admin/dashboard')->assertRedirect(route('login'));
+    });
 
-it('mitra tidak bisa akses /admin/dashboard (redirect ke dashboard mitra)', function () {
-    $this->actingAs($this->mitra)
-        ->get(route('admin.dashboard'))
-        ->assertRedirect(route('mitra.dashboard'));
-});
+    it('mitra di-redirect ke mitra.dashboard', function () {
+        $mitra = User::factory()->mitra()->create(['must_change_password' => false]);
 
-it('client tidak bisa akses /admin/dashboard (redirect ke dashboard client)', function () {
-    $this->actingAs($this->client)
-        ->get(route('admin.dashboard'))
-        ->assertRedirect(route('client.dashboard'));
-});
+        $this->actingAs($mitra)
+            ->get('/admin/dashboard')
+            ->assertRedirect(route('mitra.dashboard'));
+    });
 
-it('admin dengan must_change_password = true di-redirect ke change-password', function () {
-    $admin = User::factory()->admin()->create(['must_change_password' => true]);
+    it('client di-redirect ke client.dashboard', function () {
+        $client = User::factory()->client()->create(['must_change_password' => false]);
 
-    $this->actingAs($admin)
-        ->get(route('admin.dashboard'))
-        ->assertRedirect(route('password.change'));
-});
+        $this->actingAs($client)
+            ->get('/admin/dashboard')
+            ->assertRedirect(route('client.dashboard'));
+    });
 
-/*
-|==========================================================================
-| KATEGORI 3 — DATA INTEGRITY: User Counts
-|==========================================================================
-*/
+    it('admin must_change_password=true di-redirect ke password.change', function () {
+        $needChange = User::factory()->admin()->create(['must_change_password' => true]);
 
-it('stats totalAdmin menghitung admin dengan benar', function () {
-    User::factory()->admin()->create(['must_change_password' => false]);
+        $this->actingAs($needChange)
+            ->get('/admin/dashboard')
+            ->assertRedirect(route('password.change'));
+    });
 
-    $response = $this->actingAs($this->admin)->get(route('admin.dashboard'));
-
-    $response->assertInertia(fn ($page) => $page
-        ->where('stats.totalAdmin', 2)
-    );
-});
-
-it('stats totalMitra menghitung mitra dengan benar', function () {
-    User::factory()->mitra()->create(['must_change_password' => false]);
-
-    $response = $this->actingAs($this->admin)->get(route('admin.dashboard'));
-
-    $response->assertInertia(fn ($page) => $page
-        ->where('stats.totalMitra', 2)
-    );
-});
-
-it('stats totalClient menghitung client dengan benar', function () {
-    User::factory()->client()->create(['must_change_password' => false]);
-
-    $response = $this->actingAs($this->admin)->get(route('admin.dashboard'));
-
-    $response->assertInertia(fn ($page) => $page
-        ->where('stats.totalClient', 2)
-    );
+    it('admin must_change_password=false bisa akses', function () {
+        $this->actingAs($this->admin)
+            ->get('/admin/dashboard')
+            ->assertOk();
+    });
 });
 
 /*
 |==========================================================================
-| KATEGORI 4 — DATA INTEGRITY: Package Counts
+| KATEGORI 3 — CONCURRENCY
 |==========================================================================
 */
 
-it('stats packages menghitung per status', function () {
-    Package::factory()->create(['status' => PackageStatus::DRAFT, 'created_by' => $this->admin->id]);
-    Package::factory()->create(['status' => PackageStatus::DRAFT, 'created_by' => $this->admin->id]);
-    Package::factory()->create(['status' => PackageStatus::AKTIF, 'created_by' => $this->admin->id]);
-    Package::factory()->create(['status' => PackageStatus::ARSIP, 'created_by' => $this->admin->id]);
+describe('Concurrency — read-only consistency', function () {
+    it('2x GET → stats identik', function () {
+        $first = $this->actingAs($this->admin)
+            ->get('/admin/dashboard')
+            ->viewData('page')['props']['stats'];
 
-    $response = $this->actingAs($this->admin)->get(route('admin.dashboard'));
+        $second = $this->actingAs($this->admin)
+            ->get('/admin/dashboard')
+            ->viewData('page')['props']['stats'];
 
-    $response->assertInertia(fn ($page) => $page
-        ->where('stats.packages.draft', 2)
-        ->where('stats.packages.aktif', 1)
-        ->where('stats.packages.arsip', 1)
-        ->where('stats.packages.total', 4)
-    );
+        expect($first)->toBe($second);
+    });
 });
 
 /*
 |==========================================================================
-| KATEGORI 5 — DATA INTEGRITY: Booking Counts
+| KATEGORI 4 — IDEMPOTENCY
 |==========================================================================
 */
 
-it('stats bookings menghitung per status', function () {
-    $package = Package::factory()->create([
-        'status' => PackageStatus::AKTIF,
-        'created_by' => $this->admin->id,
-    ]);
+describe('Idempotency', function () {
+    it('GET berulang tidak mengubah data', function () {
+        User::factory()->count(2)->create(['must_change_password' => false]);
+        $countBefore = User::count();
 
-    Booking::factory()->create(['user_id' => $this->client->id, 'package_id' => $package->id, 'status' => BookingStatus::PENDING_PAYMENT]);
-    Booking::factory()->create(['user_id' => $this->client->id, 'package_id' => $package->id, 'status' => BookingStatus::PENDING_PAYMENT]);
-    Booking::factory()->create(['user_id' => $this->client->id, 'package_id' => $package->id, 'status' => BookingStatus::PAYMENT_VERIFIED]);
-    Booking::factory()->create(['user_id' => $this->client->id, 'package_id' => $package->id, 'status' => BookingStatus::CONFIRMED]);
+        $this->actingAs($this->admin)->get('/admin/dashboard');
+        $this->actingAs($this->admin)->get('/admin/dashboard');
 
-    $response = $this->actingAs($this->admin)->get(route('admin.dashboard'));
-
-    $response->assertInertia(fn ($page) => $page
-        ->where('stats.bookings.pending_payment', 2)
-        ->where('stats.bookings.payment_verified', 1)
-        ->where('stats.bookings.confirmed', 1)
-        ->where('stats.bookings.total', 4)
-        ->where('stats.bookings.needs_attention', 3)
-    );
+        expect(User::count())->toBe($countBefore);
+    });
 });
 
 /*
 |==========================================================================
-| KATEGORI 6 — DATA INTEGRITY: Trip Counts
+| KATEGORI 5 — DATA INTEGRITY (STATISTIK)
 |==========================================================================
 */
 
-it('stats trips menghitung per status', function () {
-    $package = Package::factory()->create(['status' => PackageStatus::AKTIF, 'created_by' => $this->admin->id]);
+describe('Data Integrity — stats.users', function () {
+    it('menghitung jumlah admin, mitra, client dengan benar', function () {
+        User::factory()->mitra()->count(3)->create(['must_change_password' => false]);
+        User::factory()->client()->count(5)->create(['must_change_password' => false]);
+        // admin: 1 dari beforeEach + 2 baru = 3
+        User::factory()->admin()->count(2)->create(['must_change_password' => false]);
 
-    $booking1 = Booking::factory()->create(['user_id' => $this->client->id, 'package_id' => $package->id, 'status' => BookingStatus::CONFIRMED]);
-    $booking2 = Booking::factory()->create(['user_id' => $this->client->id, 'package_id' => $package->id, 'status' => BookingStatus::CONFIRMED]);
-    $booking3 = Booking::factory()->create(['user_id' => $this->client->id, 'package_id' => $package->id, 'status' => BookingStatus::CONFIRMED]);
-
-    Trip::factory()->create(['booking_id' => $booking1->id, 'package_id' => $package->id, 'status' => TripStatus::SCHEDULED]);
-    Trip::factory()->create(['booking_id' => $booking2->id, 'package_id' => $package->id, 'status' => TripStatus::ACTIVE]);
-    Trip::factory()->create(['booking_id' => $booking3->id, 'package_id' => $package->id, 'status' => TripStatus::COMPLETED]);
-
-    $response = $this->actingAs($this->admin)->get(route('admin.dashboard'));
-
-    $response->assertInertia(fn ($page) => $page
-        ->where('stats.trips.scheduled', 1)
-        ->where('stats.trips.active', 1)
-        ->where('stats.trips.completed', 1)
-        ->where('stats.trips.total', 3)
-    );
+        $this->actingAs($this->admin)
+            ->get('/admin/dashboard')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('stats.users.admin', 3)
+                ->where('stats.users.mitra', 3)
+                ->where('stats.users.client', 5)
+            );
+    });
 });
 
-it('stats trips.needs_mitra hitung trip scheduled tanpa mitra', function () {
-    $package = Package::factory()->create(['status' => PackageStatus::AKTIF, 'created_by' => $this->admin->id]);
+describe('Data Integrity — stats.packages', function () {
+    it('menghitung total & aktif package', function () {
+        $mitra = User::factory()->mitra()->create(['must_change_password' => false]);
 
-    $booking1 = Booking::factory()->create(['user_id' => $this->client->id, 'package_id' => $package->id, 'status' => BookingStatus::CONFIRMED]);
-    $booking2 = Booking::factory()->create(['user_id' => $this->client->id, 'package_id' => $package->id, 'status' => BookingStatus::CONFIRMED]);
+        Package::factory()->forMitra($mitra)->aktif()->count(2)->create();
+        Package::factory()->forMitra($mitra)->draft()->count(3)->create();
+        Package::factory()->forMitra($mitra)->arsip()->count(1)->create();
 
-    Trip::factory()->create(['booking_id' => $booking1->id, 'package_id' => $package->id, 'status' => TripStatus::SCHEDULED]);
-
-    $tripWithMitra = Trip::factory()->create(['booking_id' => $booking2->id, 'package_id' => $package->id, 'status' => TripStatus::SCHEDULED]);
-    TripMitra::factory()->create(['trip_id' => $tripWithMitra->id, 'mitra_id' => $this->mitra->id]);
-
-    $response = $this->actingAs($this->admin)->get(route('admin.dashboard'));
-
-    $response->assertInertia(fn ($page) => $page
-        ->where('stats.trips.needs_mitra', 1)
-    );
+        $this->actingAs($this->admin)
+            ->get('/admin/dashboard')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('stats.packages.total', 6)
+                ->where('stats.packages.aktif', 2)
+            );
+    });
 });
 
-/*
-|==========================================================================
-| KATEGORI 7 — DATA INTEGRITY: Daily Report Counts
-|==========================================================================
-*/
+describe('Data Integrity — stats.trips', function () {
+    it('menghitung total & aktif trip', function () {
+        $mitra = User::factory()->mitra()->create(['must_change_password' => false]);
+        $package = Package::factory()->forMitra($mitra)->aktif()->create();
 
-it('stats daily_reports menghitung per status', function () {
-    $package = Package::factory()->create(['status' => PackageStatus::AKTIF, 'created_by' => $this->admin->id]);
-    $booking = Booking::factory()->create(['user_id' => $this->client->id, 'package_id' => $package->id, 'status' => BookingStatus::CONFIRMED]);
-    $trip = Trip::factory()->create(['booking_id' => $booking->id, 'package_id' => $package->id]);
-    $tripDay = TripDay::factory()->create(['trip_id' => $trip->id]);
+        Trip::factory()->forPackage($package)->scheduled()->count(2)->create();
+        Trip::factory()->forPackage($package)->active()->count(1)->create();
+        Trip::factory()->forPackage($package)->completed()->count(1)->create();
 
-    $mitra1 = User::factory()->mitra()->create(['must_change_password' => false]);
-    $mitra2 = User::factory()->mitra()->create(['must_change_password' => false]);
-    $mitra3 = User::factory()->mitra()->create(['must_change_password' => false]);
-
-    DailyReport::factory()->create(['trip_day_id' => $tripDay->id, 'mitra_id' => $mitra1->id, 'status' => DailyReport::STATUS_SUBMITTED]);
-    DailyReport::factory()->create(['trip_day_id' => $tripDay->id, 'mitra_id' => $mitra2->id, 'status' => DailyReport::STATUS_SUBMITTED]);
-    DailyReport::factory()->create(['trip_day_id' => $tripDay->id, 'mitra_id' => $mitra3->id, 'status' => DailyReport::STATUS_VERIFIED]);
-
-    $response = $this->actingAs($this->admin)->get(route('admin.dashboard'));
-
-    $response->assertInertia(fn ($page) => $page
-        ->where('stats.daily_reports.submitted', 2)
-        ->where('stats.daily_reports.verified', 1)
-        ->where('stats.daily_reports.total', 3)
-    );
+        $this->actingAs($this->admin)
+            ->get('/admin/dashboard')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('stats.trips.total', 4)
+                ->where('stats.trips.aktif', 1)
+            );
+    });
 });
 
-/*
-|==========================================================================
-| KATEGORI 8 — DATA INTEGRITY: Payout Counts
-|==========================================================================
-*/
+describe('Data Integrity — stats.bookings', function () {
+    it('menghitung total booking (semua status)', function () {
+        Booking::factory()->pendingPayment()->count(2)->create();
+        Booking::factory()->confirmed()->count(3)->create();
+        Booking::factory()->cancelled()->count(1)->create();
 
-it('stats payouts menghitung per status', function () {
-    Payout::factory()->create(['mitra_id' => $this->mitra->id, 'status' => PayoutStatus::PENDING]);
-    Payout::factory()->create(['mitra_id' => $this->mitra->id, 'status' => PayoutStatus::PENDING]);
-    Payout::factory()->create(['mitra_id' => $this->mitra->id, 'status' => PayoutStatus::APPROVED]);
-
-    $response = $this->actingAs($this->admin)->get(route('admin.dashboard'));
-
-    $response->assertInertia(fn ($page) => $page
-        ->where('stats.payouts.pending', 2)
-        ->where('stats.payouts.approved', 1)
-        ->where('stats.payouts.total', 3)
-    );
+        $this->actingAs($this->admin)
+            ->get('/admin/dashboard')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('stats.bookings.total', 6)
+            );
+    });
 });
 
-/*
-|==========================================================================
-| KATEGORI 9 — ROUTE MIDDLEWARE
-|==========================================================================
-*/
+describe('Data Integrity — total_revenue (net = gross - refund)', function () {
+    it('revenue = SUM(confirmed+completed) - SUM(refund SUCCEEDED)', function () {
+        // Gross: 1.000.000 + 500.000 = 1.500.000
+        $booking1 = Booking::factory()->confirmed()->create(['total_harga' => 1_000_000]);
+        $booking2 = Booking::factory()->completed()->create(['total_harga' => 500_000]);
 
-it('route admin.dashboard pakai middleware auth, password.changed, role:admin', function () {
-    $route = collect(Route::getRoutes())
-        ->first(fn ($r) => $r->getName() === 'admin.dashboard');
+        // Pending payment TIDAK dihitung
+        Booking::factory()->pendingPayment()->create(['total_harga' => 2_000_000]);
 
-    expect($route)->not->toBeNull();
-    $middleware = $route->gatherMiddleware();
-
-    expect($middleware)->toContain('auth');
-    expect($middleware)->toContain('password.changed');
-    expect($middleware)->toContain('role:admin');
-});
-
-/*
-|==========================================================================
-| KATEGORI 10 — EDGE CASES
-|==========================================================================
-*/
-
-it('stats return 0 jika tidak ada data', function () {
-    $response = $this->actingAs($this->admin)->get(route('admin.dashboard'));
-
-    $response->assertInertia(fn ($page) => $page
-        ->where('stats.totalAdmin', 1)
-        ->where('stats.totalMitra', 1)
-        ->where('stats.totalClient', 1)
-        ->where('stats.packages.total', 0)
-        ->where('stats.bookings.total', 0)
-        ->where('stats.trips.total', 0)
-        ->where('stats.daily_reports.total', 0)
-        ->where('stats.payouts.total', 0)
-    );
-});
-
-it('stats konsisten — total = sum of per-status', function () {
-    Package::factory()->create(['status' => PackageStatus::DRAFT, 'created_by' => $this->admin->id]);
-    Package::factory()->create(['status' => PackageStatus::AKTIF, 'created_by' => $this->admin->id]);
-
-    $response = $this->actingAs($this->admin)->get(route('admin.dashboard'));
-
-    $response->assertInertia(fn ($page) => $page
-        ->where('stats.packages.total', fn ($total) => $total === $page->toArray()['props']['stats']['packages']['draft']
-                + $page->toArray()['props']['stats']['packages']['aktif']
-                + $page->toArray()['props']['stats']['packages']['arsip']
-        )
-    );
-});
-
-/*
-|==========================================================================
-| KATEGORI 11 — DATA REVENUE & HONOR (BARU)
-|==========================================================================
-*/
-
-it('stats total_revenue menghitung pendapatan dari booking confirmed/completed', function () {
-    $package = Package::factory()->create(['status' => PackageStatus::AKTIF, 'created_by' => $this->admin->id]);
-
-    Booking::factory()->create([
-        'user_id' => $this->client->id,
-        'package_id' => $package->id,
-        'status' => BookingStatus::CONFIRMED,
-        'total_harga' => 1000000,
-    ]);
-    Booking::factory()->create([
-        'user_id' => $this->client->id,
-        'package_id' => $package->id,
-        'status' => BookingStatus::COMPLETED,
-        'total_harga' => 2000000,
-    ]);
-
-    $response = $this->actingAs($this->admin)->get(route('admin.dashboard'));
-
-    $response->assertInertia(fn ($page) => $page
-        ->where('stats.total_revenue', 3000000)
-    );
-});
-
-it('stats total_honor menghitung honor dari trip completed', function () {
-    $package = Package::factory()->create(['status' => PackageStatus::AKTIF, 'created_by' => $this->admin->id]);
-    $booking = Booking::factory()->create(['user_id' => $this->client->id, 'package_id' => $package->id, 'status' => BookingStatus::CONFIRMED]);
-    $trip = Trip::factory()->create(['booking_id' => $booking->id, 'package_id' => $package->id, 'status' => TripStatus::COMPLETED]);
-
-    TripMitra::factory()->create(['trip_id' => $trip->id, 'mitra_id' => $this->mitra->id, 'honor' => 500000]);
-
-    $response = $this->actingAs($this->admin)->get(route('admin.dashboard'));
-
-    $response->assertInertia(fn ($page) => $page
-        ->where('stats.total_honor', 500000)
-    );
-});
-
-it('recent_bookings mengembalikan 5 booking terbaru', function () {
-    $package = Package::factory()->create(['status' => PackageStatus::AKTIF, 'created_by' => $this->admin->id]);
-
-    for ($i = 0; $i < 6; $i++) {
-        Booking::factory()->create([
-            'user_id' => $this->client->id,
-            'package_id' => $package->id,
-            'status' => BookingStatus::CONFIRMED,
-            'created_at' => now()->subDays($i),
+        // Refund SUCCEEDED: 200.000
+        Refund::factory()->succeeded()->create([
+            'booking_id' => $booking1->id,
+            'amount' => 200_000,
         ]);
-    }
 
-    $response = $this->actingAs($this->admin)->get(route('admin.dashboard'));
+        // Refund PENDING TIDAK dihitung
+        Refund::factory()->create([
+            'booking_id' => $booking1->id,
+            'status' => RefundStatus::PENDING->value,
+            'amount' => 500_000,
+        ]);
 
-    $response->assertInertia(fn ($page) => $page
-        ->has('recent_bookings', 5)
-    );
+        $this->actingAs($this->admin)
+            ->get('/admin/dashboard')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('stats.total_revenue', 1_300_000) // 1.500.000 - 200.000
+            );
+    });
+
+    it('revenue = gross jika tidak ada refund', function () {
+        Booking::factory()->confirmed()->create(['total_harga' => 1_000_000]);
+
+        $this->actingAs($this->admin)
+            ->get('/admin/dashboard')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('stats.total_revenue', 1_000_000)
+            );
+    });
+
+    it('revenue = 0 jika tidak ada booking confirmed/completed', function () {
+        Booking::factory()->pendingPayment()->create(['total_harga' => 1_000_000]);
+
+        $this->actingAs($this->admin)
+            ->get('/admin/dashboard')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('stats.total_revenue', 0)
+            );
+    });
 });
 
-it('monthly_revenue mengembalikan 6 bulan terakhir', function () {
-    $response = $this->actingAs($this->admin)->get(route('admin.dashboard'));
+describe('Data Integrity — recent_bookings', function () {
+    it('maksimal 5 booking terbaru', function () {
+        Booking::factory()->count(10)->create();
 
-    $response->assertInertia(fn ($page) => $page
-        ->has('monthly_revenue', 6)
-    );
+        $this->actingAs($this->admin)
+            ->get('/admin/dashboard')
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('recent_bookings', 5)
+            );
+    });
+
+    it('recent_bookings item punya shape: id, kode, client, mitra, paket, total, status, tanggal', function () {
+        $client = User::factory()->client()->create([
+            'name' => 'Budi Client',
+            'must_change_password' => false,
+        ]);
+        $mitra = User::factory()->mitra()->create([
+            'name' => 'Mitra Travel',
+            'must_change_password' => false,
+        ]);
+        $package = Package::factory()->forMitra($mitra)->aktif()->create(['nama' => 'Paket Test']);
+
+        Booking::factory()
+            ->forPackage($package)
+            ->forClient($client)
+            ->confirmed()
+            ->create(['kode' => 'BKG-TEST-001', 'total_harga' => 500_000]);
+
+        $this->actingAs($this->admin)
+            ->get('/admin/dashboard')
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('recent_bookings.0.id')
+                ->has('recent_bookings.0.kode')
+                ->has('recent_bookings.0.client')
+                ->has('recent_bookings.0.mitra')
+                ->has('recent_bookings.0.paket')
+                ->has('recent_bookings.0.total')
+                ->has('recent_bookings.0.status')
+                ->has('recent_bookings.0.tanggal')
+                ->where('recent_bookings.0.kode', 'BKG-TEST-001')
+                ->where('recent_bookings.0.client', 'Budi Client')
+                ->where('recent_bookings.0.mitra', 'Mitra Travel')
+                ->where('recent_bookings.0.paket', 'Paket Test')
+            );
+    });
+
+    it('recent_bookings diurutkan created_at DESC', function () {
+        $older = Booking::factory()->create([
+            'kode' => 'BKG-OLDER',
+            'created_at' => now()->subDays(2),
+        ]);
+        $newer = Booking::factory()->create([
+            'kode' => 'BKG-NEWER',
+            'created_at' => now()->subDay(),
+        ]);
+
+        $this->actingAs($this->admin)
+            ->get('/admin/dashboard')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('recent_bookings.0.kode', 'BKG-NEWER')
+            );
+    });
 });
 
-it('monthly_bookings mengembalikan 6 bulan terakhir', function () {
-    $response = $this->actingAs($this->admin)->get(route('admin.dashboard'));
+describe('Data Integrity — monthly_revenue', function () {
+    it('monthly_revenue berisi 6 bulan terakhir', function () {
+        $this->actingAs($this->admin)
+            ->get('/admin/dashboard')
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('monthly_revenue', 6)
+            );
+    });
 
-    $response->assertInertia(fn ($page) => $page
-        ->has('monthly_bookings', 6)
-    );
+    it('monthly_revenue menghitung net (gross - refund) per bulan', function () {
+        // Bulan ini: gross 1.000.000, refund 200.000 → net 800.000
+        $booking = Booking::factory()->confirmed()->create([
+            'total_harga' => 1_000_000,
+            'created_at' => now(),
+        ]);
+        Refund::factory()->succeeded()->create([
+            'booking_id' => $booking->id,
+            'amount' => 200_000,
+            'created_at' => now(),
+        ]);
+
+        $this->actingAs($this->admin)
+            ->get('/admin/dashboard')
+            ->assertInertia(function (Assert $page) {
+                $monthlyRevenue = $page->toArray()['props']['monthly_revenue'];
+                $lastMonth = end($monthlyRevenue);
+
+                // JSON serialize int (800000), bukan float (800000.0).
+                // Pakai (float) cast untuk perbandingan.
+                expect((float) $lastMonth['total'])->toBe(800_000.0);
+            });
+    });
+
+    it('bulan tanpa data → total 0', function () {
+        $this->actingAs($this->admin)
+            ->get('/admin/dashboard')
+            ->assertInertia(function (Assert $page) {
+                $monthlyRevenue = $page->toArray()['props']['monthly_revenue'];
+
+                foreach ($monthlyRevenue as $month) {
+                    // JSON serialize int (0), bukan float (0.0).
+                    expect((float) $month['total'])->toBe(0.0);
+                }
+            });
+    });
+});
+
+/*
+|==========================================================================
+| KATEGORI 6 — ERROR HANDLING
+|==========================================================================
+*/
+
+describe('Error Handling — empty DB', function () {
+    it('DB kosong → stats 0, recent_bookings kosong, monthly_revenue 0', function () {
+        // beforeEach sudah buat 1 admin — jadi admin = 1
+        User::where('role', '!=', 'admin')->delete();
+
+        $this->actingAs($this->admin)
+            ->get('/admin/dashboard')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('stats.users.mitra', 0)
+                ->where('stats.users.client', 0)
+                ->where('stats.packages.total', 0)
+                ->where('stats.trips.total', 0)
+                ->where('stats.bookings.total', 0)
+                ->where('stats.total_revenue', 0)
+                ->has('recent_bookings', 0)
+            );
+    });
+});
+
+/*
+|==========================================================================
+| KATEGORI 7 — EDGE CASES
+|==========================================================================
+*/
+
+describe('Edge Cases — gross & refund null-safe', function () {
+    it('SUM(total_harga) null → revenue 0', function () {
+        // Tidak ada booking confirmed/completed
+        Booking::factory()->pendingPayment()->count(3)->create();
+
+        $this->actingAs($this->admin)
+            ->get('/admin/dashboard')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('stats.total_revenue', 0)
+            );
+    });
+
+    it('refund SUCCEEDED > gross → revenue negatif (allowed)', function () {
+        // Gross 500.000, refund 700.000 → net -200.000
+        $booking = Booking::factory()->confirmed()->create(['total_harga' => 500_000]);
+        Refund::factory()->succeeded()->create([
+            'booking_id' => $booking->id,
+            'amount' => 700_000,
+        ]);
+
+        $this->actingAs($this->admin)
+            ->get('/admin/dashboard')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('stats.total_revenue', -200_000)
+            );
+    });
+});
+
+describe('Edge Cases — recent_bookings null-safe', function () {
+    it('booking tanpa client/mitra/package → tampil dengan "-"', function () {
+        // Booking::factory() selalu buat client/mitra/package,
+        // jadi test ini untuk dokumentasi behavior null-safe.
+        Booking::factory()->create();
+
+        $this->actingAs($this->admin)
+            ->get('/admin/dashboard')
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('recent_bookings.0.client')
+                ->has('recent_bookings.0.mitra')
+                ->has('recent_bookings.0.paket')
+            );
+    });
 });

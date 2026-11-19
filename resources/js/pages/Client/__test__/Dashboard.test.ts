@@ -1,121 +1,295 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+/**
+ * ============================================================
+ * Client Dashboard (Beranda) — Component Test
+ * ============================================================
+ *
+ * Fokus pengujian:
+ *   1. Isolation & Mocking  → Inertia (page.auth), formatCurrency,
+ *                             formatDurasi, ClientLayout.
+ *   2. Props & Rendering    → welcome header, hero, section baru/laris,
+ *                             empty sections, getHarga helper.
+ *   3. Interaction          → link katalog, link detail paket.
+ *   4. Reactivity           → conditional sections (hanya render jika data ada).
+ * ============================================================
+ */
+
 import { render, screen, within } from '@testing-library/svelte';
-import ClientDashboard from '../Dashboard.svelte';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import Dashboard from '../Dashboard.svelte';
 
 // ============================================================
-// MOCK INERTIA
-// ------------------------------------------------------------
-// DashboardLayout asli dirender (bukan di-mock), sehingga
-// dependency-nya WAJIB di-mock lengkap:
-//   - page.props  → dibaca oleh Dashboard.svelte (user)
-//   - page.url    → dibaca oleh DashboardLayout (isActive menu)
-//   - page.component → dibaca oleh DashboardLayout (active state)
-//   - router.*    → dibaca oleh DashboardLayout (navigasi menu)
+// 1. MOCK — INERTIA (page.auth)
 // ============================================================
-vi.mock('@inertiajs/svelte', () => ({
-    inertia: () => ({
-        update: vi.fn(),
-        destroy: vi.fn(),
-    }),
-    router: {
-        visit: vi.fn(),
-        post: vi.fn(),
-        get: vi.fn(),
-        reload: vi.fn(),
-        on: vi.fn(),
-        off: vi.fn(),
-    },
-    page: {
-        get props() {
-            return {
-                auth: {
-                    user: { id: 1, name: 'Client Test', role: 'client' },
-                },
-            };
-        },
-        get url() {
-            return '/client/dashboard';
-        },
-        get component() {
-            return 'Client/Dashboard';
+const mockPage = vi.hoisted(() => ({
+    props: {
+        auth: {
+            user: { id: 1, name: 'Budi', role: 'client' },
         },
     },
 }));
 
-beforeEach(() => {
-    vi.clearAllMocks();
+vi.mock('@inertiajs/svelte', () => ({
+    page: mockPage,
+    inertia: vi.fn(),
+}));
+
+// ============================================================
+// 2. MOCK — FORMAT HELPERS
+// ============================================================
+vi.mock('@/utils/formatCurrency', () => ({
+    formatCurrency: vi.fn((v: string | number) => `Rp ${Number(v).toLocaleString('id-ID')}`),
+}));
+
+vi.mock('@/utils/duration', () => ({
+    formatDurasi: vi.fn((hari: number, malam: number) => `${hari}H ${malam}M`),
+}));
+
+// ============================================================
+// 3. MOCK — CLIENT LAYOUT
+// ============================================================
+vi.mock('@/components/layout/ClientLayout.svelte', () => ({
+    default: (anchor: Node, props: { children?: (anchor: Node) => void }) => {
+        props.children?.(anchor);
+        return {};
+    },
+}));
+
+// ============================================================
+// 4. STATIC IMPORT
+// ============================================================
+import { formatCurrency } from '@/utils/formatCurrency';
+import { formatDurasi } from '@/utils/duration';
+
+// ============================================================
+// 5. FIXTURES
+// ============================================================
+const makePackage = (overrides = {}) => ({
+    id: 1,
+    nama: 'Paket Bali',
+    slug: 'paket-bali',
+    cover_image: 'packages/bali.jpg',
+    durasi_hari: 3,
+    durasi_malam: 2,
+    harga_per_orang: '750000',
+    harga_per_rombongan: null,
+    isRombongan: false,
+    mitra: { name: 'PT Mitra Jaya' },
+    ...overrides,
 });
 
-// ============================================================
-// KATEGORI 1 — HEADER & WELCOME
-// ============================================================
-
-describe('Client Dashboard — Header', () => {
-    it('menampilkan nama user di welcome banner', () => {
-        render(ClientDashboard);
-
-        expect(
-            screen.getByRole('heading', {
-                name: /Selamat Datang, Client Test/i,
-            }),
-        ).toBeInTheDocument();
+const renderPage = (props = {}) =>
+    render(Dashboard, {
+        props: {
+            paket_baru: [],
+            paket_laris: [],
+            ...props,
+        },
     });
-
-    it('menampilkan deskripsi singkat', () => {
-        render(ClientDashboard);
-
-        expect(
-            screen.getByText(
-                /Jelajahi trip dan bundle perjalanan yang tersedia/i,
-            ),
-        ).toBeInTheDocument();
-    });
-});
 
 // ============================================================
-// KATEGORI 2 — KARTU AKSES CEPAT
-// ------------------------------------------------------------
-// Sidebar DashboardLayout JUGA berisi link dengan teks yang
-// sama ("Katalog Paket", "Booking Saya", "Profile Saya").
-//
-// Best practice: scope query ke kartu via data-testid, dan
-// verifikasi PERILAKU (href), bukan sekadar keberadaan teks.
+// 6. TEST SUITE
 // ============================================================
-
-describe('Client Dashboard — Akses Cepat', () => {
-    it('merender 3 kartu akses cepat dengan label masing-masing', () => {
-        render(ClientDashboard);
-
-        const katalogCard = screen.getByTestId('card-katalog');
-        const bookingCard = screen.getByTestId('card-booking');
-        const profileCard = screen.getByTestId('card-profile');
-
-        // Label dicek di dalam kartu, bukan di seluruh dokumen,
-        // sehingga tidak bertabrakan dengan label sidebar.
-        expect(within(katalogCard).getByText('Katalog Paket')).toBeInTheDocument();
-        expect(within(bookingCard).getByText('Booking Saya')).toBeInTheDocument();
-        expect(within(profileCard).getByText('Profile Saya')).toBeInTheDocument();
+describe('Client Dashboard (Beranda)', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockPage.props.auth = { user: { id: 1, name: 'Budi', role: 'client' } };
     });
 
-    it('kartu Katalog mengarah ke /client/catalog', () => {
-        render(ClientDashboard);
+    // ----------------------------------------------------------
+    // 6.1 RENDERING — Header Hero
+    // ----------------------------------------------------------
+    describe('Rendering — Hero', () => {
+        it('menampilkan nama user dari page.auth', () => {
+            renderPage();
+            expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+                'Halo, Budi',
+            );
+        });
 
-        const card = screen.getByTestId('card-katalog');
-        // Kartu adalah <a>, jadi bisa diambil langsung via href
-        expect(card).toHaveAttribute('href', '/client/catalog');
+        it('menampilkan fallback "Client" jika user null', () => {
+            mockPage.props.auth = { user: null } as any;
+            renderPage();
+            expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+                'Halo, Client',
+            );
+        });
+
+        it('menampilkan link "Jelajahi Katalog" ke /client/catalog', () => {
+            renderPage();
+            const link = screen.getByRole('link', { name: /Jelajahi Katalog/i });
+            expect(link).toHaveAttribute('href', '/client/catalog');
+        });
     });
 
-    it('kartu Booking mengarah ke /client/bookings', () => {
-        render(ClientDashboard);
+    // ----------------------------------------------------------
+    // 6.2 RENDERING — Paket Terbaru Section
+    // ----------------------------------------------------------
+    describe('Rendering — Paket Terbaru', () => {
+        it('TIDAK menampilkan section "Paket Terbaru" jika array kosong', () => {
+            renderPage({ paket_baru: [] });
+            expect(screen.queryByText('Paket Terbaru')).not.toBeInTheDocument();
+        });
 
-        const card = screen.getByTestId('card-booking');
-        expect(card).toHaveAttribute('href', '/client/bookings');
+        it('menampilkan section "Paket Terbaru" jika ada data', () => {
+            renderPage({
+                paket_baru: [makePackage({ id: 1, nama: 'Paket Baru 1' })],
+            });
+            expect(screen.getByText('Paket Terbaru')).toBeInTheDocument();
+            expect(screen.getByText('Paket Baru 1')).toBeInTheDocument();
+        });
+
+        it('menampilkan badge "BARU" di setiap card', () => {
+            renderPage({
+                paket_baru: [
+                    makePackage({ id: 1, nama: 'P1' }),
+                    makePackage({ id: 2, nama: 'P2' }),
+                ],
+            });
+            expect(screen.getAllByText('BARU')).toHaveLength(2);
+        });
+
+        it('menampilkan placeholder "Tanpa Gambar" saat cover_image null', () => {
+            renderPage({
+                paket_baru: [makePackage({ id: 1, cover_image: null })],
+            });
+            expect(screen.getByText('Tanpa Gambar')).toBeInTheDocument();
+        });
+
+        it('memanggil formatCurrency dengan harga_per_orang (default)', () => {
+            renderPage({
+                paket_baru: [makePackage({ id: 1, harga_per_orang: '750000', isRombongan: false })],
+            });
+            expect(formatCurrency).toHaveBeenCalledWith('750000');
+        });
+
+        it('memakai harga_per_rombongan saat isRombongan=true & harga ada', () => {
+            renderPage({
+                paket_baru: [
+                    makePackage({
+                        id: 1,
+                        harga_per_orang: '750000',
+                        harga_per_rombongan: '3000000',
+                        isRombongan: true,
+                    }),
+                ],
+            });
+            expect(formatCurrency).toHaveBeenCalledWith('3000000');
+        });
     });
 
-    it('kartu Profile mengarah ke /client/profile', () => {
-        render(ClientDashboard);
+    // ----------------------------------------------------------
+    // 6.3 RENDERING — Paket Paling Laku Section
+    // ----------------------------------------------------------
+    describe('Rendering — Paket Paling Laku', () => {
+        it('TIDAK menampilkan section "Best Seller" jika array kosong', () => {
+            renderPage({ paket_laris: [] });
+            expect(screen.queryByText(/Paling Laku/i)).not.toBeInTheDocument();
+        });
 
-        const card = screen.getByTestId('card-profile');
-        expect(card).toHaveAttribute('href', '/client/profile');
+        it('menampilkan section "Paling Laku (Best Seller)" jika ada data', () => {
+            renderPage({
+                paket_laris: [makePackage({ id: 1, nama: 'Paket Laris 1' })],
+            });
+            expect(screen.getByText('Paling Laku (Best Seller)')).toBeInTheDocument();
+            expect(screen.getByText('Paket Laris 1')).toBeInTheDocument();
+        });
+
+        it('menampilkan badge "Best Seller" di setiap card', () => {
+            renderPage({
+                paket_laris: [makePackage({ id: 1, nama: 'P1' })],
+            });
+            expect(screen.getByText('Best Seller')).toBeInTheDocument();
+        });
+
+        it('menampilkan nama mitra', () => {
+            renderPage({
+                paket_laris: [
+                    makePackage({
+                        id: 1,
+                        nama: 'P1',
+                        mitra: { name: 'PT Mitra Keren' },
+                    }),
+                ],
+            });
+            expect(screen.getByText('PT Mitra Keren')).toBeInTheDocument();
+        });
+
+        it('menampilkan fallback "Mitra Travel" saat mitra null', () => {
+            renderPage({
+                paket_laris: [makePackage({ id: 1, nama: 'P1', mitra: null })],
+            });
+            expect(screen.getByText('Mitra Travel')).toBeInTheDocument();
+        });
+
+        it('memanggil formatDurasi dengan durasi_hari & durasi_malam', () => {
+            renderPage({
+                paket_laris: [
+                    makePackage({ id: 1, nama: 'P1', durasi_hari: 4, durasi_malam: 3 }),
+                ],
+            });
+            expect(formatDurasi).toHaveBeenCalledWith(4, 3);
+        });
+    });
+
+    // ----------------------------------------------------------
+    // 6.4 INTERACTION — Links
+    // ----------------------------------------------------------
+    describe('Interaction — Links', () => {
+        it('setiap card paket baru link ke /client/catalog/:slug', () => {
+            renderPage({
+                paket_baru: [makePackage({ id: 1, slug: 'paket-keren' })],
+            });
+            
+            const cardLinks = screen
+                .getAllByRole('link')
+                .filter((el) => el.getAttribute('href') === '/client/catalog/paket-keren');
+            expect(cardLinks.length).toBeGreaterThanOrEqual(1);
+        });
+
+        it('setiap card paket laris link ke /client/catalog/:slug', () => {
+            renderPage({
+                paket_laris: [makePackage({ id: 2, slug: 'paket-laris' })],
+            });
+
+            const cardLink = screen
+                .getAllByRole('link')
+                .find((el) => el.getAttribute('href') === '/client/catalog/paket-laris');
+            expect(cardLink).toBeInTheDocument();
+        });
+
+        it('link "Lihat Semua" di section baru ke /client/catalog', () => {
+            renderPage({
+                paket_baru: [makePackage({ id: 1 })],
+            });
+            
+            // Ada minimal 2 link "Lihat Semua" (baru & laris) — pakai semua
+            const links = screen.getAllByRole('link', { name: /Lihat Semua/i });
+            expect(links.length).toBeGreaterThanOrEqual(1);
+            expect(links[0]).toHaveAttribute('href', '/client/catalog');
+        });
+    });
+
+    // ----------------------------------------------------------
+    // 6.5 RENDERING — Kombinasi Section
+    // ----------------------------------------------------------
+    describe('Rendering — Both Sections', () => {
+        it('menampilkan kedua section jika keduanya ada data', () => {
+            renderPage({
+                paket_baru: [makePackage({ id: 1, nama: 'Baru 1' })],
+                paket_laris: [makePackage({ id: 2, nama: 'Laris 1' })],
+            });
+
+            expect(screen.getByText('Paket Terbaru')).toBeInTheDocument();
+            expect(screen.getByText('Paling Laku (Best Seller)')).toBeInTheDocument();
+            expect(screen.getByText('Baru 1')).toBeInTheDocument();
+            expect(screen.getByText('Laris 1')).toBeInTheDocument();
+        });
+
+        it('TIDAK crash saat kedua section kosong', () => {
+            renderPage({ paket_baru: [], paket_laris: [] });
+
+            // Hero tetap ada
+            expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
+        });
     });
 });

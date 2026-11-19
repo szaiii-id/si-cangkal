@@ -5,6 +5,7 @@ namespace App\Http\Requests\Client;
 use App\Models\Package;
 use App\Support\Timezone;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 
 class StoreBookingRequest extends FormRequest
 {
@@ -25,10 +26,9 @@ class StoreBookingRequest extends FormRequest
     {
         $package = $this->getPackage();
 
-        // ✅ Logika baru: min_peserta dihapus, max_peserta hanya untuk rombongan
-        $maxPesertaRule = 'max:1000'; // Default (tidak dibatasi ketat)
-        if ($package !== null && $package->isRombongan() && $package->max_peserta) {
-            $maxPesertaRule = 'max:' . $package->max_peserta;
+        $maxPesertaRule = 'max:1000';
+        if ($package !== null && $package->isRombongan() && $package->max_peserta !== null) {
+            $maxPesertaRule = 'max:'.$package->max_peserta;
         }
 
         return [
@@ -42,7 +42,7 @@ class StoreBookingRequest extends FormRequest
             'jumlah_peserta' => [
                 'required',
                 'integer',
-                'min:1', // ✅ Ganti min:'.$minPeserta menjadi min:1
+                'min:1',
                 $maxPesertaRule,
             ],
             'catatan' => ['nullable', 'string', 'max:2000'],
@@ -67,7 +67,7 @@ class StoreBookingRequest extends FormRequest
             'tanggal_keberangkatan.required' => 'Tanggal keberangkatan wajib diisi.',
             'tanggal_keberangkatan.date' => 'Tanggal keberangkatan tidak valid.',
             'tanggal_keberangkatan.date_format' => 'Format tanggal harus YYYY-MM-DD.',
-            'tanggal_keberangkatan.after_or_equal' => 'Tanggal keberangkatan minimal H+3 dari hari ini.',
+            'tanggal_keberangkatan.after_or_equal' => 'Tanggal keberangkatan minimal H+1 dari hari ini.',
 
             'jumlah_peserta.required' => 'Jumlah peserta wajib diisi.',
             'jumlah_peserta.integer' => 'Jumlah peserta harus berupa angka.',
@@ -112,20 +112,21 @@ class StoreBookingRequest extends FormRequest
     /**
      * Validasi tambahan: jumlah participants harus sesuai jumlah_peserta.
      *
-     * @return array<int, callable>
+     * @return array<int, callable(Validator): void>
      */
     public function after(): array
     {
         return [
-            function ($validator): void {
-                $jumlahPeserta = (int) $this->input('jumlah_peserta', 0);
+            function (Validator $validator): void {
+                $jumlahPeserta = $this->integer('jumlah_peserta');
                 $participants = $this->input('participants', []);
+                $participantCount = is_array($participants) ? count($participants) : 0;
 
-                if (count($participants) !== $jumlahPeserta) {
+                if ($participantCount !== $jumlahPeserta) {
                     $validator->errors()->add(
                         'participants',
                         "Data peserta harus sesuai jumlah peserta ({$jumlahPeserta} orang). ".
-                        'Saat ini: '.count($participants).' data.'
+                        "Saat ini: {$participantCount} data."
                     );
                 }
             },
@@ -143,16 +144,16 @@ class StoreBookingRequest extends FormRequest
     }
 
     /**
-     * Hitung tanggal minimal (H+3 dari timezone package).
+     * Hitung tanggal minimal (H+1 dari timezone package).
      */
     protected function minTanggal(?Package $package): string
     {
         if ($package === null) {
-            return now()->addDays(3)->format('Y-m-d');
+            return now()->addDay()->format('Y-m-d');
         }
 
         return Timezone::today($package->timezone)
-            ->addDays(3)
+            ->addDay()
             ->format('Y-m-d');
     }
 }

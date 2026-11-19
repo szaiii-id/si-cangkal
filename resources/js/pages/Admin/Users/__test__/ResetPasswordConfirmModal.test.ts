@@ -1,503 +1,332 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
+/**
+ * ============================================================
+ * ResetPasswordConfirmModal — Component Test
+ * ============================================================
+ *
+ * Fokus pengujian (sesuai ketentuan):
+ *   1. Isolation & Mocking  → Komponen leaf murni (tanpa Inertia,
+ *                             tanpa API, tanpa Clipboard) → tidak
+ *                             butuh mock external.
+ *   2. Props & Rendering    → render kondisi `open`, nama & email,
+ *                             kontrak UI (heading, warning, tombol).
+ *   3. Interaction          → close (Batal & backdrop), confirm
+ *                             (callback).
+ *   4. Reactivity           → transisi open true ⇄ false update DOM.
+ *
+ * Strategi:
+ *   - A11y-first query: `getByRole('dialog')`, `getByRole('button')`,
+ *     `getByLabelText('Tutup modal')`.
+ *   - Exact match `name: 'Batal'` / `name: 'Ya, Reset Password'` untuk
+ *     hindari bentrok dengan `aria-label="Tutup modal"` di backdrop.
+ *   - Callback di-verifikasi via `vi.fn()` (spy).
+ * ============================================================
+ */
+
+import { render, screen, fireEvent } from '@testing-library/svelte';
+import { describe, it, expect, vi } from 'vitest';
 import ResetPasswordConfirmModal from '../ResetPasswordConfirmModal.svelte';
 
 // ============================================================
-// SETUP & TEARDOWN
+// 1. HELPERS
 // ============================================================
-
-afterEach(() => {
-    vi.clearAllMocks();
-});
-
-// ============================================================
-// KATEGORI 1 — CONDITIONAL RENDERING
-// ============================================================
-
-describe('ResetPasswordConfirmModal.svelte — Conditional Rendering', () => {
-    it('TIDAK render modal saat open = false', () => {
-        render(ResetPasswordConfirmModal, {
-            props: {
-                open: false,
-                userName: 'Budi Santoso',
-                userEmail: 'budi@example.com',
-            },
-        });
-        expect(screen.queryByText(/Reset Password\?/i)).not.toBeInTheDocument();
-    });
-
-    it('render modal saat open = true', () => {
-        render(ResetPasswordConfirmModal, {
-            props: {
-                open: true,
-                userName: 'Budi Santoso',
-                userEmail: 'budi@example.com',
-            },
-        });
-        expect(screen.getByText(/Reset Password\?/i)).toBeInTheDocument();
-    });
-
-    it('TIDAK render backdrop saat open = false', () => {
-        render(ResetPasswordConfirmModal, {
-            props: { open: false, userName: 'Budi', userEmail: 'budi@example.com' },
-        });
-        expect(screen.queryByLabelText(/Tutup modal/i)).not.toBeInTheDocument();
-    });
-
-    it('render backdrop saat open = true', () => {
-        render(ResetPasswordConfirmModal, {
-            props: { open: true, userName: 'Budi', userEmail: 'budi@example.com' },
-        });
-        expect(screen.getByLabelText(/Tutup modal/i)).toBeInTheDocument();
-    });
-});
-
-// ============================================================
-// KATEGORI 2 — UI CONTRACT
-// ============================================================
-
-describe('ResetPasswordConfirmModal.svelte — UI Contract', () => {
-    beforeEach(() => {
-        render(ResetPasswordConfirmModal, {
-            props: {
-                open: true,
-                userName: 'Budi Santoso',
-                userEmail: 'budi@example.com',
-            },
-        });
-    });
-
-    it('menampilkan heading "Reset Password?"', () => {
-        expect(
-            screen.getByRole('heading', { name: /Reset Password\?/i })
-        ).toBeInTheDocument();
-    });
-
-    it('menampilkan pesan "Yakin ingin mereset password user berikut"', () => {
-        expect(
-            screen.getByText(/Yakin ingin mereset password user berikut/i)
-        ).toBeInTheDocument();
-    });
-
-    it('menampilkan info "Password baru akan ditampilkan sekali"', () => {
-        expect(
-            screen.getByText(/ditampilkan sekali/i)
-        ).toBeInTheDocument();
-    });
-
-    it('menampilkan info "user harus menggantinya saat login"', () => {
-        expect(
-            screen.getByText(/user harus menggantinya saat login/i)
-        ).toBeInTheDocument();
-    });
-
-    it('menampilkan tombol "Batal"', () => {
-        expect(screen.getByRole('button', { name: /^Batal$/i })).toBeInTheDocument();
-    });
-
-    it('menampilkan tombol "Ya, Reset Password"', () => {
-        expect(
-            screen.getByRole('button', { name: /Ya, Reset Password/i })
-        ).toBeInTheDocument();
-    });
-
-    it('menampilkan icon warning (SVG kuning)', () => {
-        const svg = document.querySelector('svg.text-yellow-600');
-        expect(svg).toBeInTheDocument();
-    });
-});
-
-// ============================================================
-// KATEGORI 3 — USER INFO DISPLAY
-// ============================================================
-
-describe('ResetPasswordConfirmModal.svelte — User Info Display', () => {
-    it('menampilkan nama user', () => {
-        render(ResetPasswordConfirmModal, {
-            props: {
-                open: true,
-                userName: 'Budi Santoso',
-                userEmail: 'budi@example.com',
-            },
-        });
-        expect(screen.getByText('Budi Santoso')).toBeInTheDocument();
-    });
-
-    it('menampilkan email user', () => {
-        render(ResetPasswordConfirmModal, {
-            props: {
-                open: true,
-                userName: 'Budi Santoso',
-                userEmail: 'budi@example.com',
-            },
-        });
-        expect(screen.getByText('budi@example.com')).toBeInTheDocument();
-    });
-
-    it('nama user pakai font-bold', () => {
-        render(ResetPasswordConfirmModal, {
-            props: {
-                open: true,
-                userName: 'Budi Santoso',
-                userEmail: 'budi@example.com',
-            },
-        });
-        const nameEl = screen.getByText('Budi Santoso');
-        expect(nameEl).toHaveClass('font-bold');
-    });
-
-    it('email user pakai text-xs', () => {
-        render(ResetPasswordConfirmModal, {
-            props: {
-                open: true,
-                userName: 'Budi Santoso',
-                userEmail: 'budi@example.com',
-            },
-        });
-        const emailEl = screen.getByText('budi@example.com');
-        expect(emailEl).toHaveClass('text-xs');
-    });
-
-    it('handle userName default (string kosong)', () => {
-        render(ResetPasswordConfirmModal, {
-            props: { open: true },
-        });
-        expect(screen.getByText(/Reset Password\?/i)).toBeInTheDocument();
-    });
-
-    it('handle email user berbeda', () => {
-        render(ResetPasswordConfirmModal, {
-            props: {
-                open: true,
-                userName: 'Ani Wijaya',
-                userEmail: 'ani@example.com',
-            },
-        });
-        expect(screen.getByText('Ani Wijaya')).toBeInTheDocument();
-        expect(screen.getByText('ani@example.com')).toBeInTheDocument();
-    });
-});
-
-// ============================================================
-// KATEGORI 4 — CANCEL BEHAVIOR
-// ============================================================
-
-describe('ResetPasswordConfirmModal.svelte — Cancel Behavior', () => {
-    it('klik tombol "Batal" menutup modal', async () => {
-        render(ResetPasswordConfirmModal, {
-            props: {
-                open: true,
-                userName: 'Budi',
-                userEmail: 'budi@example.com',
-            },
-        });
-
-        const batalBtn = screen.getByRole('button', { name: /^Batal$/i });
-        await fireEvent.click(batalBtn);
-
-        await waitFor(() => {
-            expect(screen.queryByText(/Reset Password\?/i)).not.toBeInTheDocument();
-        });
-    });
-
-    it('klik backdrop menutup modal', async () => {
-        render(ResetPasswordConfirmModal, {
-            props: {
-                open: true,
-                userName: 'Budi',
-                userEmail: 'budi@example.com',
-            },
-        });
-
-        const backdrop = screen.getByLabelText(/Tutup modal/i);
-        await fireEvent.click(backdrop);
-
-        await waitFor(() => {
-            expect(screen.queryByText(/Reset Password\?/i)).not.toBeInTheDocument();
-        });
-    });
-
-    it('klik "Batal" TIDAK memanggil onConfirm', async () => {
-        const onConfirm = vi.fn();
-        render(ResetPasswordConfirmModal, {
-            props: {
-                open: true,
-                userName: 'Budi',
-                userEmail: 'budi@example.com',
-                onConfirm,
-            },
-        });
-
-        const batalBtn = screen.getByRole('button', { name: /^Batal$/i });
-        await fireEvent.click(batalBtn);
-
-        expect(onConfirm).not.toHaveBeenCalled();
-    });
-
-    it('klik backdrop TIDAK memanggil onConfirm', async () => {
-        const onConfirm = vi.fn();
-        render(ResetPasswordConfirmModal, {
-            props: {
-                open: true,
-                userName: 'Budi',
-                userEmail: 'budi@example.com',
-                onConfirm,
-            },
-        });
-
-        const backdrop = screen.getByLabelText(/Tutup modal/i);
-        await fireEvent.click(backdrop);
-
-        expect(onConfirm).not.toHaveBeenCalled();
-    });
-});
-
-// ============================================================
-// KATEGORI 5 — CONFIRM BEHAVIOR
-// ============================================================
-
-describe('ResetPasswordConfirmModal.svelte — Confirm Behavior', () => {
-    it('klik "Ya, Reset Password" memanggil onConfirm callback', async () => {
-        const onConfirm = vi.fn();
-        render(ResetPasswordConfirmModal, {
-            props: {
-                open: true,
-                userName: 'Budi',
-                userEmail: 'budi@example.com',
-                onConfirm,
-            },
-        });
-
-        const confirmBtn = screen.getByRole('button', { name: /Ya, Reset Password/i });
-        await fireEvent.click(confirmBtn);
-
-        expect(onConfirm).toHaveBeenCalledTimes(1);
-    });
-
-    it('klik "Ya, Reset Password" TIDAK menutup modal otomatis', async () => {
-        const onConfirm = vi.fn();
-        render(ResetPasswordConfirmModal, {
-            props: {
-                open: true,
-                userName: 'Budi',
-                userEmail: 'budi@example.com',
-                onConfirm,
-            },
-        });
-
-        const confirmBtn = screen.getByRole('button', { name: /Ya, Reset Password/i });
-        await fireEvent.click(confirmBtn);
-
-        expect(screen.getByText(/Reset Password\?/i)).toBeInTheDocument();
-    });
-
-    it('klik "Ya, Reset Password" berkali-kali memanggil onConfirm berkali-kali', async () => {
-        const onConfirm = vi.fn();
-        render(ResetPasswordConfirmModal, {
-            props: {
-                open: true,
-                userName: 'Budi',
-                userEmail: 'budi@example.com',
-                onConfirm,
-            },
-        });
-
-        const confirmBtn = screen.getByRole('button', { name: /Ya, Reset Password/i });
-        await fireEvent.click(confirmBtn);
-        await fireEvent.click(confirmBtn);
-        await fireEvent.click(confirmBtn);
-
-        expect(onConfirm).toHaveBeenCalledTimes(3);
-    });
-
-    it('TIDAK error kalau onConfirm undefined', async () => {
-        render(ResetPasswordConfirmModal, {
-            props: {
-                open: true,
-                userName: 'Budi',
-                userEmail: 'budi@example.com',
-            },
-        });
-
-        const confirmBtn = screen.getByRole('button', { name: /Ya, Reset Password/i });
-        await fireEvent.click(confirmBtn);
-
-        expect(true).toBe(true);
-    });
-});
-
-// ============================================================
-// KATEGORI 6 — ACCESSIBILITY
-// ============================================================
-
-describe('ResetPasswordConfirmModal.svelte — Accessibility', () => {
-    beforeEach(() => {
-        render(ResetPasswordConfirmModal, {
-            props: {
-                open: true,
-                userName: 'Budi',
-                userEmail: 'budi@example.com',
-            },
-        });
-    });
-
-    it('backdrop punya type="button"', () => {
-        const backdrop = screen.getByLabelText(/Tutup modal/i);
-
-        // ✅ FIX: <button> semantic — cek type="button" (bukan role="button")
-        expect(backdrop).toHaveAttribute('type', 'button');
-
-        // Bonus: cek tag name = BUTTON
-        expect(backdrop.tagName).toBe('BUTTON');
-    });
-
-    it('backdrop punya aria-label "Tutup modal"', () => {
-        const backdrop = screen.getByLabelText(/Tutup modal/i);
-        expect(backdrop).toHaveAttribute('aria-label', 'Tutup modal');
-    });
-
-    it('backdrop TIDAK punya tabindex="-1" (button focusable by default)', () => {
-        const backdrop = screen.getByLabelText(/Tutup modal/i);
-
-        // ✅ FIX: <button> sudah focusable by default.
-        // `tabindex="-1"` justru akan menghilangkan sifat focusable.
-        expect(backdrop).not.toHaveAttribute('tabindex');
-    });
-
-    it('heading pakai h2', () => {
-        const heading = screen.getByRole('heading', { name: /Reset Password\?/i });
-        expect(heading.tagName).toBe('H2');
-    });
-});
-
-// ============================================================
-// KATEGORI 7 — EDGE CASES
-// ============================================================
-
-describe('ResetPasswordConfirmModal.svelte — Edge Cases', () => {
-    it('handle userName dengan karakter khusus', () => {
-        render(ResetPasswordConfirmModal, {
-            props: {
-                open: true,
-                userName: "O'Brien & Sons",
-                userEmail: 'obrien@example.com',
-            },
-        });
-        expect(screen.getByText("O'Brien & Sons")).toBeInTheDocument();
-    });
-
-    it('handle userName dengan emoji', () => {
-        render(ResetPasswordConfirmModal, {
-            props: {
-                open: true,
-                userName: 'Budi 🚀',
-                userEmail: 'budi@example.com',
-            },
-        });
-        expect(screen.getByText('Budi 🚀')).toBeInTheDocument();
-    });
-
-    it('handle email dengan subdomain', () => {
-        render(ResetPasswordConfirmModal, {
-            props: {
-                open: true,
-                userName: 'Budi',
-                userEmail: 'user@mail.example.com',
-            },
-        });
-        expect(screen.getByText('user@mail.example.com')).toBeInTheDocument();
-    });
-
-    it('berubah dari open=false ke open=true menampilkan modal', async () => {
-        const { rerender } = render(ResetPasswordConfirmModal, {
-            props: {
-                open: false,
-                userName: 'Budi',
-                userEmail: 'budi@example.com',
-            },
-        });
-
-        expect(screen.queryByText(/Reset Password\?/i)).not.toBeInTheDocument();
-
-        await rerender({
+const renderModal = (props: {
+    open?: boolean;
+    userName?: string;
+    userEmail?: string;
+    onConfirm?: () => void;
+}) =>
+    render(ResetPasswordConfirmModal, {
+        props: {
             open: true,
-            userName: 'Budi',
-            userEmail: 'budi@example.com',
-        });
-
-        expect(screen.getByText(/Reset Password\?/i)).toBeInTheDocument();
+            userName: 'Mitra Satu',
+            userEmail: 'mitra1@test.com',
+            onConfirm: vi.fn(),
+            ...props,
+        },
     });
 
-    it('berubah dari open=true ke open=false menyembunyikan modal', async () => {
-        const { rerender } = render(ResetPasswordConfirmModal, {
-            props: {
-                open: true,
-                userName: 'Budi',
-                userEmail: 'budi@example.com',
-            },
+// ============================================================
+// 2. TEST SUITE
+// ============================================================
+describe('ResetPasswordConfirmModal', () => {
+    // ----------------------------------------------------------
+    // 2.1 CONDITIONAL RENDERING
+    // ----------------------------------------------------------
+    describe('Rendering — Conditional', () => {
+        it('TIDAK render modal saat open=false', () => {
+            renderModal({ open: false });
+            expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
         });
 
-        expect(screen.getByText(/Reset Password\?/i)).toBeInTheDocument();
-
-        await rerender({
-            open: false,
-            userName: 'Budi',
-            userEmail: 'budi@example.com',
+        it('render modal saat open=true', () => {
+            renderModal({ open: true });
+            expect(screen.getByRole('dialog')).toBeInTheDocument();
         });
 
-        expect(screen.queryByText(/Reset Password\?/i)).not.toBeInTheDocument();
+        it('TIDAK render backdrop saat open=false', () => {
+            renderModal({ open: false });
+            expect(screen.queryByLabelText('Tutup modal')).not.toBeInTheDocument();
+        });
+
+        it('render backdrop saat open=true', () => {
+            renderModal({ open: true });
+            expect(screen.getByLabelText('Tutup modal')).toBeInTheDocument();
+        });
     });
 
-    it('onConfirm tetap bekerja setelah re-render dengan onConfirm baru', async () => {
-        const onConfirm1 = vi.fn();
-        const onConfirm2 = vi.fn();
-
-        const { rerender } = render(ResetPasswordConfirmModal, {
-            props: {
-                open: true,
-                userName: 'Budi',
-                userEmail: 'budi@example.com',
-                onConfirm: onConfirm1,
-            },
+    // ----------------------------------------------------------
+    // 2.2 UI CONTRACT
+    // ----------------------------------------------------------
+    describe('Rendering — UI Contract', () => {
+        it('menampilkan heading "Reset Password?"', () => {
+            renderModal({});
+            expect(
+                screen.getByRole('heading', { name: 'Reset Password?' }),
+            ).toBeInTheDocument();
         });
 
-        await rerender({
-            open: true,
-            userName: 'Ani',
-            userEmail: 'ani@example.com',
-            onConfirm: onConfirm2,
+        it('menampilkan pesan konfirmasi', () => {
+            renderModal({});
+            expect(
+                screen.getByText(/Yakin ingin mereset password user berikut/i),
+            ).toBeInTheDocument();
         });
 
-        const confirmBtn = screen.getByRole('button', { name: /Ya, Reset Password/i });
-        await fireEvent.click(confirmBtn);
+        it('menampilkan info "Password baru akan ditampilkan sekali"', () => {
+            renderModal({});
+            expect(
+                screen.getByText(/Password baru akan/i),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByText(/ditampilkan sekali/i),
+            ).toBeInTheDocument();
+        });
 
-        expect(onConfirm1).not.toHaveBeenCalled();
-        expect(onConfirm2).toHaveBeenCalledTimes(1);
+        it('menampilkan info "user harus menggantinya saat login"', () => {
+            renderModal({});
+            expect(
+                screen.getByText(/user harus menggantinya saat login/i),
+            ).toBeInTheDocument();
+        });
+
+        it('menampilkan tombol "Batal"', () => {
+            renderModal({});
+            expect(screen.getByRole('button', { name: 'Batal' })).toBeInTheDocument();
+        });
+
+        it('menampilkan tombol "Ya, Reset Password"', () => {
+            renderModal({});
+            expect(
+                screen.getByRole('button', { name: 'Ya, Reset Password' }),
+            ).toBeInTheDocument();
+        });
+
+        it('tombol confirm punya class warna sun-dark (palet brand)', () => {
+            renderModal({});
+            const confirmBtn = screen.getByRole('button', { name: 'Ya, Reset Password' });
+            expect(confirmBtn).toHaveClass('bg-sun-dark');
+        });
     });
 
-    it('modal punya max-width class max-w-md', () => {
-        render(ResetPasswordConfirmModal, {
-            props: {
-                open: true,
-                userName: 'Budi',
-                userEmail: 'budi@example.com',
-            },
+    // ----------------------------------------------------------
+    // 2.3 USER INFO DISPLAY
+    // ----------------------------------------------------------
+    describe('Rendering — User Info', () => {
+        it('menampilkan nama user', () => {
+            renderModal({ userName: 'Budi Santoso' });
+            expect(screen.getByText('Budi Santoso')).toBeInTheDocument();
         });
 
-        const modal = document.querySelector('.max-w-md');
-        expect(modal).toBeInTheDocument();
+        it('menampilkan email user', () => {
+            renderModal({ userEmail: 'budi@test.com' });
+            expect(screen.getByText('budi@test.com')).toBeInTheDocument();
+        });
+
+        it('nama user pakai class font-bold', () => {
+            renderModal({ userName: 'Budi' });
+            expect(screen.getByText('Budi')).toHaveClass('font-bold');
+        });
+
+        it('email user pakai class text-xs', () => {
+            renderModal({ userEmail: 'budi@test.com' });
+            expect(screen.getByText('budi@test.com')).toHaveClass('text-xs');
+        });
+
+        it('handle userName default (string kosong)', () => {
+            renderModal({ userName: '' });
+            // Elemen <p> kosong tetap ada di DOM
+            const dialog = screen.getByRole('dialog');
+            expect(dialog).toBeInTheDocument();
+        });
+
+        it('handle email user berbeda', () => {
+            renderModal({ userEmail: 'other@domain.co.id' });
+            expect(screen.getByText('other@domain.co.id')).toBeInTheDocument();
+        });
     });
 
-    it('tombol "Ya, Reset Password" punya warna yellow', () => {
-        render(ResetPasswordConfirmModal, {
-            props: {
-                open: true,
-                userName: 'Budi',
-                userEmail: 'budi@example.com',
-            },
+    // ----------------------------------------------------------
+    // 2.4 INTERACTION — Cancel
+    // ----------------------------------------------------------
+    describe('Interaction — Cancel', () => {
+        it('klik tombol "Batal" menutup modal', async () => {
+            renderModal({});
+            await fireEvent.click(screen.getByRole('button', { name: 'Batal' }));
+            expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
         });
 
-        const confirmBtn = screen.getByRole('button', { name: /Ya, Reset Password/i });
-        expect(confirmBtn).toHaveClass('bg-yellow-500');
+        it('klik backdrop menutup modal', async () => {
+            renderModal({});
+            await fireEvent.click(screen.getByLabelText('Tutup modal'));
+            expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        });
+
+        it('klik "Batal" TIDAK memanggil onConfirm', async () => {
+            const onConfirm = vi.fn();
+            renderModal({ onConfirm });
+            await fireEvent.click(screen.getByRole('button', { name: 'Batal' }));
+            expect(onConfirm).not.toHaveBeenCalled();
+        });
+
+        it('klik backdrop TIDAK memanggil onConfirm', async () => {
+            const onConfirm = vi.fn();
+            renderModal({ onConfirm });
+            await fireEvent.click(screen.getByLabelText('Tutup modal'));
+            expect(onConfirm).not.toHaveBeenCalled();
+        });
+    });
+
+    // ----------------------------------------------------------
+    // 2.5 INTERACTION — Confirm
+    // ----------------------------------------------------------
+    describe('Interaction — Confirm', () => {
+        it('klik "Ya, Reset Password" memanggil onConfirm', async () => {
+            const onConfirm = vi.fn();
+            renderModal({ onConfirm });
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Ya, Reset Password' }),
+            );
+            expect(onConfirm).toHaveBeenCalledOnce();
+        });
+
+        it('klik "Ya, Reset Password" TIDAK menutup modal otomatis', async () => {
+            // Parent bertanggung jawab menutup setelah async selesai
+            const onConfirm = vi.fn();
+            renderModal({ onConfirm });
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Ya, Reset Password' }),
+            );
+            expect(screen.getByRole('dialog')).toBeInTheDocument();
+        });
+
+        it('klik "Ya, Reset Password" berkali-kali memanggil onConfirm berkali-kali', async () => {
+            const onConfirm = vi.fn();
+            renderModal({ onConfirm });
+            const btn = screen.getByRole('button', { name: 'Ya, Reset Password' });
+            await fireEvent.click(btn);
+            await fireEvent.click(btn);
+            await fireEvent.click(btn);
+            expect(onConfirm).toHaveBeenCalledTimes(3);
+        });
+
+        it('TIDAK error kalau onConfirm undefined', async () => {
+            renderModal({ onConfirm: undefined });
+            await expect(
+                fireEvent.click(screen.getByRole('button', { name: 'Ya, Reset Password' })),
+            ).resolves.not.toThrow();
+        });
+    });
+
+    // ----------------------------------------------------------
+    // 2.6 A11Y
+    // ----------------------------------------------------------
+    describe('Accessibility', () => {
+        it('dialog punya aria-modal="true"', () => {
+            renderModal({});
+            expect(screen.getByRole('dialog')).toHaveAttribute('aria-modal', 'true');
+        });
+
+        it('dialog punya aria-labelledby yang mengarah ke heading', () => {
+            renderModal({});
+            const dialog = screen.getByRole('dialog');
+            const labelledBy = dialog.getAttribute('aria-labelledby');
+            expect(labelledBy).toBe('reset-password-modal-title');
+            expect(document.getElementById(labelledBy!)).toHaveTextContent('Reset Password?');
+        });
+
+        it('backdrop punya aria-label "Tutup modal"', () => {
+            renderModal({});
+            expect(screen.getByLabelText('Tutup modal')).toBeInTheDocument();
+        });
+
+        it('heading pakai h2', () => {
+            renderModal({});
+            expect(
+                screen.getByRole('heading', { level: 2, name: 'Reset Password?' }),
+            ).toBeInTheDocument();
+        });
+    });
+
+    // ----------------------------------------------------------
+    // 2.7 REACTIVITY
+    // ----------------------------------------------------------
+    describe('Reactivity — Open Transitions', () => {
+        it('berubah dari open=false ke open=true menampilkan modal', async () => {
+            const { rerender } = renderModal({ open: false });
+            expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+            await rerender({ open: true });
+            expect(screen.getByRole('dialog')).toBeInTheDocument();
+        });
+
+        it('berubah dari open=true ke open=false menyembunyikan modal', async () => {
+            const { rerender } = renderModal({ open: true });
+            expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+            await rerender({ open: false });
+            expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        });
+
+        it('onConfirm baru tetap bekerja setelah re-render', async () => {
+            const firstConfirm = vi.fn();
+            const secondConfirm = vi.fn();
+
+            const { rerender } = renderModal({ onConfirm: firstConfirm });
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Ya, Reset Password' }),
+            );
+            expect(firstConfirm).toHaveBeenCalledOnce();
+
+            await rerender({ onConfirm: secondConfirm });
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Ya, Reset Password' }),
+            );
+            expect(secondConfirm).toHaveBeenCalledOnce();
+        });
+    });
+
+    // ----------------------------------------------------------
+    // 2.8 EDGE CASES
+    // ----------------------------------------------------------
+    describe('Edge Cases', () => {
+        it('handle userName dengan karakter khusus', () => {
+            renderModal({ userName: "O'Brien & Sons" });
+            expect(screen.getByText("O'Brien & Sons")).toBeInTheDocument();
+        });
+
+        it('handle userName dengan emoji', () => {
+            renderModal({ userName: '🚀 Rocket User 🚀' });
+            expect(screen.getByText('🚀 Rocket User 🚀')).toBeInTheDocument();
+        });
+
+        it('handle email dengan subdomain', () => {
+            renderModal({ userEmail: 'user@mail.sub.domain.co.id' });
+            expect(screen.getByText('user@mail.sub.domain.co.id')).toBeInTheDocument();
+        });
+
+        it('modal punya max-width class max-w-md', () => {
+            renderModal({});
+            expect(screen.getByRole('dialog')).toHaveClass('max-w-md');
+        });
     });
 });

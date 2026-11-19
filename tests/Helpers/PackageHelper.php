@@ -1,6 +1,8 @@
 <?php
 
+use App\Enums\BookingStatus;
 use App\Enums\PackageStatus;
+use App\Models\Booking;
 use App\Models\Package;
 use App\Models\PackageDay;
 use App\Models\PackageDayCost;
@@ -88,5 +90,58 @@ if (! function_exists('makePackageFacilityMock')) {
         ], $attrs));
 
         return $facility;
+    }
+}
+
+if (! function_exists('makeBookingMock')) {
+    /**
+     * Buat mock Booking untuk unit test (tanpa DB).
+     */
+    function makeBookingMock(array $attrs = []): MockInterface
+    {
+        $booking = Mockery::mock(Booking::class)->makePartial();
+        $booking->forceFill(array_merge([
+            'id' => 1,
+            'kode' => 'BKG-2026-001',
+            'package_id' => 5,
+            'user_id' => 10,
+            'mitra_id' => 99,
+            'status' => BookingStatus::PENDING_PAYMENT,
+            'jumlah_peserta' => 2,
+            'total_harga' => '1000000.00',
+            'tanggal_keberangkatan' => '2026-02-01',
+            'expired_at' => null,
+            'catatan' => null,
+        ], $attrs));
+
+        return $booking;
+    }
+}
+
+if (! function_exists('validPackagePayload')) {
+    /**
+     * Payload valid untuk `PackageService::create` / `update` /
+     * `updateWithRelations`.
+     *
+     * Dipakai di:
+     * - `tests/Feature/Mitra/PackageControllerTest.php`
+     * - `tests/Feature/Services/Package/PackageServiceTest.php`
+     *
+     * @param  array<string, mixed>  $overrides
+     * @return array<string, mixed>
+     */
+    function validPackagePayload(array $overrides = []): array
+    {
+        return array_merge([
+            'nama' => 'Paket Wisata Test',
+            'deskripsi' => 'Deskripsi paket',
+            'kategori' => 'wisata_alam',
+            'durasi_hari' => 2,
+            'durasi_malam' => 1,
+            'harga_per_orang' => 500_000,
+            'harga_per_rombongan' => null,
+            'max_peserta' => null,
+            'timezone' => 'Asia/Makassar',
+        ], $overrides);
     }
 }

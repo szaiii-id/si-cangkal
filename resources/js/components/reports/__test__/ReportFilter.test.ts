@@ -1,229 +1,134 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
+import { describe, it, expect, vi } from 'vitest';
 import ReportFilter from '../ReportFilter.svelte';
 
-beforeEach(() => {
-    vi.clearAllMocks();
-});
+describe('ReportFilter Component', () => {
+    // ==========================================
+    // 1. RENDERING DASAR
+    // ==========================================
+    describe('Rendering', () => {
+        it('harus merender dua input tanggal dan tombol Terapkan Filter', () => {
+            render(ReportFilter, {
+                props: {
+                    startDate: '2026-10-01',
+                    endDate: '2026-10-31',
+                    onApply: vi.fn(),
+                },
+            });
 
-// ============================================================
-// KATEGORI 1 — RENDERING DASAR
-// ============================================================
-
-describe('ReportFilter — Rendering Dasar', () => {
-    it('merender label "Dari Tanggal"', () => {
-        render(ReportFilter, {
-            props: {
-                startDate: '2026-01-01',
-                endDate: '2026-01-31',
-                onApply: vi.fn(),
-            },
+            expect(screen.getByLabelText('Dari Tanggal')).toBeInTheDocument();
+            expect(screen.getByLabelText('Sampai Tanggal')).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: /Terapkan filter tanggal/i })).toBeInTheDocument();
         });
 
-        expect(screen.getByText('Dari Tanggal')).toBeInTheDocument();
+        it('harus menampilkan nilai startDate dan endDate dari props', () => {
+            render(ReportFilter, {
+                props: {
+                    startDate: '2026-10-01',
+                    endDate: '2026-10-31',
+                    onApply: vi.fn(),
+                },
+            });
+
+            const startInput = screen.getByLabelText('Dari Tanggal') as HTMLInputElement;
+            const endInput = screen.getByLabelText('Sampai Tanggal') as HTMLInputElement;
+
+            expect(startInput.value).toBe('2026-10-01');
+            expect(endInput.value).toBe('2026-10-31');
+        });
     });
 
-    it('merender label "Sampai Tanggal"', () => {
-        render(ReportFilter, {
-            props: {
-                startDate: '2026-01-01',
-                endDate: '2026-01-31',
-                onApply: vi.fn(),
-            },
-        });
+    // ==========================================
+    // 2. INTERAKSI
+    // ==========================================
+    describe('User Interaction', () => {
+        it('harus memanggil onApply saat tombol "Terapkan Filter" diklik', async () => {
+            const onApply = vi.fn();
+            render(ReportFilter, {
+                props: {
+                    startDate: '2026-10-01',
+                    endDate: '2026-10-31',
+                    onApply,
+                },
+            });
 
-        expect(screen.getByText('Sampai Tanggal')).toBeInTheDocument();
+            const btn = screen.getByRole('button', { name: /Terapkan filter tanggal/i });
+            await fireEvent.click(btn);
+
+            expect(onApply).toHaveBeenCalledTimes(1);
+        });
     });
 
-    it('merender tombol "Terapkan Filter"', () => {
-        render(ReportFilter, {
-            props: {
-                startDate: '2026-01-01',
-                endDate: '2026-01-31',
-                onApply: vi.fn(),
-            },
+    // ==========================================
+    // 3. VALIDASI TANGGAL
+    // ==========================================
+    describe('Date Range Validation', () => {
+        it('harus menonaktifkan tombol jika startDate > endDate', () => {
+            render(ReportFilter, {
+                props: {
+                    startDate: '2026-10-31',
+                    endDate: '2026-10-01', // Lebih kecil dari start
+                    onApply: vi.fn(),
+                },
+            });
+
+            const btn = screen.getByRole('button', { name: /Terapkan filter tanggal/i });
+            expect(btn).toBeDisabled();
+            expect(screen.getByText(/tidak boleh lebih besar/i)).toBeInTheDocument();
         });
 
-        expect(
-            screen.getByRole('button', { name: /Terapkan Filter/i }),
-        ).toBeInTheDocument();
+        it('harus mengaktifkan tombol jika rentang tanggal valid', () => {
+            render(ReportFilter, {
+                props: {
+                    startDate: '2026-10-01',
+                    endDate: '2026-10-31',
+                    onApply: vi.fn(),
+                },
+            });
+
+            const btn = screen.getByRole('button', { name: /Terapkan filter tanggal/i });
+            expect(btn).not.toBeDisabled();
+        });
     });
 
-    it('merender 2 input date', () => {
-        render(ReportFilter, {
-            props: {
-                startDate: '2026-01-01',
-                endDate: '2026-01-31',
-                onApply: vi.fn(),
-            },
+    // ==========================================
+    // 4. LOADING STATE (OPSIONAL)
+    // ==========================================
+    describe('Loading State', () => {
+        it('harus menonaktifkan tombol dan menampilkan spinner jika isProcessing=true', () => {
+            render(ReportFilter, {
+                props: {
+                    startDate: '2026-10-01',
+                    endDate: '2026-10-31',
+                    onApply: vi.fn(),
+                    isProcessing: true,
+                },
+            });
+
+            const btn = screen.getByRole('button', { name: /Terapkan filter tanggal/i });
+            expect(btn).toBeDisabled();
+            expect(screen.getByText(/Memproses.../i)).toBeInTheDocument();
         });
-
-        const inputs = document.querySelectorAll('input[type="date"]');
-        expect(inputs).toHaveLength(2);
-    });
-});
-
-// ============================================================
-// KATEGORI 2 — BINDING NILAI AWAL
-// ============================================================
-
-describe('ReportFilter — Binding Nilai Awal', () => {
-    it('input pertama terisi startDate', () => {
-        render(ReportFilter, {
-            props: {
-                startDate: '2026-01-01',
-                endDate: '2026-01-31',
-                onApply: vi.fn(),
-            },
-        });
-
-        const inputs = document.querySelectorAll(
-            'input[type="date"]',
-        ) as NodeListOf<HTMLInputElement>;
-        expect(inputs[0].value).toBe('2026-01-01');
     });
 
-    it('input kedua terisi endDate', () => {
-        render(ReportFilter, {
-            props: {
-                startDate: '2026-01-01',
-                endDate: '2026-01-31',
-                onApply: vi.fn(),
-            },
+    // ==========================================
+    // 5. AKSESIBILITAS (A11Y)
+    // ==========================================
+    describe('Accessibility', () => {
+        it('input harus memiliki aria-invalid=true jika tanggal tidak valid', () => {
+            render(ReportFilter, {
+                props: {
+                    startDate: '2026-10-31',
+                    endDate: '2026-10-01',
+                    onApply: vi.fn(),
+                },
+            });
+
+            const startInput = screen.getByLabelText('Dari Tanggal');
+            const endInput = screen.getByLabelText('Sampai Tanggal');
+
+            expect(startInput).toHaveAttribute('aria-invalid', 'true');
+            expect(endInput).toHaveAttribute('aria-invalid', 'true');
         });
-
-        const inputs = document.querySelectorAll(
-            'input[type="date"]',
-        ) as NodeListOf<HTMLInputElement>;
-        expect(inputs[1].value).toBe('2026-01-31');
-    });
-});
-
-// ============================================================
-// KATEGORI 3 — INTERAKSI: PERUBAHAN INPUT
-// ============================================================
-
-describe('ReportFilter — Interaksi Input', () => {
-    it('mengubah startDate memicu update', async () => {
-        render(ReportFilter, {
-            props: {
-                startDate: '2026-01-01',
-                endDate: '2026-01-31',
-                onApply: vi.fn(),
-            },
-        });
-
-        const inputs = document.querySelectorAll(
-            'input[type="date"]',
-        ) as NodeListOf<HTMLInputElement>;
-
-        await fireEvent.input(inputs[0], {
-            target: { value: '2026-02-01' },
-        });
-
-        // Svelte $bindable akan update value di DOM
-        expect(inputs[0].value).toBe('2026-02-01');
-    });
-
-    it('mengubah endDate memicu update', async () => {
-        render(ReportFilter, {
-            props: {
-                startDate: '2026-01-01',
-                endDate: '2026-01-31',
-                onApply: vi.fn(),
-            },
-        });
-
-        const inputs = document.querySelectorAll(
-            'input[type="date"]',
-        ) as NodeListOf<HTMLInputElement>;
-
-        await fireEvent.input(inputs[1], {
-            target: { value: '2026-12-31' },
-        });
-
-        expect(inputs[1].value).toBe('2026-12-31');
-    });
-});
-
-// ============================================================
-// KATEGORI 4 — INTERAKSI: TOMBOL
-// ============================================================
-
-describe('ReportFilter — Tombol Apply', () => {
-    it('mengklik tombol memanggil onApply', async () => {
-        const onApply = vi.fn();
-
-        render(ReportFilter, {
-            props: {
-                startDate: '2026-01-01',
-                endDate: '2026-01-31',
-                onApply,
-            },
-        });
-
-        const button = screen.getByRole('button', {
-            name: /Terapkan Filter/i,
-        });
-        await fireEvent.click(button);
-
-        expect(onApply).toHaveBeenCalledTimes(1);
-    });
-
-    it('onApply dipanggil tepat 1x setiap klik', async () => {
-        const onApply = vi.fn();
-
-        render(ReportFilter, {
-            props: {
-                startDate: '2026-01-01',
-                endDate: '2026-01-31',
-                onApply,
-            },
-        });
-
-        const button = screen.getByRole('button', {
-            name: /Terapkan Filter/i,
-        });
-
-        await fireEvent.click(button);
-        await fireEvent.click(button);
-
-        expect(onApply).toHaveBeenCalledTimes(2);
-    });
-});
-
-// ============================================================
-// KATEGORI 5 — STYLING
-// ============================================================
-
-describe('ReportFilter — Styling', () => {
-    it('container memiliki class bg-white rounded-3xl', () => {
-        render(ReportFilter, {
-            props: {
-                startDate: '2026-01-01',
-                endDate: '2026-01-31',
-                onApply: vi.fn(),
-            },
-        });
-
-        const container = document.querySelector('div.bg-white');
-        expect(container?.className).toContain('rounded-3xl');
-        expect(container?.className).toContain('border');
-    });
-
-    it('tombol memiliki class bg-dark text-white', () => {
-        render(ReportFilter, {
-            props: {
-                startDate: '2026-01-01',
-                endDate: '2026-01-31',
-                onApply: vi.fn(),
-            },
-        });
-
-        const button = screen.getByRole('button', {
-            name: /Terapkan Filter/i,
-        });
-        expect(button.className).toContain('bg-dark');
-        expect(button.className).toContain('text-white');
     });
 });

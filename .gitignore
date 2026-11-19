@@ -20,14 +20,18 @@
 # Environment
 # ==========================================
 .env
-.env.backup
-.env.production
+.env.*
+!.env.example
+!.env.testing
 
 # ==========================================
-# Storage & Cache
+# Storage, Keys & Cache
 # ==========================================
 /storage/*.key
 /storage/pail
+/storage/shard-*/
+/storage/app/firebase/*.json
+!/storage/app/firebase/.gitkeep
 /.phpunit.cache
 /.phpunit.result.cache
 
@@ -39,7 +43,13 @@
 /blob-report/
 /playwright/.cache/
 /coverage/
-*.log  
+
+# ==========================================
+# Logs & OS Files
+# ==========================================
+*.log
+.DS_Store
+Thumbs.db
 
 # ==========================================
 # Homestead (Laravel)
@@ -47,12 +57,6 @@
 Homestead.json
 Homestead.yaml
 /auth.json
-
-# ==========================================
-# Logs
-# ==========================================
-npm-debug.log
-yarn-error.log
 
 # ==========================================
 # IDE & Editor
@@ -82,7 +86,3 @@ yarn-error.log
 /boost.json
 /opencode.json
 /opencode.jsonc
-# E2E test shards & temp storage
-storage/shard-*/
-test-results/
-playwright-report/

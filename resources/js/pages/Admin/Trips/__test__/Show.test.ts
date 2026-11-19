@@ -1,480 +1,429 @@
+/**
+ * ============================================================
+ * Admin Trips — Show Page (Detail Perjalanan) — Component Test
+ * ============================================================
+ *
+ * Fokus pengujian:
+ *   1. Isolation & Mocking  → Inertia, menu, formatCurrency,
+ *                             & child components (TripHeader,
+ *                             TripMitraCard, TripItinerary,
+ *                             BackButton, DashboardLayout) di-mock
+ *                             anchor-aware.
+ *   2. Props & Rendering    → header, itinerary, mitra card,
+ *                             info pesanan (conditional).
+ *   3. Interaction          → link ke detail booking.
+ *   4. Reactivity           → snapshot_package fallback.
+ *
+ * Strategi:
+ *   - Anchor-aware mock via `insertBefore(anchor.parentNode)`.
+ *   - `mockUpdaters` + `syncUI()` untuk re-render.
+ *   - A11y-first query: `getByRole('heading')`, `getByRole('link')`.
+ * ============================================================
+ */
+
+import { render, screen, fireEvent } from '@testing-library/svelte';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
-import TripShow from '../Show.svelte';
-import type {
-    DailyReport,
-    Package,
-    Trip,
-    TripDay,
-    TripMitra,
-    UserMini,
-} from '@/types';
+import { tick } from 'svelte';
+import Show from '../Show.svelte';
 
 // ============================================================
-// TIPE PROPS KOMPONEN (mirror `TripDetail` internal Show.svelte)
-// ------------------------------------------------------------
-// Identik dengan definisi di `Admin/Trips/Show.svelte`.
-// `mitra` wajib `& { timezone: string }`, `media` intersection
-// dengan `DailyReportMedia` (wajib `daily_report_id` + `created_at`).
+// 1. HOISTED MOCK REGISTRY
 // ============================================================
-type TripDetail = Omit<Trip, 'package' | 'booking' | 'mitras' | 'days'> & {
-    package:
-        | Pick<
-              Package,
-              'id' | 'nama' | 'kode' | 'slug' | 'timezone' | 'cover_image'
-          >
-        | null;
-    booking:
-        | {
-              id: number;
-              kode: string;
-              tanggal_keberangkatan: string;
-              jumlah_peserta: number;
-              total_harga: string;
-              status: string;
-              client: Pick<
-                  UserMini,
-                  'id' | 'name' | 'email' | 'username'
-              > | null;
-          }
-        | null;
-    mitras: Array<
-        Omit<TripMitra, 'mitra' | 'assigner'> & {
-            mitra:
-                | (Pick<UserMini, 'id' | 'name' | 'email' | 'username'> & {
-                      timezone: string;
-                  })
-                | null;
-            assigner: Pick<UserMini, 'id' | 'name' | 'email'> | null;
-        }
-    >;
-    days: Array<
-        TripDay & {
-            daily_reports: Array<
-                DailyReport & {
-                    mitra: Pick<
-                        UserMini,
-                        'id' | 'name' | 'email' | 'username'
-                    > | null;
-                    verifier: Pick<UserMini, 'id' | 'name' | 'email'> | null;
-                    media: Array<{
-                        id: number;
-                        daily_report_id: number;
-                        path: string;
-                        urutan: number;
-                        created_at: string;
-                    }>;
-                }
-            >;
-        }
-    >;
-};
-
-// Props lengkap komponen TripShow
-type TripShowData = {
-    trip: TripDetail;
-    totalHonor: number;
-    unverifiedDays: Array<{
-        id: number;
-        hari_ke: number;
-        tanggal: string;
-        judul: string;
-    }>;
-    submittedReports: Array<{
-        id: number;
-        catatan: string | null;
-        status: string;
-        submitted_at: string;
-        mitra: Pick<UserMini, 'id' | 'name' | 'email'> | null;
-        media: Array<{ id: number; path: string; urutan: number }>;
-        trip_day: {
-            id: number;
-            hari_ke: number;
-            tanggal: string;
-            judul: string;
-        } | null;
-    }>;
-    canComplete: boolean;
-    allMitras: Array<Pick<UserMini, 'id' | 'name' | 'email' | 'username'>>;
-};
+const mockUpdaters = vi.hoisted(() => new Set<() => void>());
 
 // ============================================================
-// MOCK INERTIA
+// 2. MOCK — INERTIA
 // ============================================================
-const mockRouterPost = vi.fn();
-const mockRouterPut = vi.fn();
-const mockRouterDelete = vi.fn();
-
 vi.mock('@inertiajs/svelte', () => ({
-    router: {
-        post: (...args: any[]) => mockRouterPost(...args),
-        put: (...args: any[]) => mockRouterPut(...args),
-        delete: (...args: any[]) => mockRouterDelete(...args),
-    },
-    inertia: () => ({
-        update: vi.fn(),
-        destroy: vi.fn(),
-    }),
-    page: {
-        get props() {
-            return {
-                auth: {
-                    user: {
-                        id: 1,
-                        name: 'Admin Test',
-                        username: 'admin',
-                        email: 'admin@example.com',
-                        role: 'admin',
-                    },
-                },
-                unread_notifications: 0,
-                flash: {},
-            };
-        },
-        get url() {
-            return '/admin/trips/1';
-        },
-        get component() {
-            return 'Admin/Trips/Show';
-        },
-    },
+    inertia: vi.fn(),
 }));
 
 // ============================================================
-// MOCK UTILS
+// 3. MOCK — MENUS
 // ============================================================
-vi.mock('@/utils/enums', () => ({
-    dailyReportStatusBadge: (s: string) => `badge-report-${s}`,
-    dailyReportStatusLabel: (s: string) => `Label Report ${s}`,
-    tripMitraRoleBadge: (s: string) => `badge-role-${s}`,
-    tripMitraRoleLabel: (s: string) => `Label Role ${s}`,
-    tripStatusBadge: (s: string) => `badge-trip-${s}`,
-    tripStatusLabel: (s: string) => `Label Trip ${s}`,
+vi.mock('@/utils/menus', () => ({
+    adminMenu: [],
 }));
 
+// ============================================================
+// 4. MOCK — FORMAT CURRENCY (deterministik)
+// ============================================================
 vi.mock('@/utils/formatCurrency', () => ({
-    formatCurrency: (n: number | string) => `Rp ${n}`,
+    formatCurrency: vi.fn(
+        (v: string | number) => `Rp ${Number(v).toLocaleString('id-ID')}`,
+    ),
 }));
 
-vi.mock('@/utils/formatDate', () => ({
-    formatDate: (d: string) => `Tgl: ${d}`,
-    formatDateTime: (d: string) => `TglWaktu: ${d}`,
-}));
-
-vi.mock('@/utils/duration', () => ({
-    formatDurasiFromRange: () => '3 Hari',
-    hitungDurasiHari: () => 3,
-}));
-
-vi.mock('@/utils/form', () => ({
-    parseRupiah: (val: string) =>
-        parseInt(String(val).replace(/\D/g, ''), 10) || 0,
-    formatRupiahInput: (n: number | null | undefined) => {
-        if (n === null || n === undefined || Number.isNaN(n)) return '';
-        return new Intl.NumberFormat('id-ID', {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0,
-        }).format(n);
+// ============================================================
+// 5. MOCK — DASHBOARD LAYOUT
+// ============================================================
+vi.mock('@/components/layout/DashboardLayout.svelte', () => ({
+    default: (anchor: Node, props: { children?: (anchor: Node) => void }) => {
+        props.children?.(anchor);
+        return {};
     },
 }));
 
-vi.mock('@/utils/timezone', () => ({
-    timezoneLabelLong: (tz: string) => `TZ: ${tz}`,
+// ============================================================
+// 6. MOCK — BACK BUTTON
+// ============================================================
+vi.mock('@/global/BackButton.svelte', () => ({
+    default: (anchor: Node, props: { href: string; label?: string }) => {
+        const link = document.createElement('a');
+        link.href = props.href;
+        link.textContent = props.label ?? 'Kembali';
+        link.setAttribute('data-testid', 'back-button');
+        anchor.parentNode?.insertBefore(link, anchor);
+        return {};
+    },
 }));
 
 // ============================================================
-// HELPERS
+// 7. MOCK — TRIP HEADER (render info minimal)
 // ============================================================
+vi.mock('@/components/admin/trips/TripHeader.svelte', () => ({
+    default: (
+        anchor: Node,
+        props: { trip: { kode: string; status: string }; snapshot?: { nama?: string } },
+    ) => {
+        const el = document.createElement('div');
+        el.setAttribute('data-testid', 'trip-header');
+        el.setAttribute('data-trip-kode', props.trip.kode);
+        el.setAttribute('data-trip-status', props.trip.status);
+        el.setAttribute(
+            'data-snapshot-nama',
+            props.snapshot?.nama ?? '(empty)',
+        );
+        anchor.parentNode?.insertBefore(el, anchor);
+        return {};
+    },
+}));
 
-const createMockData = (): TripShowData => {
-    const pkg: TripDetail['package'] = {
-        id: 10,
-        nama: 'Paket Bali',
-        kode: 'PKT-BALI',
+// ============================================================
+// 8. MOCK — TRIP MITRA CARD (render kondisional)
+// ============================================================
+vi.mock('@/components/admin/trips/TripMitraCard.svelte', () => ({
+    default: (
+        anchor: Node,
+        props: {
+            mitra:
+                | { id: number; name: string; email: string }
+                | null
+                | undefined;
+        },
+    ) => {
+        const el = document.createElement('div');
+        el.setAttribute('data-testid', 'trip-mitra-card');
+        el.setAttribute(
+            'data-has-mitra',
+            props.mitra ? 'true' : 'false',
+        );
+        if (props.mitra) {
+            el.textContent = `Mitra: ${props.mitra.name}`;
+        } else {
+            el.textContent = 'Data mitra tidak ditemukan';
+        }
+        anchor.parentNode?.insertBefore(el, anchor);
+        return {};
+    },
+}));
+
+// ============================================================
+// 9. MOCK — TRIP ITINERARY (render jumlah days)
+// ============================================================
+vi.mock('@/components/admin/trips/TripItinerary.svelte', () => ({
+    default: (
+        anchor: Node,
+        props: { days: Array<{ id: number; hari_ke: number; judul: string }> },
+    ) => {
+        const el = document.createElement('div');
+        el.setAttribute('data-testid', 'trip-itinerary');
+        el.setAttribute('data-days-count', String(props.days?.length ?? 0));
+        el.textContent = `${props.days?.length ?? 0} hari`;
+        anchor.parentNode?.insertBefore(el, anchor);
+        return {};
+    },
+}));
+
+// ============================================================
+// 10. STATIC IMPORT
+// ============================================================
+import { formatCurrency } from '@/utils/formatCurrency';
+
+// ============================================================
+// 11. HELPERS
+// ============================================================
+async function syncUI(): Promise<void> {
+    await tick();
+    mockUpdaters.forEach((fn) => fn());
+}
+
+// ============================================================
+// 12. FIXTURES
+// ============================================================
+const makeTrip = (overrides = {}) => ({
+    id: 1,
+    kode: 'TRIP-001',
+    status: 'scheduled',
+    tanggal_mulai: '2026-02-01',
+    tanggal_selesai: '2026-02-03',
+    jumlah_peserta: 2,
+    timezone: 'Asia/Jakarta',
+    snapshot_package: { nama: 'Paket Bali (Snapshot)' },
+    package: {
+        id: 1,
+        nama: 'Paket Bali 3H2M',
+        kode: 'PKT-BALI-001',
         slug: 'paket-bali',
         timezone: 'Asia/Jakarta',
         cover_image: null,
-    };
-
-    const booking: TripDetail['booking'] = {
-        id: 100,
-        kode: 'BK-001',
-        tanggal_keberangkatan: '2026-05-01',
-        jumlah_peserta: 5,
-        total_harga: '5000000',
+    },
+    booking: {
+        id: 10,
+        kode: 'BK-2026-001',
+        tanggal_keberangkatan: '2026-02-01',
+        jumlah_peserta: 2,
+        total_harga: '1500000',
         status: 'confirmed',
         client: {
-            id: 50,
-            name: 'Budi',
-            email: 'budi@example.com',
-            username: 'budi',
+            id: 100,
+            name: 'Budi Santoso',
+            email: 'budi@test.com',
+            username: 'budisan',
         },
-    };
-
-    const mitras: TripDetail['mitras'] = [
-        {
-            id: 1,
-            trip_id: 1,
-            mitra_id: 50,
-            role: 'lead',
-            honor: '1000000',
-            honor_tipe: 'flat',
-            instruksi: 'Jaga kebersihan',
-            assigned_by: null,
-            assigned_at: null,
-            created_at: '2026-01-01T00:00:00Z',
-            updated_at: '2026-01-01T00:00:00Z',
-            mitra: {
-                id: 50,
-                name: 'Mitra A',
-                email: 'mitra@example.com',
-                username: 'mitra',
-                timezone: 'Asia/Jakarta',
-            },
-            assigner: null,
-        },
-    ];
-
-    const days: TripDetail['days'] = [
-        {
-            id: 10,
-            trip_id: 1,
-            hari_ke: 1,
-            tanggal: '2026-05-01',
-            judul: 'Hari Pertama',
-            deskripsi: 'Kegiatan hari 1',
-            status: 'pending',
-            created_at: '2026-01-01T00:00:00Z',
-            updated_at: '2026-01-01T00:00:00Z',
-            daily_reports: [],
-        },
-        {
-            id: 11,
-            trip_id: 1,
-            hari_ke: 2,
-            tanggal: '2026-05-02',
-            judul: 'Hari Kedua',
-            deskripsi: 'Kegiatan hari 2',
-            status: 'in_progress',
-            created_at: '2026-01-01T00:00:00Z',
-            updated_at: '2026-01-01T00:00:00Z',
-            daily_reports: [
-                {
-                    id: 20,
-                    trip_day_id: 11,
-                    mitra_id: 50,
-                    catatan: 'Laporan hari 2',
-                    status: 'submitted',
-                    submitted_at: '2026-05-02T10:00:00Z',
-                    verified_by: null,
-                    verified_at: null,
-                    rejection_reason: null,
-                    created_at: '2026-05-02T10:00:00Z',
-                    updated_at: '2026-05-02T10:00:00Z',
-                    mitra: {
-                        id: 50,
-                        name: 'Mitra A',
-                        email: 'mitra@example.com',
-                        username: 'mitra',
-                    },
-                    verifier: null,
-                    media: [
-                        {
-                            id: 100,
-                            daily_report_id: 20,
-                            path: 'photos/bukti.jpg',
-                            urutan: 1,
-                            created_at: '2026-05-02T10:00:00Z',
-                        },
-                    ],
-                },
-            ],
-        },
-    ];
-
-    const trip: TripDetail = {
-        id: 1,
-        kode: 'TRIP-123',
-        status: 'scheduled',
-        jumlah_peserta: 5,
-        tanggal_mulai: '2026-05-01',
-        tanggal_selesai: '2026-05-03',
+    },
+    mitra: {
+        id: 200,
+        name: 'PT Mitra Jaya',
+        email: 'mitra@test.com',
+        username: 'mitrajaya',
         timezone: 'Asia/Jakarta',
-        created_at: '2026-04-01T10:00:00Z',
-        updated_at: '2026-04-02T10:00:00Z',
-        package_id: 10,
-        booking_id: 100,
-        snapshot_package: {
-            nama: 'Paket Bali',
-            facilities: {
-                include: ['Hotel', 'Makan'],
-                exclude: ['Tiket Pesawat'],
-            },
-        },
-        package: pkg,
-        booking,
-        mitras,
-        days,
-    };
-
-    return {
-        trip,
-        totalHonor: 1000000,
-        unverifiedDays: [
-            {
-                id: 11,
-                hari_ke: 2,
-                tanggal: '2026-05-02',
-                judul: 'Hari Kedua',
-            },
-        ],
-        submittedReports: [],
-        canComplete: false,
-        allMitras: [
-            {
-                id: 50,
-                name: 'Mitra A',
-                email: 'mitra@example.com',
-                username: 'mitra',
-            },
-            {
-                id: 51,
-                name: 'Mitra B',
-                email: 'mitraB@example.com',
-                username: 'mitraB',
-            },
-        ],
-    };
-};
-
-// ============================================================
-// SETUP
-// ============================================================
-
-beforeEach(() => {
-    vi.clearAllMocks();
+    },
+    days: [
+        { id: 1, hari_ke: 1, judul: 'Kedatangan', deskripsi: 'Arrive di Bali', tanggal: '2026-02-01', status: 'pending' },
+        { id: 2, hari_ke: 2, judul: 'Explore Ubud', deskripsi: 'Tour', tanggal: '2026-02-02', status: 'pending' },
+        { id: 3, hari_ke: 3, judul: 'Kembali', deskripsi: 'Check out', tanggal: '2026-02-03', status: 'pending' },
+    ],
+    ...overrides,
 });
 
-// ============================================================
-// KATEGORI 1 — RENDERING HEADER & DATA TRIP
-// ============================================================
-
-describe('Admin Trip Show — Rendering Data', () => {
-    it('merender header trip (nama paket, kode, status)', () => {
-        const data = createMockData();
-        render(TripShow, { props: data });
-
-        expect(
-            screen.getByRole('heading', { level: 1, name: 'Paket Bali' })
-        ).toBeInTheDocument();
-
-        expect(
-            screen.getAllByText('TRIP-123').length
-        ).toBeGreaterThanOrEqual(1);
-
-        expect(
-            screen.getAllByText('Label Trip scheduled').length
-        ).toBeGreaterThanOrEqual(1);
-    });
-
-    it('merender info tanggal, peserta, timezone', () => {
-        const data = createMockData();
-        render(TripShow, { props: data });
-
-        expect(
-            screen.getAllByText('Tgl: 2026-05-01').length
-        ).toBeGreaterThanOrEqual(1);
-
-        expect(
-            screen.getAllByText('Tgl: 2026-05-03').length
-        ).toBeGreaterThanOrEqual(1);
-
-        expect(screen.getByText('5 orang')).toBeInTheDocument();
-        expect(screen.getByText('TZ: Asia/Jakarta')).toBeInTheDocument();
-    });
-
-    it('merender data mitra', () => {
-        const data = createMockData();
-        render(TripShow, { props: data });
-
-        expect(
-            screen.getAllByText('Mitra A').length
-        ).toBeGreaterThanOrEqual(1);
-
-        expect(screen.getByText('Label Role lead')).toBeInTheDocument();
-        expect(
-            screen.getAllByText('Rp 1000000').length
-        ).toBeGreaterThanOrEqual(1);
-    });
-
-    it('merender itinerary dan laporan', () => {
-        const data = createMockData();
-        render(TripShow, { props: data });
-
-        expect(screen.getByText('Hari Pertama')).toBeInTheDocument();
-        expect(screen.getByText('Hari Kedua')).toBeInTheDocument();
-        expect(screen.getByText('Laporan hari 2')).toBeInTheDocument();
-        expect(
-            screen.getAllByText('Label Report submitted').length
-        ).toBeGreaterThanOrEqual(1);
-    });
-});
+const renderPage = (trip = makeTrip()) => render(Show, { props: { trip } });
 
 // ============================================================
-// KATEGORI 2 — AKSI & MODAL
+// 13. TEST SUITE
 // ============================================================
-
-describe('Admin Trip Show — Aksi & Modal', () => {
-    it('menampilkan tombol "Aktifkan Trip" jika status scheduled & sudah ada mitra', () => {
-        const data = createMockData();
-        render(TripShow, { props: data });
-
-        expect(
-            screen.getByRole('button', { name: /Aktifkan Trip/i })
-        ).toBeInTheDocument();
+describe('Admin Trips — Show Page', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockUpdaters.clear();
     });
 
-    it('membuka modal Aktivasi saat tombol diklik', async () => {
-        const data = createMockData();
-        render(TripShow, { props: data });
+    // ----------------------------------------------------------
+    // 13.1 RENDERING — Header & Back Button
+    // ----------------------------------------------------------
+    describe('Rendering — Header', () => {
+        it('menampilkan BackButton dengan href benar', () => {
+            renderPage();
 
-        const btn = screen.getByRole('button', { name: /Aktifkan Trip/i });
-        await fireEvent.click(btn);
+            const backBtn = screen.getByTestId('back-button');
+            expect(backBtn).toHaveAttribute('href', '/admin/trips');
+            expect(backBtn).toHaveTextContent('Kembali ke Jadwal Perjalanan');
+        });
 
-        await waitFor(() => {
-            expect(screen.getByText('Aktifkan Trip?')).toBeInTheDocument();
+        it('merender TripHeader dengan trip & snapshot', () => {
+            renderPage();
+
+            const header = screen.getByTestId('trip-header');
+            expect(header).toHaveAttribute('data-trip-kode', 'TRIP-001');
+            expect(header).toHaveAttribute('data-trip-status', 'scheduled');
+            expect(header).toHaveAttribute(
+                'data-snapshot-nama',
+                'Paket Bali (Snapshot)',
+            );
         });
     });
 
-    it('membuka modal Assign Mitra saat tombol diklik', async () => {
-        const data = createMockData();
-        render(TripShow, { props: data });
+    // ----------------------------------------------------------
+    // 13.2 RENDERING — Itinerary
+    // ----------------------------------------------------------
+    describe('Rendering — TripItinerary', () => {
+        it('merender TripItinerary dengan jumlah days benar', () => {
+            renderPage();
 
-        const btn = screen.getByRole('button', {
-            name: /^Assign Mitra$/i,
-        });
-        await fireEvent.click(btn);
-
-        await waitFor(() => {
-            const modalTitle = document.querySelector('#form-modal-title');
-            expect(modalTitle).not.toBeNull();
-            expect(modalTitle?.textContent?.trim()).toBe('Assign Mitra');
+            expect(screen.getByTestId('trip-itinerary')).toHaveAttribute(
+                'data-days-count',
+                '3',
+            );
         });
 
-        const mitraLabel = document.querySelector('#assign-mitra-label');
-        expect(mitraLabel).not.toBeNull();
-        expect(mitraLabel?.textContent?.trim()).toMatch(/Mitra/);
+        it('render TripItinerary dengan days kosong', () => {
+            renderPage(makeTrip({ days: [] }));
+
+            expect(screen.getByTestId('trip-itinerary')).toHaveAttribute(
+                'data-days-count',
+                '0',
+            );
+        });
     });
 
-    it('membuka modal Batal saat tombol diklik', async () => {
-        const data = createMockData();
-        render(TripShow, { props: data });
+    // ----------------------------------------------------------
+    // 13.3 RENDERING — Mitra Card
+    // ----------------------------------------------------------
+    describe('Rendering — TripMitraCard', () => {
+        it('merender TripMitraCard dengan data mitra', () => {
+            renderPage();
 
-        const btn = screen.getByRole('button', { name: /Batalkan/i });
-        await fireEvent.click(btn);
+            const card = screen.getByTestId('trip-mitra-card');
+            expect(card).toHaveAttribute('data-has-mitra', 'true');
+            expect(card).toHaveTextContent('PT Mitra Jaya');
+        });
 
-        await waitFor(() => {
-            expect(screen.getByText('Batalkan Trip?')).toBeInTheDocument();
+        it('merender placeholder saat mitra null', () => {
+            renderPage(makeTrip({ mitra: null }));
+
+            const card = screen.getByTestId('trip-mitra-card');
+            expect(card).toHaveAttribute('data-has-mitra', 'false');
+            expect(card).toHaveTextContent('Data mitra tidak ditemukan');
+        });
+    });
+
+    // ----------------------------------------------------------
+    // 13.4 RENDERING — Info Pesanan (conditional)
+    // ----------------------------------------------------------
+    describe('Rendering — Info Pesanan', () => {
+        it('merender section Info Pesanan saat booking ada', () => {
+            renderPage();
+
+            expect(screen.getByText('Info Pesanan')).toBeInTheDocument();
+            expect(screen.getByText('BK-2026-001')).toBeInTheDocument();
+            expect(screen.getByText('Budi Santoso')).toBeInTheDocument();
+        });
+
+        it('memanggil formatCurrency dengan total_harga benar', () => {
+            renderPage();
+
+            expect(formatCurrency).toHaveBeenCalledWith('1500000');
+        });
+
+        it('menampilkan link "Lihat Detail Pesanan" saat booking ada', () => {
+            renderPage();
+
+            const link = screen.getByRole('link', {
+                name: 'Lihat Detail Pesanan',
+            });
+            expect(link).toHaveAttribute('href', '/admin/bookings/10');
+        });
+
+        it('TIDAK merender Info Pesanan saat booking null', () => {
+            renderPage(makeTrip({ booking: null }));
+
+            expect(screen.queryByText('Info Pesanan')).not.toBeInTheDocument();
+            expect(
+                screen.queryByRole('link', { name: 'Lihat Detail Pesanan' }),
+            ).not.toBeInTheDocument();
+        });
+
+        it('menampilkan "-" saat client null dalam booking', () => {
+            renderPage(
+                makeTrip({
+                    booking: { ...makeTrip().booking, client: null },
+                }),
+            );
+
+            expect(screen.getByText('Pemesan')).toBeInTheDocument();
+            expect(screen.getAllByText('-')[0]).toBeInTheDocument();
+        });
+    });
+
+    // ----------------------------------------------------------
+    // 13.5 REACTIVITY — snapshot fallback
+    // ----------------------------------------------------------
+    describe('Reactivity — Snapshot Fallback', () => {
+        it('meneruskan snapshot kosong saat snapshot_package undefined', () => {
+            const trip = makeTrip();
+            delete (trip as any).snapshot_package;
+
+            renderPage(trip);
+
+            expect(screen.getByTestId('trip-header')).toHaveAttribute(
+                'data-snapshot-nama',
+                '(empty)',
+            );
+        });
+
+        it('meneruskan snapshot lengkap saat snapshot_package terisi', () => {
+            renderPage(
+                makeTrip({
+                    snapshot_package: { nama: 'Snapshot Custom' },
+                }),
+            );
+
+            expect(screen.getByTestId('trip-header')).toHaveAttribute(
+                'data-snapshot-nama',
+                'Snapshot Custom',
+            );
+        });
+    });
+
+    // ----------------------------------------------------------
+    // 13.6 A11Y
+    // ----------------------------------------------------------
+    describe('Accessibility', () => {
+        it('heading "Info Pesanan" pakai h3', () => {
+            renderPage();
+
+            expect(
+                screen.getByRole('heading', { level: 3, name: 'Info Pesanan' }),
+            ).toBeInTheDocument();
+        });
+
+        it('link "Lihat Detail Pesanan" punya href valid', () => {
+            renderPage();
+
+            const link = screen.getByRole('link', {
+                name: 'Lihat Detail Pesanan',
+            });
+            expect(link.getAttribute('href')).toMatch(/^\/admin\/bookings\/\d+$/);
+        });
+    });
+
+    // ----------------------------------------------------------
+    // 13.7 EDGE CASE
+    // ----------------------------------------------------------
+    describe('Edge Cases', () => {
+        it('handle trip dengan semua relasi null', () => {
+            renderPage(
+                makeTrip({
+                    package: null,
+                    booking: null,
+                    mitra: null,
+                    days: [],
+                }),
+            );
+
+            expect(screen.getByTestId('trip-header')).toBeInTheDocument();
+            expect(screen.getByTestId('trip-mitra-card')).toHaveAttribute(
+                'data-has-mitra',
+                'false',
+            );
+            expect(screen.getByTestId('trip-itinerary')).toHaveAttribute(
+                'data-days-count',
+                '0',
+            );
+            expect(screen.queryByText('Info Pesanan')).not.toBeInTheDocument();
+        });
+
+        it('handle total_harga string yang besar', () => {
+            renderPage(
+                makeTrip({
+                    booking: {
+                        ...makeTrip().booking,
+                        total_harga: '999999999',
+                    },
+                }),
+            );
+
+            expect(formatCurrency).toHaveBeenCalledWith('999999999');
         });
     });
 });

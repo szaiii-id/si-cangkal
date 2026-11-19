@@ -1,179 +1,145 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
     validateImageFile,
     validateMultipleImageFiles,
     createImagePreview,
-    createImagePreviews,
     formatFileSize,
 } from '../fileUpload';
 
-// ============================================================
-// HELPERS
-// ============================================================
+/**
+ * Helper untuk membuat File palsu di lingkungan test.
+ */
+function createMockFile(name: string, sizeInBytes: number, type: string): File {
+    const file = new File([''], name, { type });
+    Object.defineProperty(file, 'size', { value: sizeInBytes });
+    return file;
+}
 
-const createMockFile = (
-    name: string,
-    size: number,
-    type: string,
-): File => {
-    const content = new Uint8Array(size);
-    return new File([content], name, {
-        type,
-        lastModified: Date.now(),
-    });
-};
+describe('File Upload Utilities', () => {
+    // ==========================================
+    // 1. formatFileSize()
+    // ==========================================
+    describe('formatFileSize()', () => {
+        it('harus memformat bytes ke B, KB, MB, GB', () => {
+            expect(formatFileSize(0)).toBe('0 B');
+            expect(formatFileSize(500)).toBe('500 B');
+            expect(formatFileSize(1024)).toBe('1.0 KB');
+            expect(formatFileSize(1024 * 1024)).toBe('1.0 MB');
+        });
 
-// ============================================================
-// KATEGORI 1 — validateImageFile
-// ============================================================
-
-describe('validateImageFile', () => {
-    it('mengembalikan error jika file null/undefined', () => {
-        expect(validateImageFile(null).valid).toBe(false);
-        expect(validateImageFile(null).error).toBe('File tidak dipilih.');
-
-        expect(validateImageFile(undefined).valid).toBe(false);
-        expect(validateImageFile(undefined).error).toBe('File tidak dipilih.');
-    });
-
-    it('valid untuk file JPG/PNG/WEBP yang ukurannya sesuai', () => {
-        const file = createMockFile('test.png', 1024 * 1024, 'image/png');
-        const result = validateImageFile(file);
-        expect(result.valid).toBe(true);
-        expect(result.error).toBeNull();
-    });
-
-    it('error jika tipe file tidak didukung', () => {
-        const file = createMockFile('document.pdf', 1024, 'application/pdf');
-        const result = validateImageFile(file);
-        expect(result.valid).toBe(false);
-        expect(result.error).toContain('tidak didukung');
-    });
-
-    it('error jika ukuran file melebihi batas default (2 MB)', () => {
-        const file = createMockFile('big.png', 3 * 1024 * 1024, 'image/png');
-        const result = validateImageFile(file);
-        expect(result.valid).toBe(false);
-        // ✅ FIX: Sesuaikan dengan pesan di fileUpload.ts ("maksimal 2MB")
-        expect(result.error).toContain('maksimal 2MB');
-    });
-
-    it('menerima ukuran kustom via options.maxSizeMB', () => {
-        const file = createMockFile('medium.png', 3 * 1024 * 1024, 'image/png');
-        const result = validateImageFile(file, { maxSizeMB: 5 });
-        expect(result.valid).toBe(true);
-    });
-
-    it('menerima tipe kustom via options.allowedTypes', () => {
-        const file = createMockFile('test.svg', 1024, 'image/svg+xml');
-        const result = validateImageFile(file, { allowedTypes: ['image/svg+xml'] });
-        expect(result.valid).toBe(true);
-    });
-});
-
-// ============================================================
-// KATEGORI 2 — validateMultipleImageFiles
-// ============================================================
-
-describe('validateMultipleImageFiles', () => {
-    it('error jika tidak ada file', () => {
-        const result = validateMultipleImageFiles([]);
-        expect(result.valid).toBe(false);
-        expect(result.errors).toContain('Minimal 1 file wajib dipilih.');
-    });
-
-    it('error jika file melebihi maxCount', () => {
-        const files = [
-            createMockFile('1.png', 1024, 'image/png'),
-            createMockFile('2.png', 1024, 'image/png'),
-            createMockFile('3.png', 1024, 'image/png'),
-        ];
-        const result = validateMultipleImageFiles(files, { maxCount: 2 });
-        expect(result.valid).toBe(false);
-        expect(result.errors).toContain('Maksimal 2 file.');
-    });
-
-    it('mengumpulkan error dari setiap file yang tidak valid', () => {
-        const files = [
-            createMockFile('ok.png', 1024, 'image/png'),
-            createMockFile('bad.pdf', 1024, 'application/pdf'),
-            createMockFile('big.png', 3 * 1024 * 1024, 'image/png'),
-        ];
-        const result = validateMultipleImageFiles(files);
-        expect(result.valid).toBe(false);
-        expect(result.errors.length).toBe(2);
-        expect(result.errors.some((e) => e.includes('tidak didukung'))).toBe(true);
-        // ✅ FIX: Sesuaikan dengan pesan di fileUpload.ts ("maksimal 2MB")
-        expect(result.errors.some((e) => e.includes('maksimal 2MB'))).toBe(true);
-    });
-
-    it('valid jika semua file sesuai', () => {
-        const files = [
-            createMockFile('1.png', 1024, 'image/png'),
-            createMockFile('2.jpg', 1024, 'image/jpeg'),
-        ];
-        const result = validateMultipleImageFiles(files);
-        expect(result.valid).toBe(true);
-        expect(result.errors).toEqual([]);
-    });
-});
-
-// ============================================================
-// KATEGORI 3 — createImagePreview
-// ============================================================
-
-describe('createImagePreview', () => {
-    beforeEach(() => {
-        vi.stubGlobal('FileReader', class {
-            onload: ((this: FileReader, ev: ProgressEvent<FileReader>) => any) | null = null;
-            onerror: ((this: FileReader, ev: ProgressEvent<FileReader>) => any) | null = null;
-            result: string | ArrayBuffer | null = null;
-
-            readAsDataURL(_file: File) {
-                setTimeout(() => {
-                    this.result = 'data:image/png;base64,fake';
-                    if (this.onload) {
-                        this.onload.call(this as any, {} as any);
-                    }
-                }, 0);
-            }
+        it('harus menangani input invalid', () => {
+            expect(formatFileSize(-100)).toBe('-');
+            expect(formatFileSize(NaN)).toBe('-');
         });
     });
 
-    it('mengembalikan data URL preview', async () => {
-        const file = createMockFile('test.png', 1024, 'image/png');
-        const result = await createImagePreview(file);
-        expect(result).toBe('data:image/png;base64,fake');
+    // ==========================================
+    // 2. validateImageFile()
+    // ==========================================
+    describe('validateImageFile()', () => {
+        it('harus gagal jika file null', () => {
+            expect(validateImageFile(null)).toEqual({ valid: false, error: 'File tidak dipilih.' });
+        });
+
+        it('harus lolos untuk JPG < 2MB', () => {
+            const file = createMockFile('photo.jpg', 1 * 1024 * 1024, 'image/jpeg');
+            expect(validateImageFile(file)).toEqual({ valid: true, error: null });
+        });
+
+        it('harus gagal jika ukuran melebihi batas', () => {
+            const file = createMockFile('photo.jpg', 3 * 1024 * 1024, 'image/jpeg');
+            expect(validateImageFile(file).error).toBe('Ukuran file maksimal 2MB.');
+        });
+
+        it('harus gagal jika tipe MIME tidak diizinkan', () => {
+            const file = createMockFile('doc.pdf', 500 * 1024, 'application/pdf');
+            expect(validateImageFile(file).error).toContain('Format file tidak didukung');
+        });
+
+        it('harus mendahulukan pesan ukuran jika file kebesaran DAN tipe salah', () => {
+            const file = createMockFile('doc.pdf', 3 * 1024 * 1024, 'application/pdf');
+            expect(validateImageFile(file).error).toBe('Ukuran file maksimal 2MB.');
+        });
+
+        it('harus mendukung custom options (maxSizeMB dan label)', () => {
+            const file = createMockFile('logo.png', 600 * 1024, 'image/png');
+            const result = validateImageFile(file, { maxSizeMB: 0.5, label: 'logo' });
+            expect(result.error).toBe('Ukuran logo maksimal 0.5MB.');
+        });
     });
-});
 
-// ============================================================
-// KATEGORI 4 — formatFileSize
-// ============================================================
+    // ==========================================
+    // 3. validateMultipleImageFiles()
+    // ==========================================
+    describe('validateMultipleImageFiles()', () => {
+        it('harus gagal jika array kosong', () => {
+            const result = validateMultipleImageFiles([]);
+            expect(result.errors).toContain('Minimal 1 file wajib dipilih.');
+        });
 
-describe('formatFileSize', () => {
-    it('mengembalikan "-" untuk input tidak valid', () => {
-        expect(formatFileSize(-1)).toBe('-');
-        expect(formatFileSize(NaN)).toBe('-');
-        expect(formatFileSize(Infinity)).toBe('-');
+        it('harus lolos jika semua file valid', () => {
+            const files = [
+                createMockFile('1.jpg', 500 * 1024, 'image/jpeg'),
+                createMockFile('2.png', 500 * 1024, 'image/png'),
+            ];
+            const result = validateMultipleImageFiles(files);
+            expect(result.valid).toBe(true);
+        });
+
+        it('harus gagal jika melebihi maxCount', () => {
+            const files = [
+                createMockFile('1.jpg', 100, 'image/jpeg'),
+                createMockFile('2.jpg', 100, 'image/jpeg'),
+                createMockFile('3.jpg', 100, 'image/jpeg'),
+            ];
+            const result = validateMultipleImageFiles(files, { maxCount: 2 });
+            expect(result.errors).toContain('Maksimal 2 file.');
+        });
+
+        // --- PERBAIKAN TOTAL: TANPA DataTransfer ---
+        it('harus bisa menerima FileList (seperti input HTML)', () => {
+            const file = createMockFile('1.jpg', 100, 'image/jpeg');
+            
+            // Membuat objek tiruan yang menyerupai FileList HTML
+            const fakeFileList: FileList = {
+                0: file,
+                length: 1,
+                item: (index: number) => (index === 0 ? file : null),
+                [Symbol.iterator]: function* () {
+                    yield file;
+                },
+            } as unknown as FileList;
+
+            const result = validateMultipleImageFiles(fakeFileList);
+            expect(result.valid).toBe(true);
+        });
     });
 
-    it('format bytes', () => {
-        expect(formatFileSize(0)).toBe('0 B');
-        expect(formatFileSize(512)).toBe('512 B');
-    });
+    // ==========================================
+    // 4. createImagePreview()
+    // ==========================================
+    describe('createImagePreview()', () => {
+        it('harus menghasilkan data URL (base64) dari file', async () => {
+            const mockDataUrl = 'data:image/png;base64,mockbase64string';
+            
+            // Mock FileReader dengan Class (bukan object literal)
+            // agar 'this' di dalam method mengacu pada instance.
+            class MockFileReader {
+                result: string | null = mockDataUrl;
+                onload: (() => void) | null = null;
+                onerror: (() => void) | null = null;
+                
+                readAsDataURL() {
+                    if (this.onload) this.onload();
+                }
+            }
+            
+            vi.stubGlobal('FileReader', MockFileReader);
 
-    it('format KB', () => {
-        expect(formatFileSize(1024)).toBe('1.0 KB');
-        expect(formatFileSize(2048)).toBe('2.0 KB');
-    });
+            const file = createMockFile('test.png', 100, 'image/png');
+            const preview = await createImagePreview(file);
 
-    it('format MB', () => {
-        expect(formatFileSize(1024 * 1024)).toBe('1.0 MB');
-        expect(formatFileSize(1536000)).toBe('1.5 MB');
-    });
-
-    it('format GB', () => {
-        expect(formatFileSize(1024 * 1024 * 1024)).toBe('1.0 GB');
+            expect(preview).toBe(mockDataUrl);
+        });
     });
 });

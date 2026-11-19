@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\RefundReason;
 use App\Enums\RefundStatus;
+use Database\Factories\RefundFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -30,11 +31,11 @@ use Illuminate\Support\Carbon;
  * @property-read User|null $mitra
  * @property-read User|null $mitraInitiator
  *
- * @use HasFactory<\Database\Factories\RefundFactory>
+ * @use HasFactory<RefundFactory>
  */
 class Refund extends Model
 {
-    /** @use HasFactory<\Database\Factories\RefundFactory> */
+    /** @use HasFactory<RefundFactory> */
     use HasFactory;
 
     /**

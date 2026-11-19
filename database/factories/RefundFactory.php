@@ -9,10 +9,16 @@ use App\Models\Refund;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
+/**
+ * @extends Factory<Refund>
+ */
 class RefundFactory extends Factory
 {
     protected $model = Refund::class;
 
+    /**
+     * @return array<string, mixed>
+     */
     public function definition(): array
     {
         return [

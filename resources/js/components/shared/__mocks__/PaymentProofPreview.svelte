@@ -1,0 +1,1 @@
+<div data-testid="payment-proof-preview"></div>

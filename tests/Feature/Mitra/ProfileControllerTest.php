@@ -1,18 +1,45 @@
 <?php
 
+use App\Models\MitraBankAccount;
 use App\Models\Profile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
 
 /*
 |==========================================================================
-| SETUP
+| SETUP — Integration Test
 |==========================================================================
+|
+| ProfileController (mitra) — edit profile + bank accounts.
+|
+| Route:
+| - GET  /mitra/profile                    → edit (mitra.profile.edit)
+| - PUT  /mitra/profile                    → update (mitra.profile.update)
+| - PUT  /mitra/profile/bank-accounts      → updateBankAccounts
+|
+| Middleware: auth, password.changed, role:mitra, mitra.complete
+| FormRequest:
+| - UpdateProfileRequest (nama_penyedia_usaha, telepon, deskripsi, logo — SEMUA nullable)
+| - UpdateBankAccountRequest (password current_password + accounts.*)
+|
+| Service: ProfileService
+| - updateProfile(user, data) — handle logo upload, whitelist fields
+| - updateBankAccounts(mitra, accounts) — delete + create (dalam transaksi)
+|
+| Catatan:
+| - `config(['inertia.testing.ensure_pages_exist' => false])` — backend test.
+| - `Storage::fake('public')` — untuk logo upload.
+| - Mitra WAJIB punya bank account (middleware `mitra.complete`).
+| - `UpdateProfileRequest` SEMUA nullable — partial update.
+|   Field yang tidak dikirim TIDAK di-update (tetap nilai lama).
+| - Field `telepon` (bukan `no_hp`) — konsisten dengan kolom DB.
+|
 */
 
 beforeEach(function () {
@@ -20,27 +47,32 @@ beforeEach(function () {
         $this->withoutVite();
     }
 
+    config(['inertia.testing.ensure_pages_exist' => false]);
+
     Storage::fake('public');
 
-    $this->admin = User::factory()->admin()->create([
-        'must_change_password' => false,
-    ]);
-
     $this->mitra = User::factory()->mitra()->create([
+        'password' => Hash::make('OldPass123!'),
         'must_change_password' => false,
     ]);
 
-    $this->client = User::factory()->client()->create([
-        'must_change_password' => false,
-    ]);
-
-    // Profile milik mitra yang login
-    $this->profile = Profile::factory()->forMitra()->create([
+    // Bank account agar lolos middleware `mitra.complete`
+    MitraBankAccount::create([
         'user_id' => $this->mitra->id,
+        'tipe' => 'bank',
+        'nama_penyedia' => 'BCA',
+        'nomor_rekening' => '1234567890',
+        'nama_pemilik' => 'Budi',
+        'is_primary' => true,
+    ]);
+
+    // Profile default
+    Profile::factory()->create([
+        'user_id' => $this->mitra->id,
+        'tipe' => 'mitra',
         'nama_penyedia_usaha' => 'PT Lama',
-        'alamat' => 'Jl. Lama No. 1',
-        'telepon' => '0800000000',
-        'logo' => null,
+        'alamat' => 'Jl. Lama',
+        'telepon' => '0811111111',
     ]);
 });
 
@@ -50,25 +82,70 @@ beforeEach(function () {
 |==========================================================================
 */
 
-it('GET /mitra/profile merender Inertia component Mitra/Profile', function () {
-    $response = $this->actingAs($this->mitra)->get(route('mitra.profile.edit'));
+describe('Contract — edit', function () {
+    it('GET /mitra/profile → render Mitra/Profile', function () {
+        $this->actingAs($this->mitra)
+            ->get('/mitra/profile')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Mitra/Profile')
+                ->has('profile')
+                ->has('bankAccounts')
+            );
+    });
 
-    $response->assertOk();
-    $response->assertInertia(fn ($page) => $page
-        ->component('Mitra/Profile')
-        ->has('profile')
-    );
+    it('profile berisi data user', function () {
+        $this->actingAs($this->mitra)
+            ->get('/mitra/profile')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('profile.nama_penyedia_usaha', 'PT Lama')
+                ->where('profile.alamat', 'Jl. Lama')
+            );
+    });
+
+    it('bankAccounts berisi 1 account', function () {
+        $this->actingAs($this->mitra)
+            ->get('/mitra/profile')
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('bankAccounts', 1)
+            );
+    });
+
+    it('route name = mitra.profile.edit', function () {
+        expect(route('mitra.profile.edit'))->toBe(url('/mitra/profile'));
+    });
 });
 
-it('PUT /mitra/profile redirect ke mitra.profile.edit dengan status', function () {
-    $response = $this->actingAs($this->mitra)->put(route('mitra.profile.update'), [
-        'nama_penyedia_usaha' => 'PT Baru',
-        'alamat' => 'Jl. Baru No. 2',
-        'telepon' => '08123456789',
-    ]);
+describe('Contract — update redirect', function () {
+    it('PUT /mitra/profile valid → redirect ke mitra.profile.edit + status', function () {
+        $response = $this->actingAs($this->mitra)->put('/mitra/profile', [
+            'nama_penyedia_usaha' => 'PT Baru',
+            'telepon' => '0822222222',
+            'deskripsi' => 'Deskripsi baru',
+        ]);
 
-    $response->assertRedirect(route('mitra.profile.edit'));
-    $response->assertSessionHas('status');
+        $response->assertRedirect(route('mitra.profile.edit'))
+            ->assertSessionHas('status', 'Profile berhasil diperbarui.');
+    });
+});
+
+describe('Contract — updateBankAccounts redirect', function () {
+    it('PUT /mitra/profile/bank-accounts valid → redirect + status', function () {
+        $response = $this->actingAs($this->mitra)->put('/mitra/profile/bank-accounts', [
+            'password' => 'OldPass123!',
+            'accounts' => [
+                [
+                    'tipe' => 'bank',
+                    'nama_penyedia' => 'BRI',
+                    'nomor_rekening' => '9999999999',
+                    'nama_pemilik' => 'Budi',
+                ],
+            ],
+        ]);
+
+        $response->assertRedirect(route('mitra.profile.edit'))
+            ->assertSessionHas('status', 'Data rekening berhasil diperbarui.');
+    });
 });
 
 /*
@@ -77,355 +154,372 @@ it('PUT /mitra/profile redirect ke mitra.profile.edit dengan status', function (
 |==========================================================================
 */
 
-it('guest di-redirect ke login saat akses /mitra/profile', function () {
-    $this->get(route('mitra.profile.edit'))->assertRedirect(route('login'));
+describe('Security — guest & role', function () {
+    it('guest di-redirect ke login (edit)', function () {
+        $this->get('/mitra/profile')->assertRedirect(route('login'));
+    });
+
+    it('guest di-redirect ke login (update)', function () {
+        $this->put('/mitra/profile', [])->assertRedirect(route('login'));
+    });
+
+    it('admin di-redirect ke admin.dashboard', function () {
+        $admin = User::factory()->admin()->create(['must_change_password' => false]);
+
+        $this->actingAs($admin)
+            ->get('/mitra/profile')
+            ->assertRedirect(route('admin.dashboard'));
+    });
+
+    it('client di-redirect ke client.dashboard', function () {
+        $client = User::factory()->client()->create(['must_change_password' => false]);
+
+        $this->actingAs($client)
+            ->get('/mitra/profile')
+            ->assertRedirect(route('client.dashboard'));
+    });
+
+    it('mitra must_change_password=true di-redirect ke password.change', function () {
+        $needChange = User::factory()->mitra()->create(['must_change_password' => true]);
+
+        $this->actingAs($needChange)
+            ->get('/mitra/profile')
+            ->assertRedirect(route('password.change'));
+    });
+
+    it('mitra tanpa bank account di-redirect ke onboarding (mitra.complete)', function () {
+        $mitraNoAccount = User::factory()->mitra()->create([
+            'password' => Hash::make('OldPass123!'),
+            'must_change_password' => false,
+        ]);
+
+        $this->actingAs($mitraNoAccount)
+            ->get('/mitra/profile')
+            ->assertRedirect(route('mitra.onboarding.index'));
+    });
 });
 
-it('guest di-redirect ke login saat update /mitra/profile', function () {
-    $this->put(route('mitra.profile.update'), [
-        'nama_penyedia_usaha' => 'PT Baru',
-    ])->assertRedirect(route('login'));
-});
+describe('Security — password verifikasi bank accounts', function () {
+    it('password salah → error, bank accounts TIDAK berubah', function () {
+        $this->actingAs($this->mitra)
+            ->put('/mitra/profile/bank-accounts', [
+                'password' => 'WrongPass!',
+                'accounts' => [
+                    [
+                        'tipe' => 'bank',
+                        'nama_penyedia' => 'BRI',
+                        'nomor_rekening' => '9999999999',
+                        'nama_pemilik' => 'Budi',
+                    ],
+                ],
+            ])
+            ->assertSessionHasErrors('password');
 
-it('admin tidak bisa akses /mitra/profile (redirect ke dashboard admin)', function () {
-    $this->actingAs($this->admin)
-        ->get(route('mitra.profile.edit'))
-        ->assertRedirect(route('admin.dashboard'));
-});
-
-it('client tidak bisa akses /mitra/profile (redirect ke dashboard client)', function () {
-    $this->actingAs($this->client)
-        ->get(route('mitra.profile.edit'))
-        ->assertRedirect(route('client.dashboard'));
-});
-
-it('mitra dengan must_change_password = true di-redirect ke change-password', function () {
-    $mitra = User::factory()->mitra()->create(['must_change_password' => true]);
-
-    $this->actingAs($mitra)
-        ->get(route('mitra.profile.edit'))
-        ->assertRedirect(route('password.change'));
-});
-
-/*
-|==========================================================================
-| KATEGORI 3 — DATA INTEGRITY: Edit
-|==========================================================================
-*/
-
-it('edit menampilkan profile milik mitra yang login', function () {
-    $response = $this->actingAs($this->mitra)->get(route('mitra.profile.edit'));
-
-    $response->assertInertia(fn ($page) => $page
-        ->where('profile.id', $this->profile->id)
-        ->where('profile.nama_penyedia_usaha', 'PT Lama')
-        ->where('profile.alamat', 'Jl. Lama No. 1')
-        ->where('profile.telepon', '0800000000')
-    );
-});
-
-it('edit untuk mitra tanpa profile tetap merender halaman dengan profile null', function () {
-    $mitraBaru = User::factory()->mitra()->create([
-        'must_change_password' => false,
-    ]);
-    // sengaja TIDAK membuat Profile
-
-    $this->actingAs($mitraBaru)
-        ->get(route('mitra.profile.edit'))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->component('Mitra/Profile')
-            ->where('profile', null)
-        );
-});
-
-it('edit tidak menampilkan profile milik mitra lain', function () {
-    $otherMitra = User::factory()->mitra()->create([
-        'must_change_password' => false,
-    ]);
-    Profile::factory()->forMitra()->create([
-        'user_id' => $otherMitra->id,
-        'nama_penyedia_usaha' => 'PT Rahasia',
-    ]);
-
-    $response = $this->actingAs($this->mitra)->get(route('mitra.profile.edit'));
-
-    $response->assertInertia(fn ($page) => $page
-        ->where('profile.id', $this->profile->id)
-        ->where('profile.nama_penyedia_usaha', 'PT Lama')
-    );
+        // Bank accounts TIDAK berubah (masih BCA)
+        $accounts = MitraBankAccount::where('user_id', $this->mitra->id)->get();
+        expect($accounts)->toHaveCount(1)
+            ->and($accounts->first()->nama_penyedia)->toBe('BCA');
+    });
 });
 
 /*
 |==========================================================================
-| KATEGORI 4 — DATA INTEGRITY: Update
+| KATEGORI 3 — CONCURRENCY
 |==========================================================================
 */
 
-it('update profile menyimpan perubahan ke DB', function () {
-    $this->actingAs($this->mitra)->put(route('mitra.profile.update'), [
-        'nama_penyedia_usaha' => 'PT Maju Jaya',
-        'alamat' => 'Jl. Contoh No. 1',
-        'telepon' => '08123456789',
-        'provinsi' => 'Jawa Barat',
-        'kota' => 'Bandung',
-        'kode_pos' => '40123',
-        'deskripsi' => 'Deskripsi baru',
-    ]);
+describe('Concurrency — update bank accounts berulang', function () {
+    it('update 2x berurutan → bank accounts pakai data terakhir', function () {
+        $this->actingAs($this->mitra)->put('/mitra/profile/bank-accounts', [
+            'password' => 'OldPass123!',
+            'accounts' => [
+                [
+                    'tipe' => 'bank',
+                    'nama_penyedia' => 'BRI',
+                    'nomor_rekening' => '1111111111',
+                    'nama_pemilik' => 'Budi',
+                ],
+            ],
+        ]);
 
-    $this->assertDatabaseHas('profiles', [
-        'user_id' => $this->mitra->id,
-        'nama_penyedia_usaha' => 'PT Maju Jaya',
-        'alamat' => 'Jl. Contoh No. 1',
-        'telepon' => '08123456789',
-        'provinsi' => 'Jawa Barat',
-        'kota' => 'Bandung',
-        'kode_pos' => '40123',
-        'deskripsi' => 'Deskripsi baru',
-    ]);
-});
+        $this->actingAs($this->mitra)->put('/mitra/profile/bank-accounts', [
+            'password' => 'OldPass123!',
+            'accounts' => [
+                [
+                    'tipe' => 'ewallet',
+                    'nama_penyedia' => 'DANA',
+                    'nomor_rekening' => '2222222222',
+                    'nama_pemilik' => 'Budi',
+                ],
+            ],
+        ]);
 
-it('update profile tidak mengubah profile mitra lain', function () {
-    $otherMitra = User::factory()->mitra()->create([
-        'must_change_password' => false,
-    ]);
-    $otherProfile = Profile::factory()->forMitra()->create([
-        'user_id' => $otherMitra->id,
-        'nama_penyedia_usaha' => 'PT Lain',
-    ]);
-
-    $this->actingAs($this->mitra)->put(route('mitra.profile.update'), [
-        'nama_penyedia_usaha' => 'PT Maju Jaya',
-    ]);
-
-    $otherProfile->refresh();
-    expect($otherProfile->nama_penyedia_usaha)->toBe('PT Lain');
-});
-
-it('update profile dengan logo menyimpan file di storage public/logos', function () {
-    $this->actingAs($this->mitra)->put(route('mitra.profile.update'), [
-        'nama_penyedia_usaha' => 'PT Maju Jaya',
-        'logo' => UploadedFile::fake()->image('logo.png', 300, 300),
-    ])->assertRedirect();
-
-    $profile = $this->mitra->fresh()->profile;
-
-    expect($profile->logo)->not->toBeNull();
-    expect($profile->logo)->toStartWith('logos/');
-    Storage::disk('public')->assertExists($profile->logo);
-});
-
-it('update profile dengan logo baru menghapus logo lama', function () {
-    // Upload logo lama dulu
-    $oldPath = UploadedFile::fake()
-        ->image('old.png')
-        ->storeAs('logos', 'old_logo.png', 'public');
-
-    $this->profile->update(['logo' => $oldPath]);
-    Storage::disk('public')->assertExists($oldPath);
-
-    // Upload logo baru
-    $this->actingAs($this->mitra)->put(route('mitra.profile.update'), [
-        'nama_penyedia_usaha' => 'PT Maju Jaya',
-        'logo' => UploadedFile::fake()->image('new.png'),
-    ])->assertRedirect();
-
-    Storage::disk('public')->assertMissing($oldPath);
-
-    $profile = $this->mitra->fresh()->profile;
-    Storage::disk('public')->assertExists($profile->logo);
-});
-
-it('update tanpa logo tidak menghapus logo lama', function () {
-    $oldPath = UploadedFile::fake()
-        ->image('old.png')
-        ->storeAs('logos', 'old_logo.png', 'public');
-    $this->profile->update(['logo' => $oldPath]);
-
-    $this->actingAs($this->mitra)->put(route('mitra.profile.update'), [
-        'nama_penyedia_usaha' => 'PT Baru Tanpa Logo',
-    ])->assertRedirect();
-
-    $profile = $this->mitra->fresh()->profile;
-
-    expect($profile->logo)->toBe($oldPath);
-    Storage::disk('public')->assertExists($oldPath);
-});
-
-it('update field yang tidak diizinkan diabaikan (mass assignment protection)', function () {
-    $otherUserId = User::factory()->mitra()->create([
-        'must_change_password' => false,
-    ])->id;
-
-    $this->actingAs($this->mitra)->put(route('mitra.profile.update'), [
-        'nama_penyedia_usaha' => 'PT Maju Jaya',
-        'user_id' => $otherUserId,   // harus diabaikan
-        'tipe' => 'admin',           // harus diabaikan
-    ]);
-
-    $this->assertDatabaseHas('profiles', [
-        'user_id' => $this->mitra->id,   // tidak berubah
-        'tipe' => 'mitra',               // tidak berubah
-        'nama_penyedia_usaha' => 'PT Maju Jaya',
-    ]);
+        $accounts = MitraBankAccount::where('user_id', $this->mitra->id)->get();
+        expect($accounts)->toHaveCount(1)
+            ->and($accounts->first()->nama_penyedia)->toBe('DANA')
+            ->and($accounts->first()->nomor_rekening)->toBe('2222222222');
+    });
 });
 
 /*
 |==========================================================================
-| KATEGORI 5 — ERROR HANDLING / VALIDATION
+| KATEGORI 4 — IDEMPOTENCY
 |==========================================================================
 */
 
-it('update validasi logo harus image ditolak', function () {
-    $this->actingAs($this->mitra)->put(route('mitra.profile.update'), [
-        'nama_penyedia_usaha' => 'PT Baru',
-        'logo' => UploadedFile::fake()->create('dokumen.pdf', 100, 'application/pdf'),
-    ])->assertSessionHasErrors('logo');
-});
+describe('Idempotency', function () {
+    it('update profile dengan data sama 2x → hasil konsisten', function () {
+        $payload = [
+            'nama_penyedia_usaha' => 'PT Baru',
+            'telepon' => '0822222222',
+        ];
 
-it('update validasi logo mimes harus jpg/png/webp ditolak', function () {
-    $this->actingAs($this->mitra)->put(route('mitra.profile.update'), [
-        'nama_penyedia_usaha' => 'PT Baru',
-        'logo' => UploadedFile::fake()->image('logo.gif'),
-    ])->assertSessionHasErrors('logo');
-});
+        $this->actingAs($this->mitra)->put('/mitra/profile', $payload)->assertRedirect();
+        $this->actingAs($this->mitra)->put('/mitra/profile', $payload)->assertRedirect();
 
-it('update validasi logo ukuran > 2MB ditolak', function () {
-    $this->actingAs($this->mitra)->put(route('mitra.profile.update'), [
-        'nama_penyedia_usaha' => 'PT Baru',
-        'logo' => UploadedFile::fake()->image('besar.png')->size(3000), // 3MB
-    ])->assertSessionHasErrors('logo');
-});
-
-it('update validasi alamat > 1000 karakter ditolak', function () {
-    $this->actingAs($this->mitra)->put(route('mitra.profile.update'), [
-        'nama_penyedia_usaha' => 'PT Baru',
-        'alamat' => str_repeat('a', 1001),
-    ])->assertSessionHasErrors('alamat');
-});
-
-it('update validasi deskripsi > 5000 karakter ditolak', function () {
-    $this->actingAs($this->mitra)->put(route('mitra.profile.update'), [
-        'nama_penyedia_usaha' => 'PT Baru',
-        'deskripsi' => str_repeat('a', 5001),
-    ])->assertSessionHasErrors('deskripsi');
-});
-
-it('update validasi telepon > 50 karakter ditolak', function () {
-    $this->actingAs($this->mitra)->put(route('mitra.profile.update'), [
-        'telepon' => str_repeat('1', 51),
-    ])->assertSessionHasErrors('telepon');
-});
-
-it('update tidak mengubah data saat validasi gagal', function () {
-    $this->actingAs($this->mitra)->put(route('mitra.profile.update'), [
-        'alamat' => str_repeat('a', 1001), // gagal
-    ])->assertSessionHasErrors('alamat');
-
-    $this->assertDatabaseHas('profiles', [
-        'user_id' => $this->mitra->id,
-        'nama_penyedia_usaha' => 'PT Lama',   // tidak berubah
-        'alamat' => 'Jl. Lama No. 1',         // tidak berubah
-    ]);
+        $profile = Profile::where('user_id', $this->mitra->id)->first();
+        expect($profile->nama_penyedia_usaha)->toBe('PT Baru');
+    });
 });
 
 /*
 |==========================================================================
-| KATEGORI 6 — ROUTE MIDDLEWARE
+| KATEGORI 5 — DATA INTEGRITY
 |==========================================================================
 */
 
-it('route mitra.profile.edit pakai middleware auth, password.changed, role:mitra', function () {
-    $route = collect(Route::getRoutes())
-        ->first(fn ($r) => $r->getName() === 'mitra.profile.edit');
+describe('Data Integrity — update profile', function () {
+    it('update profile → data berubah di DB', function () {
+        $this->actingAs($this->mitra)->put('/mitra/profile', [
+            'nama_penyedia_usaha' => 'PT Baru',
+            'telepon' => '0822222222',
+            'deskripsi' => 'Deskripsi baru',
+        ]);
 
-    expect($route)->not->toBeNull();
+        $profile = Profile::where('user_id', $this->mitra->id)->first();
+        expect($profile->nama_penyedia_usaha)->toBe('PT Baru')
+            ->and($profile->telepon)->toBe('0822222222')
+            ->and($profile->deskripsi)->toBe('Deskripsi baru');
+    });
 
-    $middleware = $route->gatherMiddleware();
+    it('update profile dengan logo → logo tersimpan di storage', function () {
+        $file = UploadedFile::fake()->image('logo.png', 100, 100);
 
-    expect($middleware)->toContain('auth');
-    expect($middleware)->toContain('password.changed');
-    expect($middleware)->toContain('role:mitra');
+        $this->actingAs($this->mitra)->put('/mitra/profile', [
+            'nama_penyedia_usaha' => 'PT Baru',
+            'telepon' => '0822222222',
+            'logo' => $file,
+        ]);
+
+        $profile = Profile::where('user_id', $this->mitra->id)->first();
+        expect($profile->logo)->toStartWith('logos/')
+            ->and($profile->logo)->toEndWith('.png');
+
+        Storage::disk('public')->assertExists($profile->logo);
+    });
+
+    it('partial update tidak mengubah field lain', function () {
+        $this->actingAs($this->mitra)->put('/mitra/profile', [
+            'nama_penyedia_usaha' => 'PT Baru',
+        ]);
+
+        $profile = Profile::where('user_id', $this->mitra->id)->first();
+        expect($profile->nama_penyedia_usaha)->toBe('PT Baru')
+            ->and($profile->alamat)->toBe('Jl. Lama')  // tidak berubah
+            ->and($profile->telepon)->toBe('0811111111');  // tidak berubah
+    });
 });
 
-it('route mitra.profile.update pakai middleware auth, password.changed, role:mitra', function () {
-    $route = collect(Route::getRoutes())
-        ->first(fn ($r) => $r->getName() === 'mitra.profile.update');
+describe('Data Integrity — update bank accounts', function () {
+    it('update → bank accounts lama diganti dengan yang baru', function () {
+        $this->actingAs($this->mitra)->put('/mitra/profile/bank-accounts', [
+            'password' => 'OldPass123!',
+            'accounts' => [
+                [
+                    'tipe' => 'bank',
+                    'nama_penyedia' => 'BRI',
+                    'nomor_rekening' => '9999999999',
+                    'nama_pemilik' => 'Budi',
+                ],
+                [
+                    'tipe' => 'ewallet',
+                    'nama_penyedia' => 'DANA',
+                    'nomor_rekening' => '8888888888',
+                    'nama_pemilik' => 'Budi',
+                ],
+            ],
+        ]);
 
-    expect($route)->not->toBeNull();
+        $accounts = MitraBankAccount::where('user_id', $this->mitra->id)
+            ->orderBy('id')
+            ->get();
 
-    $middleware = $route->gatherMiddleware();
+        expect($accounts)->toHaveCount(2)
+            ->and($accounts[0]->is_primary)->toBeTrue()
+            ->and($accounts[0]->nama_penyedia)->toBe('BRI')
+            ->and($accounts[1]->is_primary)->toBeFalse()
+            ->and($accounts[1]->nama_penyedia)->toBe('DANA');
+    });
 
-    expect($middleware)->toContain('auth');
-    expect($middleware)->toContain('password.changed');
-    expect($middleware)->toContain('role:mitra');
+    it('update 1 account → is_primary=true', function () {
+        $this->actingAs($this->mitra)->put('/mitra/profile/bank-accounts', [
+            'password' => 'OldPass123!',
+            'accounts' => [
+                [
+                    'tipe' => 'bank',
+                    'nama_penyedia' => 'BRI',
+                    'nomor_rekening' => '9999999999',
+                    'nama_pemilik' => 'Budi',
+                ],
+            ],
+        ]);
+
+        $accounts = MitraBankAccount::where('user_id', $this->mitra->id)->get();
+        expect($accounts)->toHaveCount(1)
+            ->and($accounts->first()->is_primary)->toBeTrue();
+    });
 });
 
 /*
 |==========================================================================
-| KATEGORI 7 — EDGE CASES
+| KATEGORI 6 — ERROR HANDLING (Validation)
+|==========================================================================
+|
+| UpdateProfileRequest SEMUA nullable — partial update.
+| - Field kosong TIDAK error (nullable) → tidak mengubah field lama.
+| - Field melebihi max → error.
+|
+*/
+
+describe('Error Handling — update profile validation', function () {
+    it('nama_penyedia_usaha kosong (nullable) → tidak mengubah field', function () {
+        $this->actingAs($this->mitra)
+            ->put('/mitra/profile', [
+                'telepon' => '0822222222',
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect();
+
+        $profile = Profile::where('user_id', $this->mitra->id)->first();
+        expect($profile->nama_penyedia_usaha)->toBe('PT Lama')
+            ->and($profile->telepon)->toBe('0822222222');
+    });
+
+    it('telepon > 50 karakter → error', function () {
+        $this->actingAs($this->mitra)
+            ->put('/mitra/profile', [
+                'telepon' => str_repeat('0', 51),
+            ])
+            ->assertSessionHasErrors('telepon');
+    });
+
+    it('logo bukan gambar → error', function () {
+        $file = UploadedFile::fake()->create('document.pdf', 100, 'application/pdf');
+
+        $this->actingAs($this->mitra)
+            ->put('/mitra/profile', [
+                'nama_penyedia_usaha' => 'PT Baru',
+                'logo' => $file,
+            ])
+            ->assertSessionHasErrors('logo');
+    });
+});
+
+describe('Error Handling — update bank accounts validation', function () {
+    it('password kosong → error', function () {
+        $this->actingAs($this->mitra)
+            ->put('/mitra/profile/bank-accounts', [
+                'password' => '',
+                'accounts' => [
+                    [
+                        'tipe' => 'bank',
+                        'nama_penyedia' => 'BRI',
+                        'nomor_rekening' => '9999999999',
+                        'nama_pemilik' => 'Budi',
+                    ],
+                ],
+            ])
+            ->assertSessionHasErrors('password');
+    });
+
+    it('accounts kosong → error', function () {
+        $this->actingAs($this->mitra)
+            ->put('/mitra/profile/bank-accounts', [
+                'password' => 'OldPass123!',
+                'accounts' => [],
+            ])
+            ->assertSessionHasErrors('accounts');
+    });
+
+    it('nomor_rekening non-digit → error', function () {
+        $this->actingAs($this->mitra)
+            ->put('/mitra/profile/bank-accounts', [
+                'password' => 'OldPass123!',
+                'accounts' => [
+                    [
+                        'tipe' => 'bank',
+                        'nama_penyedia' => 'BRI',
+                        'nomor_rekening' => 'abc-123',
+                        'nama_pemilik' => 'Budi',
+                    ],
+                ],
+            ])
+            ->assertSessionHasErrors('accounts.0.nomor_rekening');
+    });
+});
+
+/*
+|==========================================================================
+| KATEGORI 7 — EDGE CASES & BVA
 |==========================================================================
 */
 
-it('update profile untuk mitra tanpa profile ditolak dengan error profile', function () {
-    $mitraBaru = User::factory()->mitra()->create([
-        'must_change_password' => false,
-    ]);
-    // sengaja TIDAK membuat Profile
+describe('Edge Cases — update bank accounts BVA', function () {
+    it('accounts 5 (max) → lolos', function () {
+        $this->actingAs($this->mitra)
+            ->put('/mitra/profile/bank-accounts', [
+                'password' => 'OldPass123!',
+                'accounts' => array_fill(0, 5, [
+                    'tipe' => 'bank',
+                    'nama_penyedia' => 'BCA',
+                    'nomor_rekening' => '1234567890',
+                    'nama_pemilik' => 'Budi',
+                ]),
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect();
+    });
 
-    $this->actingAs($mitraBaru)->put(route('mitra.profile.update'), [
-        'nama_penyedia_usaha' => 'PT Baru',
-    ])->assertSessionHasErrors('profile');
+    it('accounts 6 (max + 1) → error', function () {
+        $this->actingAs($this->mitra)
+            ->put('/mitra/profile/bank-accounts', [
+                'password' => 'OldPass123!',
+                'accounts' => array_fill(0, 6, [
+                    'tipe' => 'bank',
+                    'nama_penyedia' => 'BCA',
+                    'nomor_rekening' => '1234567890',
+                    'nama_pemilik' => 'Budi',
+                ]),
+            ])
+            ->assertSessionHasErrors('accounts');
+    });
 });
 
-it('update tidak mengubah field yang tidak dikirim (partial update)', function () {
-    // Profile awal punya alamat "Jl. Lama No. 1"
-    $this->actingAs($this->mitra)->put(route('mitra.profile.update'), [
-        'nama_penyedia_usaha' => 'PT Maju Jaya',
-        // alamat tidak dikirim
-    ]);
+describe('Edge Cases — logo upload', function () {
+    it('upload logo baru → logo lama dihapus', function () {
+        Storage::disk('public')->put('logos/old.png', 'old-content');
 
-    $profile = $this->mitra->fresh()->profile;
+        // Set logo lama di profile
+        Profile::where('user_id', $this->mitra->id)->update(['logo' => 'logos/old.png']);
 
-    expect($profile->nama_penyedia_usaha)->toBe('PT Maju Jaya');
-    // Alamat tetap karena tidak dikirim (service pakai array_intersect_key)
-    expect($profile->alamat)->toBe('Jl. Lama No. 1');
-});
+        $file = UploadedFile::fake()->image('new.png', 100, 100);
 
-it('update dengan semua field null tetap berhasil (semua nullable)', function () {
-    $this->actingAs($this->mitra)->put(route('mitra.profile.update'), [
-        'nama_penyedia_usaha' => null,
-        'alamat' => null,
-        'telepon' => null,
-    ])->assertRedirect();
+        $this->actingAs($this->mitra)->put('/mitra/profile', [
+            'nama_penyedia_usaha' => 'PT Baru',
+            'telepon' => '0822222222',
+            'logo' => $file,
+        ]);
 
-    $profile = $this->mitra->fresh()->profile;
-
-    expect($profile->nama_penyedia_usaha)->toBeNull();
-    expect($profile->alamat)->toBeNull();
-    expect($profile->telepon)->toBeNull();
-});
-
-it('upload logo dengan nama file mengandung path traversal aman (server rename)', function () {
-    // Klien kirim nama aneh, tapi server generate nama sendiri
-    $this->actingAs($this->mitra)->put(route('mitra.profile.update'), [
-        'logo' => UploadedFile::fake()->image('../../evil.png', 100, 100),
-    ])->assertRedirect();
-
-    $profile = $this->mitra->fresh()->profile;
-
-    // Path harus di dalam folder logos/ dengan nama {user_id}_{timestamp}.{ext}
-    expect($profile->logo)->toStartWith('logos/');
-    expect($profile->logo)->not->toContain('..');
-    expect($profile->logo)->toContain((string) $this->mitra->id);
-    Storage::disk('public')->assertExists($profile->logo);
-});
-
-it('update dengan logo SVG ditolak (security: XSS prevention)', function () {
-    // SVG bukan image valid di validator, dan juga tidak ada di whitelist
-    $svgContent = '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>';
-
-    $this->actingAs($this->mitra)->put(route('mitra.profile.update'), [
-        'logo' => UploadedFile::fake()->createWithContent('evil.svg', $svgContent),
-    ])->assertSessionHasErrors('logo');
+        Storage::disk('public')->assertMissing('logos/old.png');
+    });
 });

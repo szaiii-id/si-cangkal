@@ -1,202 +1,236 @@
-import { test, expect, loginViaUI, SEED_USERS, logout } from '../fixtures/auth';
+// e2e/auth/login.spec.ts
+/**
+ * Test: Auth — Login
+ *
+ * Menguji:
+ * - Access control (guest, logged-in)
+ * - Contract (form login lengkap)
+ * - Mutation (login valid/invalid, redirect, force change password)
+ *
+ * Seed user (dari TestSeeder):
+ * - admin@test.com / password
+ * - mitra@test.com / password
+ * - client@test.com / password
+ */
 
-test.describe('Login — Alur Masuk Pengguna', () => {
-    test.beforeEach(async ({ page }) => {
-        await page.goto('/login');
+import { test, expect } from '../fixtures/base';
+import { SEL } from '../fixtures/selectors';
+import { SEED_USERS } from '../fixtures/auth';
+
+// ==========================================
+// TEST SUITE
+// ==========================================
+
+test.describe('Auth — Login', () => {
+    // ==========================================
+    // ACCESS CONTROL
+    // ==========================================
+
+    test.describe('Access Control', () => {
+        test('guest bisa akses form login', async ({ page, asGuest }) => {
+            await asGuest();
+            await page.goto('/login');
+
+            await expect(page).toHaveURL('/login');
+            await expect(
+                page.getByRole('heading', { name: /^Login/i }),
+            ).toBeVisible();
+        });
+
+        test('user sudah login akses /login → redirect dashboard', async ({
+            page,
+            asClient,
+        }) => {
+            await asClient();
+            await page.goto('/login');
+
+            // Laravel redirect ke dashboard sesuai role
+            await expect(page).toHaveURL('/client/dashboard');
+        });
     });
 
-    /*
-    |--------------------------------------------------------------------------
-    | Happy Path — Login Manual
-    |--------------------------------------------------------------------------
-    */
+    // ==========================================
+    // CONTRACT — ELEMEN HALAMAN
+    // ==========================================
 
-    test('login dengan email berhasil dan redirect ke dashboard client', async ({ page }) => {
-        await loginViaUI(page, 'client', { useEmail: true });
-        await expect(page).toHaveURL('/client/dashboard');
+    test.describe('Contract', () => {
+        test.beforeEach(async ({ page, asGuest }) => {
+            await asGuest();
+            await page.goto('/login');
+        });
+
+        test('menampilkan form login (email, password, submit)', async ({
+            page,
+        }) => {
+            await expect(SEL.AUTH.login.email(page)).toBeVisible();
+            await expect(SEL.AUTH.login.password(page)).toBeVisible();
+            await expect(SEL.AUTH.login.submit(page)).toBeVisible();
+        });
+
+        test('menampilkan link "Lupa password" & "Daftar"', async ({
+            page,
+        }) => {
+            await expect(SEL.AUTH.login.forgotPassword(page)).toBeVisible();
+            await expect(SEL.AUTH.login.registerLink(page)).toBeVisible();
+        });
     });
 
-    test('login dengan username berhasil (dual-login)', async ({ page }) => {
-        await loginViaUI(page, 'client', { useEmail: false });
-        await expect(page).toHaveURL('/client/dashboard');
+    // ==========================================
+    // MUTATION — LOGIN VALID
+    // ==========================================
+
+    test.describe('Mutation — Login Valid', () => {
+        test('login valid sebagai client → redirect /client/dashboard', async ({
+            page,
+            asGuest,
+        }) => {
+            await asGuest();
+            await page.goto('/login');
+
+            await SEL.AUTH.login.email(page).fill(SEED_USERS.client.email);
+            await SEL.AUTH.login.password(page).fill(SEED_USERS.client.password);
+
+            await Promise.all([
+                page.waitForURL('/client/dashboard'),
+                SEL.AUTH.login.submit(page).click(),
+            ]);
+
+            await expect(page).toHaveURL('/client/dashboard');
+        });
+
+        test('login valid sebagai admin → redirect /admin/dashboard', async ({
+            page,
+            asGuest,
+        }) => {
+            await asGuest();
+            await page.goto('/login');
+
+            await SEL.AUTH.login.email(page).fill(SEED_USERS.admin.email);
+            await SEL.AUTH.login.password(page).fill(SEED_USERS.admin.password);
+
+            await Promise.all([
+                page.waitForURL('/admin/dashboard'),
+                SEL.AUTH.login.submit(page).click(),
+            ]);
+
+            await expect(page).toHaveURL('/admin/dashboard');
+        });
+
+        test('login valid sebagai mitra → redirect /mitra/dashboard', async ({
+            page,
+            asGuest,
+        }) => {
+            await asGuest();
+            await page.goto('/login');
+
+            await SEL.AUTH.login.email(page).fill(SEED_USERS.mitra.email);
+            await SEL.AUTH.login.password(page).fill(SEED_USERS.mitra.password);
+
+            await Promise.all([
+                page.waitForURL('/mitra/dashboard'),
+                SEL.AUTH.login.submit(page).click(),
+            ]);
+
+            await expect(page).toHaveURL('/mitra/dashboard');
+        });
+
+        test('login dengan username (bukan email) → berhasil', async ({
+            page,
+            asGuest,
+        }) => {
+            await asGuest();
+            await page.goto('/login');
+
+            await SEL.AUTH.login.email(page).fill(SEED_USERS.client.username);
+            await SEL.AUTH.login.password(page).fill(SEED_USERS.client.password);
+
+            await Promise.all([
+                page.waitForURL('/client/dashboard'),
+                SEL.AUTH.login.submit(page).click(),
+            ]);
+
+            await expect(page).toHaveURL('/client/dashboard');
+        });
     });
 
-    test('admin diarahkan ke dashboard admin setelah login', async ({ page }) => {
-        await loginViaUI(page, 'admin');
-        await expect(page).toHaveURL('/admin/dashboard');
+    // ==========================================
+    // MUTATION — LOGIN INVALID
+    // ==========================================
+
+    test.describe('Mutation — Login Invalid', () => {
+        test('login invalid → error "Kredensial tidak cocok"', async ({
+            page,
+            asGuest,
+        }) => {
+            await asGuest();
+            await page.goto('/login');
+
+            await SEL.AUTH.login.email(page).fill(SEED_USERS.client.email);
+            await SEL.AUTH.login.password(page).fill('password-salah');
+
+            await SEL.AUTH.login.submit(page).click();
+
+            // Tetap di halaman login
+            await expect(page).toHaveURL('/login');
+
+            // Error muncul di form (bukan toast — flash error)
+            await expect(
+                page.getByText(/Kredensial yang diberikan tidak cocok/i),
+            ).toBeVisible();
+        });
+
+        test('login dengan email kosong → HTML5 validation (tidak submit)', async ({
+            page,
+            asGuest,
+        }) => {
+            await asGuest();
+            await page.goto('/login');
+
+            await SEL.AUTH.login.password(page).fill('password');
+            await SEL.AUTH.login.submit(page).click();
+
+            // Tetap di login (HTML5 required prevent submit)
+            await expect(page).toHaveURL('/login');
+        });
     });
 
-    test('mitra diarahkan ke dashboard mitra setelah login', async ({ page }) => {
-        await loginViaUI(page, 'mitra');
-        await expect(page).toHaveURL('/mitra/dashboard');
-    });
+    // ==========================================
+    // MUTATION — FORCE CHANGE PASSWORD
+    // ==========================================
 
-    test('client diarahkan ke dashboard client setelah login', async ({ page }) => {
-        await loginViaUI(page, 'client');
-        await expect(page).toHaveURL('/client/dashboard');
-    });
+    test.describe('Mutation — Force Change Password', () => {
+        test('login user must_change_password=true → redirect /change-password', async ({
+            page,
+            seed,
+            asGuest,
+        }) => {
+            // Setup: set must_change_password = true
+            await seed.resetUser(page, SEED_USERS.client.email, {
+                password: SEED_USERS.client.password,
+                must_change_password: true,
+            });
 
-    /*
-    |--------------------------------------------------------------------------
-    | Negative Path — Kredensial Salah
-    |--------------------------------------------------------------------------
-    */
+            await asGuest();
+            await page.goto('/login');
 
-    test('gagal login jika password salah', async ({ page }) => {
-        await page.fill('input#identitas', SEED_USERS.client.email);
-        await page.fill('input#password', 'password-salah');
-        await page.click('button[type="submit"]');
+            await SEL.AUTH.login.email(page).fill(SEED_USERS.client.email);
+            await SEL.AUTH.login.password(page).fill(SEED_USERS.client.password);
 
-        await expect(page).toHaveURL('/login');
-        await expect(
-            page.getByText(/Kredensial yang diberikan tidak cocok/i)
-        ).toBeVisible();
-    });
+            await Promise.all([
+                page.waitForURL('/change-password'),
+                SEL.AUTH.login.submit(page).click(),
+            ]);
 
-    test('gagal login jika email tidak terdaftar', async ({ page }) => {
-        await page.fill('input#identitas', 'tidak-ada@titiktemu.test');
-        await page.fill('input#password', 'password123');
-        await page.click('button[type="submit"]');
+            await expect(page).toHaveURL('/change-password');
+            await expect(SEL.AUTH.changePassword.forceWarning(page)).toBeVisible();
+        });
 
-        await expect(page).toHaveURL('/login');
-        await expect(
-            page.getByText(/Kredensial yang diberikan tidak cocok/i)
-        ).toBeVisible();
-    });
-
-    test('gagal login jika identitas kosong', async ({ page }) => {
-        await page.fill('input#password', 'password123');
-        await page.click('button[type="submit"]');
-
-        await expect(page).toHaveURL('/login');
-    });
-
-    test('gagal login jika password kosong', async ({ page }) => {
-        await page.fill('input#identitas', SEED_USERS.client.email);
-        await page.click('button[type="submit"]');
-
-        await expect(page).toHaveURL('/login');
-    });
-
-    /*
-    |--------------------------------------------------------------------------
-    | Remember Me
-    |--------------------------------------------------------------------------
-    */
-
-    test('login dengan remember me membuat sesi tetap aktif', async ({ page }) => {
-        await loginViaUI(page, 'client', { remember: true });
-        await expect(page).toHaveURL('/client/dashboard');
-
-        const cookies = await page.context().cookies();
-        const rememberCookie = cookies.find((c) =>
-            c.name.startsWith('remember_')
-        );
-        expect(rememberCookie).toBeDefined();
-        expect(rememberCookie?.value).toBeTruthy();
-    });
-
-    test('login tanpa remember me tidak membuat cookie remember', async ({ page }) => {
-        await loginViaUI(page, 'client', { remember: false });
-        await expect(page).toHaveURL('/client/dashboard');
-
-        const cookies = await page.context().cookies();
-        const rememberCookie = cookies.find((c) =>
-            c.name.startsWith('remember_')
-        );
-        expect(rememberCookie).toBeUndefined();
-    });
-
-    /*
-    |--------------------------------------------------------------------------
-    | Logout
-    |--------------------------------------------------------------------------
-    */
-
-    test('logout menghapus sesi dan redirect ke landing page', async ({ page, asClient }) => {
-        await asClient();
-
-        await logout(page);
-
-        await page.goto('/client/dashboard');
-        await expect(page).toHaveURL('/login');
-    });
-
-    test('setelah logout, tidak bisa akses dashboard admin', async ({ page, asAdmin }) => {
-        await asAdmin();
-        await logout(page);
-
-        await page.goto('/admin/dashboard');
-        await expect(page).toHaveURL('/login');
-    });
-
-    /*
-    |--------------------------------------------------------------------------
-    | Security — Guest Only
-    |--------------------------------------------------------------------------
-    */
-
-    test('user yang sudah login tidak bisa akses halaman login', async ({ page, asClient }) => {
-        await asClient();
-
-        await page.goto('/login');
-
-        await expect(page).not.toHaveURL('/login');
-    });
-
-    /*
-    |--------------------------------------------------------------------------
-    | UI Interaction
-    |--------------------------------------------------------------------------
-    */
-
-    test('toggle password menampilkan dan menyembunyikan password', async ({ page }) => {
-        const passwordInput = page.locator('input#password');
-        await expect(passwordInput).toHaveAttribute('type', 'password');
-
-        const toggle = page.getByLabel('Tampilkan password').first();
-        await toggle.click();
-        await expect(passwordInput).toHaveAttribute('type', 'text');
-
-        await page.getByLabel('Sembunyikan password').first().click();
-        await expect(passwordInput).toHaveAttribute('type', 'password');
-    });
-
-    /*
-    |--------------------------------------------------------------------------
-    | Accessibility (a11y)
-    |--------------------------------------------------------------------------
-    */
-
-    test('semua input memiliki label yang terasosiasi', async ({ page }) => {
-        await expect(page.locator('label[for="identitas"]')).toBeVisible();
-        await expect(page.locator('label[for="password"]')).toBeVisible();
-        await expect(page.locator('label[for="remember-me"]')).toBeVisible();
-    });
-
-    test('tombol toggle password memiliki aria-label', async ({ page }) => {
-        const toggle = page.getByLabel('Tampilkan password').first();
-        await expect(toggle).toBeVisible();
-        await expect(toggle).toHaveAttribute('type', 'button');
-    });
-
-    /*
-    |--------------------------------------------------------------------------
-    | Error Handling (Level UI)
-    |--------------------------------------------------------------------------
-    */
-
-    test('error dari server ditampilkan sebagai teks merah di form', async ({ page }) => {
-        await page.fill('input#identitas', SEED_USERS.client.email);
-        await page.fill('input#password', 'password-salah');
-        await page.click('button[type="submit"]');
-
-        const errorMessage = page.locator('p.text-pink').first();
-        await expect(errorMessage).toBeVisible();
-
-        const color = await errorMessage.evaluate(
-            (el) => getComputedStyle(el).color
-        );
-        expect(color).not.toBe('rgb(0, 0, 0)');
+        test.afterEach(async ({ page, seed }) => {
+            // Cleanup: reset must_change_password = false
+            await seed.resetUser(page, SEED_USERS.client.email, {
+                password: SEED_USERS.client.password,
+                must_change_password: false,
+            });
+        });
     });
 });

@@ -1,0 +1,285 @@
+# .github/workflows/e2e.yml
+#
+# CI Pipeline — End-to-End Tests (Playwright)
+#
+# Jobs:
+# 1. e2e-functional  → Playwright (chromium, firefox, webkit) tanpa rate-limit.spec.ts
+# 2. e2e-rate-limit  → Playwright khusus rate-limit.spec.ts
+# 3. e2e-merge       → Gabung report dari semua browser
+
+name: E2E Tests (Playwright)
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'tests/**'
+      - 'resources/js/**/__test__/**'
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'tests/**'
+      - 'resources/js/**/__test__/**'
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PHP_VERSION: '8.5'
+  E2E_APP_PORT: '8000'
+  E2E_APP_URL: 'http://127.0.0.1:8000'
+  E2E_DB_CONNECTION: 'pgsql'
+  E2E_DB_HOST: '127.0.0.1'
+  E2E_DB_PORT: '5432'
+  E2E_DB_DATABASE: 'sicangkal_db_testing'
+  E2E_DB_USERNAME: 'sicangkal_dev'
+  E2E_DB_PASSWORD: 'sicangkal04!'
+
+jobs:
+  # ==========================================
+  # 1. E2E FUNCTIONAL (Playwright)
+  # ==========================================
+  e2e-functional:
+    name: E2E Functional (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: ${{ env.E2E_DB_DATABASE }}
+          POSTGRES_USER: ${{ env.E2E_DB_USERNAME }}
+          POSTGRES_PASSWORD: ${{ env.E2E_DB_PASSWORD }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: mbstring, bcmath, pdo_pgsql, gd, zip, intl
+          coverage: none
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - name: Cache Bun
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-
+
+      - name: Cache Playwright Browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ matrix.browser }}-${{ hashFiles('bun.lock') }}
+
+      - name: Install Composer deps
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Install Bun deps
+        run: bun install --frozen-lockfile
+
+      - name: Install Playwright browser (${{ matrix.browser }})
+        run: bunx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Build frontend
+        run: bun run build
+
+      - name: Run E2E (functional)
+        env:
+          CI: true
+          AUTH_THROTTLE_LOGIN_TEST_OVERRIDE: 1000
+          AUTH_THROTTLE_REGISTER_TEST_OVERRIDE: 1000
+          AUTH_THROTTLE_FORGOT_PASSWORD_TEST_OVERRIDE: 1000
+          AUTH_THROTTLE_RESET_PASSWORD_TEST_OVERRIDE: 1000
+          AUTH_THROTTLE_CONTACT_TEST_OVERRIDE: 1000
+        run: bun run test:e2e -- --project=${{ matrix.browser }} --ignore=e2e/auth/rate-limit.spec.ts
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-functional-${{ matrix.browser }}
+          path: playwright-report/
+          retention-days: 7
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-functional-${{ matrix.browser }}
+          path: test-results/
+          retention-days: 7
+
+  # ==========================================
+  # 2. E2E RATE LIMIT (Playwright)
+  # ==========================================
+  e2e-rate-limit:
+    name: E2E Rate Limit (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: ${{ env.E2E_DB_DATABASE }}
+          POSTGRES_USER: ${{ env.E2E_DB_USERNAME }}
+          POSTGRES_PASSWORD: ${{ env.E2E_DB_PASSWORD }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: mbstring, bcmath, pdo_pgsql, gd, zip, intl
+          coverage: none
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - name: Cache Bun
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-
+
+      - name: Cache Playwright Browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ matrix.browser }}-${{ hashFiles('bun.lock') }}
+
+      - name: Install Composer deps
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Install Bun deps
+        run: bun install --frozen-lockfile
+
+      - name: Install Playwright browser (${{ matrix.browser }})
+        run: bunx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Build frontend
+        run: bun run build
+
+      - name: Run E2E (rate-limit)
+        env:
+          CI: true
+          AUTH_THROTTLE_LOGIN_MAX: 5
+          AUTH_THROTTLE_LOGIN_DECAY: 60
+          AUTH_THROTTLE_LOGIN_TEST_OVERRIDE: 5
+          AUTH_THROTTLE_REGISTER_MAX: 3
+          AUTH_THROTTLE_REGISTER_DECAY: 60
+          AUTH_THROTTLE_REGISTER_TEST_OVERRIDE: 3
+          AUTH_THROTTLE_FORGOT_MAX: 3
+          AUTH_THROTTLE_FORGOT_DECAY: 60
+          AUTH_THROTTLE_FORGOT_PASSWORD_TEST_OVERRIDE: 3
+          AUTH_THROTTLE_RESET_MAX: 5
+          AUTH_THROTTLE_RESET_DECAY: 60
+          AUTH_THROTTLE_RESET_PASSWORD_TEST_OVERRIDE: 5
+          AUTH_THROTTLE_CONTACT_TEST_OVERRIDE: 1000
+        run: bun run test:e2e:rate-limit -- --project=${{ matrix.browser }}
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-rate-limit-${{ matrix.browser }}
+          path: playwright-report/
+          retention-days: 7
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-rate-limit-${{ matrix.browser }}
+          path: test-results/
+          retention-days: 7
+
+  # ==========================================
+  # 3. MERGE REPORTS
+  # ==========================================
+  e2e-merge:
+    name: Merge E2E Reports
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: always()
+    needs: [e2e-functional, e2e-rate-limit]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all reports
+        uses: actions/download-artifact@v4
+        with:
+          path: all-reports
+          pattern: playwright-report-*
+          merge-multiple: true
+
+      - name: Upload merged report
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-merged
+          path: all-reports
+          retention-days: 7

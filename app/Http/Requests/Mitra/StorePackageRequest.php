@@ -11,10 +11,12 @@ class StorePackageRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        // ✅ Hanya cek role mitra, tidak perlu cek XenPlatform lagi
         return $this->user()?->isMitra() === true;
     }
 
+    /**
+     * @return array<string, array<int, mixed>|string>
+     */
     public function rules(): array
     {
         return [
@@ -23,12 +25,11 @@ class StorePackageRequest extends FormRequest
             'kategori' => ['required', 'string', Rule::in(PackageKategori::values())],
             'durasi_hari' => ['required', 'integer', 'min:1', 'max:30'],
             'durasi_malam' => ['required', 'integer', 'min:0', 'max:29'],
-            
-            // Aturan Harga
+
             'harga_per_orang' => ['required', 'numeric', 'min:0', 'max:9999999999.99'],
             'harga_per_rombongan' => ['nullable', 'numeric', 'min:0', 'max:9999999999.99'],
             'max_peserta' => ['nullable', 'required_if:harga_per_rombongan,>0', 'integer', 'min:1', 'max:1000'],
-            
+
             'timezone' => [
                 'required', 'string', 'max:50',
                 function (string $attribute, mixed $value, \Closure $fail) {
@@ -41,6 +42,9 @@ class StorePackageRequest extends FormRequest
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
     public function messages(): array
     {
         return [

@@ -2,50 +2,23 @@
  * Helper form — parse Rupiah, deteksi perubahan, dan util umum.
  */
 
+// Import dari formatCurrency agar tidak duplikasi logika
+import { parseCurrency } from './formatCurrency';
+
+export { parseCurrency as parseRupiah };
+
 // ==========================================
-// PARSE RUPIAH
+// PERFORMANCE: CACHE INTL FORMATTER
 // ==========================================
+// Hindari membuat instance baru saat dipanggil berulang kali di dalam loop.
+const rupiahInputFormatter = new Intl.NumberFormat('id-ID', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+});
 
-/**
- * Parse input user (string) menjadi number.
- *
- * Handle format Indonesia:
- * - "850.000"    → 850000   (titik = ribuan)
- * - "1.500.000"  → 1500000
- * - "1,5"        → 1.5      (koma = desimal)
- * - "850000"     → 850000
- * - "850000.00"  → 850000   (dari decimal cast Laravel)
- * - ""           → 0
- *
- * ⚠️ AMBIGU: "1.500" — apakah 1500 (ribuan) atau 1.5 (desimal)?
- *    Kita asumsikan RIBUAN → 1500.
- *
- * @example
- *   parseRupiah('850.000')  // 850000
- */
-export function parseRupiah(value: string | number | null | undefined): number {
-    if (value === null || value === undefined || value === '') return 0;
-    if (typeof value === 'number') return Number.isNaN(value) ? 0 : value;
-
-    let cleaned = value.toString().trim().replace(/^Rp\s*/i, '');
-
-    const hasDot = cleaned.includes('.');
-    const hasComma = cleaned.includes(',');
-
-    if (hasDot && hasComma) {
-        cleaned = cleaned.replace(/\./g, '').replace(',', '.');
-    } else if (hasDot) {
-        const parts = cleaned.split('.');
-        if (parts.length > 2 || (parts[1] && parts[1].length === 3)) {
-            cleaned = cleaned.replace(/\./g, '');
-        }
-    } else if (hasComma) {
-        cleaned = cleaned.replace(',', '.');
-    }
-
-    const num = parseFloat(cleaned);
-    return Number.isNaN(num) ? 0 : num;
-}
+// ==========================================
+// FORMAT RUPIAH INPUT (UI)
+// ==========================================
 
 /**
  * Format angka jadi string input Rupiah (tanpa "Rp", dengan titik ribuan).
@@ -56,10 +29,7 @@ export function parseRupiah(value: string | number | null | undefined): number {
 export function formatRupiahInput(value: number | null | undefined): string {
     if (value === null || value === undefined || Number.isNaN(value)) return '';
 
-    return new Intl.NumberFormat('id-ID', {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-    }).format(value);
+    return rupiahInputFormatter.format(value);
 }
 
 // ==========================================
@@ -76,6 +46,7 @@ export function formatRupiahInput(value: number | null | undefined): string {
  */
 export function parseIntInput(value: string | number | null | undefined): number {
     if (value === null || value === undefined || value === '') return 0;
+    
     if (typeof value === 'number') {
         return Number.isFinite(value) ? Math.trunc(value) : 0;
     }

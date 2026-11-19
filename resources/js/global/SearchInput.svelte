@@ -1,24 +1,11 @@
 <script lang="ts">
     /**
      * SearchInput — input pencarian dengan icon & tombol clear.
-     *
-     * ✅ FIX: Pakai `bind:value` (bukan `{value}`) — 2-way binding.
-     * Alasan:
-     * - `{value}` (1-way) → Svelte set `input.value` saat render,
-     *   TAPI tidak handle sync balik saat user type. Bisa reset
-     *   input.value → state tidak sinkron → `router.get` pakai
-     *   value lama / kosong.
-     * - `bind:value` (2-way) → Svelte handle sync `input.value`
-     *   ↔ `value` prop, termasuk saat user type cepat.
-     *
-     * @example
-     *   <SearchInput bind:value={search} oninput={handleSearch} placeholder="Cari..." />
      */
 
     // ==========================================
     // PROPS
     // ==========================================
-
     let {
         value = $bindable(''),
         placeholder = 'Cari...',
@@ -36,14 +23,13 @@
     // ==========================================
     // STATE
     // ==========================================
-
     let isFocused = $state(false);
-    let inputEl: HTMLInputElement;
+    // PERBAIKAN: Gunakan $state<HTMLInputElement | undefined> agar aman dari error TS
+    let inputEl = $state<HTMLInputElement | undefined>();
 
     // ==========================================
-    // EFFECT — autofocus tanpa atribut HTML
+    // EFFECT — autofocus
     // ==========================================
-
     $effect(() => {
         if (autofocus && inputEl) {
             inputEl.focus();
@@ -53,11 +39,17 @@
     // ==========================================
     // HANDLERS
     // ==========================================
-
     function handleClear(): void {
         value = '';
         oninput?.('');
         onclear?.();
+    }
+
+    // PERBAIKAN: Ambil nilai dari event target untuk menghindari race condition
+    function handleInput(e: Event): void {
+        const target = e.target as HTMLInputElement;
+        value = target.value;
+        oninput?.(target.value);
     }
 </script>
 
@@ -83,18 +75,12 @@
         </svg>
     </div>
 
-    <!--
-        ✅ FIX: bind:value (2-way) — Svelte handle sync otomatis.
-        Hapus `oninput={handleInput}` — sudah tidak perlu, `bind:value`
-        yang update `value`. Cukup panggil callback `oninput` untuk
-        parent (mis. `handleSearch` di Catalog).
-    -->
     <input
         bind:this={inputEl}
         type="text"
-        bind:value
+        {value}
         {placeholder}
-        oninput={() => oninput?.(value)}
+        oninput={handleInput}
         onfocus={() => (isFocused = true)}
         onblur={() => (isFocused = false)}
         class="w-full pl-11 pr-10 py-3 border rounded-2xl bg-gray-50 text-sm font-medium placeholder-gray-400 focus:outline-none transition-all

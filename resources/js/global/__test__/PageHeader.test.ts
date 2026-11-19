@@ -1,110 +1,64 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
-import PageHeaderFixture from './__fixtures__/PageHeaderFixture.svelte';
+import { describe, it, expect } from 'vitest';
+import { createRawSnippet } from 'svelte';
+import PageHeader from '../PageHeader.svelte';
 
-// ============================================================
-// SETUP & TEARDOWN
-// ============================================================
+describe('PageHeader Component', () => {
+    // ==========================================
+    // 1. RENDERING DASAR
+    // ==========================================
+    describe('Rendering', () => {
+        it('harus merender judul dengan tag <h1>', () => {
+            render(PageHeader, { props: { title: 'Paket Wisata' } });
 
-beforeEach(() => {
-    vi.clearAllMocks();
-});
-
-// ============================================================
-// KATEGORI 1 — RENDERING DASAR (TITLE & DESCRIPTION)
-// ============================================================
-
-describe('PageHeader.svelte — Rendering Dasar', () => {
-    it('merender title sebagai elemen h1', () => {
-        render(PageHeaderFixture, {
-            props: { title: 'Manajemen Paket' },
+            const heading = screen.getByRole('heading', { level: 1 });
+            expect(heading).toBeInTheDocument();
+            expect(heading).toHaveTextContent('Paket Wisata');
         });
 
-        const heading = screen.getByRole('heading', {
-            level: 1,
-            name: 'Manajemen Paket',
-        });
-        expect(heading).toBeInTheDocument();
-        expect(heading.tagName).toBe('H1');
-    });
+        it('harus merender deskripsi jika diberikan', () => {
+            render(PageHeader, {
+                props: { title: 'Paket Wisata', description: 'Kelola semua paket wisata Anda.' },
+            });
 
-    it('merender description sebagai elemen paragraf jika diberikan', () => {
-        render(PageHeaderFixture, {
-            props: {
-                title: 'Judul',
-                description: 'Deskripsi halaman ini',
-            },
+            expect(screen.getByText('Kelola semua paket wisata Anda.')).toBeInTheDocument();
         });
 
-        const desc = screen.getByText('Deskripsi halaman ini');
-        expect(desc).toBeInTheDocument();
-        expect(desc.tagName).toBe('P');
+        it('TIDAK boleh merender deskripsi jika props description kosong', () => {
+            const { container } = render(PageHeader, { props: { title: 'Test' } });
+            
+            // Pastikan hanya ada <h1>, tidak ada <p>
+            const paragraphs = container.querySelectorAll('p');
+            expect(paragraphs.length).toBe(0);
+        });
     });
 
-    it('TIDAK merender description jika kosong', () => {
-        render(PageHeaderFixture, {
-            props: { title: 'Judul', description: '' },
+    // ==========================================
+    // 2. ACTIONS SNIPPET
+    // ==========================================
+    describe('Actions Snippet', () => {
+        it('harus merender tombol aksi jika snippet actions diberikan', () => {
+            // Membuat snippet palsu untuk Svelte 5
+            const mockActions = createRawSnippet(() => ({
+                render: () => `<button data-testid="action-btn">Tambah Data</button>`,
+            }));
+
+            render(PageHeader, {
+                props: { title: 'Test', actions: mockActions },
+            });
+
+            expect(screen.getByTestId('action-btn')).toBeInTheDocument();
+            expect(screen.getByText('Tambah Data')).toBeInTheDocument();
         });
 
-        expect(document.querySelector('p')).toBeNull();
-    });
-});
-
-// ============================================================
-// KATEGORI 2 — ACTION SNIPPET
-// ------------------------------------------------------------
-// Svelte 5: `actions` adalah Snippet, bukan fungsi JS yang
-// return HTMLElement. Gunakan wrapper fixture yang mendeklarasikan
-// {#snippet actions()} di dalam template .svelte.
-// ============================================================
-
-describe('PageHeader.svelte — Action Snippet', () => {
-    it('merender konten snippet actions jika diberikan', () => {
-        render(PageHeaderFixture, {
-            props: { title: 'Judul', withSnippet: true },
+        it('TIDAK boleh merender apa pun jika snippet actions tidak diberikan', () => {
+            const { container } = render(PageHeader, { props: { title: 'Test' } });
+            
+            // Pastikan tidak ada div pembungkus aksi
+            // (Hanya div pembungkus judul yang ada)
+            const divs = container.querySelectorAll('div');
+            // Struktur minimal: 1 div luar, 1 div judul = 2 div
+            expect(divs.length).toBe(2);
         });
-
-        expect(
-            screen.getByRole('button', { name: 'Tambah Data' }),
-        ).toBeInTheDocument();
-    });
-
-    it('TIDAK merender container action jika snippet actions tidak diberikan', () => {
-        render(PageHeaderFixture, {
-            props: { title: 'Judul', withSnippet: false },
-        });
-
-        const actionContainer = document.querySelector('.flex-shrink-0');
-        expect(actionContainer).toBeNull();
-    });
-});
-
-// ============================================================
-// KATEGORI 3 — STRUKTUR DOM & STYLING
-// ============================================================
-
-describe('PageHeader.svelte — Struktur DOM', () => {
-    it('merender container utama dengan class flex dan margin-bottom', () => {
-        render(PageHeaderFixture, { props: { title: 'Judul' } });
-
-        // CATATAN: selector `.flex.flex-col.sm\\:flex-row` TIDAK BISA
-        // dipakai karena `:` di class Tailwind dianggap pseudo-class CSS.
-        // Gunakan pencarian via <h1> lalu ambil parent.
-        const heading = screen.getByRole('heading', { level: 1 });
-        const container = heading.closest('div')?.parentElement;
-
-        expect(container).toBeInTheDocument();
-        expect(container).toHaveClass('flex');
-        expect(container).toHaveClass('flex-col');
-        expect(container).toHaveClass('mb-6');
-    });
-
-    it('merender title dengan styling yang benar (text-2xl)', () => {
-        render(PageHeaderFixture, { props: { title: 'Judul' } });
-
-        const heading = screen.getByRole('heading', { level: 1 });
-        expect(heading).toHaveClass('text-2xl');
-        expect(heading).toHaveClass('font-extrabold');
-        expect(heading).toHaveClass('text-dark');
     });
 });

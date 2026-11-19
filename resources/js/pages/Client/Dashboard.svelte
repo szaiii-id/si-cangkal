@@ -1,131 +1,150 @@
 <script lang="ts">
-    import DashboardLayout from '@/components/layout/DashboardLayout.svelte';
-    import { inertia, page } from '@inertiajs/svelte';
-    import { clientMenu } from '@/utils/menus';
+    import ClientLayout from '@/components/layout/ClientLayout.svelte';
+    import { page, inertia } from '@inertiajs/svelte';
+    import { formatCurrency } from '@/utils/formatCurrency';
+    import { formatDurasi } from '@/utils/duration';
+
+    let {
+        paket_baru = [],
+        paket_laris = [],
+    }: {
+        paket_baru?: any[];
+        paket_laris?: any[];
+    } = $props();
 
     let user = $derived(page.props.auth?.user);
+
+    function getHarga(pkg: any) {
+        if (pkg.isRombongan && pkg.harga_per_rombongan) {
+            return pkg.harga_per_rombongan;
+        }
+        return pkg.harga_per_orang;
+    }
 </script>
 
 <svelte:head>
-    <title>Dashboard Client | Titiktemu</title>
+    <title>Beranda | SI-CANGKAL</title>
 </svelte:head>
 
-<DashboardLayout title="Dashboard" menuItems={clientMenu}>
-    <!-- Welcome Card -->
-    <div
-        class="bg-gradient-to-r from-green-dark to-blue rounded-3xl p-8 text-white shadow-lg mb-6"
-    >
-        <h1 class="text-3xl sm:text-4xl font-extrabold mb-2">
-            Selamat Datang, {user?.name ?? 'Client'}<span class="text-sun"
-                >.</span
-            >
-        </h1>
-        <p class="text-sm sm:text-base opacity-90">
-            Jelajahi trip dan bundle perjalanan yang tersedia.
-        </p>
-    </div>
-
-    <!-- Akses Cepat -->
-    <div class="mb-6">
-        <h2 class="text-lg font-extrabold text-dark mb-3">
-            Akses Cepat
-        </h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <!-- Katalog -->
-            <a
-                href="/client/catalog"
-                use:inertia
-                data-testid="card-katalog"
-                class="group bg-white rounded-3xl border border-gray-200 shadow-sm p-5 hover:shadow-md hover:border-pink/30 transition-all"
-            >
-                <div
-                    class="w-11 h-11 rounded-2xl bg-pink/10 text-pink-text flex items-center justify-center mb-3 group-hover:bg-pink-dark group-hover:text-white transition-all"
-                >
-                    <svg
-                        class="w-5 h-5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        stroke-width="2"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-                        />
-                    </svg>
-                </div>
-                <h3 class="text-base font-extrabold text-dark mb-1">
-                    Katalog Paket
-                </h3>
-                <p class="text-xs text-gray-500 leading-relaxed">
-                    Temukan paket wisata menarik untuk liburan Anda.
-                </p>
-            </a>
-
-            <!-- Booking Saya -->
-            <a
-                href="/client/bookings"
-                use:inertia
-                data-testid="card-booking"
-                class="group bg-white rounded-3xl border border-gray-200 shadow-sm p-5 hover:shadow-md hover:border-blue/30 transition-all"
-            >
-                <div
-                    class="w-11 h-11 rounded-2xl bg-blue/10 text-blue flex items-center justify-center mb-3 group-hover:bg-blue group-hover:text-white transition-all"
-                >
-                    <svg
-                        class="w-5 h-5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        stroke-width="2"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
-                        />
-                    </svg>
-                </div>
-                <h3 class="text-base font-extrabold text-dark mb-1">
-                    Booking Saya
-                </h3>
-                <p class="text-xs text-gray-500 leading-relaxed">
-                    Pantau status booking dan unduh e-ticket Anda.
-                </p>
-            </a>
-
-            <!-- Profile -->
-            <a
-                href="/client/profile"
-                use:inertia
-                data-testid="card-profile"
-                class="group bg-white rounded-3xl border border-gray-200 shadow-sm p-5 hover:shadow-md hover:border-purple/30 transition-all"
-            >
-                <div
-                    class="w-11 h-11 rounded-2xl bg-purple/10 text-purple flex items-center justify-center mb-3 group-hover:bg-purple group-hover:text-white transition-all"
-                >
-                    <svg
-                        class="w-5 h-5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        stroke-width="2"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                        />
-                    </svg>
-                </div>
-                <h3 class="text-base font-extrabold text-dark mb-1">
-                    Profile Saya
-                </h3>
-                <p class="text-xs text-gray-500 leading-relaxed">
-                    Kelola informasi akun dan data pribadi Anda.
-                </p>
+<ClientLayout title="Beranda">
+    
+    <!-- HERO SECTION -->
+    <div class="relative bg-dark rounded-[2rem] overflow-hidden mb-8 shadow-xl">
+        <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center opacity-40"></div>
+        <div class="absolute inset-0 bg-gradient-to-r from-dark/90 to-dark/40"></div>
+        
+        <div class="relative z-10 px-6 py-10 sm:py-14 sm:px-10 max-w-lg">
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-white leading-tight mb-3">
+                Halo, {user?.name ?? 'Client'}<span class="text-pink">.</span>
+            </h1>
+            <p class="text-gray-300 text-sm mb-6 leading-relaxed">
+                Mau liburan ke mana minggu ini? Temukan paket wisata terbaik dari mitra travel kami.
+            </p>
+            <a href="/client/catalog" use:inertia class="inline-flex items-center gap-2 bg-pink-dark text-white px-6 py-3 rounded-full text-sm font-bold hover:bg-sun-dark transition-all shadow-lg">
+                Jelajahi Katalog
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
             </a>
         </div>
     </div>
-</DashboardLayout>
+
+    <!-- SECTION PAKET TERBARU (Dark + Glow Hijau) -->
+    {#if paket_baru.length > 0}
+        <div class="bg-dark rounded-[2rem] p-5 sm:p-6 mb-8 shadow-2xl relative overflow-hidden border border-gray-800">
+            <!-- Efek pendar hijau di pojok -->
+            <div class="absolute -top-24 -right-24 w-64 h-64 bg-green/20 rounded-full filter blur-[80px] pointer-events-none"></div>
+            <div class="absolute -bottom-24 -left-24 w-64 h-64 bg-green/10 rounded-full filter blur-[80px] pointer-events-none"></div>
+            
+            <div class="flex items-center justify-between mb-5 relative z-10">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-green/20 border border-green/30 flex items-center justify-center text-green-400 font-bold">
+                        N
+                    </div>
+                    <h2 class="text-lg font-extrabold text-white tracking-wide">Paket Terbaru</h2>
+                </div>
+                <a href="/client/catalog" use:inertia class="text-xs font-bold text-gray-300 hover:text-white transition-colors">Lihat Semua</a>
+            </div>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-5 relative z-10">
+                {#each paket_baru as pkg (pkg.id)}
+                    <a href={`/client/catalog/${pkg.slug}`} use:inertia class="group bg-white rounded-2xl border border-transparent shadow-md overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex flex-col">
+                        <div class="relative aspect-[4/3] bg-gray-100 overflow-hidden">
+                            {#if pkg.cover_image}
+                                <img src={`/storage/${pkg.cover_image}`} alt={pkg.nama} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                            {:else}
+                                <div class="w-full h-full flex items-center justify-center text-gray-600 font-bold bg-gray-50 text-xs">Tanpa Gambar</div>
+                            {/if}
+                            <div class="absolute top-2 left-2 bg-emerald-700 text-white px-2 py-0.5 rounded text-[9px] font-extrabold shadow-sm uppercase tracking-wider">
+                                BARU
+                            </div>
+                        </div>
+                        <div class="p-3 flex-1 flex flex-col justify-between">
+                            <h3 class="text-xs sm:text-sm font-extrabold text-dark leading-tight line-clamp-2 mb-2 group-hover:text-green-text transition-colors">
+                                {pkg.nama}
+                            </h3>
+                            <div>
+                                <p class="text-[10px] text-gray-500 mb-0.5">
+                                    {pkg.isRombongan ? 'Harga Rombongan' : 'Mulai dari'}
+                                </p>
+                                <p class="text-sm font-extrabold text-dark truncate">
+                                    {formatCurrency(getHarga(pkg))}
+                                </p>
+                            </div>
+                        </div>
+                    </a>
+                {/each}
+            </div>
+        </div>
+    {/if}
+
+    <!-- SECTION PAKET PALING LAKU (Dark + Glow Ungu) -->
+    {#if paket_laris.length > 0}
+        <div class="bg-dark rounded-[2rem] p-5 sm:p-6 mb-8 shadow-2xl relative overflow-hidden border border-gray-800">
+            <!-- Efek pendar ungu di pojok -->
+            <div class="absolute -top-24 -right-24 w-64 h-64 bg-purple/20 rounded-full filter blur-[80px] pointer-events-none"></div>
+            <div class="absolute -bottom-24 -left-24 w-64 h-64 bg-purple/10 rounded-full filter blur-[80px] pointer-events-none"></div>
+
+            <div class="flex items-center justify-between mb-5 relative z-10">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-purple/20 border border-purple/30 flex items-center justify-center text-purple-400 font-bold">
+                        ★
+                    </div>
+                    <h2 class="text-lg font-extrabold text-white tracking-wide">Paling Laku (Best Seller)</h2>
+                </div>
+                <a href="/client/catalog" use:inertia class="text-xs font-bold text-gray-300 hover:text-white transition-colors">Lihat Semua</a>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
+                {#each paket_laris as pkg (pkg.id)}
+                    <a href={`/client/catalog/${pkg.slug}`} use:inertia class="group flex gap-4 bg-white rounded-2xl border border-transparent shadow-md p-3 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
+                        <div class="w-24 h-24 sm:w-32 sm:h-32 rounded-xl overflow-hidden bg-gray-100 shrink-0">
+                            {#if pkg.cover_image}
+                                <img src={`/storage/${pkg.cover_image}`} alt={pkg.nama} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                            {:else}
+                                <div class="w-full h-full flex items-center justify-center text-gray-600 text-xs">No Image</div>
+                            {/if}
+                        </div>
+                        <div class="flex flex-col justify-center flex-1 min-w-0">
+                            <div class="flex items-center gap-1 text-[10px] font-extrabold text-purple-text mb-1">
+                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                Best Seller
+                            </div>
+                            <h3 class="text-sm sm:text-base font-extrabold text-dark leading-tight line-clamp-2 mb-1 group-hover:text-purple-text transition-colors">
+                                {pkg.nama}
+                            </h3>
+                            <p class="text-[11px] text-gray-500 mb-2 truncate">
+                                {pkg.mitra ? pkg.mitra.name : 'Mitra Travel'}
+                            </p>
+                            <div class="flex items-center justify-between mt-auto">
+                                <p class="text-xs text-gray-500">{formatDurasi(pkg.durasi_hari, pkg.durasi_malam)}</p>
+                                <p class="text-sm font-extrabold text-dark">
+                                    {formatCurrency(getHarga(pkg))}
+                                </p>
+                            </div>
+                        </div>
+                    </a>
+                {/each}
+            </div>
+        </div>
+    {/if}
+    
+</ClientLayout>

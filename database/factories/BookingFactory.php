@@ -17,7 +17,6 @@ class BookingFactory extends Factory
     public function definition(): array
     {
         $jumlahPeserta = fake()->numberBetween(1, 10);
-        $package = Package::factory()->aktif();
 
         return [
             'kode' => 'BKG-'.now()->year.'-'.str_pad(
@@ -26,9 +25,13 @@ class BookingFactory extends Factory
                 '0',
                 STR_PAD_LEFT
             ),
-            'package_id' => $package,
-            'user_id' => User::factory()->client(),
-            'mitra_id' => User::factory()->mitraLive(), // ✅ TAMBAHAN
+            // FIX: jangan nested factory di sini. Pakai closure agar
+            // Package baru hanya dibuat jika `package_id` TIDAK di-override
+            // oleh `forPackage()`. Ini menghindari package "sampah" di DB
+            // saat test mem-pass package eksplisit.
+            'package_id' => fn () => Package::factory()->aktif()->create()->id,
+            'user_id' => fn () => User::factory()->client()->create()->id,
+            'mitra_id' => fn () => User::factory()->mitra()->create()->id,
             'tanggal_keberangkatan' => now()->addDays(fake()->numberBetween(3, 30))->format('Y-m-d'),
             'jumlah_peserta' => $jumlahPeserta,
             'total_harga' => 850000 * $jumlahPeserta,
@@ -98,7 +101,7 @@ class BookingFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'package_id' => $package->id,
-            'mitra_id' => $package->mitra_id, // ✅ Warisi mitra dari paket
+            'mitra_id' => $package->mitra_id,
         ]);
     }
 

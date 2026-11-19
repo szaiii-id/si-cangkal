@@ -1,942 +1,709 @@
+/**
+ * ============================================================
+ * Admin Users Index Page — Component Test
+ * ============================================================
+ *
+ * Fokus pengujian (sesuai ketentuan):
+ *   1. Isolation & Mocking     → Inertia, API, & child components di-mock
+ *   2. Props & Rendering       → DOM dirender sesuai props (default & edge case)
+ *   3. User Interaction        → click/input → callback dengan payload benar
+ *   4. Reactivity              → state lokal berubah → DOM re-render
+ *
+ * Strategi mock:
+ *   - Child components di-mock dengan pendekatan **anchor-aware**
+ *     (insertBefore ke `anchor.parentNode`) supaya kompatibel dengan
+ *     Svelte 5 runtime — bukan `createRawSnippet` yang error untuk
+ *     komponen penerima `Snippet`.
+ *   - `mockUpdaters` Set menyimpan fungsi update per komponen;
+ *     `syncUI()` memanggil `tick()` + semua updater agar DOM
+ *     mencerminkan state Svelte terbaru secara manual.
+ *
+ * ⚠️ Catatan penting:
+ *   Mock melakukan `el.innerHTML = ''` di setiap `update()` → reference
+ *   DOM lama menjadi stale. SELALU query ulang setelah `syncUI()`,
+ *   jangan simpan reference tombol antar siklus render.
+ * ============================================================
+ */
+
+import { render, screen, fireEvent } from '@testing-library/svelte';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
-import UserIndex from '../Index.svelte';
+import { tick } from 'svelte';
+import Index from '../Index.svelte';
+import type { Credentials, PaginationMeta, StatusTab } from '@/types';
 
 // ============================================================
-// MOCK INERTIA
+// 1. HOISTED MOCK REGISTRY
 // ============================================================
+const mockUpdaters = vi.hoisted(() => new Set<() => void>());
 
-const mockGet = vi.fn();
-const mockPost = vi.fn();
-const mockDelete = vi.fn();
-
-let mockPageProps: {
-    flash?: {
-        status?: string | null;
-        error?: string | null;
-        credentials?: {
-            role: string;
-            name: string;
-            email: string;
-            username: string | null;
-            password: string;
-        } | null;
-    };
-    auth?: {
-        user?: {
-            id: number;
-            name: string;
-            username: string | null;
-            email: string;
-            role: string;
-        } | null;
-    };
-} = {
-    flash: {},
-    auth: {
-        user: {
-            id: 99,
-            name: 'Admin Current',
-            username: 'admin',
-            email: 'admin@example.com',
-            role: 'admin',
+const mockPage = vi.hoisted(() => ({
+    props: {
+        auth: {
+            user: { id: 1, name: 'Super Admin', role: 'admin' },
+        },
+        flash: {
+            credentials: null as Credentials | null,
         },
     },
-};
+}));
 
-let mockPageUrl = '/admin/users';
-
+// ============================================================
+// 2. MOCK — INERTIA
+// ============================================================
 vi.mock('@inertiajs/svelte', () => ({
-    router: {
-        get: (...args: unknown[]) => mockGet(...args),
-        post: (...args: unknown[]) => mockPost(...args),
-        delete: (...args: unknown[]) => mockDelete(...args),
-        put: vi.fn(),
+    page: mockPage,
+    inertia: vi.fn(),
+}));
+
+// ============================================================
+// 3. MOCK — API ADMIN
+// ============================================================
+vi.mock('@/api/admin', () => ({
+    getUsers: vi.fn(),
+    deleteUser: vi.fn(),
+    resetUserPassword: vi.fn(),
+}));
+
+// ============================================================
+// 4. MOCK — MENUS
+// ============================================================
+vi.mock('@/utils/menus', () => ({
+    adminMenu: [],
+}));
+
+// ============================================================
+// 5. MOCK — LAYOUT (anchor-aware, pass-through children)
+// ============================================================
+vi.mock('@/components/layout/DashboardLayout.svelte', () => ({
+    default: (anchor: Node, props: { children?: (anchor: Node) => void }) => {
+        props.children?.(anchor);
+        return {};
     },
-    page: {
-        get props() {
-            return mockPageProps;
-        },
-        get url() {
-            return mockPageUrl;
-        },
-        get component() {
-            return 'Admin/Users/Index';
-        },
+}));
+
+// ============================================================
+// 6. MOCK — PAGE HEADER (anchor-aware, render actions snippet)
+// ============================================================
+vi.mock('@/global/PageHeader.svelte', () => ({
+    default: (
+        anchor: Node,
+        props: { title: string; description?: string; actions?: (anchor: Node) => void },
+    ) => {
+        const el = document.createElement('div');
+        el.setAttribute('data-testid', 'page-header');
+        el.innerHTML = `<h1>${props.title}</h1><p>${props.description ?? ''}</p>`;
+        anchor.parentNode?.insertBefore(el, anchor);
+        props.actions?.(anchor);
+        return {};
     },
-    inertia: () => ({
-        update: () => {},
-        destroy: () => {},
-    }),
 }));
 
 // ============================================================
-// MOCK MODAL COMPONENTS
+// 7. MOCK — STATUS TABS (reactive via mockUpdaters)
 // ============================================================
+vi.mock('@/global/StatusTabs.svelte', () => ({
+    default: (
+        anchor: Node,
+        props: {
+            tabs: StatusTab[];
+            active: string;
+            onchange?: (val: string) => void;
+        },
+    ) => {
+        const el = document.createElement('div');
+        el.setAttribute('role', 'tablist');
+        anchor.parentNode?.insertBefore(el, anchor);
 
-vi.mock('../../CredentialsModal.svelte', () => ({
-    default: () => null,
+        const update = () => {
+            el.innerHTML = '';
+            props.tabs.forEach((tab) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.setAttribute('role', 'tab');
+                btn.setAttribute('aria-selected', String(props.active === tab.value));
+                btn.textContent = `${tab.label} (${tab.count})`;
+                btn.onclick = () => {
+                    props.active = tab.value;
+                    props.onchange?.(tab.value);
+                };
+                el.appendChild(btn);
+            });
+        };
+
+        update();
+        mockUpdaters.add(update);
+        return {};
+    },
 }));
 
-vi.mock('../../ResetPasswordConfirmModal.svelte', () => ({
-    default: () => null,
+// ============================================================
+// 8. MOCK — SEARCH INPUT (reactive via mockUpdaters)
+// ============================================================
+vi.mock('@/global/SearchInput.svelte', () => ({
+    default: (
+        anchor: Node,
+        props: {
+            value: string;
+            placeholder?: string;
+            oninput?: (val: string) => void;
+            onclear?: () => void;
+        },
+    ) => {
+        const wrapper = document.createElement('div');
+        const input = document.createElement('input');
+        input.type = 'search';
+        input.placeholder = props.placeholder ?? '';
+        input.value = props.value ?? '';
+        input.oninput = (e) => {
+            const val = (e.target as HTMLInputElement).value;
+            props.value = val;
+            props.oninput?.(val);
+        };
+
+        const clearBtn = document.createElement('button');
+        clearBtn.type = 'button';
+        clearBtn.textContent = 'Hapus Pencarian';
+        clearBtn.onclick = () => {
+            props.value = '';
+            props.onclear?.();
+        };
+
+        wrapper.append(input, clearBtn);
+        anchor.parentNode?.insertBefore(wrapper, anchor);
+
+        const update = () => {
+            input.value = props.value ?? '';
+        };
+        mockUpdaters.add(update);
+        return {};
+    },
 }));
 
 // ============================================================
-// HELPERS — Build Props
+// 9. MOCK — USER TABLE (reactive via mockUpdaters)
+// ============================================================
+vi.mock('@/components/admin/users/UserTable.svelte', () => ({
+    default: (
+        anchor: Node,
+        props: {
+            users: Array<{ id: number; name: string; email: string; role: string }>;
+            authUserId?: number;
+            onDelete?: (u: { id: number; name: string }) => void;
+            onReset?: (u: { id: number; name: string; email: string }) => void;
+        },
+    ) => {
+        const el = document.createElement('div');
+        el.setAttribute('data-testid', 'user-table');
+        anchor.parentNode?.insertBefore(el, anchor);
+
+        const update = () => {
+            el.innerHTML = '';
+            el.setAttribute('data-auth-user-id', String(props.authUserId ?? ''));
+            props.users.forEach((user) => {
+                const row = document.createElement('div');
+                row.setAttribute('data-testid', `user-row-${user.id}`);
+                row.textContent = `${user.name} (${user.role})`;
+
+                const delBtn = document.createElement('button');
+                delBtn.type = 'button';
+                delBtn.textContent = `Hapus ${user.name}`;
+                delBtn.onclick = () => props.onDelete?.(user);
+
+                const resetBtn = document.createElement('button');
+                resetBtn.type = 'button';
+                resetBtn.textContent = `Reset ${user.name}`;
+                resetBtn.onclick = () => props.onReset?.(user);
+
+                row.append(delBtn, resetBtn);
+                el.appendChild(row);
+            });
+        };
+
+        update();
+        mockUpdaters.add(update);
+        return {};
+    },
+}));
+
+// ============================================================
+// 10. MOCK — EMPTY STATE (reactive via mockUpdaters)
+// ============================================================
+vi.mock('@/global/EmptyState.svelte', () => ({
+    default: (
+        anchor: Node,
+        props: {
+            title: string;
+            description: string;
+            hasFilters?: boolean;
+            onClear?: () => void;
+        },
+    ) => {
+        const el = document.createElement('div');
+        el.setAttribute('data-testid', 'empty-state');
+        anchor.parentNode?.insertBefore(el, anchor);
+
+        const update = () => {
+            el.innerHTML = `<h3>${props.title}</h3><p>${props.description}</p>`;
+            if (props.hasFilters) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.textContent = 'Reset Filter';
+                btn.onclick = () => props.onClear?.();
+                el.appendChild(btn);
+            }
+        };
+
+        update();
+        mockUpdaters.add(update);
+        return {};
+    },
+}));
+
+// ============================================================
+// 11. MOCK — PAGINATION (statis, cukup render sekali)
+// ============================================================
+vi.mock('@/global/Pagination.svelte', () => ({
+    default: (anchor: Node, props: { meta: PaginationMeta; label: string }) => {
+        const el = document.createElement('div');
+        el.setAttribute('data-testid', 'pagination');
+        el.textContent = `Total ${props.meta.total} ${props.label}`;
+        anchor.parentNode?.insertBefore(el, anchor);
+        return {};
+    },
+}));
+
+// ============================================================
+// 12. MOCK — CREDENTIALS MODAL (reactive via mockUpdaters)
+// ============================================================
+vi.mock('../CredentialsModal.svelte', () => ({
+    default: (anchor: Node, props: { open: boolean; credentials: Credentials | null }) => {
+        const el = document.createElement('div');
+        el.setAttribute('data-testid', 'credentials-modal');
+        anchor.parentNode?.insertBefore(el, anchor);
+
+        const update = () => {
+            el.innerHTML = '';
+            if (!props.open || !props.credentials) return;
+            el.textContent = `Kredensial: ${props.credentials.username} / ${props.credentials.password}`;
+        };
+
+        update();
+        mockUpdaters.add(update);
+        return {};
+    },
+}));
+
+// ============================================================
+// 13. MOCK — CONFIRM MODAL (reactive, aware of `processing`)
+// ============================================================
+vi.mock('@/global/ConfirmModal.svelte', () => ({
+    default: (
+        anchor: Node,
+        props: {
+            open: boolean;
+            variant?: string;
+            title: string;
+            description: string;
+            confirmLabel: string;
+            processing?: boolean;
+            onConfirm?: () => void;
+        },
+    ) => {
+        const el = document.createElement('div');
+        el.setAttribute('data-testid', 'confirm-modal');
+        anchor.parentNode?.insertBefore(el, anchor);
+
+        const update = () => {
+            el.innerHTML = '';
+            if (!props.open) return;
+            el.setAttribute('data-variant', props.variant ?? '');
+
+            const heading = document.createElement('h3');
+            heading.textContent = props.title;
+
+            const desc = document.createElement('p');
+            desc.textContent = props.description;
+
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.textContent = props.confirmLabel;
+            btn.disabled = Boolean(props.processing);
+            btn.onclick = () => props.onConfirm?.();
+
+            el.append(heading, desc, btn);
+        };
+
+        update();
+        mockUpdaters.add(update);
+        return {};
+    },
+}));
+
+// ============================================================
+// 14. MOCK — RESET PASSWORD MODAL (reactive via mockUpdaters)
+// ============================================================
+vi.mock('../ResetPasswordConfirmModal.svelte', () => ({
+    default: (
+        anchor: Node,
+        props: {
+            open: boolean;
+            userName: string;
+            userEmail: string;
+            onConfirm?: () => void;
+        },
+    ) => {
+        const el = document.createElement('div');
+        el.setAttribute('data-testid', 'reset-modal');
+        anchor.parentNode?.insertBefore(el, anchor);
+
+        const update = () => {
+            el.innerHTML = '';
+            if (!props.open) return;
+
+            const text = document.createElement('p');
+            text.textContent = `Reset password untuk ${props.userName} (${props.userEmail})`;
+
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.textContent = 'Konfirmasi Reset';
+            btn.onclick = () => props.onConfirm?.();
+
+            el.append(text, btn);
+        };
+
+        update();
+        mockUpdaters.add(update);
+        return {};
+    },
+}));
+
+// ============================================================
+// 15. STATIC IMPORT (setelah semua vi.mock agar mock aktif)
+// ============================================================
+import { getUsers, deleteUser, resetUserPassword } from '@/api/admin';
+
+// ============================================================
+// 16. HELPERS
 // ============================================================
 
-interface UserData {
-    id: number;
-    name: string;
-    username: string | null;
-    email: string;
-    role: 'admin' | 'mitra';
-    profile?: { nama_penyedia_usaha: string | null; logo: string | null } | null;
-    created_at: string;
+/**
+ * Sinkronisasi DOM manual: jalankan `tick()` lalu panggil semua
+ * `update` dari komponen yang di-mock agar re-render state Svelte
+ * tercermin di DOM.
+ *
+ * Catatan: mock menggunakan `innerHTML = ''`, jadi SEMUA element
+ * DOM lama menjadi stale — wajib query ulang setelah `syncUI()`.
+ */
+async function syncUI(): Promise<void> {
+    await tick();
+    mockUpdaters.forEach((fn) => fn());
 }
 
-interface UsersPaginator {
-    data: UserData[];
-    current_page: number;
-    last_page: number;
-    from: number;
-    to: number;
-    total: number;
-    links: Array<{ url: string | null; label: string; active: boolean }>;
-}
-
-const makeUsersPaginator = (
-    overrides: Partial<UsersPaginator> = {},
-): UsersPaginator => ({
+// ============================================================
+// 17. FIXTURES
+// ============================================================
+const sampleUsers = {
+    current_page: 1,
+    last_page: 1,
+    per_page: 15,
+    total: 3,
+    from: 1,
+    to: 3,
+    links: [],
     data: [
         {
             id: 1,
-            name: 'Budi Admin',
-            username: 'budiadmin',
-            email: 'budi@example.com',
-            role: 'admin',
-            profile: { nama_penyedia_usaha: 'PT Budi', logo: null },
-            created_at: '2026-01-15T10:00:00Z',
+            name: 'Super Admin',
+            username: 'superadmin',
+            email: 'admin@test.com',
+            role: 'admin' as const,
+            created_at: '2026-01-01T00:00:00Z',
         },
         {
             id: 2,
-            name: 'Ani Mitra',
-            username: 'anim',
-            email: 'ani@example.com',
-            role: 'mitra',
-            profile: { nama_penyedia_usaha: 'PT Ani Jaya', logo: 'logos/ani.png' },
-            created_at: '2026-02-20T10:00:00Z',
+            name: 'Mitra Satu',
+            username: 'mitrasatu',
+            email: 'mitra1@test.com',
+            role: 'mitra' as const,
+            created_at: '2026-01-02T00:00:00Z',
         },
         {
             id: 3,
-            name: 'Cici Mitra',
-            username: null,
-            email: 'cici@example.com',
-            role: 'mitra',
-            profile: null,
-            created_at: '2026-03-10T10:00:00Z',
+            name: 'Mitra Dua',
+            username: 'mitradua',
+            email: 'mitra2@test.com',
+            role: 'mitra' as const,
+            created_at: '2026-01-03T00:00:00Z',
         },
     ],
-    current_page: 1,
-    last_page: 1,
-    from: 1,
-    to: 3,
-    total: 3,
-    links: [
-        { url: null, label: '&laquo; Previous', active: false },
-        { url: '/admin/users?page=1', label: '1', active: true },
-        { url: null, label: 'Next &raquo;', active: false },
-    ],
-    ...overrides,
-});
-
-const defaultFilters = { search: '', per_page: 15 };
-
-const getSearchInput = () =>
-    screen.getByPlaceholderText(/Cari nama, email, atau username/i);
-
-const getTable = () => document.querySelector('table');
-
-/**
- * Helper untuk tab.
- *
- * ⚠️ PENTING: komponen StatusTabs merender tab dengan `role="tab"`,
- * BUKAN `role="button"`. Query harus pakai `getByRole('tab', ...)`.
- */
-const getTab = (name: RegExp) =>
-    screen.getByRole('tab', { name });
+};
 
 // ============================================================
-// SETUP & TEARDOWN
+// 18. TEST SUITE
 // ============================================================
-
-beforeEach(() => {
-    mockGet.mockClear();
-    mockPost.mockClear();
-    mockDelete.mockClear();
-    mockPageUrl = '/admin/users';
-    mockPageProps = {
-        flash: {},
-        auth: {
-            user: {
-                id: 99,
-                name: 'Admin Current',
-                username: 'admin',
-                email: 'admin@example.com',
-                role: 'admin',
-            },
-        },
-    };
-    vi.useFakeTimers();
-});
-
-afterEach(() => {
-    vi.useRealTimers();
-    vi.clearAllMocks();
-});
-
-// ============================================================
-// KATEGORI 1 — UI CONTRACT
-// ============================================================
-
-describe('Admin/Users/Index.svelte — UI Contract', () => {
-    it('menampilkan heading "Manajemen User"', () => {
-        render(UserIndex, {
-            props: { users: makeUsersPaginator(), filters: defaultFilters },
-        });
-        const headings = screen.getAllByRole('heading', { name: /Manajemen User/i });
-        expect(headings.length).toBeGreaterThan(0);
+describe('Admin Users Index Page', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockUpdaters.clear();
+        mockPage.props.auth = { user: { id: 1, name: 'Super Admin', role: 'admin' } };
+        mockPage.props.flash = { credentials: null };
+        vi.useFakeTimers();
     });
 
-    it('menampilkan subtitle "Kelola akun admin dan mitra"', () => {
-        render(UserIndex, {
-            props: { users: makeUsersPaginator(), filters: defaultFilters },
-        });
-        expect(
-            screen.getByText(/Kelola akun admin dan mitra/i)
-        ).toBeInTheDocument();
+    afterEach(() => {
+        vi.useRealTimers();
     });
 
-    it('menampilkan tombol "Tambah User"', () => {
-        render(UserIndex, {
-            props: { users: makeUsersPaginator(), filters: defaultFilters },
-        });
-        expect(
-            screen.getByRole('link', { name: /Tambah User/i })
-        ).toBeInTheDocument();
-    });
+    // ----------------------------------------------------------
+    // 18.1 RENDERING — Props & struktur DOM
+    // ----------------------------------------------------------
+    describe('Rendering', () => {
+        it('merender header, tombol Tambah User, tab status, tabel, dan pagination dengan benar', () => {
+            render(Index, {
+                users: sampleUsers,
+                filters: { search: '', per_page: 15 },
+            });
 
-    it('tombol "Tambah User" punya href ke /admin/users/create', () => {
-        render(UserIndex, {
-            props: { users: makeUsersPaginator(), filters: defaultFilters },
-        });
-        const link = screen.getByRole('link', { name: /Tambah User/i });
-        expect(link).toHaveAttribute('href', '/admin/users/create');
-    });
+            // PageHeader
+            expect(screen.getByRole('heading', { name: 'Manajemen User' })).toBeInTheDocument();
+            expect(screen.getByText('Kelola akun admin dan mitra')).toBeInTheDocument();
 
-    it('menampilkan search input', () => {
-        render(UserIndex, {
-            props: { users: makeUsersPaginator(), filters: defaultFilters },
-        });
-        expect(getSearchInput()).toBeInTheDocument();
-    });
+            // Actions snippet
+            expect(screen.getByRole('link', { name: 'Tambah User' })).toHaveAttribute(
+                'href',
+                '/admin/users/create',
+            );
 
-    it('menampilkan filter tabs: Semua, Admin, Mitra', () => {
-        render(UserIndex, {
-            props: { users: makeUsersPaginator(), filters: defaultFilters },
-        });
-        expect(screen.getByRole('tab', { name: /^Semua/i })).toBeInTheDocument();
-        expect(screen.getByRole('tab', { name: /^Admin/i })).toBeInTheDocument();
-        expect(screen.getByRole('tab', { name: /^Mitra/i })).toBeInTheDocument();
-    });
+            // StatusTabs — count derived akurat
+            expect(screen.getByRole('tab', { name: 'Semua (3)' })).toHaveAttribute(
+                'aria-selected',
+                'true',
+            );
+            expect(screen.getByRole('tab', { name: 'Admin (1)' })).toBeInTheDocument();
+            expect(screen.getByRole('tab', { name: 'Mitra (2)' })).toBeInTheDocument();
 
-    it('menampilkan kolom tabel: User, Role, Usaha, Aksi', () => {
-        render(UserIndex, {
-            props: { users: makeUsersPaginator(), filters: defaultFilters },
-        });
-        expect(screen.getByText(/^User$/i)).toBeInTheDocument();
-        expect(screen.getByText(/^Role$/i)).toBeInTheDocument();
-        expect(screen.getByText(/^Usaha$/i)).toBeInTheDocument();
-        expect(screen.getByText(/^Aksi$/i)).toBeInTheDocument();
-    });
-});
+            // UserTable
+            const table = screen.getByTestId('user-table');
+            expect(table).toHaveAttribute('data-auth-user-id', '1');
+            expect(screen.getByTestId('user-row-1')).toHaveTextContent('Super Admin (admin)');
+            expect(screen.getByTestId('user-row-2')).toHaveTextContent('Mitra Satu (mitra)');
+            expect(screen.getByTestId('user-row-3')).toHaveTextContent('Mitra Dua (mitra)');
 
-// ============================================================
-// KATEGORI 2 — DATA RENDERING
-// ============================================================
-
-describe('Admin/Users/Index.svelte — Data Rendering', () => {
-    it('menampilkan nama user dari data', () => {
-        render(UserIndex, {
-            props: { users: makeUsersPaginator(), filters: defaultFilters },
-        });
-        expect(screen.getByText('Budi Admin')).toBeInTheDocument();
-        expect(screen.getByText('Ani Mitra')).toBeInTheDocument();
-        expect(screen.getByText('Cici Mitra')).toBeInTheDocument();
-    });
-
-    it('menampilkan email user dari data', () => {
-        render(UserIndex, {
-            props: { users: makeUsersPaginator(), filters: defaultFilters },
-        });
-        expect(screen.getByText('budi@example.com')).toBeInTheDocument();
-        expect(screen.getByText('ani@example.com')).toBeInTheDocument();
-    });
-
-    it('menampilkan username dengan @ prefix', () => {
-        render(UserIndex, {
-            props: { users: makeUsersPaginator(), filters: defaultFilters },
-        });
-        expect(screen.getByText(/@budiadmin/i)).toBeInTheDocument();
-        expect(screen.getByText(/@anim/i)).toBeInTheDocument();
-    });
-
-    it('username null → tidak menampilkan @ username', () => {
-        render(UserIndex, {
-            props: {
-                users: makeUsersPaginator({
-                    data: [
-                        {
-                            id: 1,
-                            name: 'No Username',
-                            username: null,
-                            email: 'no@example.com',
-                            role: 'mitra',
-                            profile: null,
-                            created_at: '2026-01-01T00:00:00Z',
-                        },
-                    ],
-                }),
-                filters: defaultFilters,
-            },
-        });
-        expect(screen.getByText('No Username')).toBeInTheDocument();
-        expect(screen.getByText('no@example.com')).toBeInTheDocument();
-    });
-
-    it('menampilkan role badge Admin', () => {
-        render(UserIndex, {
-            props: { users: makeUsersPaginator(), filters: defaultFilters },
-        });
-        const adminBadges = screen.getAllByText(/^Admin$/i);
-        expect(adminBadges.length).toBeGreaterThan(0);
-    });
-
-    it('menampilkan role badge Mitra', () => {
-        render(UserIndex, {
-            props: { users: makeUsersPaginator(), filters: defaultFilters },
-        });
-        const mitraBadges = screen.getAllByText(/^Mitra$/i);
-        expect(mitraBadges.length).toBeGreaterThan(0);
-    });
-
-    it('menampilkan nama penyedia usaha dari profile', () => {
-        render(UserIndex, {
-            props: { users: makeUsersPaginator(), filters: defaultFilters },
-        });
-        expect(screen.getByText('PT Budi')).toBeInTheDocument();
-        expect(screen.getByText('PT Ani Jaya')).toBeInTheDocument();
-    });
-
-    it('menampilkan "-" untuk user tanpa profile', () => {
-        render(UserIndex, {
-            props: {
-                users: makeUsersPaginator({
-                    data: [
-                        {
-                            id: 3,
-                            name: 'Cici',
-                            username: 'cici',
-                            email: 'cici@example.com',
-                            role: 'mitra',
-                            profile: null,
-                            created_at: '2026-01-01T00:00:00Z',
-                        },
-                    ],
-                }),
-                filters: defaultFilters,
-            },
-        });
-        expect(screen.getByText('-')).toBeInTheDocument();
-    });
-});
-
-// ============================================================
-// KATEGORI 3 — FILTER TABS
-// ============================================================
-
-describe('Admin/Users/Index.svelte — Filter Tabs', () => {
-    it('tab "Semua" menampilkan semua user', () => {
-        render(UserIndex, {
-            props: { users: makeUsersPaginator(), filters: defaultFilters },
-        });
-        expect(screen.getByText('Budi Admin')).toBeInTheDocument();
-        expect(screen.getByText('Ani Mitra')).toBeInTheDocument();
-        expect(screen.getByText('Cici Mitra')).toBeInTheDocument();
-    });
-
-    it('tab "Admin" hanya menampilkan admin', async () => {
-        render(UserIndex, {
-            props: { users: makeUsersPaginator(), filters: defaultFilters },
-        });
-
-        await fireEvent.click(getTab(/^Admin/i));
-
-        await waitFor(() => {
-            expect(screen.getByText('Budi Admin')).toBeInTheDocument();
-            expect(screen.queryByText('Ani Mitra')).not.toBeInTheDocument();
-            expect(screen.queryByText('Cici Mitra')).not.toBeInTheDocument();
+            // Pagination
+            expect(screen.getByTestId('pagination')).toHaveTextContent('Total 3 user');
         });
     });
 
-    it('tab "Mitra" hanya menampilkan mitra', async () => {
-        render(UserIndex, {
-            props: { users: makeUsersPaginator(), filters: defaultFilters },
-        });
+    // ----------------------------------------------------------
+    // 18.2 REACTIVITY — StatusTabs filter
+    // ----------------------------------------------------------
+    describe('Reactivity — StatusTabs', () => {
+        it('memfilter daftar user saat tab Admin/Mitra diklik', async () => {
+            render(Index, {
+                users: sampleUsers,
+                filters: { search: '', per_page: 15 },
+            });
 
-        await fireEvent.click(getTab(/^Mitra/i));
+            // → Tab Admin
+            await fireEvent.click(screen.getByRole('tab', { name: 'Admin (1)' }));
+            await syncUI();
 
-        await waitFor(() => {
-            expect(screen.queryByText('Budi Admin')).not.toBeInTheDocument();
-            expect(screen.getByText('Ani Mitra')).toBeInTheDocument();
-            expect(screen.getByText('Cici Mitra')).toBeInTheDocument();
-        });
-    });
+            expect(screen.getByTestId('user-row-1')).toBeInTheDocument();
+            expect(screen.queryByTestId('user-row-2')).not.toBeInTheDocument();
+            expect(screen.queryByTestId('user-row-3')).not.toBeInTheDocument();
 
-    it('counter "Semua" menampilkan total user', () => {
-        render(UserIndex, {
-            props: { users: makeUsersPaginator({ total: 3 }), filters: defaultFilters },
-        });
-        const threeCounts = screen.getAllByText('3');
-        expect(threeCounts.length).toBeGreaterThan(0);
-    });
+            // → Tab Mitra
+            await fireEvent.click(screen.getByRole('tab', { name: 'Mitra (2)' }));
+            await syncUI();
 
-    it('counter "Admin" menampilkan jumlah admin', () => {
-        render(UserIndex, {
-            props: { users: makeUsersPaginator(), filters: defaultFilters },
-        });
-        expect(screen.getAllByText('1').length).toBeGreaterThan(0);
-    });
-
-    it('counter "Mitra" menampilkan jumlah mitra', () => {
-        render(UserIndex, {
-            props: { users: makeUsersPaginator(), filters: defaultFilters },
-        });
-        expect(screen.getAllByText('2').length).toBeGreaterThan(0);
-    });
-});
-
-// ============================================================
-// KATEGORI 4 — EMPTY STATE
-// ============================================================
-
-describe('Admin/Users/Index.svelte — Empty State', () => {
-    it('menampilkan empty state saat data kosong', () => {
-        render(UserIndex, {
-            props: {
-                users: makeUsersPaginator({ data: [], total: 0, from: 0, to: 0 }),
-                filters: defaultFilters,
-            },
-        });
-        expect(screen.getByText(/Belum ada user/i)).toBeInTheDocument();
-    });
-
-    it('menampilkan pesan "Tidak ada hasil" saat search aktif', () => {
-        render(UserIndex, {
-            props: {
-                users: makeUsersPaginator({ data: [], total: 0 }),
-                filters: { search: 'xyz', per_page: 15 },
-            },
-        });
-        expect(screen.getByText(/Tidak ada hasil ditemukan/i)).toBeInTheDocument();
-    });
-
-    it('empty state pakai tab filter kalau ada filter role', async () => {
-        render(UserIndex, {
-            props: {
-                users: makeUsersPaginator({
-                    data: [
-                        {
-                            id: 1,
-                            name: 'Budi',
-                            username: 'budi',
-                            email: 'budi@example.com',
-                            role: 'admin',
-                            profile: null,
-                            created_at: '2026-01-01T00:00:00Z',
-                        },
-                    ],
-                    total: 1,
-                    from: 1,
-                    to: 1,
-                }),
-                filters: defaultFilters,
-            },
-        });
-
-        // Klik tab "Mitra" — tidak ada mitra di data
-        await fireEvent.click(getTab(/^Mitra/i));
-
-        await waitFor(() => {
-            expect(screen.getByText(/Belum ada user/i)).toBeInTheDocument();
+            expect(screen.queryByTestId('user-row-1')).not.toBeInTheDocument();
+            expect(screen.getByTestId('user-row-2')).toBeInTheDocument();
+            expect(screen.getByTestId('user-row-3')).toBeInTheDocument();
         });
     });
 
-    it('TIDAK menampilkan tabel saat data kosong', () => {
-        render(UserIndex, {
-            props: {
-                users: makeUsersPaginator({ data: [], total: 0 }),
-                filters: defaultFilters,
-            },
+    // ----------------------------------------------------------
+    // 18.3 INTERACTION — Search & Debounce
+    // ----------------------------------------------------------
+    describe('Interaction — Search & Debounce', () => {
+        it('menunda getUsers 300ms setelah input pencarian berubah', async () => {
+            render(Index, {
+                users: sampleUsers,
+                filters: { search: '', per_page: 15 },
+            });
+
+            const searchInput = screen.getByPlaceholderText('Cari nama atau email...');
+            await fireEvent.input(searchInput, { target: { value: 'mitra' } });
+
+            expect(getUsers).not.toHaveBeenCalled();
+
+            await vi.advanceTimersByTimeAsync(299);
+            expect(getUsers).not.toHaveBeenCalled();
+
+            await vi.advanceTimersByTimeAsync(1);
+
+            expect(getUsers).toHaveBeenCalledTimes(1);
+            expect(getUsers).toHaveBeenCalledWith(
+                { search: 'mitra', per_page: 15 },
+                { preserveState: true, preserveScroll: true, replace: true },
+            );
         });
-        expect(getTable()).not.toBeInTheDocument();
-    });
-});
 
-// ============================================================
-// KATEGORI 5 — SEARCH BEHAVIOR (debounce)
-// ============================================================
+        it('langsung memanggil getUsers saat pencarian di-clear tanpa menunggu debounce', async () => {
+            render(Index, {
+                users: sampleUsers,
+                filters: { search: 'admin', per_page: 15 },
+            });
 
-describe('Admin/Users/Index.svelte — Search Behavior', () => {
-    it('mengetik di search input memanggil router.get setelah debounce 300ms', async () => {
-        render(UserIndex, {
-            props: { users: makeUsersPaginator(), filters: defaultFilters },
-        });
+            await fireEvent.click(screen.getByRole('button', { name: 'Hapus Pencarian' }));
+            await syncUI();
 
-        await fireEvent.input(getSearchInput(), { target: { value: 'budi' } });
-
-        expect(mockGet).not.toHaveBeenCalled();
-
-        vi.advanceTimersByTime(300);
-
-        await waitFor(() => {
-            expect(mockGet).toHaveBeenCalledWith(
-                '/admin/users',
-                { search: 'budi', per_page: 15 },
-                expect.objectContaining({
-                    preserveState: true,
-                    preserveScroll: true,
-                    replace: true,
-                }),
+            expect(getUsers).toHaveBeenCalledTimes(1);
+            expect(getUsers).toHaveBeenCalledWith(
+                { search: '', per_page: 15 },
+                { preserveState: true, preserveScroll: true, replace: true },
             );
         });
     });
 
-    it('mengetik cepat berulang hanya memicu 1x router.get', async () => {
-        render(UserIndex, {
-            props: { users: makeUsersPaginator(), filters: defaultFilters },
+    // ----------------------------------------------------------
+    // 18.4 RENDERING — EmptyState edge case
+    // ----------------------------------------------------------
+    describe('Rendering — EmptyState', () => {
+        it('menampilkan EmptyState default saat data kosong tanpa filter', () => {
+            render(Index, {
+                users: { ...sampleUsers, total: 0, data: [] },
+                filters: { search: '', per_page: 15 },
+            });
+
+            const emptyState = screen.getByTestId('empty-state');
+            expect(emptyState).toHaveTextContent('Belum ada user');
+            expect(emptyState).toHaveTextContent(
+                'Mulai dengan menambahkan user admin atau mitra pertama Anda.',
+            );
+            expect(screen.queryByRole('button', { name: 'Reset Filter' })).not.toBeInTheDocument();
         });
 
-        await fireEvent.input(getSearchInput(), { target: { value: 'b' } });
-        vi.advanceTimersByTime(100);
+        it('menampilkan EmptyState hasil pencarian & reset filter saat diklik', async () => {
+            render(Index, {
+                users: { ...sampleUsers, total: 0, data: [] },
+                filters: { search: 'tidakada', per_page: 15 },
+            });
 
-        await fireEvent.input(getSearchInput(), { target: { value: 'bu' } });
-        vi.advanceTimersByTime(100);
+            const emptyState = screen.getByTestId('empty-state');
+            expect(emptyState).toHaveTextContent('Tidak ada hasil ditemukan');
+            expect(emptyState).toHaveTextContent(
+                'Tidak ditemukan user dengan kata kunci "tidakada".',
+            );
 
-        await fireEvent.input(getSearchInput(), { target: { value: 'bud' } });
-        vi.advanceTimersByTime(300);
+            await fireEvent.click(screen.getByRole('button', { name: 'Reset Filter' }));
 
-        await waitFor(() => {
-            expect(mockGet).toHaveBeenCalledTimes(1);
+            expect(getUsers).toHaveBeenCalledWith(
+                { search: '', per_page: 15 },
+                { preserveState: true, preserveScroll: true, replace: true },
+            );
         });
     });
 
-    it('tombol clear tampil saat user mengetik di search', async () => {
-        render(UserIndex, {
-            props: { users: makeUsersPaginator(), filters: defaultFilters },
-        });
+    // ----------------------------------------------------------
+    // 18.5 EFFECT — Flash credentials
+    // ----------------------------------------------------------
+    describe('Effect — Flash Credentials', () => {
+        it('membuka CredentialsModal otomatis saat flash.credentials tersedia', async () => {
+            mockPage.props.flash = {
+                credentials: {
+                    name: 'Mitra Baru',
+                    username: 'mitrabaru',
+                    email: 'baru@test.com',
+                    password: 'TempPassword123',
+                } as Credentials,
+            };
 
-        // Ketik dulu agar SearchInput menampilkan tombol clear
-        await fireEvent.input(getSearchInput(), { target: { value: 'budi' } });
+            render(Index, {
+                users: sampleUsers,
+                filters: { search: '', per_page: 15 },
+            });
+            await syncUI();
 
-        await waitFor(() => {
-            expect(
-                screen.getByRole('button', { name: /Hapus pencarian/i })
-            ).toBeInTheDocument();
+            expect(screen.getByTestId('credentials-modal')).toHaveTextContent(
+                'Kredensial: mitrabaru / TempPassword123',
+            );
         });
     });
 
-    it('tombol clear TIDAK tampil saat search kosong', () => {
-        render(UserIndex, {
-            props: { users: makeUsersPaginator(), filters: defaultFilters },
+    // ----------------------------------------------------------
+    // 18.6 INTERACTION — Delete & Reset Password flows
+    // ----------------------------------------------------------
+    describe('Interaction — Delete & Reset Password', () => {
+        it('membuka ConfirmModal, memanggil deleteUser, dan menonaktifkan tombol selama processing', async () => {
+            let finishCallback: (() => void) | undefined;
+            vi.mocked(deleteUser).mockImplementation((_id, options) => {
+                finishCallback = options?.onFinish;
+            });
+
+            render(Index, {
+                users: sampleUsers,
+                filters: { search: '', per_page: 15 },
+            });
+
+            // 1. Klik "Hapus Mitra Satu" → modal terbuka
+            await fireEvent.click(screen.getByRole('button', { name: 'Hapus Mitra Satu' }));
+            await syncUI();
+
+            const confirmModal = screen.getByTestId('confirm-modal');
+            expect(confirmModal).toHaveAttribute('data-variant', 'danger');
+            expect(confirmModal).toHaveTextContent('Hapus User?');
+            expect(confirmModal).toHaveTextContent('Yakin ingin menghapus "Mitra Satu"?');
+
+            // 2. Klik "Ya, Hapus" → deleteUser terpanggil
+            await fireEvent.click(screen.getByRole('button', { name: 'Ya, Hapus' }));
+            await syncUI();
+
+            expect(deleteUser).toHaveBeenCalledWith(2, expect.any(Object));
+
+            // 3. ✅ Query ULANG tombol setelah re-render → assert disabled
+            expect(screen.getByRole('button', { name: 'Ya, Hapus' })).toBeDisabled();
+
+            // 4. Panggil onFinish → processing = false & modal tertutup
+            finishCallback?.();
+            await syncUI();
+
+            expect(screen.getByTestId('confirm-modal')).toBeEmptyDOMElement();
         });
 
-        expect(
-            screen.queryByRole('button', { name: /Hapus pencarian/i })
-        ).not.toBeInTheDocument();
-    });
+        it('membuka ResetPasswordConfirmModal, memanggil resetUserPassword, lalu menutup modal', async () => {
+            let finishCallback: (() => void) | undefined;
+            vi.mocked(resetUserPassword).mockImplementation((_id, options) => {
+                finishCallback = options?.onFinish;
+            });
 
-    it('klik tombol clear mengosongkan search dan panggil router.get', async () => {
-        render(UserIndex, {
-            props: {
-                users: makeUsersPaginator(),
-                filters: { search: 'budi', per_page: 15 },
-            },
-        });
+            render(Index, {
+                users: sampleUsers,
+                filters: { search: '', per_page: 15 },
+            });
 
-        const input = getSearchInput();
-        expect((input as HTMLInputElement).value).toBe('budi');
+            // 1. Klik "Reset Mitra Satu" → modal terbuka
+            await fireEvent.click(screen.getByRole('button', { name: 'Reset Mitra Satu' }));
+            await syncUI();
 
-        // Ketik dulu dengan nilai yang sama — SearchInput global baru
-        // merender tombol clear saat ada input event.
-        await fireEvent.input(input, { target: { value: 'budi' } });
+            const resetModal = screen.getByTestId('reset-modal');
+            expect(resetModal).toHaveTextContent(
+                'Reset password untuk Mitra Satu (mitra1@test.com)',
+            );
 
-        // Gunakan findByRole (MutationObserver, BUKAN timer) agar tidak
-        // hang saat vi.useFakeTimers() aktif.
-        const clearBtn = await screen.findByRole('button', {
-            name: /Hapus pencarian/i,
-        });
+            // 2. Klik "Konfirmasi Reset" → API terpanggil
+            await fireEvent.click(screen.getByRole('button', { name: 'Konfirmasi Reset' }));
 
-        await fireEvent.click(clearBtn);
-
-        // clearSearch() memanggil router.get SINKRON (tanpa debounce),
-        // jadi bisa langsung assert tanpa waitFor.
-        expect(mockGet).toHaveBeenCalledWith(
-            '/admin/users',
-            { search: '', per_page: 15 },
-            expect.objectContaining({
-                preserveState: true,
+            expect(resetUserPassword).toHaveBeenCalledWith(2, {
                 preserveScroll: true,
-                replace: true,
-            }),
-        );
-    });
+                onFinish: expect.any(Function),
+            });
 
-    it('search input terisi dari props filters.search', () => {
-        render(UserIndex, {
-            props: {
-                users: makeUsersPaginator(),
-                filters: { search: 'existing', per_page: 15 },
-            },
+            // 3. Panggil onFinish → modal tertutup
+            finishCallback?.();
+            await syncUI();
+
+            expect(screen.getByTestId('reset-modal')).toBeEmptyDOMElement();
         });
-        expect((getSearchInput() as HTMLInputElement).value).toBe('existing');
-    });
-});
-
-// ============================================================
-// KATEGORI 6 — ACTION BUTTONS
-// ============================================================
-
-describe('Admin/Users/Index.svelte — Action Buttons', () => {
-    it('tombol Edit tampil untuk setiap user', () => {
-        render(UserIndex, {
-            props: { users: makeUsersPaginator(), filters: defaultFilters },
-        });
-        const editButtons = screen.getAllByLabelText(/Edit user/i);
-        expect(editButtons.length).toBe(3);
-    });
-
-    it('tombol Reset Password tampil untuk setiap user', () => {
-        render(UserIndex, {
-            props: { users: makeUsersPaginator(), filters: defaultFilters },
-        });
-        const resetButtons = screen.getAllByLabelText(/Reset password/i);
-        expect(resetButtons.length).toBe(3);
-    });
-
-    it('tombol Edit punya href ke /admin/users/{id}/edit', () => {
-        render(UserIndex, {
-            props: { users: makeUsersPaginator(), filters: defaultFilters },
-        });
-        const editLinks = screen.getAllByRole('link', { name: /Edit user/i });
-        expect(editLinks[0]).toHaveAttribute('href', '/admin/users/1/edit');
-    });
-
-    it('tombol Hapus TIDAK tampil untuk diri sendiri', () => {
-        render(UserIndex, {
-            props: {
-                users: makeUsersPaginator({
-                    data: [
-                        {
-                            id: 99,
-                            name: 'Admin Current',
-                            username: 'admin',
-                            email: 'admin@example.com',
-                            role: 'admin',
-                            profile: null,
-                            created_at: '2026-01-01T00:00:00Z',
-                        },
-                    ],
-                    total: 1,
-                    from: 1,
-                    to: 1,
-                }),
-                filters: defaultFilters,
-            },
-        });
-        expect(screen.queryByLabelText(/Hapus user/i)).not.toBeInTheDocument();
-    });
-
-    it('tombol Hapus tampil untuk user lain', () => {
-        render(UserIndex, {
-            props: { users: makeUsersPaginator(), filters: defaultFilters },
-        });
-        const deleteButtons = screen.getAllByLabelText(/Hapus user/i);
-        expect(deleteButtons.length).toBe(3);
-    });
-});
-
-// ============================================================
-// KATEGORI 7 — DELETE BEHAVIOR
-// ============================================================
-
-describe('Admin/Users/Index.svelte — Delete Behavior', () => {
-    it('klik tombol Hapus membuka modal konfirmasi (state berubah)', async () => {
-        render(UserIndex, {
-            props: { users: makeUsersPaginator(), filters: defaultFilters },
-        });
-
-        const deleteButtons = screen.getAllByLabelText(/Hapus user/i);
-        await fireEvent.click(deleteButtons[0]);
-
-        expect(true).toBe(true);
-    });
-});
-
-// ============================================================
-// KATEGORI 8 — RESET PASSWORD BEHAVIOR
-// ============================================================
-
-describe('Admin/Users/Index.svelte — Reset Password Behavior', () => {
-    it('klik tombol Reset membuka modal reset (state berubah)', async () => {
-        render(UserIndex, {
-            props: { users: makeUsersPaginator(), filters: defaultFilters },
-        });
-
-        const resetButtons = screen.getAllByLabelText(/Reset password/i);
-        await fireEvent.click(resetButtons[0]);
-
-        expect(true).toBe(true);
-    });
-});
-
-// ============================================================
-// KATEGORI 9 — PAGINATION
-// ============================================================
-
-describe('Admin/Users/Index.svelte — Pagination', () => {
-    it('menampilkan info "Menampilkan X–Y dari Z user"', () => {
-        render(UserIndex, {
-            props: {
-                users: makeUsersPaginator({
-                    from: 1,
-                    to: 15,
-                    total: 42,
-                    last_page: 3,
-                    links: [
-                        { url: null, label: '&laquo; Previous', active: false },
-                        { url: '/admin/users?page=1', label: '1', active: true },
-                        { url: '/admin/users?page=2', label: '2', active: false },
-                        { url: '/admin/users?page=3', label: '3', active: false },
-                        { url: '/admin/users?page=2', label: 'Next &raquo;', active: false },
-                    ],
-                }),
-                filters: defaultFilters,
-            },
-        });
-
-        // Gunakan getByText — tidak bergantung tag <p>/<span>
-        expect(screen.getByText(/Menampilkan/i)).toBeInTheDocument();
-        expect(screen.getByText(/42/)).toBeInTheDocument();
-    });
-
-    it('TIDAK menampilkan pagination kalau last_page = 1', () => {
-        render(UserIndex, {
-            props: {
-                users: makeUsersPaginator({ last_page: 1 }),
-                filters: defaultFilters,
-            },
-        });
-        expect(screen.queryByText(/Menampilkan/i)).not.toBeInTheDocument();
-    });
-
-    it('menampilkan pagination kalau last_page > 1', () => {
-        render(UserIndex, {
-            props: {
-                users: makeUsersPaginator({
-                    last_page: 3,
-                    links: [
-                        { url: null, label: '&laquo; Previous', active: false },
-                        { url: '/admin/users?page=1', label: '1', active: true },
-                        { url: '/admin/users?page=2', label: '2', active: false },
-                        { url: '/admin/users?page=3', label: '3', active: false },
-                        { url: '/admin/users?page=2', label: 'Next &raquo;', active: false },
-                    ],
-                }),
-                filters: defaultFilters,
-            },
-        });
-        expect(screen.getByText(/Menampilkan/i)).toBeInTheDocument();
-    });
-
-    it('link pagination punya href yang benar', () => {
-        render(UserIndex, {
-            props: {
-                users: makeUsersPaginator({
-                    last_page: 3,
-                    links: [
-                        { url: null, label: '&laquo; Previous', active: false },
-                        { url: '/admin/users?page=1', label: '1', active: true },
-                        { url: '/admin/users?page=2', label: '2', active: false },
-                        { url: '/admin/users?page=3', label: '3', active: false },
-                        { url: '/admin/users?page=2', label: 'Next &raquo;', active: false },
-                    ],
-                }),
-                filters: defaultFilters,
-            },
-        });
-
-        const page2Link = document.querySelector('a[href="/admin/users?page=2"]');
-        expect(page2Link).toBeInTheDocument();
-    });
-});
-
-// ============================================================
-// KATEGORI 10 — FLASH MESSAGE
-// ============================================================
-
-describe('Admin/Users/Index.svelte — Flash Message', () => {
-    it('menampilkan flash status jika ada', () => {
-        mockPageProps.flash = { status: 'User berhasil dibuat.' };
-        render(UserIndex, {
-            props: { users: makeUsersPaginator(), filters: defaultFilters },
-        });
-        expect(
-            screen.getByText('User berhasil dibuat.')
-        ).toBeInTheDocument();
-    });
-
-    it('tidak menampilkan flash status jika kosong', () => {
-        mockPageProps.flash = {};
-        render(UserIndex, {
-            props: { users: makeUsersPaginator(), filters: defaultFilters },
-        });
-        expect(document.querySelector('.bg-green-50')).not.toBeInTheDocument();
-    });
-});
-
-// ============================================================
-// KATEGORI 11 — CREDENTIALS MODAL
-// ============================================================
-
-describe('Admin/Users/Index.svelte — Credentials Modal', () => {
-    it('modal credentials tidak auto-open kalau tidak ada flash.credentials', () => {
-        mockPageProps.flash = {};
-        render(UserIndex, {
-            props: { users: makeUsersPaginator(), filters: defaultFilters },
-        });
-        expect(mockPageProps.flash.credentials).toBeUndefined();
-    });
-
-    it('modal credentials auto-open kalau flash.credentials ada', () => {
-        mockPageProps.flash = {
-            credentials: {
-                role: 'admin',
-                name: 'New Admin',
-                email: 'new@example.com',
-                username: 'newadmin',
-                password: 'Secret123!',
-            },
-        };
-        render(UserIndex, {
-            props: { users: makeUsersPaginator(), filters: defaultFilters },
-        });
-        expect(mockPageProps.flash.credentials).toBeDefined();
-        expect(mockPageProps.flash.credentials?.email).toBe('new@example.com');
-    });
-});
-
-// ============================================================
-// KATEGORI 12 — EDGE CASES
-// ============================================================
-
-describe('Admin/Users/Index.svelte — Edge Cases', () => {
-    it('handle data dengan 1 user', () => {
-        render(UserIndex, {
-            props: {
-                users: makeUsersPaginator({
-                    data: [
-                        {
-                            id: 1,
-                            name: 'Solo User',
-                            username: 'solo',
-                            email: 'solo@example.com',
-                            role: 'admin',
-                            profile: null,
-                            created_at: '2026-01-01T00:00:00Z',
-                        },
-                    ],
-                    total: 1,
-                    from: 1,
-                    to: 1,
-                }),
-                filters: defaultFilters,
-            },
-        });
-        expect(screen.getByText('Solo User')).toBeInTheDocument();
-    });
-
-    it('handle user dengan nama panjang', () => {
-        const longName = 'a'.repeat(100);
-        render(UserIndex, {
-            props: {
-                users: makeUsersPaginator({
-                    data: [
-                        {
-                            id: 1,
-                            name: longName,
-                            username: 'user',
-                            email: 'user@example.com',
-                            role: 'admin',
-                            profile: null,
-                            created_at: '2026-01-01T00:00:00Z',
-                        },
-                    ],
-                }),
-                filters: defaultFilters,
-            },
-        });
-        expect(screen.getByText(longName)).toBeInTheDocument();
-    });
-
-    it('handle filter dengan per_page kustom', () => {
-        render(UserIndex, {
-            props: {
-                users: makeUsersPaginator(),
-                filters: { search: '', per_page: 25 },
-            },
-        });
-        expect(getSearchInput()).toBeInTheDocument();
-    });
-});
-
-// ============================================================
-// KATEGORI 13 — ROUTE & MENU
-// ============================================================
-
-describe('Admin/Users/Index.svelte — Route & Menu', () => {
-    it('menu item "Manajemen User" ada di sidebar', () => {
-        render(UserIndex, {
-            props: { users: makeUsersPaginator(), filters: defaultFilters },
-        });
-        const menuLink = screen.getByRole('link', { name: /^Manajemen User$/i });
-        expect(menuLink).toHaveAttribute('href', '/admin/users');
-    });
-
-    it('menu item "Dashboard" ada di sidebar', () => {
-        render(UserIndex, {
-            props: { users: makeUsersPaginator(), filters: defaultFilters },
-        });
-        const menuLink = screen.getByRole('link', { name: /^Dashboard$/i });
-        expect(menuLink).toHaveAttribute('href', '/admin/dashboard');
-    });
-
-    it('menu item "Daftar Client" ada di sidebar', () => {
-        render(UserIndex, {
-            props: { users: makeUsersPaginator(), filters: defaultFilters },
-        });
-        const menuLink = screen.getByRole('link', { name: /^Daftar Client$/i });
-        expect(menuLink).toHaveAttribute('href', '/admin/clients');
     });
 });

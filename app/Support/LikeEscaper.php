@@ -14,24 +14,46 @@ use Illuminate\Database\Connection;
  * - percent (%) — wildcard "nol atau lebih karakter".
  * - underscore (_) — wildcard "tepat satu karakter".
  *
- * Penggunaan:
+ *   PENTING — Klausa ESCAPE:
+ * Laravel `where('col', 'like', $pattern)` TIDAK otomatis menambahkan
+ * klausa `ESCAPE '\'`. Tanpa klausa tersebut, karakter `\` yang kita
+ * sisipkan lewat `escape()` akan dianggap sebagai backslash literal,
+ * BUKAN escape character — sehingga `\%` justru mencari string literal
+ * `\%`, bukan `%`. Akibatnya escape TIDAK BERFUNGSI.
  *
- *     $term = LikeEscaper::escape($request->input('search', ''));
- *     $operator = LikeEscaper::operator($connection);
- *     $query->where('nama', $operator, "%{$term}%");
+ * Karena itu, ketika memakai helper ini, WAJIB gunakan `whereRaw`
+ * dengan klausa ESCAPE, misalnya:
  *
- * Catatan:
- * - Fungsi ini hanya menyiapkan nilai untuk di-escape; parameter binding
- *   tetap dilakukan oleh query builder Laravel sehingga nilai tidak
- *   pernah diinterpolasi langsung ke SQL string.
- * - Operator `ilike` dipakai pada PostgreSQL agar case-insensitive.
- *   Driver lain memakai `like` (case-insensitive secara default pada
- *   MySQL dengan collation *_ci dan SQLite dengan `case_sensitive_like = off`).
+ *     $pattern = LikeEscaper::contains($input);
+ *     $operator = LikeEscaper::operator(DB::connection());
+ *     $escape = LikeEscaper::ESCAPE_CHAR;
+ *
+ *     $query->whereRaw(
+ *         "nama {$operator} ? ESCAPE '{$escape}'",
+ *         [$pattern]
+ *     );
+ *
+ * Catatan portabilitas:
+ * - PostgreSQL: membutuhkan `ESCAPE '\\'` eksplisit (tidak ada default).
+ * - MySQL: default escape adalah `\`, tetapi eksplisit tetap aman.
+ * - SQLite: membutuhkan `ESCAPE '\\'` eksplisit (tidak ada default).
  */
 final class LikeEscaper
 {
     /**
+     * Karakter escape untuk klausa LIKE (standar SQL).
+     *
+     * Wajib disisipkan via `ESCAPE '<char>'` agar `\` di dalam pola
+     * benar-benar berfungsi sebagai escape character.
+     */
+    public const ESCAPE_CHAR = '\\';
+
+    /**
      * Escape karakter khusus LIKE pada nilai input.
+     *
+     * Urutan replace PENTING: `\` harus di-escape PERTAMA, agar
+     * backslash yang kita sisipkan untuk `%` dan `_` tidak
+     * ikut ter-escape dua kali.
      *
      * @param  string  $value  Nilai mentah dari input pengguna.
      * @return string Nilai yang aman untuk dijadikan pola LIKE.
@@ -50,9 +72,6 @@ final class LikeEscaper
      *
      * - PostgreSQL: `ilike` (case-insensitive).
      * - Lainnya: `like`.
-     *
-     * @param  \Illuminate\Database\Connection  $connection
-     * @return string
      */
     public static function operator(Connection $connection): string
     {

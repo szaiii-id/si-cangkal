@@ -1,545 +1,217 @@
+import { render, screen, fireEvent } from '@testing-library/svelte';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
+import { tick } from 'svelte';
 import ResetPassword from '../ResetPassword.svelte';
 
-// ============================================================
-// MOCK INERTIA
-// ============================================================
-
-const mockPost = vi.fn();
-
-let mockPageProps: {
-    flash?: {
-        status?: string | null;
-        error?: string | null;
-        retry_after?: number | null;
-    };
-} = {
-    flash: {},
-};
-
-vi.mock('@inertiajs/svelte', () => ({
-    router: {
-        post: (...args: unknown[]) => mockPost(...args),
-    },
-    page: {
-        get props() {
-            return mockPageProps;
+const mockPage = vi.hoisted(() => ({
+    props: {
+        flash: {
+            error: null as string | null,
+            retry_after: null as number | null,
         },
     },
-    inertia: () => ({
-        update: () => {},
-        destroy: () => {},
-    }),
 }));
 
-// ============================================================
-// PROPS DEFAULT
-// ============================================================
+vi.mock('@inertiajs/svelte', () => ({
+    page: mockPage,
+}));
 
-const defaultProps = {
-    token: 'token-abc-123',
-    email: 'budi@example.com',
-    errors: {},
-};
+vi.mock('@/api/auth', () => ({
+    resetPassword: vi.fn(),
+}));
 
-// ============================================================
-// SETUP & TEARDOWN
-// ============================================================
+import { resetPassword } from '@/api/auth';
 
-beforeEach(() => {
-    mockPost.mockClear();
-    mockPageProps = { flash: {} };
-    vi.useFakeTimers();
-});
+describe('ResetPassword Page', () => {
+    const defaultProps = {
+        token: 'sample-reset-token-123',
+        email: 'budi@test.com',
+    };
 
-afterEach(() => {
-    vi.useRealTimers();
-});
-
-// ============================================================
-// KATEGORI 1 — UI CONTRACT
-// ============================================================
-
-describe('ResetPassword.svelte — UI Contract', () => {
-    it('menampilkan heading "Reset Sandi"', () => {
-        render(ResetPassword, { props: defaultProps });
-        expect(screen.getByText(/Reset Sandi/i)).toBeInTheDocument();
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockPage.props.flash = { error: null, retry_after: null };
+        vi.useFakeTimers();
     });
 
-    it('menampilkan email dari props (readonly)', () => {
-        render(ResetPassword, { props: defaultProps });
-        const input = screen.getByLabelText(/^Email$/i) as HTMLInputElement;
-        expect(input.value).toBe('budi@example.com');
-        expect(input.readOnly).toBe(true);
+    afterEach(() => {
+        vi.useRealTimers();
     });
 
-    it('menampilkan field password baru', () => {
-        render(ResetPassword, { props: defaultProps });
-        expect(screen.getByLabelText(/Password Baru/i)).toBeInTheDocument();
-    });
+    describe('Rendering', () => {
+        it('harus merender form reset password dengan input email readonly terisi dari props', () => {
+            render(ResetPassword, defaultProps);
 
-    it('menampilkan field konfirmasi password', () => {
-        render(ResetPassword, { props: defaultProps });
-        expect(screen.getByLabelText(/Konfirmasi Password/i)).toBeInTheDocument();
-    });
+            expect(screen.getByRole('heading', { name: /Reset Sandi/i })).toBeInTheDocument();
 
-    it('menampilkan tombol "Simpan Password Baru"', () => {
-        render(ResetPassword, { props: defaultProps });
-        expect(
-            screen.getByRole('button', { name: /Simpan Password Baru/i })
-        ).toBeInTheDocument();
-    });
+            const emailInput = screen.getByLabelText('Email') as HTMLInputElement;
+            expect(emailInput).toHaveValue('budi@test.com');
+            expect(emailInput).toHaveAttribute('readonly');
 
-    it('input email bertipe email dan readonly', () => {
-        render(ResetPassword, { props: defaultProps });
-        const input = screen.getByLabelText(/^Email$/i) as HTMLInputElement;
-        expect(input.type).toBe('email');
-        expect(input.readOnly).toBe(true);
-    });
-
-    it('password baru bertipe password secara default', () => {
-        render(ResetPassword, { props: defaultProps });
-        const input = screen.getByLabelText(/Password Baru/i) as HTMLInputElement;
-        expect(input.type).toBe('password');
-    });
-
-    it('konfirmasi password bertipe password secara default', () => {
-        render(ResetPassword, { props: defaultProps });
-        const input = screen.getByLabelText(/Konfirmasi Password/i) as HTMLInputElement;
-        expect(input.type).toBe('password');
-    });
-});
-
-// ============================================================
-// KATEGORI 2 — EQUIVALENCE: Atribut Input
-// ============================================================
-
-describe('ResetPassword.svelte — Atribut Input', () => {
-    it('email memiliki autocomplete="email"', () => {
-        render(ResetPassword, { props: defaultProps });
-        const input = screen.getByLabelText(/^Email$/i) as HTMLInputElement;
-        expect(input).toHaveAttribute('autocomplete', 'email');
-    });
-
-    it('password baru memiliki autocomplete="new-password"', () => {
-        render(ResetPassword, { props: defaultProps });
-        const input = screen.getByLabelText(/Password Baru/i) as HTMLInputElement;
-        expect(input).toHaveAttribute('autocomplete', 'new-password');
-    });
-
-    it('konfirmasi password memiliki autocomplete="new-password"', () => {
-        render(ResetPassword, { props: defaultProps });
-        const input = screen.getByLabelText(/Konfirmasi Password/i) as HTMLInputElement;
-        expect(input).toHaveAttribute('autocomplete', 'new-password');
-    });
-
-    it('password baru wajib diisi (required)', () => {
-        render(ResetPassword, { props: defaultProps });
-        const input = screen.getByLabelText(/Password Baru/i) as HTMLInputElement;
-        expect(input.required).toBe(true);
-    });
-
-    it('konfirmasi password wajib diisi (required)', () => {
-        render(ResetPassword, { props: defaultProps });
-        const input = screen.getByLabelText(/Konfirmasi Password/i) as HTMLInputElement;
-        expect(input.required).toBe(true);
-    });
-});
-
-// ============================================================
-// KATEGORI 3 — EQUIVALENCE: Toggle Password (2 independen)
-// ============================================================
-
-describe('ResetPassword.svelte — Toggle Password', () => {
-    it('password baru tersembunyi secara default', () => {
-        render(ResetPassword, { props: defaultProps });
-        const input = screen.getByLabelText(/Password Baru/i) as HTMLInputElement;
-        expect(input.type).toBe('password');
-    });
-
-    it('konfirmasi password tersembunyi secara default', () => {
-        render(ResetPassword, { props: defaultProps });
-        const input = screen.getByLabelText(/Konfirmasi Password/i) as HTMLInputElement;
-        expect(input.type).toBe('password');
-    });
-
-    it('password baru terlihat setelah klik toggle-nya', async () => {
-        render(ResetPassword, { props: defaultProps });
-        const input = screen.getByLabelText(/Password Baru/i) as HTMLInputElement;
-        const toggles = screen.getAllByLabelText(/Tampilkan password/i);
-
-        await fireEvent.click(toggles[0]);
-
-        expect(input.type).toBe('text');
-    });
-
-    it('konfirmasi password terlihat setelah klik toggle-nya', async () => {
-        render(ResetPassword, { props: defaultProps });
-        const input = screen.getByLabelText(/Konfirmasi Password/i) as HTMLInputElement;
-        const toggles = screen.getAllByLabelText(/Tampilkan password/i);
-
-        await fireEvent.click(toggles[1]);
-
-        expect(input.type).toBe('text');
-    });
-
-    it('toggle password baru tidak mempengaruhi konfirmasi', async () => {
-        render(ResetPassword, { props: defaultProps });
-        const passwordInput = screen.getByLabelText(/Password Baru/i) as HTMLInputElement;
-        const confirmationInput = screen.getByLabelText(/Konfirmasi Password/i) as HTMLInputElement;
-        const toggles = screen.getAllByLabelText(/Tampilkan password/i);
-
-        await fireEvent.click(toggles[0]);
-
-        expect(passwordInput.type).toBe('text');
-        expect(confirmationInput.type).toBe('password');
-    });
-
-    it('toggle konfirmasi tidak mempengaruhi password baru', async () => {
-        render(ResetPassword, { props: defaultProps });
-        const passwordInput = screen.getByLabelText(/Password Baru/i) as HTMLInputElement;
-        const confirmationInput = screen.getByLabelText(/Konfirmasi Password/i) as HTMLInputElement;
-        const toggles = screen.getAllByLabelText(/Tampilkan password/i);
-
-        await fireEvent.click(toggles[1]);
-
-        expect(passwordInput.type).toBe('password');
-        expect(confirmationInput.type).toBe('text');
-    });
-});
-
-// ============================================================
-// KATEGORI 4 — EQUIVALENCE: Validasi Konfirmasi Password
-// ============================================================
-
-describe('ResetPassword.svelte — Validasi Konfirmasi', () => {
-    it('menampilkan peringatan jika konfirmasi tidak cocok', async () => {
-        render(ResetPassword, { props: defaultProps });
-        const passwordInput = screen.getByLabelText(/Password Baru/i) as HTMLInputElement;
-        const confirmationInput = screen.getByLabelText(/Konfirmasi Password/i) as HTMLInputElement;
-
-        await fireEvent.input(passwordInput, { target: { value: 'password123' } });
-        await fireEvent.input(confirmationInput, { target: { value: 'password456' } });
-
-        expect(screen.getByText(/Konfirmasi password tidak cocok/i)).toBeInTheDocument();
-    });
-
-    it('tidak menampilkan peringatan jika konfirmasi cocok', async () => {
-        render(ResetPassword, { props: defaultProps });
-        const passwordInput = screen.getByLabelText(/Password Baru/i) as HTMLInputElement;
-        const confirmationInput = screen.getByLabelText(/Konfirmasi Password/i) as HTMLInputElement;
-
-        await fireEvent.input(passwordInput, { target: { value: 'password123' } });
-        await fireEvent.input(confirmationInput, { target: { value: 'password123' } });
-
-        expect(screen.queryByText(/Konfirmasi password tidak cocok/i)).not.toBeInTheDocument();
-    });
-
-    it('tidak menampilkan peringatan jika konfirmasi masih kosong', async () => {
-        render(ResetPassword, { props: defaultProps });
-        const passwordInput = screen.getByLabelText(/Password Baru/i) as HTMLInputElement;
-
-        await fireEvent.input(passwordInput, { target: { value: 'password123' } });
-
-        expect(screen.queryByText(/Konfirmasi password tidak cocok/i)).not.toBeInTheDocument();
-    });
-
-    it('tombol submit disabled saat password tidak cocok', async () => {
-        render(ResetPassword, { props: defaultProps });
-        const passwordInput = screen.getByLabelText(/Password Baru/i) as HTMLInputElement;
-        const confirmationInput = screen.getByLabelText(/Konfirmasi Password/i) as HTMLInputElement;
-
-        await fireEvent.input(passwordInput, { target: { value: 'password123' } });
-        await fireEvent.input(confirmationInput, { target: { value: 'password456' } });
-
-        const submitButton = screen.getByRole('button', {
-            name: /Simpan Password Baru/i,
-        });
-        expect(submitButton).toBeDisabled();
-    });
-
-    it('tombol submit enabled saat password cocok', async () => {
-        render(ResetPassword, { props: defaultProps });
-        const passwordInput = screen.getByLabelText(/Password Baru/i) as HTMLInputElement;
-        const confirmationInput = screen.getByLabelText(/Konfirmasi Password/i) as HTMLInputElement;
-
-        await fireEvent.input(passwordInput, { target: { value: 'password123' } });
-        await fireEvent.input(confirmationInput, { target: { value: 'password123' } });
-
-        const submitButton = screen.getByRole('button', {
-            name: /Simpan Password Baru/i,
-        });
-        expect(submitButton).not.toBeDisabled();
-    });
-});
-
-// ============================================================
-// KATEGORI 5 — BEHAVIORAL: Form Submit
-// ============================================================
-
-describe('ResetPassword.svelte — Form Submit', () => {
-    it('submit form memanggil router.post dengan payload lengkap', async () => {
-        render(ResetPassword, { props: defaultProps });
-
-        const passwordInput = screen.getByLabelText(/Password Baru/i) as HTMLInputElement;
-        const confirmationInput = screen.getByLabelText(/Konfirmasi Password/i) as HTMLInputElement;
-
-        await fireEvent.input(passwordInput, { target: { value: 'password123' } });
-        await fireEvent.input(confirmationInput, { target: { value: 'password123' } });
-
-        const form = screen.getByRole('button', { name: /Simpan Password Baru/i }).closest('form')!;
-        await fireEvent.submit(form);
-
-        expect(mockPost).toHaveBeenCalledTimes(1);
-        expect(mockPost).toHaveBeenCalledWith(
-            '/reset-password',
-            {
-                token: 'token-abc-123',
-                email: 'budi@example.com',
-                password: 'password123',
-                password_confirmation: 'password123',
-            },
-            expect.objectContaining({
-                onError: expect.any(Function),
-                onFinish: expect.any(Function),
-            }),
-        );
-    });
-
-    it('submit mengirim token dari props (bukan dari state)', async () => {
-        render(ResetPassword, {
-            props: { ...defaultProps, token: 'token-xyz-789' },
+            expect(screen.getByLabelText('Password Baru')).toBeInTheDocument();
+            expect(screen.getByLabelText('Konfirmasi Password')).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: /Simpan Password Baru/i })).toBeEnabled();
         });
 
-        const form = screen.getByRole('button', { name: /Simpan Password Baru/i }).closest('form')!;
-        await fireEvent.submit(form);
+        it('harus menangani prop email bernilai null dengan menampilkan string kosong', () => {
+            render(ResetPassword, { token: 'token-abc', email: null });
 
-        expect(mockPost).toHaveBeenCalledWith(
-            '/reset-password',
-            expect.objectContaining({ token: 'token-xyz-789' }),
-            expect.any(Object),
-        );
-    });
-
-    it('submit mengirim email dari props', async () => {
-        render(ResetPassword, {
-            props: { ...defaultProps, email: 'other@example.com' },
-        });
-
-        const form = screen.getByRole('button', { name: /Simpan Password Baru/i }).closest('form')!;
-        await fireEvent.submit(form);
-
-        expect(mockPost).toHaveBeenCalledWith(
-            '/reset-password',
-            expect.objectContaining({ email: 'other@example.com' }),
-            expect.any(Object),
-        );
-    });
-});
-
-// ============================================================
-// KATEGORI 6 — NEGATIVE PATH: Error Handling
-// ============================================================
-
-describe('ResetPassword.svelte — Error Handling', () => {
-    it('menampilkan error email dari props', () => {
-        render(ResetPassword, {
-            props: {
-                ...defaultProps,
-                errors: { email: 'Token reset password tidak valid.' },
-            },
-        });
-
-        expect(screen.getByText(/Token reset password tidak valid/i)).toBeInTheDocument();
-    });
-
-    it('menampilkan error password dari props', () => {
-        render(ResetPassword, {
-            props: {
-                ...defaultProps,
-                errors: { password: 'Password minimal harus 8 karakter.' },
-            },
-        });
-
-        expect(screen.getByText(/Password minimal harus 8 karakter/i)).toBeInTheDocument();
-    });
-
-    it('menampilkan error password_confirmation dari props', () => {
-        render(ResetPassword, {
-            props: {
-                ...defaultProps,
-                errors: { password_confirmation: 'Konfirmasi password tidak cocok.' },
-            },
-        });
-
-        expect(screen.getByText(/Konfirmasi password tidak cocok/i)).toBeInTheDocument();
-    });
-
-    it('errors direset setiap kali submit ulang', async () => {
-        render(ResetPassword, {
-            props: {
-                ...defaultProps,
-                errors: { password: 'Error lama dari props' },
-            },
-        });
-
-        // Error awal dari props
-        expect(screen.getByText('Error lama dari props')).toBeInTheDocument();
-
-        const form = screen.getByRole('button', { name: /Simpan Password Baru/i }).closest('form')!;
-        await fireEvent.submit(form);
-
-        // Setelah submit, errors di-reset dulu (sebelum onError dipanggil)
-        expect(screen.queryByText('Error lama dari props')).not.toBeInTheDocument();
-    });
-
-    it('menampilkan error baru setelah onError dipanggil', async () => {
-        render(ResetPassword, { props: defaultProps });
-
-        const form = screen.getByRole('button', { name: /Simpan Password Baru/i }).closest('form')!;
-        await fireEvent.submit(form);
-
-        const [, , options] = mockPost.mock.calls[0];
-        options.onError({ password: 'Token sudah kedaluwarsa.' });
-
-        await waitFor(() => {
-            expect(screen.getByText('Token sudah kedaluwarsa.')).toBeInTheDocument();
-        });
-    });
-});
-
-// ============================================================
-// KATEGORI 7 — BVA: Processing State
-// ============================================================
-
-describe('ResetPassword.svelte — Processing State', () => {
-    it('tombol disabled saat processing', async () => {
-        render(ResetPassword, { props: defaultProps });
-
-        const form = screen.getByRole('button', { name: /Simpan Password Baru/i }).closest('form')!;
-        await fireEvent.submit(form);
-
-        const button = screen.getByRole('button', { name: /Menyimpan/i });
-        expect(button).toBeDisabled();
-    });
-
-    it('tombol menampilkan "Menyimpan..." saat processing', async () => {
-        render(ResetPassword, { props: defaultProps });
-
-        const form = screen.getByRole('button', { name: /Simpan Password Baru/i }).closest('form')!;
-        await fireEvent.submit(form);
-
-        await waitFor(() => {
-            expect(screen.getByText(/Menyimpan/i)).toBeInTheDocument();
+            const emailInput = screen.getByLabelText('Email') as HTMLInputElement;
+            expect(emailInput).toHaveValue('');
+            expect(emailInput).toHaveAttribute('readonly');
         });
     });
 
-    it('tombol enabled kembali setelah onFinish', async () => {
-        render(ResetPassword, { props: defaultProps });
+    describe('Validation & Reactivity', () => {
+        it('harus menampilkan peringatan dan menonaktifkan tombol submit jika konfirmasi password tidak cocok', async () => {
+            render(ResetPassword, defaultProps);
 
-        const form = screen.getByRole('button', { name: /Simpan Password Baru/i }).closest('form')!;
-        await fireEvent.submit(form);
+            await fireEvent.input(screen.getByLabelText('Password Baru'), {
+                target: { value: 'PasswordBaru123!' },
+            });
+            await fireEvent.input(screen.getByLabelText('Konfirmasi Password'), {
+                target: { value: 'Berbeda123!' },
+            });
 
-        const [, , options] = mockPost.mock.calls[0];
-        options.onFinish();
+            expect(screen.getByRole('alert')).toHaveTextContent('Konfirmasi password tidak cocok.');
+            expect(screen.getByRole('button', { name: /Simpan Password Baru/i })).toBeDisabled();
 
-        await waitFor(() => {
-            const button = screen.getByRole('button', { name: /Simpan Password Baru/i });
-            expect(button).not.toBeDisabled();
-        });
-    });
-});
+            await fireEvent.input(screen.getByLabelText('Konfirmasi Password'), {
+                target: { value: 'PasswordBaru123!' },
+            });
 
-// ============================================================
-// KATEGORI 8 — EDGE CASE: Flash Message & Countdown
-// ============================================================
-
-describe('ResetPassword.svelte — Flash Message', () => {
-    it('menampilkan flash error jika ada', () => {
-        mockPageProps.flash = { error: 'Token tidak valid atau sudah kedaluwarsa.' };
-
-        render(ResetPassword, { props: defaultProps });
-
-        expect(
-            screen.getByText('Token tidak valid atau sudah kedaluwarsa.')
-        ).toBeInTheDocument();
-    });
-
-    it('tidak menampilkan flash error jika kosong', () => {
-        mockPageProps.flash = {};
-
-        render(ResetPassword, { props: defaultProps });
-
-        const errorFlash = document.querySelector('.bg-red-50');
-        expect(errorFlash).not.toBeInTheDocument();
-    });
-});
-
-describe('ResetPassword.svelte — Countdown (Rate Limiter)', () => {
-    it('tombol menampilkan "Tunggu N detik" jika retry_after > 0', async () => {
-        mockPageProps.flash = { retry_after: 30 };
-
-        render(ResetPassword, { props: defaultProps });
-
-        await waitFor(() => {
-            expect(screen.getByRole('button', { name: /Tunggu 30 detik/i })).toBeInTheDocument();
+            expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+            expect(screen.getByRole('button', { name: /Simpan Password Baru/i })).toBeEnabled();
         });
     });
 
-    it('tombol disabled saat countdown aktif', async () => {
-        mockPageProps.flash = { retry_after: 30 };
+    describe('User Interaction', () => {
+        it('harus memanggil resetPassword dengan token, email, password, dan password_confirmation saat submit', async () => {
+            render(ResetPassword, defaultProps);
 
-        render(ResetPassword, { props: defaultProps });
+            await fireEvent.input(screen.getByLabelText('Password Baru'), {
+                target: { value: 'PasswordBaru123!' },
+            });
+            await fireEvent.input(screen.getByLabelText('Konfirmasi Password'), {
+                target: { value: 'PasswordBaru123!' },
+            });
 
-        await waitFor(() => {
-            const button = screen.getByRole('button', { name: /Tunggu/i });
-            expect(button).toBeDisabled();
+            await fireEvent.submit(document.querySelector('form')!);
+
+            expect(resetPassword).toHaveBeenCalledTimes(1);
+            expect(resetPassword).toHaveBeenCalledWith(
+                {
+                    token: 'sample-reset-token-123',
+                    email: 'budi@test.com',
+                    password: 'PasswordBaru123!',
+                    password_confirmation: 'PasswordBaru123!',
+                },
+                expect.any(Object),
+            );
+        });
+
+        it('harus toggle visibilitas password baru dan konfirmasi password secara independen', async () => {
+            render(ResetPassword, defaultProps);
+
+            const passwordInput = screen.getByLabelText('Password Baru') as HTMLInputElement;
+            const confirmInput = screen.getByLabelText('Konfirmasi Password') as HTMLInputElement;
+
+            expect(passwordInput.type).toBe('password');
+            expect(confirmInput.type).toBe('password');
+
+            await fireEvent.click(screen.getByRole('button', { name: 'Tampilkan password baru' }));
+            expect(passwordInput.type).toBe('text');
+            expect(confirmInput.type).toBe('password');
+
+            await fireEvent.click(screen.getByRole('button', { name: 'Tampilkan konfirmasi password' }));
+            expect(confirmInput.type).toBe('text');
+
+            await fireEvent.click(screen.getByRole('button', { name: 'Sembunyikan password baru' }));
+            expect(passwordInput.type).toBe('password');
+            expect(confirmInput.type).toBe('text');
         });
     });
 
-    it('countdown berkurang setiap detik', async () => {
-        mockPageProps.flash = { retry_after: 3 };
+    describe('Loading, Error & Flash States', () => {
+        it('harus menonaktifkan tombol dan menampilkan indikator saat penyimpanan berlangsung', async () => {
+            vi.mocked(resetPassword).mockImplementation(() => {});
 
-        render(ResetPassword, { props: defaultProps });
+            render(ResetPassword, defaultProps);
 
-        await waitFor(() => {
-            expect(screen.getByRole('button', { name: /Tunggu 3 detik/i })).toBeInTheDocument();
+            await fireEvent.input(screen.getByLabelText('Password Baru'), {
+                target: { value: 'PasswordBaru123!' },
+            });
+            await fireEvent.input(screen.getByLabelText('Konfirmasi Password'), {
+                target: { value: 'PasswordBaru123!' },
+            });
+            await fireEvent.submit(document.querySelector('form')!);
+
+            expect(screen.getByRole('button', { name: /Menyimpan/i })).toBeDisabled();
         });
 
-        vi.advanceTimersByTime(1000);
+        it('harus menampilkan pesan error validasi dari backend untuk email, password, dan konfirmasi', async () => {
+            vi.mocked(resetPassword).mockImplementation((_data, options) => {
+                options?.onError?.({
+                    email: 'Token reset password tidak valid atau kedaluwarsa',
+                    password: 'Password minimal 8 karakter',
+                    password_confirmation: 'Konfirmasi password wajib diisi',
+                });
+                options?.onFinish?.();
+            });
 
-        await waitFor(() => {
-            expect(screen.getByRole('button', { name: /Tunggu 2 detik/i })).toBeInTheDocument();
+            render(ResetPassword, defaultProps);
+            await fireEvent.submit(document.querySelector('form')!);
+
+            const alerts = screen.getAllByRole('alert');
+            expect(alerts).toHaveLength(3);
+            expect(alerts[0]).toHaveTextContent('Token reset password tidak valid atau kedaluwarsa');
+            expect(alerts[1]).toHaveTextContent('Password minimal 8 karakter');
+            expect(alerts[2]).toHaveTextContent('Konfirmasi password wajib diisi');
+
+            expect(screen.getByLabelText('Email')).toHaveAttribute('aria-invalid', 'true');
+            expect(screen.getByLabelText('Password Baru')).toHaveAttribute('aria-invalid', 'true');
+            expect(screen.getByLabelText('Konfirmasi Password')).toHaveAttribute('aria-invalid', 'true');
+            expect(screen.getByRole('button', { name: /Simpan Password Baru/i })).toBeEnabled();
+        });
+
+        it('harus menampilkan flash error global', () => {
+            mockPage.props.flash = {
+                error: 'Tautan reset password sudah tidak berlaku.',
+                retry_after: null,
+            };
+            render(ResetPassword, defaultProps);
+
+            expect(screen.getByRole('alert')).toHaveTextContent('Tautan reset password sudah tidak berlaku.');
         });
     });
 
-    it('tidak menampilkan countdown jika retry_after = 0', () => {
-        mockPageProps.flash = { retry_after: 0 };
+    describe('Countdown (Rate Limit)', () => {
+        it('harus mengunci tombol selama hitung mundur dan mengaktifkannya kembali setelah selesai', async () => {
+            mockPage.props.flash = { error: null, retry_after: 3 };
+            render(ResetPassword, defaultProps);
+            await tick();
 
-        render(ResetPassword, { props: defaultProps });
+            const submitBtn = screen.getByRole('button', { name: /Tunggu 3 detik/i });
+            expect(submitBtn).toBeDisabled();
 
-        expect(screen.queryByText(/Tunggu/i)).not.toBeInTheDocument();
+            await vi.advanceTimersByTimeAsync(1000);
+            expect(submitBtn).toHaveTextContent('Tunggu 2 detik...');
+
+            await vi.advanceTimersByTimeAsync(2000);
+            expect(submitBtn).toHaveTextContent('Simpan Password Baru');
+            expect(submitBtn).toBeEnabled();
+        });
     });
 
-    it('tidak menampilkan countdown jika retry_after = null', () => {
-        mockPageProps.flash = { retry_after: null };
+    describe('Accessibility', () => {
+        it('semua ikon SVG dekoratif harus memiliki aria-hidden="true"', () => {
+            const { container } = render(ResetPassword, defaultProps);
+            const svgs = container.querySelectorAll('svg');
 
-        render(ResetPassword, { props: defaultProps });
-
-        expect(screen.queryByText(/Tunggu/i)).not.toBeInTheDocument();
-    });
-
-    it('tombol enabled kembali setelah countdown selesai', async () => {
-        mockPageProps.flash = { retry_after: 2 };
-
-        render(ResetPassword, { props: defaultProps });
-
-        vi.advanceTimersByTime(2100);
-
-        await waitFor(() => {
-            const button = screen.getByRole('button', { name: /Simpan Password Baru/i });
-            expect(button).not.toBeDisabled();
+            expect(svgs.length).toBeGreaterThan(0);
+            svgs.forEach((svg) => {
+                expect(svg).toHaveAttribute('aria-hidden', 'true');
+            });
         });
     });
 });

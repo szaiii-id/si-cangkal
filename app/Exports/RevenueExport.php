@@ -2,13 +2,17 @@
 
 namespace App\Exports;
 
-use App\Models\Booking;
+use App\Services\Report\ReportService;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
+use Maatwebsite\Excel\Concerns\WithStyles;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class RevenueExport implements FromCollection, WithHeadings, WithMapping
+class RevenueExport implements FromCollection, ShouldAutoSize, WithHeadings, WithMapping, WithStyles
 {
     protected string $startDate;
 
@@ -21,35 +25,69 @@ class RevenueExport implements FromCollection, WithHeadings, WithMapping
     }
 
     /**
-     * @return Collection<int, Booking>
+     * @return Collection<int, array<int, mixed>>
      */
     public function collection(): Collection
     {
-        return Booking::with(['client:id,name', 'package:id,nama'])
-            ->whereIn('status', ['confirmed', 'completed'])
-            ->whereBetween('created_at', [$this->startDate.' 00:00:00', $this->endDate.' 23:59:59'])
-            ->orderBy('created_at', 'desc')
-            ->get();
-    }
+        $data = app(ReportService::class)->getRevenueData($this->startDate, $this->endDate);
 
-    public function headings(): array
-    {
-        return ['Kode Booking', 'Tanggal', 'Nama Client', 'Paket', 'Total Harga', 'Status'];
+        /** @var array<int, array<int, mixed>> $summaryRows */
+        $summaryRows = [
+            ['LAPORAN PENDAPATAN SI-CANGKAL'],
+            ['Periode:', $this->startDate.' s/d '.$this->endDate],
+            [''],
+            ['Pendapatan Kotor', 'Rp '.number_format($data['gross_revenue'], 0, ',', '.')],
+            ['Total Refund', '- Rp '.number_format($data['total_refund'], 0, ',', '.')],
+            ['Pendapatan Bersih', 'Rp '.number_format($data['total_revenue'], 0, ',', '.')],
+            [''],
+            ['Kode Booking', 'Tanggal', 'Nama Client', 'Paket', 'Total Harga', 'Status'],
+        ];
+
+        /** @var array<int, array<string, mixed>> $rawTransactions */
+        $rawTransactions = $data['transactions'] ?? [];
+
+        /** @var array<int, array<int, mixed>> $transactionRows */
+        $transactionRows = [];
+
+        foreach ($rawTransactions as $t) {
+            $transactionRows[] = [
+                (string) ($t['kode'] ?? ''),
+                Carbon::parse($t['tanggal'] ?? now())->format('Y-m-d'),
+                (string) ($t['client'] ?? ''),
+                (string) ($t['paket'] ?? ''),
+                (string) ($t['total'] ?? ''),
+                strtoupper((string) ($t['status'] ?? '')),
+            ];
+        }
+
+        return collect(array_merge($summaryRows, $transactionRows));
     }
 
     /**
-     * @param  Booking  $booking
+     * @return array<int, string>
+     */
+    public function headings(): array
+    {
+        return [];
+    }
+
+    /**
+     * @param  mixed  $row
      * @return array<int, mixed>
      */
-    public function map($booking): array
+    public function map($row): array
+    {
+        return is_array($row) ? $row : $row->toArray();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function styles(Worksheet $sheet): array
     {
         return [
-            $booking->kode,
-            $booking->created_at->format('Y-m-d'),
-            $booking->client->name ?? '-',
-            $booking->package->nama ?? '-',
-            $booking->total_harga,
-            $booking->status->value, // ✅ FIX: Hapus is_object(), langsung ambil value Enum
+            1 => ['font' => ['bold' => true, 'size' => 14]],
+            8 => ['font' => ['bold' => true]],
         ];
     }
 }

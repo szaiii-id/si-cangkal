@@ -1,58 +1,4 @@
 <script lang="ts">
-    /**
-     * FilterBar — toolbar filter lengkap untuk halaman list.
-     *
-     * Menggabungkan:
-     * - SearchInput (debounced)
-     * - StatusTabs (opsional)
-     * - Kategori dropdown (opsional)
-     * - Date range filter (opsional, collapsible)
-     * - Tombol "Hapus Semua Filter"
-     *
-     * @example Simple (search + tabs)
-     *   <FilterBar
-     *       bind:search={search}
-     *       onSearch={handleSearch}
-     *       statusTabs={[
-     *           { value: '', label: 'Semua', count: 20 },
-     *           { value: 'pending', label: 'Pending', count: 5 },
-     *       ]}
-     *       bind:selectedStatus={selectedStatus}
-     *       onStatusChange={changeStatus}
-     *       onClear={clearFilters}
-     *       hasActiveFilters={hasActiveFilters}
-     *   />
-     *
-     * @example Dengan date range
-     *   <FilterBar
-     *       bind:search={search}
-     *       onSearch={handleSearch}
-     *       bind:selectedStatus={selectedStatus}
-     *       statusTabs={...}
-     *       onStatusChange={changeStatus}
-     *       showDateRange
-     *       bind:dateFrom={selectedTanggalDari}
-     *       bind:dateTo={selectedTanggalSampai}
-     *       onApplyDate={applyAdvancedFilter}
-     *       onClear={clearFilters}
-     *       hasActiveFilters={hasActiveFilters}
-     *   />
-     *
-     * @example Dengan kategori dropdown
-     *   <FilterBar
-     *       bind:search={search}
-     *       onSearch={handleSearch}
-     *       bind:selectedKategori={selectedKategori}
-     *       kategoriOptions={[
-     *           { value: '', label: 'Semua Kategori' },
-     *           { value: 'budaya', label: 'Budaya' },
-     *       ]}
-     *       onKategoriChange={handleKategoriChange}
-     *       onClear={clearFilters}
-     *       hasActiveFilters={hasActiveFilters}
-     *   />
-     */
-
     import type { KategoriOption, StatusTab } from '@/types';
 
     import SearchInput from '@/global/SearchInput.svelte';
@@ -61,25 +7,24 @@
     // ==========================================
     // PROPS
     // ==========================================
-
     let {
         // Search
         search = $bindable(''),
         onSearch = undefined,
         searchPlaceholder = 'Cari...',
 
-        // Status Tabs (opsional)
+        // Status Tabs
         statusTabs = undefined as StatusTab[] | undefined,
         selectedStatus = $bindable(''),
         onStatusChange = undefined,
 
-        // Kategori dropdown (opsional)
+        // Kategori
         kategoriOptions = undefined as KategoriOption[] | undefined,
         selectedKategori = $bindable(''),
         onKategoriChange = undefined,
         kategoriPlaceholder = 'Semua Kategori',
 
-        // Date range (opsional)
+        // Date range
         showDateRange = false,
         dateFrom = $bindable(''),
         dateTo = $bindable(''),
@@ -118,24 +63,27 @@
     // ==========================================
     // STATE
     // ==========================================
-
     let showAdvanced = $state(false);
 
     // ==========================================
     // DERIVED
     // ==========================================
-
     let hasDateFilter = $derived(dateFrom !== '' || dateTo !== '');
     let showSearchRow = $derived(
-        onSearch !== undefined ||
-            kategoriOptions !== undefined ||
-            showDateRange,
+        onSearch !== undefined || kategoriOptions !== undefined || showDateRange,
     );
+
+    // Validasi rentang tanggal
+    let isDateRangeInvalid = $derived(
+        dateFrom !== '' && dateTo !== '' && dateFrom > dateTo
+    );
+
+    // PERBAIKAN: DRY untuk class tombol utama
+    const primaryBtnClass = 'inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-pink-dark text-white font-bold text-sm hover:bg-sun-dark transition-all shadow-md whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-dark disabled:opacity-50 disabled:cursor-not-allowed';
 
     // ==========================================
     // HANDLERS
     // ==========================================
-
     function handleKategoriChange(e: Event): void {
         const target = e.target as HTMLSelectElement;
         selectedKategori = target.value;
@@ -143,6 +91,7 @@
     }
 
     function applyDate(): void {
+        if (isDateRangeInvalid) return;
         onApplyDate?.();
     }
 
@@ -166,7 +115,6 @@
     <!-- Search + Kategori + Date toggle -->
     {#if showSearchRow}
         <div class="flex flex-col sm:flex-row gap-3">
-            <!-- Search -->
             <div class="flex-1">
                 <SearchInput
                     bind:value={search}
@@ -175,7 +123,6 @@
                 />
             </div>
 
-            <!-- Kategori dropdown -->
             {#if kategoriOptions}
                 <div class="sm:w-48">
                     <select
@@ -191,49 +138,31 @@
                 </div>
             {/if}
 
-            <!-- Date toggle -->
             {#if showDateRange}
                 <button
                     type="button"
                     onclick={() => (showAdvanced = !showAdvanced)}
                     class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gray-50 border border-gray-200 text-dark font-bold text-sm hover:bg-gray-100 transition-all whitespace-nowrap"
                     aria-expanded={showAdvanced}
+                    aria-controls="date-range-panel"
                 >
-                    <svg
-                        class="w-4 h-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        stroke-width="2.5"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
-                        />
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                     </svg>
                     Filter Tanggal
                     {#if hasDateFilter}
-                        <span
-                            class="w-2 h-2 rounded-full bg-pink-dark"
-                            aria-label="Filter tanggal aktif"
-                        ></span>
+                        <span class="w-2 h-2 rounded-full bg-pink-dark" aria-label="Filter tanggal aktif"></span>
                     {/if}
                 </button>
             {/if}
         </div>
     {/if}
 
-    <!-- Date range panel (collapsible) -->
+    <!-- Date range panel -->
     {#if showDateRange && showAdvanced}
-        <div
-            class="p-4 bg-gray-50 rounded-2xl flex flex-col sm:flex-row gap-3 items-end"
-        >
+        <div id="date-range-panel" class="p-4 bg-gray-50 rounded-2xl flex flex-col sm:flex-row gap-3 items-end">
             <div class="flex-1">
-                <label
-                    for="filter-date-from"
-                    class="block text-xs font-bold text-dark mb-1.5"
-                >
+                <label for="filter-date-from" class="block text-xs font-bold text-dark mb-1.5">
                     {dateFromLabel}
                 </label>
                 <input
@@ -241,14 +170,12 @@
                     type="date"
                     bind:value={dateFrom}
                     class="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-pink/10 focus:border-pink transition-all"
+                    aria-invalid={isDateRangeInvalid ? 'true' : undefined}
                 />
             </div>
 
             <div class="flex-1">
-                <label
-                    for="filter-date-to"
-                    class="block text-xs font-bold text-dark mb-1.5"
-                >
+                <label for="filter-date-to" class="block text-xs font-bold text-dark mb-1.5">
                     {dateToLabel}
                 </label>
                 <input
@@ -256,6 +183,7 @@
                     type="date"
                     bind:value={dateTo}
                     class="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-pink/10 focus:border-pink transition-all"
+                    aria-invalid={isDateRangeInvalid ? 'true' : undefined}
                 />
             </div>
 
@@ -263,7 +191,8 @@
                 <button
                     type="button"
                     onclick={applyDate}
-                    class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-pink-dark text-white font-bold text-sm hover:bg-sun-dark transition-all shadow-md whitespace-nowrap"
+                    disabled={isDateRangeInvalid}
+                    class={primaryBtnClass}
                 >
                     Terapkan
                 </button>
@@ -278,6 +207,13 @@
                 {/if}
             </div>
         </div>
+        
+        <!-- Pesan Error Tanggal -->
+        {#if isDateRangeInvalid}
+            <p class="text-pink text-xs font-bold mt-1" aria-live="polite">
+                Tanggal "Dari" tidak boleh lebih besar dari tanggal "Sampai".
+            </p>
+        {/if}
     {/if}
 
     <!-- Clear All -->
@@ -289,18 +225,8 @@
                 onclick={onClear}
                 class="inline-flex items-center gap-1 font-bold text-pink-text hover:text-sun-text transition-colors"
             >
-                <svg
-                    class="w-3.5 h-3.5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="2.5"
-                >
-                    <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M6 18L18 6M6 6l12 12"
-                    />
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
                 Hapus Semua Filter
             </button>

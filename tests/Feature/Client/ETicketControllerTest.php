@@ -1,25 +1,37 @@
 <?php
 
 use App\Enums\BookingStatus;
-use App\Enums\PackageKategori;
-use App\Enums\PackageStatus;
-use App\Enums\TripStatus;
 use App\Models\Booking;
 use App\Models\ETicket;
 use App\Models\Package;
 use App\Models\Trip;
 use App\Models\User;
-use App\Services\ETicket\ETicketService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
 
 /*
 |==========================================================================
-| SETUP
+| SETUP — Integration Test
 |==========================================================================
+|
+| ETicketController (client) — download E-Ticket PDF.
+|
+| Route (prefix /client):
+| - GET /e-tickets/{uuid}/download → download
+|
+| Middleware: auth, password.changed, role:client, throttle:10,1
+| Policy: BookingPolicy@downloadETicket (owner + status CONFIRMED/IN_PROGRESS/COMPLETED)
+|
+|   Catatan:
+| - `Storage::fake('local')` — isolasi file system.
+| - E-Ticket PDF disimpan di disk `local` (`e-tickets/`).
+| - UUID pakai `Str::uuid()` (36 char) — kolom `CHAR(36)`.
+| - Test fokus CONTROLLER (policy, file existence, stream response).
+|   `ETicketService` sudah di-test unit (ETicketServiceTest).
+|
 */
 
 beforeEach(function () {
@@ -27,66 +39,65 @@ beforeEach(function () {
         $this->withoutVite();
     }
 
-    Storage::fake('public');
+    Storage::fake('local');
 
-    // Client utama
     $this->client = User::factory()->client()->create([
         'must_change_password' => false,
     ]);
 
-    // Client lain (untuk test cross-access)
-    $this->otherClient = User::factory()->client()->create([
+    $this->client2 = User::factory()->client()->create([
         'must_change_password' => false,
     ]);
 
-    // Package aktif
-    $this->package = Package::factory()->create([
-        'nama' => 'Paket Test',
-        'slug' => 'paket-test',
-        'kode' => 'PKG-001',
-        'status' => PackageStatus::AKTIF,
-        'kategori' => PackageKategori::WISATA_ALAM,
-        'timezone' => 'Asia/Makassar',
-        'durasi_hari' => 2,
-        'durasi_malam' => 1,
+    $this->mitra = User::factory()->mitra()->create([
+        'must_change_password' => false,
     ]);
-
-    // Booking milik client
-    $this->booking = Booking::factory()->create([
-        'user_id' => $this->client->id,
-        'package_id' => $this->package->id,
-        'status' => BookingStatus::CONFIRMED,
-        'jumlah_peserta' => 2,
-        'total_harga' => '1000000.00',
-        'tanggal_keberangkatan' => now()->addDays(7)->format('Y-m-d'),
-    ]);
-
-    // Trip
-    $this->trip = Trip::factory()->create([
-        'booking_id' => $this->booking->id,
-        'package_id' => $this->package->id,
-        'kode' => 'TRP-2026-001',
-        'tanggal_mulai' => now()->addDays(7)->format('Y-m-d'),
-        'tanggal_selesai' => now()->addDays(8)->format('Y-m-d'),
-        'status' => TripStatus::SCHEDULED,
-    ]);
-
-    // ETicket
-    $this->eticket = ETicket::factory()->create([
-        'booking_id' => $this->booking->id,
-        'trip_id' => $this->trip->id,
-        'uuid' => 'abc-123-uuid',
-        'qr_code' => 'e-tickets/qr-abc-123.png',
-        'pdf_path' => 'e-tickets/ticket-abc-123.pdf',
-        'generated_at' => now(),
-    ]);
-
-    // Simulasi file PDF di storage
-    Storage::disk('public')->put(
-        $this->eticket->pdf_path,
-        'PDF-DUMMY-CONTENT'
-    );
 });
+
+/*
+|==========================================================================
+| HELPER — buat booking + e-ticket
+|==========================================================================
+*/
+function makeBookingWithETicket(
+    User $client,
+    User $mitra,
+    array $bookingOverrides = [],
+    array $eticketOverrides = [],
+    ?string $pdfContent = null,
+): array {
+    $package = Package::factory()->forMitra($mitra)->aktif()->create();
+    $booking = Booking::factory()
+        ->forPackage($package)
+        ->forClient($client)
+        ->create(array_merge([
+            'mitra_id' => $mitra->id,
+            'status' => BookingStatus::CONFIRMED,
+        ], $bookingOverrides));
+
+    $trip = Trip::factory()->forBooking($booking)->create([
+        'mitra_id' => $mitra->id,
+        'kode' => 'TRP-2026-001',
+    ]);
+
+    $uuid = (string) Str::uuid();
+    $pdfPath = 'e-tickets/ticket-'.$uuid.'.pdf';
+
+    $eticket = ETicket::factory()->create(array_merge([
+        'booking_id' => $booking->id,
+        'trip_id' => $trip->id,
+        'uuid' => $uuid,
+        'pdf_path' => $pdfPath,
+        'qr_code' => 'e-tickets/qr-'.$uuid.'.png',
+        'generated_at' => now(),
+    ], $eticketOverrides));
+
+    if ($pdfContent !== null) {
+        Storage::disk('local')->put($pdfPath, $pdfContent);
+    }
+
+    return [$booking, $trip, $eticket, $pdfPath];
+}
 
 /*
 |==========================================================================
@@ -94,20 +105,44 @@ beforeEach(function () {
 |==========================================================================
 */
 
-it('download ETicket sukses return 200 dengan file PDF', function () {
-    $response = $this->actingAs($this->client)
-        ->get(route('client.e-tickets.download', $this->eticket->uuid));
+describe('Contract — download', function () {
+    it('GET /client/e-tickets/{uuid}/download valid → stream PDF', function () {
+        [$booking, $trip, $eticket, $pdfPath] = makeBookingWithETicket(
+            $this->client, $this->mitra, [], [], 'PDF-CONTENT',
+        );
 
-    $response->assertOk();
-    $response->assertDownload('e-ticket-TRP-2026-001.pdf');
-});
+        $response = $this->actingAs($this->client)
+            ->get("/client/e-tickets/{$eticket->uuid}/download");
 
-it('nama file download = e-ticket-{kode-trip}.pdf', function () {
-    $response = $this->actingAs($this->client)
-        ->get(route('client.e-tickets.download', $this->eticket->uuid));
+        $response->assertOk();
+        $response->assertHeader('Content-Type', 'application/pdf');
+        $response->assertHeader(
+            'Content-Disposition',
+            'attachment; filename=e-ticket-TRP-2026-001.pdf'
+        );
+    });
 
-    $response->assertOk();
-    $response->assertDownload('e-ticket-TRP-2026-001.pdf');
+    it('download filename pakai trip.kode', function () {
+        [$booking, $trip, $eticket, $pdfPath] = makeBookingWithETicket(
+            $this->client, $this->mitra, [], [], 'PDF-CONTENT',
+        );
+
+        $trip->update(['kode' => 'TRP-KHUSUS-999']);
+
+        $response = $this->actingAs($this->client)
+            ->get("/client/e-tickets/{$eticket->uuid}/download");
+
+        $response->assertOk();
+        $response->assertHeader(
+            'Content-Disposition',
+            'attachment; filename=e-ticket-TRP-KHUSUS-999.pdf'
+        );
+    });
+
+    it('route name = client.e-tickets.download', function () {
+        expect(route('client.e-tickets.download', 'test-uuid'))
+            ->toBe(url('/client/e-tickets/test-uuid/download'));
+    });
 });
 
 /*
@@ -116,209 +151,231 @@ it('nama file download = e-ticket-{kode-trip}.pdf', function () {
 |==========================================================================
 */
 
-it('guest di-redirect ke login saat akses ETicket', function () {
-    $this->get(route('client.e-tickets.download', $this->eticket->uuid))
-        ->assertRedirect(route('login'));
+describe('Security — guest & role', function () {
+    it('guest di-redirect ke login', function () {
+        $uuid = (string) Str::uuid();
+
+        $this->get("/client/e-tickets/{$uuid}/download")
+            ->assertRedirect(route('login'));
+    });
+
+    it('admin di-redirect ke admin.dashboard', function () {
+        $admin = User::factory()->admin()->create(['must_change_password' => false]);
+        $uuid = (string) Str::uuid();
+
+        $this->actingAs($admin)
+            ->get("/client/e-tickets/{$uuid}/download")
+            ->assertRedirect(route('admin.dashboard'));
+    });
+
+    it('mitra di-redirect ke mitra.dashboard', function () {
+        $uuid = (string) Str::uuid();
+
+        $this->actingAs($this->mitra)
+            ->get("/client/e-tickets/{$uuid}/download")
+            ->assertRedirect(route('mitra.dashboard'));
+    });
+
+    it('client must_change_password=true di-redirect ke password.change', function () {
+        $needChange = User::factory()->client()->create(['must_change_password' => true]);
+        $uuid = (string) Str::uuid();
+
+        $this->actingAs($needChange)
+            ->get("/client/e-tickets/{$uuid}/download")
+            ->assertRedirect(route('password.change'));
+    });
 });
 
-it('client tidak bisa download ETicket milik client lain (403)', function () {
-    $this->actingAs($this->otherClient)
-        ->get(route('client.e-tickets.download', $this->eticket->uuid))
-        ->assertForbidden();
+describe('Security — ownership (Policy downloadETicket)', function () {
+    it('client TIDAK bisa download e-ticket client lain → 403', function () {
+        [$booking, $trip, $eticket, $pdfPath] = makeBookingWithETicket(
+            $this->client2, $this->mitra, [], [], 'PDF-CONTENT',
+        );
+
+        $this->actingAs($this->client)
+            ->get("/client/e-tickets/{$eticket->uuid}/download")
+            ->assertForbidden();
+    });
 });
 
-it('admin tidak bisa akses route e-ticket (redirect ke dashboard admin)', function () {
-    $admin = User::factory()->admin()->create([
-        'must_change_password' => false,
-    ]);
+describe('Security — policy status guard', function () {
+    it('download booking PENDING_PAYMENT → 403', function () {
+        [$booking, $trip, $eticket, $pdfPath] = makeBookingWithETicket(
+            $this->client, $this->mitra, ['status' => BookingStatus::PENDING_PAYMENT], [], 'PDF-CONTENT',
+        );
 
-    $this->actingAs($admin)
-        ->get(route('client.e-tickets.download', $this->eticket->uuid))
-        ->assertRedirect(route('admin.dashboard'));
-});
+        $this->actingAs($this->client)
+            ->get("/client/e-tickets/{$eticket->uuid}/download")
+            ->assertForbidden();
+    });
 
-it('mitra tidak bisa akses route e-ticket (redirect ke dashboard mitra)', function () {
-    $mitra = User::factory()->mitra()->create([
-        'must_change_password' => false,
-    ]);
+    it('download booking CANCELLED → 403', function () {
+        [$booking, $trip, $eticket, $pdfPath] = makeBookingWithETicket(
+            $this->client, $this->mitra, ['status' => BookingStatus::CANCELLED], [], 'PDF-CONTENT',
+        );
 
-    $this->actingAs($mitra)
-        ->get(route('client.e-tickets.download', $this->eticket->uuid))
-        ->assertRedirect(route('mitra.dashboard'));
-});
+        $this->actingAs($this->client)
+            ->get("/client/e-tickets/{$eticket->uuid}/download")
+            ->assertForbidden();
+    });
 
-it('client dengan must_change_password = true di-redirect ke change-password', function () {
-    $client = User::factory()->client()->create([
-        'must_change_password' => true,
-    ]);
+    it('download booking CONFIRMED → OK', function () {
+        [$booking, $trip, $eticket, $pdfPath] = makeBookingWithETicket(
+            $this->client, $this->mitra, ['status' => BookingStatus::CONFIRMED], [], 'PDF-CONTENT',
+        );
 
-    $this->actingAs($client)
-        ->get(route('client.e-tickets.download', $this->eticket->uuid))
-        ->assertRedirect(route('password.change'));
-});
+        $this->actingAs($this->client)
+            ->get("/client/e-tickets/{$eticket->uuid}/download")
+            ->assertOk();
+    });
 
-/*
-|==========================================================================
-| KATEGORI 3 — DATA INTEGRITY & STATE TRANSITION
-|==========================================================================
-*/
+    it('download booking IN_PROGRESS → OK', function () {
+        [$booking, $trip, $eticket, $pdfPath] = makeBookingWithETicket(
+            $this->client, $this->mitra, ['status' => BookingStatus::IN_PROGRESS], [], 'PDF-CONTENT',
+        );
 
-it('booking null di ETicket → 403 (tidak crash)', function () {
-    // Soft delete booking
-    $this->booking->delete();
-    $this->eticket->refresh();
+        $this->actingAs($this->client)
+            ->get("/client/e-tickets/{$eticket->uuid}/download")
+            ->assertOk();
+    });
 
-    $this->actingAs($this->client)
-        ->get(route('client.e-tickets.download', $this->eticket->uuid))
-        ->assertForbidden();
-});
+    it('download booking COMPLETED → OK', function () {
+        [$booking, $trip, $eticket, $pdfPath] = makeBookingWithETicket(
+            $this->client, $this->mitra, ['status' => BookingStatus::COMPLETED], [], 'PDF-CONTENT',
+        );
 
-/*
-|==========================================================================
-| KATEGORI 4 — ERROR HANDLING & EDGE CASES
-|==========================================================================
-*/
-
-it('download ETicket 404 jika UUID tidak ditemukan', function () {
-    $this->actingAs($this->client)
-        ->get(route('client.e-tickets.download', 'non-existent-uuid'))
-        ->assertNotFound();
-});
-
-it('download ETicket 404 jika file PDF tidak ada di storage', function () {
-    Storage::disk('public')->delete($this->eticket->pdf_path);
-
-    $this->actingAs($this->client)
-        ->get(route('client.e-tickets.download', $this->eticket->uuid))
-        ->assertNotFound();
-});
-
-it('download ETicket 404 jika trip null', function () {
-    $fakeEticket = Mockery::mock(ETicket::class)->makePartial();
-    $fakeEticket->forceFill([
-        'id' => $this->eticket->id,
-        'uuid' => $this->eticket->uuid,
-        'booking_id' => $this->booking->id,
-        'trip_id' => $this->trip->id,
-        'pdf_path' => $this->eticket->pdf_path,
-    ]);
-
-    // ✅ Mock booking (untuk lolos ownership)
-    $fakeEticket->shouldReceive('getAttribute')
-        ->with('booking')
-        ->andReturn($this->booking);
-
-    // ✅ Mock trip → null (untuk trigger 404)
-    $fakeEticket->shouldReceive('getAttribute')
-        ->with('trip')
-        ->andReturn(null);
-
-    $service = Mockery::mock(ETicketService::class);
-    $service->shouldReceive('findByUuid')->andReturn($fakeEticket);
-
-    $this->app->instance(ETicketService::class, $service);
-
-    $this->actingAs($this->client)
-        ->get(route('client.e-tickets.download', $this->eticket->uuid))
-        ->assertNotFound();
-});
-
-it('download ETicket 404 jika UUID kosong (edge case)', function () {
-    // URL tanpa UUID: /client/e-tickets//download
-    $this->actingAs($this->client)
-        ->get('/client/e-tickets//download')
-        ->assertStatus(404);
-});
-
-it('download ETicket dengan UUID invalid format tidak crash', function () {
-    $this->actingAs($this->client)
-        ->get(route('client.e-tickets.download', 'invalid-format-xxx'))
-        ->assertNotFound();
+        $this->actingAs($this->client)
+            ->get("/client/e-tickets/{$eticket->uuid}/download")
+            ->assertOk();
+    });
 });
 
 /*
 |==========================================================================
-| KATEGORI 5 — BEHAVIORAL: ETicketService Dipanggil
+| KATEGORI 3 — CONCURRENCY
 |==========================================================================
 */
 
-it('ETicketService::findByUuid dipanggil dengan UUID benar', function () {
-    $service = Mockery::mock(ETicketService::class);
-    $service->shouldReceive('findByUuid')
-        ->once()
-        ->with('abc-123-uuid')
-        ->andReturn($this->eticket);
+describe('Concurrency — download 2x', function () {
+    it('download 2x → sukses 2x', function () {
+        [$booking, $trip, $eticket, $pdfPath] = makeBookingWithETicket(
+            $this->client, $this->mitra, [], [], 'PDF-CONTENT',
+        );
 
-    $this->app->instance(ETicketService::class, $service);
+        $this->actingAs($this->client)
+            ->get("/client/e-tickets/{$eticket->uuid}/download")
+            ->assertOk();
 
-    $this->actingAs($this->client)
-        ->get(route('client.e-tickets.download', $this->eticket->uuid))
-        ->assertOk();
+        $this->actingAs($this->client)
+            ->get("/client/e-tickets/{$eticket->uuid}/download")
+            ->assertOk();
+    });
 });
 
 /*
 |==========================================================================
-| KATEGORI 6 — ROUTE MIDDLEWARE
+| KATEGORI 4 — IDEMPOTENCY
 |==========================================================================
 */
 
-it('route client.e-tickets.download pakai middleware auth, password.changed, dan role:client', function () {
-    $route = collect(Route::getRoutes())
-        ->first(fn ($r) => $r->getName() === 'client.e-tickets.download');
+describe('Idempotency', function () {
+    it('download berulang tidak mengubah data', function () {
+        [$booking, $trip, $eticket, $pdfPath] = makeBookingWithETicket(
+            $this->client, $this->mitra, [], [], 'PDF-CONTENT',
+        );
 
-    expect($route)->not->toBeNull();
+        $countBefore = ETicket::count();
 
-    $middleware = $route->gatherMiddleware();
+        $this->actingAs($this->client)
+            ->get("/client/e-tickets/{$eticket->uuid}/download");
+        $this->actingAs($this->client)
+            ->get("/client/e-tickets/{$eticket->uuid}/download");
 
-    expect($middleware)->toContain('auth');
-    expect($middleware)->toContain('password.changed');
-    expect($middleware)->toContain('role:client');
+        expect(ETicket::count())->toBe($countBefore);
+    });
 });
 
 /*
 |==========================================================================
-| KATEGORI 7 — BVA (Boundary Value Analysis)
+| KATEGORI 5 — DATA INTEGRITY
 |==========================================================================
 */
 
-it('download dengan UUID panjang 100 karakter (boundary) tidak crash', function () {
-    $longUuid = str_repeat('a', 100);
+describe('Data Integrity — stream content', function () {
+    it('download stream mengembalikan konten PDF', function () {
+        [$booking, $trip, $eticket, $pdfPath] = makeBookingWithETicket(
+            $this->client, $this->mitra, [], [], 'PDF-CONTENT-TEST',
+        );
 
-    $this->actingAs($this->client)
-        ->get(route('client.e-tickets.download', $longUuid))
-        ->assertNotFound();
+        $response = $this->actingAs($this->client)
+            ->get("/client/e-tickets/{$eticket->uuid}/download");
+
+        $response->assertOk();
+
+        // Ambil content dari StreamedResponse
+        ob_start();
+        $response->sendContent();
+        $content = ob_get_clean();
+
+        expect($content)->toBe('PDF-CONTENT-TEST');
+    });
+
+    it('download tidak mengubah pdf_path di DB', function () {
+        [$booking, $trip, $eticket, $pdfPath] = makeBookingWithETicket(
+            $this->client, $this->mitra, [], [], 'PDF-CONTENT',
+        );
+
+        $eticket->refresh();
+        $pdfPathBefore = $eticket->pdf_path;
+
+        $this->actingAs($this->client)
+            ->get("/client/e-tickets/{$eticket->uuid}/download");
+
+        $eticket->refresh();
+        expect($eticket->pdf_path)->toBe($pdfPathBefore);
+    });
 });
 
 /*
 |==========================================================================
-| KATEGORI 8 — EDGE CASES
+| KATEGORI 6 — ERROR HANDLING
 |==========================================================================
 */
 
-it('download ETicket 2x berurutan tetap sukses (idempotent)', function () {
-    $this->actingAs($this->client)
-        ->get(route('client.e-tickets.download', $this->eticket->uuid))
-        ->assertOk();
+describe('Error Handling — 404', function () {
+    it('uuid tidak ada → 404', function () {
+        $uuid = (string) Str::uuid();
 
-    $this->actingAs($this->client)
-        ->get(route('client.e-tickets.download', $this->eticket->uuid))
-        ->assertOk();
-});
+        $this->actingAs($this->client)
+            ->get("/client/e-tickets/{$uuid}/download")
+            ->assertNotFound();
+    });
 
-it('download ETicket dengan client sama tapi uuid berbeda tetap jalan', function () {
-    $eticket2 = ETicket::factory()->create([
-        'booking_id' => $this->booking->id,
-        'trip_id' => $this->trip->id,
-        'uuid' => 'def-456-uuid',
-        'qr_code' => 'e-tickets/qr-def-456.png',
-        'pdf_path' => 'e-tickets/ticket-def-456.pdf',
-        'generated_at' => now(),
-    ]);
+    it('uuid invalid format → 404', function () {
+        $this->actingAs($this->client)
+            ->get('/client/e-tickets/uuid-ngawur/download')
+            ->assertNotFound();
+    });
 
-    Storage::disk('public')->put($eticket2->pdf_path, 'PDF-2-CONTENT');
+    it('file PDF tidak ada di storage → 404', function () {
+        [$booking, $trip, $eticket, $pdfPath] = makeBookingWithETicket(
+            $this->client, $this->mitra, [], [], null,  // ← tidak put file
+        );
 
-    $this->actingAs($this->client)
-        ->get(route('client.e-tickets.download', $eticket2->uuid))
-        ->assertOk()
-        ->assertDownload('e-ticket-TRP-2026-001.pdf');
+        $this->actingAs($this->client)
+            ->get("/client/e-tickets/{$eticket->uuid}/download")
+            ->assertNotFound();
+    });
+
+    it('booking deleted (soft) → 404', function () {
+        [$booking, $trip, $eticket, $pdfPath] = makeBookingWithETicket(
+            $this->client, $this->mitra, [], [], 'PDF-CONTENT',
+        );
+
+        $booking->delete();  // soft delete
+
+        $this->actingAs($this->client)
+            ->get("/client/e-tickets/{$eticket->uuid}/download")
+            ->assertNotFound();
+    });
 });

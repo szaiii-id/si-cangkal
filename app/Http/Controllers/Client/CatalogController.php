@@ -53,7 +53,7 @@ class CatalogController extends Controller
 
         $package->load([
             'mitra:id,name,email',
-            'mitra.profile', 
+            'mitra.profile',
             'days',
             'facilities',
         ]);

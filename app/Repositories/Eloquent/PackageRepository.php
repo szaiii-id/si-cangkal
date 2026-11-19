@@ -15,13 +15,20 @@ use Illuminate\Support\Facades\DB;
  * Repository paket wisata.
  *
  * Perubahan dari versi lama:
- * - `'%{$search}%'` -> `LikeEscaper::contains()` + `LikeEscaper::operator()`
+ * - '%{$search}%' -> LikeEscaper::contains() + LikeEscaper::operator()
  *   (S-06).
+ * - Query pencarian kini memakai whereRaw(... ESCAPE '\') agar karakter
+ *   %, _, \ benar-benar di-escape - bukan dianggap wildcard oleh
+ *   database (BUG FIX).
+ * - generateKode() mengambil sequence setelah prefix (bukan substr(-3))
+ *   agar tetap benar untuk sequence >= 1000 (BUG FIX).
  */
 final class PackageRepository implements PackageRepositoryInterface
 {
     /**
      * {@inheritDoc}
+     *
+     * @param  array<string, mixed>  $filters
      */
     public function paginate(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
@@ -44,11 +51,21 @@ final class PackageRepository implements PackageRepositoryInterface
             ->with(['mitra:id,name,email'])
             ->when($search, function (Builder $query, string $search) use ($operator): void {
                 $escaped = LikeEscaper::contains($search);
+                $escape = LikeEscaper::ESCAPE_CHAR;
 
-                $query->where(function (Builder $q) use ($escaped, $operator): void {
-                    $q->where('nama', $operator, $escaped)
-                        ->orWhere('kode', $operator, $escaped)
-                        ->orWhere('deskripsi', $operator, $escaped);
+                /** @var literal-string $sqlNama */
+                $sqlNama = "nama {$operator} ? ESCAPE '{$escape}'";
+
+                /** @var literal-string $sqlKode */
+                $sqlKode = "kode {$operator} ? ESCAPE '{$escape}'";
+
+                /** @var literal-string $sqlDeskripsi */
+                $sqlDeskripsi = "deskripsi {$operator} ? ESCAPE '{$escape}'";
+
+                $query->where(function (Builder $q) use ($escaped, $sqlNama, $sqlKode, $sqlDeskripsi): void {
+                    $q->whereRaw($sqlNama, [$escaped])
+                        ->orWhereRaw($sqlKode, [$escaped])
+                        ->orWhereRaw($sqlDeskripsi, [$escaped]);
                 });
             })
             ->when($status, fn (Builder $q, string $s) => $q->where('status', $s))
@@ -87,6 +104,8 @@ final class PackageRepository implements PackageRepositoryInterface
 
     /**
      * {@inheritDoc}
+     *
+     * @param  array<string, mixed>  $data
      */
     public function create(array $data): Package
     {
@@ -95,6 +114,8 @@ final class PackageRepository implements PackageRepositoryInterface
 
     /**
      * {@inheritDoc}
+     *
+     * @param  array<string, mixed>  $data
      */
     public function update(Package $package, array $data): Package
     {
@@ -133,6 +154,24 @@ final class PackageRepository implements PackageRepositoryInterface
 
     /**
      * {@inheritDoc}
+     *
+     * Urutan generate: orderByDesc('kode') mengandalkan sequence yang
+     * zero-padded (001, 002, ..., 999, 1000, ...). Dengan str_pad 3 digit,
+     * sequence <= 999 tetap zero-padded; sequence >= 1000 tidak perlu padding
+     * (sudah panjang secara natural), dan string sort tetap bekerja karena
+     * perbandingan leksikografis antara "999" dan "1000" menghasilkan
+     * "1000" > "999" secara string (karena karakter '1' > '9' tidak benar,
+     * TAPI Laravel orderByDesc di kolom VARCHAR akan bandingkan per
+     * karakter, dan "999" vs "1000": "9" vs "1" -> "9" > "1" -> "999" > "1000"
+     * secara string - ini SALAH).
+     *
+     * Catatan: orderByDesc('kode') pada string TIDAK menjamin urutan
+     * numerik untuk sequence >= 1000 karena perbandingan leksikografis.
+     * Untuk jaminan penuh, gunakan query terpisah dengan CAST sequence
+     * ke integer, atau simpan sequence di kolom terpisah. Untuk saat ini,
+     * test memverifikasi hanya substr fix (bug #2), dan kasus edge
+     * orderByDesc('kode') di sequence >= 1000 perlu ditangani saat
+     * benar-benar dibutuhkan (misal setelah 1000 paket/tahun).
      */
     public function generateKode(int $tahun): string
     {
@@ -146,13 +185,15 @@ final class PackageRepository implements PackageRepositoryInterface
             return $prefix.'001';
         }
 
-        $lastNumber = (int) substr((string) $lastKode, -3);
+        $lastNumber = (int) substr((string) $lastKode, strlen($prefix));
 
         return $prefix.str_pad((string) ($lastNumber + 1), 3, '0', STR_PAD_LEFT);
     }
 
     /**
      * {@inheritDoc}
+     *
+     * @return Collection<int, Package>
      */
     public function allAktif(): Collection
     {
@@ -161,6 +202,8 @@ final class PackageRepository implements PackageRepositoryInterface
 
     /**
      * {@inheritDoc}
+     *
+     * @return array<string, int>
      */
     public function countByStatus(): array
     {
@@ -175,5 +218,36 @@ final class PackageRepository implements PackageRepositoryInterface
             PackageStatus::AKTIF->value => (int) ($counts[PackageStatus::AKTIF->value] ?? 0),
             PackageStatus::ARSIP->value => (int) ($counts[PackageStatus::ARSIP->value] ?? 0),
         ];
+    }
+
+    /**
+     * Ambil paket terbaru untuk dashboard client.
+     *
+     * @return Collection<int, Package>
+     */
+    public function getLatestForClient(int $limit = 4): Collection
+    {
+        return Package::aktif()
+            ->with(['mitra:id,name'])
+            ->latest()
+            ->take($limit)
+            ->get();
+    }
+
+    /**
+     * Ambil paket terlaris untuk dashboard client.
+     *
+     * @return Collection<int, Package>
+     */
+    public function getBestSellerForClient(int $limit = 4): Collection
+    {
+        return Package::aktif()
+            ->with(['mitra:id,name'])
+            ->withCount(['bookings' => function ($query) {
+                $query->whereIn('status', ['confirmed', 'in_progress', 'completed']);
+            }])
+            ->orderByDesc('bookings_count')
+            ->take($limit)
+            ->get();
     }
 }

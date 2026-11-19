@@ -26,15 +26,19 @@ class TripService
         protected TripRepositoryInterface $tripRepository,
     ) {}
 
-    // ==========================================
-    // READ
-    // ==========================================
-
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return LengthAwarePaginator<int, Trip>
+     */
     public function paginate(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
         return $this->tripRepository->paginate($filters, $perPage);
     }
 
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return LengthAwarePaginator<int, Trip>
+     */
     public function paginateForMitra(User $mitra, array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
         return $this->tripRepository->paginateForMitra($mitra, $filters, $perPage);
@@ -46,6 +50,7 @@ class TripService
         if ($trip === null) {
             throw ValidationException::withMessages(['trip' => ['Trip tidak ditemukan.']]);
         }
+
         return $trip;
     }
 
@@ -54,19 +59,21 @@ class TripService
         return $this->tripRepository->findByBookingId($bookingId);
     }
 
+    /**
+     * @return array<string, int>
+     */
     public function countByStatus(): array
     {
         return $this->tripRepository->countByStatus();
     }
 
+    /**
+     * @return array<string, int>
+     */
     public function countByStatusForMitra(User $mitra): array
     {
         return $this->tripRepository->countByStatusForMitra($mitra);
     }
-
-    // ==========================================
-    // CREATE FROM BOOKING
-    // ==========================================
 
     public function createFromBooking(Booking $booking): Trip
     {
@@ -97,7 +104,7 @@ class TripService
                 'kode' => $kode,
                 'booking_id' => $booking->id,
                 'package_id' => $package->id,
-                'mitra_id' => $booking->mitra_id, // ✅ Set mitra_id dari booking
+                'mitra_id' => $booking->mitra_id,
                 'snapshot_package' => $snapshot,
                 'tanggal_mulai' => $tanggalMulai->format('Y-m-d'),
                 'tanggal_selesai' => $tanggalSelesai->format('Y-m-d'),
@@ -121,6 +128,9 @@ class TripService
         });
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     protected function buildSnapshot(Package $package): array
     {
         return [
@@ -169,10 +179,6 @@ class TripService
         }
     }
 
-    // ==========================================
-    // STATUS TRANSITIONS
-    // ==========================================
-
     public function activate(Trip $trip): Trip
     {
         if ($trip->status !== TripStatus::SCHEDULED) {
@@ -186,13 +192,6 @@ class TripService
         if ($trip->tanggal_mulai->format('Y-m-d') > $today->format('Y-m-d')) {
             throw ValidationException::withMessages([
                 'status' => ['Trip belum waktunya dimulai.'],
-            ]);
-        }
-
-        // ✅ Cek mitra_id (bukan hasMitra() yang memanggil relasi pivot)
-        if ($trip->mitra_id === null) {
-            throw ValidationException::withMessages([
-                'status' => ['Trip harus punya mitra sebelum diaktifkan.'],
             ]);
         }
 
@@ -212,9 +211,6 @@ class TripService
         });
     }
 
-    /**
-     * ✅ UBAH: Selesaikan trip langsung tanpa nunggu verifikasi daily report.
-     */
     public function complete(Trip $trip): Trip
     {
         if ($trip->status !== TripStatus::ACTIVE) {
@@ -257,10 +253,6 @@ class TripService
         });
     }
 
-    // ==========================================
-    // SCHEDULER
-    // ==========================================
-
     /**
      * @return array{activated: int, skipped_no_mitra: int}
      */
@@ -277,16 +269,6 @@ class TripService
                 $tripToday = Timezone::today($trip->timezoneOrDefault());
 
                 if ($trip->tanggal_mulai->format('Y-m-d') > $tripToday->format('Y-m-d')) {
-                    continue;
-                }
-
-                // ✅ Cek mitra_id langsung
-                if ($trip->mitra_id === null) {
-                    $skippedNoMitra++;
-                    Log::warning('Trip due tapi belum punya mitra', [
-                        'trip_id' => $trip->id,
-                        'kode' => $trip->kode,
-                    ]);
                     continue;
                 }
 

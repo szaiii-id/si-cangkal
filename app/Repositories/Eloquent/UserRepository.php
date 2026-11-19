@@ -14,9 +14,15 @@ use Illuminate\Support\Facades\DB;
  * Repository user.
  *
  * Perubahan dari versi lama:
- * - `searchOperator()` diganti `LikeEscaper::operator()` + `LikeEscaper::contains()`
+ * - searchOperator() diganti LikeEscaper::operator() + LikeEscaper::contains()
  *   untuk mencegah wildcard injection (S-06).
- * - `paginateMitras()` BARU untuk `Admin\MitraMonitoringController`.
+ * - paginateMitras() BARU untuk Admin\MitraMonitoringController.
+ * - Semua query pencarian kini memakai whereRaw(... ESCAPE '\') agar
+ *   karakter %, _, \ benar-benar di-escape - bukan dianggap
+ *   wildcard oleh database (BUG FIX).
+ * - createClient() dan createUser() men-set email_verified_at
+ *   via forceFill() karena kolom tersebut tidak ada di $fillable
+ *   dan akan dibuang silent oleh mass-assignment (BUG FIX).
  */
 final class UserRepository implements UserRepositoryInterface
 {
@@ -56,10 +62,18 @@ final class UserRepository implements UserRepositoryInterface
 
     /**
      * {@inheritDoc}
+     *
+     * Catatan:
+     * email_verified_at tidak ada di $fillable sehingga harus
+     * di-set via forceFill(). Ini mencegah mass-assignment dari
+     * input user (celah keamanan jika user bisa set field ini
+     * sendiri untuk bypass verifikasi email).
+     *
+     * @param  array<string, mixed>  $data
      */
     public function createClient(array $data): User
     {
-        return User::create([
+        $user = User::create([
             'name' => $data['name'],
             'username' => $data['username'] ?? null,
             'email' => $data['email'],
@@ -67,28 +81,41 @@ final class UserRepository implements UserRepositoryInterface
             'google_id' => $data['google_id'] ?? null,
             'role' => 'client',
             'must_change_password' => false,
-            'email_verified_at' => now(),
         ]);
+
+        $user->forceFill(['email_verified_at' => now()])->save();
+
+        return $user;
     }
 
     /**
      * {@inheritDoc}
+     *
+     * Catatan: lihat createClient() - email_verified_at di-set
+     * via forceFill() untuk alasan keamanan.
+     *
+     * @param  array<string, mixed>  $data
      */
     public function createUser(array $data): User
     {
-        return User::create([
+        $user = User::create([
             'name' => $data['name'],
             'username' => $data['username'] ?? null,
             'email' => $data['email'],
             'password' => $data['password'],
             'role' => $data['role'],
             'must_change_password' => $data['must_change_password'] ?? true,
-            'email_verified_at' => now(),
         ]);
+
+        $user->forceFill(['email_verified_at' => now()])->save();
+
+        return $user;
     }
 
     /**
      * {@inheritDoc}
+     *
+     * @param  array<string, mixed>  $data
      */
     public function updateUser(User $user, array $data): User
     {
@@ -121,6 +148,7 @@ final class UserRepository implements UserRepositoryInterface
     /**
      * {@inheritDoc}
      *
+     * @param  array<int, string>  $roles
      * @return LengthAwarePaginator<int, User>
      */
     public function paginateByRoles(
@@ -128,19 +156,11 @@ final class UserRepository implements UserRepositoryInterface
         int $perPage = 15,
         ?string $search = null,
     ): LengthAwarePaginator {
-        $operator = LikeEscaper::operator(DB::connection());
-
         return User::query()
             ->with('profile')
             ->whereIn('role', $roles)
-            ->when($search, function (Builder $query, string $search) use ($operator): void {
-                $escaped = LikeEscaper::contains($search);
-
-                $query->where(function (Builder $q) use ($escaped, $operator): void {
-                    $q->where('name', $operator, $escaped)
-                        ->orWhere('email', $operator, $escaped)
-                        ->orWhere('username', $operator, $escaped);
-                });
+            ->when($search, function (Builder $query, string $search): void {
+                $this->applyLikeSearch($query, $search);
             })
             ->orderByDesc('created_at')
             ->paginate($perPage)
@@ -161,10 +181,6 @@ final class UserRepository implements UserRepositoryInterface
 
     /**
      * Daftar mitra (untuk panel admin).
-     *
-     * Perbaikan dari `Admin\MitraMonitoringController@index` yang
-     * sebelumnya hardcoded `'ilike'` (tidak portabel) dan tidak
-     * escape wildcard.
      *
      * @return LengthAwarePaginator<int, User>
      */
@@ -195,23 +211,52 @@ final class UserRepository implements UserRepositoryInterface
 
     /**
      * {@inheritDoc}
+     *
+     * @return Collection<int, User>
      */
     public function searchByRole(string $role, string $search, int $limit = 10): Collection
     {
-        $operator = LikeEscaper::operator(DB::connection());
-        $escaped = LikeEscaper::contains($search);
-
         return User::query()
             ->where('role', $role)
-            ->when($search, function (Builder $query) use ($escaped, $operator): void {
-                $query->where(function (Builder $q) use ($escaped, $operator): void {
-                    $q->where('name', $operator, $escaped)
-                        ->orWhere('email', $operator, $escaped)
-                        ->orWhere('username', $operator, $escaped);
-                });
+            ->when($search, function (Builder $query, string $search): void {
+                $this->applyLikeSearch($query, $search);
             })
             ->orderBy('name')
             ->limit($limit)
             ->get(['id', 'name', 'email', 'username']);
+    }
+
+    /**
+     * Terapkan filter LIKE ke kolom name, email, username dengan
+     * escape wildcard yang benar (via whereRaw + ESCAPE).
+     *
+     * Mengapa harus whereRaw dan bukan where('col', 'like', $pattern)?
+     * Karena where() TIDAK menambahkan klausa ESCAPE '\', sehingga
+     * karakter \ di dalam pattern akan dianggap literal dan escape
+     * menjadi tidak efektif - input % dan _ tetap berfungsi sebagai
+     * wildcard (celah injection + bug UX).
+     *
+     * @param  Builder<*>  $query
+     */
+    private function applyLikeSearch(Builder $query, string $search): void
+    {
+        $operator = LikeEscaper::operator(DB::connection());
+        $pattern = LikeEscaper::contains($search);
+        $escape = LikeEscaper::ESCAPE_CHAR;
+
+        /** @var literal-string $sqlName */
+        $sqlName = "name {$operator} ? ESCAPE '{$escape}'";
+
+        /** @var literal-string $sqlEmail */
+        $sqlEmail = "email {$operator} ? ESCAPE '{$escape}'";
+
+        /** @var literal-string $sqlUsername */
+        $sqlUsername = "username {$operator} ? ESCAPE '{$escape}'";
+
+        $query->where(function (Builder $q) use ($pattern, $sqlName, $sqlEmail, $sqlUsername): void {
+            $q->whereRaw($sqlName, [$pattern])
+                ->orWhereRaw($sqlEmail, [$pattern])
+                ->orWhereRaw($sqlUsername, [$pattern]);
+        });
     }
 }

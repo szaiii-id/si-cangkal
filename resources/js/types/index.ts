@@ -14,7 +14,7 @@ export type { Auth, AuthUser } from './auth';
 export * from './enum';
 export * from './filter';
 
-// ✅ Hati-hati: `inertia.ts` punya `Auth` & `AuthUser` juga.
+// Hati-hati: `inertia.ts` punya `Auth` & `AuthUser` juga.
 // Kita ambil field lainnya secara eksplisit untuk hindari duplikasi.
 export type {
     Flash,
@@ -25,3 +25,7 @@ export type {
 
 export * from './models';
 export * from './pagination';
+
+// Props — re-export via barrel folder `types/props/`
+// (menggantikan `types/props.ts` yang sudah dipecah)
+export * from './props';

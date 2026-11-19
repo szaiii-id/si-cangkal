@@ -25,7 +25,7 @@ class ProfileFactory extends Factory
             'nomor_identitas' => fake()->numerify('################'),
             'alamat' => fake()->address(),
             'telepon' => fake()->phoneNumber(),
-            // ✅ FIX PHPStan: `Faker\Generator::state()` TIDAK ADA.
+            // FIX PHPStan: `Faker\Generator::state()` TIDAK ADA.
             // Gunakan `fake()->state()` (nama provinsi/negara bagian)
             // atau `fake()->city()` (fallback aman).
             'provinsi' => fake()->city(),

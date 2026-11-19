@@ -2,35 +2,50 @@
 
 use App\Enums\PackageStatus;
 use App\Models\Package;
-use App\Models\User;
 use App\Repositories\Contracts\PackageRepositoryInterface;
 use App\Services\Package\PackageService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
-use Mockery\MockInterface;
+use Psr\Log\LoggerInterface;
 
 /*
 |==========================================================================
-| SETUP
+| SETUP — Unit Test (NO DB)
 |==========================================================================
 */
 
 beforeEach(function () {
+    Storage::fake('public');
+
     $this->repo = Mockery::mock(PackageRepositoryInterface::class);
     $this->service = new PackageService($this->repo);
 
-    // Default mock: transaction langsung eksekusi callback
     DB::shouldReceive('transaction')
         ->byDefault()
         ->andReturnUsing(fn ($callback) => $callback());
 
-    // Default mock: Log no-op
+    // Mock AuditLogger → Log::channel('audit')
+    $auditLoggerMock = Mockery::mock(LoggerInterface::class);
+    $auditLoggerMock->shouldReceive('info')->byDefault()->andReturnNull();
+
+    Log::shouldReceive('channel')
+        ->with('audit')
+        ->byDefault()
+        ->andReturn($auditLoggerMock);
+
+    Log::shouldReceive('driver')
+        ->byDefault()
+        ->andReturn($auditLoggerMock);
+
     Log::shouldReceive('info')->byDefault()->andReturnNull();
     Log::shouldReceive('warning')->byDefault()->andReturnNull();
+    Log::shouldReceive('error')->byDefault()->andReturnNull();
 });
 
 afterEach(function () {
@@ -39,45 +54,9 @@ afterEach(function () {
 
 /*
 |==========================================================================
-| HELPERS
+| HELPER
 |==========================================================================
 */
-
-function makePackageServiceMock(array $attrs = []): MockInterface
-{
-    $package = Mockery::mock(Package::class)->makePartial();
-    $package->forceFill(array_merge([
-        'id' => 5,
-        'kode' => 'PKG-2026-001',
-        'nama' => 'Paket Test',
-        'slug' => 'paket-test',
-        'status' => PackageStatus::DRAFT,
-        'kategori' => 'wisata_alam',
-        'durasi_hari' => 2,
-        'durasi_malam' => 1,
-        'harga_per_orang' => '500000.00',
-        'harga_per_rombongan' => null,
-        'min_peserta' => 2,
-        'max_peserta' => 10,
-        'timezone' => 'Asia/Makassar',
-        'created_by' => 1,
-    ], $attrs));
-
-    return $package;
-}
-
-function makeAdminUserMock(array $attrs = []): MockInterface
-{
-    $user = Mockery::mock(User::class)->makePartial();
-    $user->forceFill(array_merge([
-        'id' => 99,
-        'name' => 'Admin Test',
-        'email' => 'admin@example.com',
-        'role' => 'admin',
-    ], $attrs));
-
-    return $user;
-}
 
 function validPackageData(array $overrides = []): array
 {
@@ -87,468 +66,528 @@ function validPackageData(array $overrides = []): array
         'kategori' => 'wisata_alam',
         'durasi_hari' => 2,
         'durasi_malam' => 1,
-        'harga_per_orang' => 500000,
+        'harga_per_orang' => 500_000,
         'harga_per_rombongan' => null,
-        'min_peserta' => 2,
-        'max_peserta' => 10,
+        'max_peserta' => null,
         'timezone' => 'Asia/Makassar',
     ], $overrides);
 }
 
-function makeHasManyForFacilities(bool $exists = true): HasMany
-{
-    $mock = Mockery::mock(HasMany::class);
-    $mock->shouldReceive('where')->with('tipe', 'include')->andReturnSelf();
-    $mock->shouldReceive('exists')->andReturn($exists);
-
-    return $mock;
-}
-
-function makeHasManyForBookings(bool $exists = false): HasMany
-{
-    $mock = Mockery::mock(HasMany::class);
-    $mock->shouldReceive('exists')->andReturn($exists);
-
-    return $mock;
-}
-
 /*
 |==========================================================================
-| READ — Pass-through
+| KATEGORI 1 — BVA
 |==========================================================================
 */
 
-it('paginate meneruskan parameter ke repository', function () {
-    $paginator = Mockery::mock(LengthAwarePaginator::class);
+describe('BVA — validate durasi_malam', function () {
+    it('durasi_malam >= durasi_hari (2D2N) → ValidationException', function () {
+        $data = validPackageData(['durasi_hari' => 2, 'durasi_malam' => 2]);
 
-    $this->repo->shouldReceive('paginate')
-        ->once()
-        ->with(['search' => 'bali'], 25)
-        ->andReturn($paginator);
+        expect(fn () => $this->service->create($data, makeUser(['id' => 1, 'role' => 'mitra'])))
+            ->toThrow(ValidationException::class);
+    });
 
-    expect($this->service->paginate(['search' => 'bali'], 25))->toBe($paginator);
+    it('durasi_malam == durasi_hari - 1 (2D1N) → lolos validasi', function () {
+        $data = validPackageData(['durasi_hari' => 2, 'durasi_malam' => 1]);
+
+        $this->repo->shouldReceive('slugExists')->andReturn(false);
+        $this->repo->shouldReceive('generateKode')->andReturn('PKG-2026-001');
+        $this->repo->shouldReceive('create')->once()->andReturn(new Package);
+
+        $this->service->create($data, makeUser(['id' => 1, 'role' => 'mitra']));
+    });
+
+    it('durasi_hari = 0 → tidak error "durasi_malam" (guard durasiHari > 0)', function () {
+        $data = validPackageData(['durasi_hari' => 0, 'durasi_malam' => 0]);
+
+        $this->repo->shouldReceive('slugExists')->andReturn(false);
+        $this->repo->shouldReceive('generateKode')->andReturn('PKG-2026-001');
+        $this->repo->shouldReceive('create')->once()->andReturn(new Package);
+
+        $this->service->create($data, makeUser(['id' => 1, 'role' => 'mitra']));
+    });
 });
 
-it('paginate pakai default perPage = 15', function () {
-    $paginator = Mockery::mock(LengthAwarePaginator::class);
+describe('BVA — validate harga_per_rombongan + max_peserta', function () {
+    it('harga_per_rombongan > 0 + max_peserta kosong → ValidationException', function () {
+        $data = validPackageData([
+            'harga_per_rombongan' => 5_000_000,
+            'max_peserta' => null,
+        ]);
 
-    $this->repo->shouldReceive('paginate')
-        ->once()
-        ->with([], 15)
-        ->andReturn($paginator);
+        expect(fn () => $this->service->create($data, makeUser(['id' => 1, 'role' => 'mitra'])))
+            ->toThrow(ValidationException::class);
+    });
 
-    $this->service->paginate();
-});
+    it('harga_per_rombongan > 0 + max_peserta ada → lolos', function () {
+        $data = validPackageData([
+            'harga_per_rombongan' => 5_000_000,
+            'max_peserta' => 20,
+        ]);
 
-it('findDetail mengembalikan package jika ada', function () {
-    $package = makePackageServiceMock();
+        $this->repo->shouldReceive('slugExists')->andReturn(false);
+        $this->repo->shouldReceive('generateKode')->andReturn('PKG-2026-001');
+        $this->repo->shouldReceive('create')->once()->andReturn(new Package);
 
-    $this->repo->shouldReceive('findById')
-        ->once()
-        ->with(5)
-        ->andReturn($package);
+        $this->service->create($data, makeUser(['id' => 1, 'role' => 'mitra']));
+    });
 
-    expect($this->service->findDetail(5))->toBe($package);
-});
+    it('harga_per_rombongan = null → tidak validasi max_peserta', function () {
+        $data = validPackageData(['harga_per_rombongan' => null, 'max_peserta' => null]);
 
-it('findDetail throw ValidationException jika tidak ada', function () {
-    $this->repo->shouldReceive('findById')->with(999)->andReturn(null);
+        $this->repo->shouldReceive('slugExists')->andReturn(false);
+        $this->repo->shouldReceive('generateKode')->andReturn('PKG-2026-001');
+        $this->repo->shouldReceive('create')->once()->andReturn(new Package);
 
-    expect(fn () => $this->service->findDetail(999))
-        ->toThrow(ValidationException::class);
-});
+        $this->service->create($data, makeUser(['id' => 1, 'role' => 'mitra']));
+    });
 
-it('allAktif meneruskan ke repository', function () {
-    $collection = new Collection;
+    it('harga_per_rombongan = 0 → tidak validasi max_peserta', function () {
+        $data = validPackageData(['harga_per_rombongan' => 0, 'max_peserta' => null]);
 
-    $this->repo->shouldReceive('allAktif')
-        ->once()
-        ->andReturn($collection);
+        $this->repo->shouldReceive('slugExists')->andReturn(false);
+        $this->repo->shouldReceive('generateKode')->andReturn('PKG-2026-001');
+        $this->repo->shouldReceive('create')->once()->andReturn(new Package);
 
-    expect($this->service->allAktif())->toBe($collection);
-});
-
-it('countByStatus meneruskan ke repository', function () {
-    $this->repo->shouldReceive('countByStatus')
-        ->once()
-        ->andReturn(['draft' => 3, 'aktif' => 5]);
-
-    expect($this->service->countByStatus())
-        ->toBe(['draft' => 3, 'aktif' => 5]);
-});
-
-/*
-|==========================================================================
-| create() — HAPPY PATH
-|==========================================================================
-*/
-
-it('create buat package baru dengan payload benar', function () {
-    $admin = makeAdminUserMock();
-    $data = validPackageData();
-
-    $this->repo->shouldReceive('generateKode')
-        ->once()
-        ->with((int) now()->year)
-        ->andReturn('PKG-2026-001');
-
-    $this->repo->shouldReceive('slugExists')
-        ->with('paket-baru', null)
-        ->andReturn(false);
-
-    $created = makePackageServiceMock(['id' => 10, 'kode' => 'PKG-2026-001']);
-
-    $this->repo->shouldReceive('create')
-        ->once()
-        ->with(Mockery::on(function ($payload) use ($admin) {
-            return $payload['kode'] === 'PKG-2026-001'
-                && $payload['nama'] === 'Paket Baru'
-                && $payload['slug'] === 'paket-baru'
-                && $payload['status'] === PackageStatus::DRAFT->value
-                && $payload['created_by'] === $admin->id
-                && $payload['min_peserta'] === 2
-                && $payload['max_peserta'] === 10;
-        }))
-        ->andReturn($created);
-
-    $result = $this->service->create($data, $admin);
-
-    expect($result)->toBe($created);
-});
-
-it('create pakai default min_peserta = 1 dan max_peserta = 20', function () {
-    $admin = makeAdminUserMock();
-    $data = validPackageData();
-    unset($data['min_peserta'], $data['max_peserta']);
-
-    $this->repo->shouldReceive('generateKode')->andReturn('PKG-1');
-    $this->repo->shouldReceive('slugExists')->andReturn(false);
-
-    $this->repo->shouldReceive('create')
-        ->once()
-        ->with(Mockery::on(fn ($p) => $p['min_peserta'] === 1 && $p['max_peserta'] === 20
-        ))
-        ->andReturn(makePackageServiceMock());
-
-    $this->service->create($data, $admin);
+        $this->service->create($data, makeUser(['id' => 1, 'role' => 'mitra']));
+    });
 });
 
 /*
 |==========================================================================
-| create() — NEGATIVE PATH (validation)
+| KATEGORI 2 — EQUIVALENCE
 |==========================================================================
 */
 
-it('create throw jika min_peserta > max_peserta', function () {
-    // BVA: min = 10, max = 5
-    $admin = makeAdminUserMock();
-    $data = validPackageData(['min_peserta' => 10, 'max_peserta' => 5]);
+describe('Equivalence — create with/without cover', function () {
+    it('create tanpa cover → cover_image = null di payload', function () {
+        $this->repo->shouldReceive('slugExists')->andReturn(false);
+        $this->repo->shouldReceive('generateKode')->andReturn('PKG-2026-001');
+        $this->repo->shouldReceive('create')
+            ->once()
+            ->with(Mockery::on(fn ($p) => $p['cover_image'] === null))
+            ->andReturn(new Package);
 
-    $this->repo->shouldReceive('create')->never();
+        $this->service->create(validPackageData(), makeUser(['id' => 1, 'role' => 'mitra']));
+    });
 
-    expect(fn () => $this->service->create($data, $admin))
-        ->toThrow(ValidationException::class);
+    it('create dengan cover UploadedFile → store "packages" di disk public', function () {
+        $file = UploadedFile::fake()->image('cover.jpg');
+
+        $this->repo->shouldReceive('slugExists')->andReturn(false);
+        $this->repo->shouldReceive('generateKode')->andReturn('PKG-2026-001');
+        $this->repo->shouldReceive('create')
+            ->once()
+            ->with(Mockery::on(fn ($p) => is_string($p['cover_image']) && str_starts_with($p['cover_image'], 'packages/')))
+            ->andReturn(new Package);
+
+        $this->service->create(validPackageData(['cover_image' => $file]), makeUser(['id' => 1, 'role' => 'mitra']));
+    });
 });
 
-it('create throw jika durasi_malam >= durasi_hari', function () {
-    // BVA: 2D2N (tidak valid, harus 2D1N)
-    $admin = makeAdminUserMock();
-    $data = validPackageData(['durasi_hari' => 2, 'durasi_malam' => 2]);
+describe('Equivalence — update nama berubah vs sama', function () {
+    it('update nama sama → tidak regenerate slug', function () {
+        $package = makePackageMock(['nama' => 'Sama']);
 
-    expect(fn () => $this->service->create($data, $admin))
-        ->toThrow(ValidationException::class);
-});
+        $this->repo->shouldReceive('slugExists')->never();
+        $this->repo->shouldReceive('update')
+            ->once()
+            ->with($package, Mockery::on(fn ($p) => ! isset($p['slug'])))
+            ->andReturn($package);
 
-it('create throw jika harga_per_rombongan = 0', function () {
-    // BVA: 0 tidak valid (harus > 0)
-    $admin = makeAdminUserMock();
-    $data = validPackageData(['harga_per_rombongan' => 0]);
+        $this->service->update($package, validPackageData(['nama' => 'Sama']));
+    });
 
-    expect(fn () => $this->service->create($data, $admin))
-        ->toThrow(ValidationException::class);
-});
+    it('update nama berubah → regenerate slug', function () {
+        $package = makePackageMock(['nama' => 'Lama']);
 
-it('create lolos jika harga_per_rombongan = null', function () {
-    $admin = makeAdminUserMock();
-    $data = validPackageData(['harga_per_rombongan' => null]);
+        $this->repo->shouldReceive('slugExists')->with('baru', 5)->andReturn(false);
+        $this->repo->shouldReceive('update')
+            ->once()
+            ->with($package, Mockery::on(fn ($p) => $p['slug'] === 'baru'))
+            ->andReturn($package);
 
-    $this->repo->shouldReceive('generateKode')->andReturn('PKG-1');
-    $this->repo->shouldReceive('slugExists')->andReturn(false);
-    $this->repo->shouldReceive('create')->andReturn(makePackageServiceMock());
-
-    $this->service->create($data, $admin);
-    expect(true)->toBeTrue();
-});
-
-it('create lolos jika harga_per_rombongan > 0', function () {
-    // BVA: batas bawah valid = 0.01
-    $admin = makeAdminUserMock();
-    $data = validPackageData(['harga_per_rombongan' => 0.01]);
-
-    $this->repo->shouldReceive('generateKode')->andReturn('PKG-1');
-    $this->repo->shouldReceive('slugExists')->andReturn(false);
-    $this->repo->shouldReceive('create')->andReturn(makePackageServiceMock());
-
-    $this->service->create($data, $admin);
-    expect(true)->toBeTrue();
+        $this->service->update($package, validPackageData(['nama' => 'Baru']));
+    });
 });
 
 /*
 |==========================================================================
-| update() — HAPPY PATH
+| KATEGORI 3 — EDGE CASES
 |==========================================================================
 */
 
-it('update package dengan data baru', function () {
-    $package = makePackageServiceMock(['nama' => 'Lama', 'slug' => 'lama']);
-    $data = validPackageData(['nama' => 'Baru']);
+describe('Edge Cases — update cover handling', function () {
+    it('remove_cover_image = "1" + cover lama ada → hapus + set null', function () {
+        Storage::disk('public')->put('packages/old.jpg', 'content');
+        $package = makePackageMock(['cover_image' => 'packages/old.jpg', 'nama' => 'Sama']);
 
-    $this->repo->shouldReceive('slugExists')
-        ->with('baru', 5)
-        ->andReturn(false);
+        $this->repo->shouldReceive('slugExists')->never();
+        $this->repo->shouldReceive('update')
+            ->once()
+            ->with($package, Mockery::on(fn ($p) => $p['cover_image'] === null))
+            ->andReturn($package);
 
-    $this->repo->shouldReceive('update')
-        ->once()
-        ->with($package, Mockery::on(fn ($p) => $p['nama'] === 'Baru'
-            && $p['slug'] === 'baru'
-        ))
-        ->andReturn($package);
+        $this->service->update($package, validPackageData(['nama' => 'Sama', 'remove_cover_image' => '1']));
 
-    $this->service->update($package, $data);
-    expect(true)->toBeTrue();
+        Storage::disk('public')->assertMissing('packages/old.jpg');
+    });
+
+    it('remove_cover_image = 0 (int) → tidak hapus cover', function () {
+        Storage::disk('public')->put('packages/old.jpg', 'content');
+        $package = makePackageMock(['cover_image' => 'packages/old.jpg', 'nama' => 'Sama']);
+
+        $this->repo->shouldReceive('slugExists')->never();
+        $this->repo->shouldReceive('update')
+            ->once()
+            ->with($package, Mockery::on(fn ($p) => ! isset($p['cover_image'])))
+            ->andReturn($package);
+
+        $this->service->update($package, validPackageData(['nama' => 'Sama', 'remove_cover_image' => 0]));
+
+        Storage::disk('public')->assertExists('packages/old.jpg');
+    });
+
+    it('update cover baru → hapus cover lama + simpan baru', function () {
+        Storage::disk('public')->put('packages/old.jpg', 'content');
+        $package = makePackageMock(['cover_image' => 'packages/old.jpg', 'nama' => 'Sama']);
+        $file = UploadedFile::fake()->image('new.jpg');
+
+        $this->repo->shouldReceive('slugExists')->never();
+        $this->repo->shouldReceive('update')
+            ->once()
+            ->with($package, Mockery::on(fn ($p) => is_string($p['cover_image']) && str_starts_with($p['cover_image'], 'packages/')))
+            ->andReturn($package);
+
+        $this->service->update($package, validPackageData(['nama' => 'Sama', 'cover_image' => $file]));
+
+        Storage::disk('public')->assertMissing('packages/old.jpg');
+    });
 });
 
-it('update TIDAK regenerate slug jika nama tidak berubah', function () {
-    $package = makePackageServiceMock(['nama' => 'Sama']);
-    $data = validPackageData(['nama' => 'Sama']);
+describe('Edge Cases — updateWithRelations null/invalid JSON', function () {
+    it('updateWithRelations days = null → hanya delete, tidak create', function () {
+        $package = makePackageMock(['nama' => 'Sama']);
 
-    // slugExists tidak dipanggil
-    $this->repo->shouldReceive('slugExists')->never();
+        $hasManyDays = Mockery::mock(HasMany::class);
+        $hasManyDays->shouldReceive('delete')->once();
+        $package->shouldReceive('days')->andReturn($hasManyDays);
 
-    $this->repo->shouldReceive('update')
-        ->once()
-        ->with($package, Mockery::on(fn ($p) => ! isset($p['slug'])))
-        ->andReturn($package);
+        $hasManyFacilities = Mockery::mock(HasMany::class);
+        $hasManyFacilities->shouldReceive('delete')->once();
+        $package->shouldReceive('facilities')->andReturn($hasManyFacilities);
 
-    $this->service->update($package, $data);
-});
+        $this->repo->shouldReceive('slugExists')->never();
+        $this->repo->shouldReceive('update')->once()->andReturn($package);
 
-it('update cover_image jika dikirim', function () {
-    $package = makePackageServiceMock(['nama' => 'Sama']);
-    $data = validPackageData([
-        'nama' => 'Sama',
-        'cover_image' => 'images/new.jpg',
-    ]);
+        $package->shouldReceive('refresh')->andReturnSelf();
+        $package->shouldReceive('load')->andReturnSelf();
 
-    $this->repo->shouldReceive('slugExists')->never();
+        $this->service->updateWithRelations($package, validPackageData([
+            'nama' => 'Sama',
+            'days' => null,
+            'facilities' => null,
+        ]));
+    });
 
-    $this->repo->shouldReceive('update')
-        ->once()
-        ->with($package, Mockery::on(fn ($p) => $p['cover_image'] === 'images/new.jpg'
-        ))
-        ->andReturn($package);
+    it('updateWithRelations days = "invalid json" → tidak crash', function () {
+        $package = makePackageMock(['nama' => 'Sama']);
 
-    $this->service->update($package, $data);
+        $hasManyDays = Mockery::mock(HasMany::class);
+        $hasManyDays->shouldReceive('delete')->once();
+        $package->shouldReceive('days')->andReturn($hasManyDays);
+
+        $hasManyFacilities = Mockery::mock(HasMany::class);
+        $hasManyFacilities->shouldReceive('delete')->once();
+        $package->shouldReceive('facilities')->andReturn($hasManyFacilities);
+
+        $this->repo->shouldReceive('slugExists')->never();
+        $this->repo->shouldReceive('update')->once()->andReturn($package);
+
+        $package->shouldReceive('refresh')->andReturnSelf();
+        $package->shouldReceive('load')->andReturnSelf();
+
+        $this->service->updateWithRelations($package, validPackageData([
+            'nama' => 'Sama',
+            'days' => 'invalid json',
+            'facilities' => 'invalid json',
+        ]));
+    });
 });
 
 /*
 |==========================================================================
-| generateUniqueSlug() — BVA & EDGE CASES
+| KATEGORI 4 — HAPPY PATH
 |==========================================================================
 */
 
-it('generateUniqueSlug return slug biasa jika belum ada', function () {
-    $this->repo->shouldReceive('slugExists')
-        ->with('paket-baru', null)
-        ->once()
-        ->andReturn(false);
+describe('Happy Path — create', function () {
+    it('create → return Package, status DRAFT', function () {
+        $mitra = makeUser(['id' => 1, 'role' => 'mitra']);
+        $created = makePackageMock(['status' => PackageStatus::DRAFT]);
 
-    expect($this->service->generateUniqueSlug('Paket Baru'))->toBe('paket-baru');
+        $this->repo->shouldReceive('slugExists')->andReturn(false);
+        $this->repo->shouldReceive('generateKode')->once()->with((int) now()->year)->andReturn('PKG-2026-001');
+        $this->repo->shouldReceive('create')
+            ->once()
+            ->with(Mockery::on(fn ($p) => $p['status'] === PackageStatus::DRAFT->value
+                && $p['kode'] === 'PKG-2026-001'
+                && $p['mitra_id'] === 1
+                && $p['slug'] === 'paket-baru'))
+            ->andReturn($created);
+
+        $result = $this->service->create(validPackageData(), $mitra);
+
+        expect($result)->toBe($created);
+    });
 });
 
-it('generateUniqueSlug tambah -2 jika slug pertama sudah ada', function () {
-    // BVA: collision pertama → -2
-    $this->repo->shouldReceive('slugExists')
-        ->with('paket-baru', null)
-        ->once()
-        ->andReturn(true);
-    $this->repo->shouldReceive('slugExists')
-        ->with('paket-baru-2', null)
-        ->once()
-        ->andReturn(false);
+describe('Happy Path — update', function () {
+    it('update semua field + slug regenerated (nama berubah)', function () {
+        $package = makePackageMock(['nama' => 'Lama']);
 
-    expect($this->service->generateUniqueSlug('Paket Baru'))->toBe('paket-baru-2');
+        $this->repo->shouldReceive('slugExists')->andReturn(false);
+        $this->repo->shouldReceive('update')
+            ->once()
+            ->with($package, Mockery::on(fn ($p) => $p['nama'] === 'Baru'
+                && $p['slug'] === 'baru'))
+            ->andReturn($package);
+
+        $result = $this->service->update($package, validPackageData(['nama' => 'Baru']));
+
+        expect($result)->toBe($package);
+    });
 });
 
-it('generateUniqueSlug tambah -3 jika -2 juga sudah ada', function () {
-    // BVA: collision beruntun
-    $this->repo->shouldReceive('slugExists')
-        ->with('paket-baru', null)
-        ->once()
-        ->andReturn(true);
-    $this->repo->shouldReceive('slugExists')
-        ->with('paket-baru-2', null)
-        ->once()
-        ->andReturn(true);
-    $this->repo->shouldReceive('slugExists')
-        ->with('paket-baru-3', null)
-        ->once()
-        ->andReturn(false);
+describe('Happy Path — updateWithRelations', function () {
+    it('update package + sync days + sync facilities (JSON null, tidak butuh DB)', function () {
+        $package = makePackageMock(['nama' => 'Sama']);
 
-    expect($this->service->generateUniqueSlug('Paket Baru'))->toBe('paket-baru-3');
+        $this->repo->shouldReceive('slugExists')->never();
+        $this->repo->shouldReceive('update')->once()->andReturn($package);
+
+        $hasManyDays = Mockery::mock(HasMany::class);
+        $hasManyDays->shouldReceive('delete')->once();
+        $package->shouldReceive('days')->andReturn($hasManyDays);
+
+        $hasManyFacilities = Mockery::mock(HasMany::class);
+        $hasManyFacilities->shouldReceive('delete')->once();
+        $package->shouldReceive('facilities')->andReturn($hasManyFacilities);
+
+        $package->shouldReceive('refresh')->once()->andReturnSelf();
+        $package->shouldReceive('load')->once()->with(['days', 'facilities'])->andReturnSelf();
+
+        // JSON null → skip PackageDay::create, PackageFacility::create
+        // Test flow (refresh + load), bukan persistence
+        $this->service->updateWithRelations($package, validPackageData([
+            'nama' => 'Sama',
+            'days' => null,
+            'facilities' => null,
+        ]));
+    });
 });
 
-it('generateUniqueSlug pakai slug dengan exceptId', function () {
-    // Kasus update: slug milik sendiri tidak dianggap konflik
-    $this->repo->shouldReceive('slugExists')
-        ->with('paket-test', 5)
-        ->once()
-        ->andReturn(false);
+describe('Happy Path — publish', function () {
+    it('publish sukses → status AKTIF', function () {
+        $package = makePackageMock(['status' => PackageStatus::DRAFT, 'durasi_hari' => 1]);
 
-    expect($this->service->generateUniqueSlug('Paket Test', 5))->toBe('paket-test');
+        $package->shouldReceive('days')->andReturn(Mockery::mock(HasMany::class, function ($m) {
+            $m->shouldReceive('count')->andReturn(1);
+        }));
+        $package->shouldReceive('facilities')->andReturnUsing(function () {
+            $hasMany = Mockery::mock(HasMany::class);
+            $hasMany->shouldReceive('where')->andReturnSelf();
+            $hasMany->shouldReceive('exists')->andReturn(true);
+
+            return $hasMany;
+        });
+
+        $this->repo->shouldReceive('update')
+            ->once()
+            ->with($package, ['status' => PackageStatus::AKTIF->value])
+            ->andReturn($package);
+
+        $this->service->publish($package);
+    });
 });
 
-it('generateUniqueSlug fallback ke random jika counter > 1000 (edge case)', function () {
-    // Edge: 1000 collision berturut-turut
-    for ($i = 1; $i <= 1000; $i++) {
-        $slug = $i === 1 ? 'paket-baru' : "paket-baru-{$i}";
-        $this->repo->shouldReceive('slugExists')
-            ->with($slug, null)
-            ->andReturn(true);
-    }
+describe('Happy Path — archive / restore / delete', function () {
+    it('archive dari AKTIF → ARSIP', function () {
+        $package = makePackageMock(['status' => PackageStatus::AKTIF]);
 
-    // Fallback: random suffix
-    $this->repo->shouldReceive('slugExists')
-        ->with(Mockery::pattern('/^paket-baru-[a-zA-Z0-9]{6}$/'), null)
-        ->once()
-        ->andReturn(false);
+        $this->repo->shouldReceive('update')
+            ->once()
+            ->with($package, ['status' => PackageStatus::ARSIP->value])
+            ->andReturn($package);
 
-    $result = $this->service->generateUniqueSlug('Paket Baru');
+        $this->service->archive($package);
+    });
 
-    expect($result)->toStartWith('paket-baru-');
-    expect(strlen($result))->toBeGreaterThan(strlen('paket-baru-'));
+    it('restore dari ARSIP → DRAFT', function () {
+        $package = makePackageMock(['status' => PackageStatus::ARSIP]);
+
+        $this->repo->shouldReceive('update')
+            ->once()
+            ->with($package, ['status' => PackageStatus::DRAFT->value])
+            ->andReturn($package);
+
+        $this->service->restore($package);
+    });
+
+    it('delete tanpa booking → repo delete dipanggil', function () {
+        $package = makePackageMock();
+
+        $package->shouldReceive('bookings')->andReturn(Mockery::mock(HasMany::class, function ($m) {
+            $m->shouldReceive('exists')->andReturn(false);
+        }));
+
+        $this->repo->shouldReceive('delete')->once()->with($package);
+
+        $this->service->delete($package);
+    });
 });
 
 /*
 |==========================================================================
-| publish() — HAPPY PATH & NEGATIVE
+| KATEGORI 5 — NEGATIVE PATH
 |==========================================================================
 */
 
-it('publish throw jika sudah aktif', function () {
-    $package = makePackageServiceMock(['status' => PackageStatus::AKTIF]);
+describe('Negative Path — findDetail', function () {
+    it('findDetail → null → ValidationException', function () {
+        $this->repo->shouldReceive('findById')->with(999)->andReturn(null);
 
-    expect(fn () => $this->service->publish($package))
-        ->toThrow(ValidationException::class);
+        expect(fn () => $this->service->findDetail(999))
+            ->toThrow(ValidationException::class);
+    });
 });
 
-it('publish throw jika tidak punya days', function () {
-    $package = makePackageServiceMock(['status' => PackageStatus::DRAFT]);
-    $package->shouldReceive('hasDays')->once()->andReturn(false);
+describe('Negative Path — publish state', function () {
+    it('publish sudah AKTIF → ValidationException', function () {
+        $package = makePackageMock(['status' => PackageStatus::AKTIF]);
 
-    expect(fn () => $this->service->publish($package))
-        ->toThrow(ValidationException::class);
+        expect(fn () => $this->service->publish($package))
+            ->toThrow(ValidationException::class);
+    });
+
+    it('publish days < durasi_hari → ValidationException', function () {
+        $package = makePackageMock(['status' => PackageStatus::DRAFT, 'durasi_hari' => 3]);
+
+        $package->shouldReceive('days')->andReturn(Mockery::mock(HasMany::class, function ($m) {
+            $m->shouldReceive('count')->andReturn(1);
+        }));
+
+        expect(fn () => $this->service->publish($package))
+            ->toThrow(ValidationException::class);
+    });
+
+    it('publish tanpa fasilitas include → ValidationException', function () {
+        $package = makePackageMock(['status' => PackageStatus::DRAFT, 'durasi_hari' => 1]);
+
+        $package->shouldReceive('days')->andReturn(Mockery::mock(HasMany::class, function ($m) {
+            $m->shouldReceive('count')->andReturn(1);
+        }));
+
+        $hasMany = Mockery::mock(HasMany::class);
+        $hasMany->shouldReceive('where')->with('tipe', 'include')->andReturnSelf();
+        $hasMany->shouldReceive('exists')->andReturn(false);
+        $package->shouldReceive('facilities')->andReturn($hasMany);
+
+        expect(fn () => $this->service->publish($package))
+            ->toThrow(ValidationException::class);
+    });
+
+    it('publish tanpa fasilitas exclude → ValidationException', function () {
+        $package = makePackageMock(['status' => PackageStatus::DRAFT, 'durasi_hari' => 1]);
+
+        $package->shouldReceive('days')->andReturn(Mockery::mock(HasMany::class, function ($m) {
+            $m->shouldReceive('count')->andReturn(1);
+        }));
+
+        $callCount = 0;
+        $hasMany = Mockery::mock(HasMany::class);
+        $hasMany->shouldReceive('where')->andReturnSelf();
+        $hasMany->shouldReceive('exists')->andReturnUsing(function () use (&$callCount) {
+            $callCount++;
+
+            return $callCount === 1;
+        });
+        $package->shouldReceive('facilities')->andReturn($hasMany);
+
+        expect(fn () => $this->service->publish($package))
+            ->toThrow(ValidationException::class);
+    });
 });
 
-it('publish throw jika tidak punya fasilitas include', function () {
-    $package = makePackageServiceMock(['status' => PackageStatus::DRAFT]);
-    $package->shouldReceive('hasDays')->andReturn(true);
+describe('Negative Path — archive / restore / delete', function () {
+    it('archive sudah ARSIP → ValidationException', function () {
+        $package = makePackageMock(['status' => PackageStatus::ARSIP]);
 
-    $facilitiesRelation = makeHasManyForFacilities(exists: false);
-    $package->shouldReceive('facilities')->andReturn($facilitiesRelation);
+        expect(fn () => $this->service->archive($package))
+            ->toThrow(ValidationException::class);
+    });
 
-    expect(fn () => $this->service->publish($package))
-        ->toThrow(ValidationException::class);
-});
+    it('restore bukan ARSIP → ValidationException', function () {
+        $package = makePackageMock(['status' => PackageStatus::DRAFT]);
 
-it('publish berhasil jika semua prasyarat terpenuhi', function () {
-    $package = makePackageServiceMock(['status' => PackageStatus::DRAFT]);
-    $package->shouldReceive('hasDays')->andReturn(true);
+        expect(fn () => $this->service->restore($package))
+            ->toThrow(ValidationException::class);
+    });
 
-    $facilitiesRelation = makeHasManyForFacilities(exists: true);
-    $package->shouldReceive('facilities')->andReturn($facilitiesRelation);
+    it('delete dengan booking → ValidationException', function () {
+        $package = makePackageMock();
 
-    $this->repo->shouldReceive('update')
-        ->once()
-        ->with($package, ['status' => PackageStatus::AKTIF->value])
-        ->andReturn($package);
+        $package->shouldReceive('bookings')->andReturn(Mockery::mock(HasMany::class, function ($m) {
+            $m->shouldReceive('exists')->andReturn(true);
+        }));
 
-    $result = $this->service->publish($package);
+        $this->repo->shouldReceive('delete')->never();
 
-    expect($result)->toBe($package);
+        expect(fn () => $this->service->delete($package))
+            ->toThrow(ValidationException::class);
+    });
 });
 
 /*
 |==========================================================================
-| archive() & restore()
+| KATEGORI 6 — PASSTHROUGH
 |==========================================================================
 */
 
-it('archive throw jika sudah arsip', function () {
-    $package = makePackageServiceMock(['status' => PackageStatus::ARSIP]);
+describe('Passthrough — READ methods', function () {
+    it('paginate pass-through', function () {
+        $paginator = Mockery::mock(LengthAwarePaginator::class);
 
-    expect(fn () => $this->service->archive($package))
-        ->toThrow(ValidationException::class);
-});
+        $this->repo->shouldReceive('paginate')
+            ->once()
+            ->with(['search' => 'bali'], 25)
+            ->andReturn($paginator);
 
-it('archive berhasil mengubah status ke arsip', function () {
-    $package = makePackageServiceMock(['status' => PackageStatus::AKTIF]);
+        expect($this->service->paginate(['search' => 'bali'], 25))->toBe($paginator);
+    });
 
-    $this->repo->shouldReceive('update')
-        ->once()
-        ->with($package, ['status' => PackageStatus::ARSIP->value])
-        ->andReturn($package);
+    it('allAktif pass-through', function () {
+        $collection = new Collection;
 
-    expect($this->service->archive($package))->toBe($package);
-});
+        $this->repo->shouldReceive('allAktif')->once()->andReturn($collection);
 
-it('restore throw jika status bukan arsip', function () {
-    $package = makePackageServiceMock(['status' => PackageStatus::DRAFT]);
+        expect($this->service->allAktif())->toBe($collection);
+    });
 
-    expect(fn () => $this->service->restore($package))
-        ->toThrow(ValidationException::class);
-});
+    it('getLatestForClient pass-through', function () {
+        $collection = new Collection;
 
-it('restore berhasil mengubah status ke draft', function () {
-    $package = makePackageServiceMock(['status' => PackageStatus::ARSIP]);
+        $this->repo->shouldReceive('getLatestForClient')->once()->with(4)->andReturn($collection);
 
-    $this->repo->shouldReceive('update')
-        ->once()
-        ->with($package, ['status' => PackageStatus::DRAFT->value])
-        ->andReturn($package);
+        expect($this->service->getLatestForClient())->toBe($collection);
+    });
 
-    expect($this->service->restore($package))->toBe($package);
-});
+    it('countByStatus pass-through', function () {
+        $this->repo->shouldReceive('countByStatus')
+            ->once()
+            ->andReturn(['draft' => 2, 'aktif' => 5]);
 
-/*
-|==========================================================================
-| delete()
-|==========================================================================
-*/
-
-it('delete throw jika package punya booking', function () {
-    $package = makePackageServiceMock();
-
-    $bookingsRelation = makeHasManyForBookings(exists: true);
-    $package->shouldReceive('bookings')->andReturn($bookingsRelation);
-
-    $this->repo->shouldReceive('delete')->never();
-
-    expect(fn () => $this->service->delete($package))
-        ->toThrow(ValidationException::class);
-});
-
-it('delete berhasil jika tidak ada booking', function () {
-    $package = makePackageServiceMock();
-
-    $bookingsRelation = makeHasManyForBookings(exists: false);
-    $package->shouldReceive('bookings')->andReturn($bookingsRelation);
-
-    $this->repo->shouldReceive('delete')
-        ->once()
-        ->with($package);
-
-    $this->service->delete($package);
-
-    expect(true)->toBeTrue();
+        expect($this->service->countByStatus())
+            ->toBe(['draft' => 2, 'aktif' => 5]);
+    });
 });

@@ -4,7 +4,6 @@ namespace App\Providers;
 
 use App\Events\BookingConfirmed;
 use App\Listeners\CreateTripForBooking;
-use App\Listeners\GenerateETicketListener;
 use App\Listeners\NotifyClientListener;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
@@ -37,7 +36,6 @@ final class EventServiceProvider extends ServiceProvider
     protected $listen = [
         BookingConfirmed::class => [
             CreateTripForBooking::class,
-            GenerateETicketListener::class,
             NotifyClientListener::class,
         ],
     ];

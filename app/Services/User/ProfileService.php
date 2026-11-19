@@ -75,7 +75,7 @@ class ProfileService
 
         $filtered = array_intersect_key($data, array_flip($allowedFields));
 
-        // ✅ FIX PHPStan: `$user->profile` sudah di-narrow ke Profile
+        //  FIX PHPStan: `$user->profile` sudah di-narrow ke Profile
         // (bukan Model) karena return type method profile() = HasOne<Profile, $this>
         // dan sudah di-check `if (! $user->profile)` di atas.
         /** @var Profile $profile */
@@ -160,7 +160,7 @@ class ProfileService
         }
 
         // === Hapus logo lama jika ada ===
-        // ✅ FIX PHPStan: `$user->profile` di-narrow ke `Profile|null` via
+        //  FIX PHPStan: `$user->profile` di-narrow ke `Profile|null` via
         // docblock @var + null-safe operator `?->logo`.
         /** @var Profile|null $profile */
         $profile = $user->profile;
@@ -178,7 +178,7 @@ class ProfileService
             $extension
         );
 
-        // ✅ FIX PHPStan: `storeAs()` bisa return `string|false`.
+        //  FIX PHPStan: `storeAs()` bisa return `string|false`.
         // Kita cast dan cek false → throw exception.
         $path = $file->storeAs('logos', $filename, 'public');
 

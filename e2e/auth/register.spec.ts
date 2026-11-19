@@ -1,263 +1,526 @@
-import { test, expect, uniqueEmail, uniqueUsername } from '../fixtures/auth';
-
+// e2e/auth/register.spec.ts
 /**
- * Register — Alur Registrasi Client
+ * Test: Auth — Register (Client)
  *
- * CATATAN:
- * - Route `/register` menggunakan `auth.throttle:register`.
- * - Throttle ini di-handle oleh `AuthThrottleResponse` dengan key
- *   `strtolower(email)|ip`.
- * - Di testing, `AUTH_THROTTLE_REGISTER_TEST_OVERRIDE` di-set ke 1000
- *   (default) agar test fungsional tidak ter-throttle.
+ * Menguji:
+ * - Access control (guest only, logged-in redirect)
+ * - Contract (form register lengkap)
+ * - Validasi browser (required, email format, password mismatch, terms)
+ * - Validasi server (email/username duplikat)
+ * - Mutation (register valid → auto-login → /client/dashboard)
+ * - Password strength indicator
+ * - Toggle password & toggle konfirmasi
+ *
+ * Backend: AuthController@register → AuthService::registerClient
+ * - Role otomatis = client
+ * - must_change_password = false (password dipilih sendiri)
+ * - Auto-login setelah register
+ * - Redirect ke /client/dashboard
+ *
+ * Seed user (dari TestSeeder):
+ * - admin@test.com / password
+ * - mitra@test.com / password
+ * - client@test.com / password
  */
 
-test.describe('Register — Alur Registrasi Client', () => {
-    /**
-     * Helper: submit form register dan tunggu response.
-     */
-    async function submitRegister(
-        page: any,
-        data: {
-            name?: string;
-            username?: string;
-            email?: string;
-            password?: string;
-            password_confirmation?: string;
-        },
-    ): Promise<void> {
-        if (data.name !== undefined) await page.fill('input#name', data.name);
-        if (data.username !== undefined)
-            await page.fill('input#username', data.username);
-        if (data.email !== undefined)
-            await page.fill('input#email', data.email);
-        if (data.password !== undefined)
-            await page.fill('input#password', data.password);
-        if (data.password_confirmation !== undefined)
-            await page.fill(
-                'input#password_confirmation',
-                data.password_confirmation,
+import { test, expect } from '../fixtures/base';
+import { SEL } from '../fixtures/selectors';
+import { SEED_USERS } from '../fixtures/auth';
+
+// ==========================================
+// KONSTANTA
+// ==========================================
+
+const VALID_PASSWORD = 'password123';
+
+// ==========================================
+// TEST SUITE
+// ==========================================
+
+test.describe('Auth — Register (Client)', () => {
+    // ==========================================
+    // ACCESS CONTROL
+    // ==========================================
+
+    test.describe('Access Control', () => {
+        test('guest bisa akses form register', async ({ page, asGuest }) => {
+            await asGuest();
+            await page.goto('/register');
+
+            await expect(page).toHaveURL('/register');
+            await expect(
+                page.getByRole('heading', { name: /^Daftar Akun/i }),
+            ).toBeVisible();
+        });
+
+        test('user sudah login akses /register → redirect dashboard', async ({
+            page,
+            asClient,
+        }) => {
+            await asClient();
+            await page.goto('/register');
+
+            // Laravel `guest` middleware redirect ke dashboard
+            await expect(page).toHaveURL('/client/dashboard');
+        });
+
+        test('admin sudah login akses /register → redirect admin dashboard', async ({
+            page,
+            asAdmin,
+        }) => {
+            await asAdmin();
+            await page.goto('/register');
+
+            await expect(page).toHaveURL('/admin/dashboard');
+        });
+    });
+
+    // ==========================================
+    // CONTRACT — ELEMEN HALAMAN
+    // ==========================================
+
+    test.describe('Contract', () => {
+        test.beforeEach(async ({ page, asGuest }) => {
+            await asGuest();
+            await page.goto('/register');
+        });
+
+        test('menampilkan heading "Daftar Akun"', async ({ page }) => {
+            await expect(
+                page.getByRole('heading', { name: /^Daftar Akun/i }),
+            ).toBeVisible();
+        });
+
+        test('menampilkan field: name, username, email, password, konfirmasi', async ({
+            page,
+        }) => {
+            await expect(SEL.AUTH.register.name(page)).toBeVisible();
+            await expect(SEL.AUTH.register.username(page)).toBeVisible();
+            await expect(SEL.AUTH.register.email(page)).toBeVisible();
+            await expect(SEL.AUTH.register.password(page)).toBeVisible();
+            await expect(SEL.AUTH.register.passwordConfirmation(page)).toBeVisible();
+        });
+
+        test('menampilkan checkbox terms', async ({ page }) => {
+            await expect(SEL.AUTH.register.termsCheckbox(page)).toBeVisible();
+        });
+
+        test('menampilkan tombol "Buat Akun"', async ({ page }) => {
+            await expect(SEL.AUTH.register.submit(page)).toBeVisible();
+        });
+
+        test('menampilkan link "Masuk sekarang"', async ({ page }) => {
+            await expect(SEL.AUTH.register.loginLink(page)).toBeVisible();
+        });
+
+        test('menampilkan link "Login with Google"', async ({ page }) => {
+            await expect(
+                page.getByRole('link', { name: /Google/i }),
+            ).toBeVisible();
+        });
+    });
+
+    // ==========================================
+    // CONTRACT — ATRIBUT INPUT
+    // ==========================================
+
+    test.describe('Contract — Atribut Input', () => {
+        test.beforeEach(async ({ page, asGuest }) => {
+            await asGuest();
+            await page.goto('/register');
+        });
+
+        test('field name bertipe text', async ({ page }) => {
+            await expect(SEL.AUTH.register.name(page)).toHaveAttribute(
+                'type',
+                'text',
             );
-
-        await Promise.all([
-            page.waitForResponse(
-                (resp: any) =>
-                    resp.url().includes('/register') &&
-                    resp.request().method() === 'POST',
-                { timeout: 15_000 },
-            ),
-            page.click('button[type="submit"]'),
-        ]);
-    }
-
-    test.beforeEach(async ({ page }) => {
-        await page.goto('/register');
-    });
-
-    /*
-    |--------------------------------------------------------------------------
-    | Happy Path — Alur Sukses
-    |--------------------------------------------------------------------------
-    */
-
-    test('client baru bisa register dan langsung masuk dashboard', async ({
-        page,
-    }) => {
-        const email = uniqueEmail('register');
-        const username = uniqueUsername('reg');
-
-        await submitRegister(page, {
-            name: 'Budi Test E2E',
-            username,
-            email,
-            password: 'password123',
-            password_confirmation: 'password123',
         });
 
-        // Setelah register, harus diarahkan ke dashboard client
-        await expect(page).toHaveURL('/client/dashboard', { timeout: 15_000 });
-    });
-
-    /*
-    |--------------------------------------------------------------------------
-    | Negative Path — Validasi Form
-    |--------------------------------------------------------------------------
-    */
-
-    test('gagal register jika email sudah terdaftar', async ({ page }) => {
-        await submitRegister(page, {
-            name: 'Duplikat',
-            username: uniqueUsername('dup'),
-            email: 'client@titiktemu.test', // Email sudah ada di seed
-            password: 'password123',
-            password_confirmation: 'password123',
+        test('field email bertipe email', async ({ page }) => {
+            await expect(SEL.AUTH.register.email(page)).toHaveAttribute(
+                'type',
+                'email',
+            );
         });
 
-        // Tetap di halaman register
-        await expect(page).toHaveURL('/register');
-
-        // Pesan error harus muncul di bawah input email
-        await expect(
-            page.getByText(/Email ini sudah terdaftar/i),
-        ).toBeVisible({ timeout: 10_000 });
-    });
-
-    test('gagal register jika username sudah dipakai', async ({ page }) => {
-        await submitRegister(page, {
-            name: 'Duplikat',
-            username: 'admin', // Username sudah ada
-            email: uniqueEmail('user'),
-            password: 'password123',
-            password_confirmation: 'password123',
+        test('field password bertipe password', async ({ page }) => {
+            await expect(SEL.AUTH.register.password(page)).toHaveAttribute(
+                'type',
+                'password',
+            );
         });
 
-        await expect(page).toHaveURL('/register');
-        await expect(
-            page.getByText(/Username ini sudah digunakan/i),
-        ).toBeVisible({ timeout: 10_000 });
-    });
-
-    test('gagal register jika password kurang dari 8 karakter', async ({
-        page,
-    }) => {
-        await submitRegister(page, {
-            name: 'Budi',
-            username: uniqueUsername('short'),
-            email: uniqueEmail('short'),
-            password: 'short',
-            password_confirmation: 'short',
+        test('field name required', async ({ page }) => {
+            await expect(SEL.AUTH.register.name(page)).toHaveAttribute(
+                'required',
+                '',
+            );
         });
 
-        await expect(page).toHaveURL('/register');
-        await expect(
-            page.getByText(/minimal harus 8 karakter/i),
-        ).toBeVisible({ timeout: 10_000 });
-    });
-
-    test('gagal register jika konfirmasi password tidak cocok', async ({
-        page,
-    }) => {
-        await page.fill('input#name', 'Budi');
-        await page.fill('input#username', uniqueUsername('mismatch'));
-        await page.fill('input#email', uniqueEmail('mismatch'));
-        await page.fill('input#password', 'password123');
-        await page.fill('input#password_confirmation', 'password456');
-
-        // Karena passwordMismatch true di frontend, tombol disabled
-        // Kita bisa cek tombol disabled atau cek pesan error real-time
-        await expect(
-            page.locator('text=Konfirmasi password tidak cocok'),
-        ).toBeVisible();
-
-        const submitButton = page.locator('button[type="submit"]');
-        await expect(submitButton).toBeDisabled();
-    });
-
-    test('gagal register jika nama kosong', async ({ page }) => {
-        // Isi field lain, tapi tidak isi nama
-        await page.fill('input#username', uniqueUsername('noname'));
-        await page.fill('input#email', uniqueEmail('noname'));
-        await page.fill('input#password', 'password123');
-        await page.fill('input#password_confirmation', 'password123');
-
-        // Browser akan blokir submit karena input required
-        await page.click('button[type="submit"]');
-
-        // Tetap di halaman register
-        await expect(page).toHaveURL('/register');
-    });
-
-    /*
-    |--------------------------------------------------------------------------
-    | Error Handling (Level UI)
-    |--------------------------------------------------------------------------
-    */
-
-    test('error dari server ditampilkan sebagai teks merah di form', async ({
-        page,
-    }) => {
-        await submitRegister(page, {
-            name: 'Duplikat',
-            username: uniqueUsername('err'),
-            email: 'admin@titiktemu.test', // Email sudah ada
-            password: 'password123',
-            password_confirmation: 'password123',
+        test('field username required', async ({ page }) => {
+            await expect(SEL.AUTH.register.username(page)).toHaveAttribute(
+                'required',
+                '',
+            );
         });
 
-        // Pesan error harus berwarna merah (text-pink class)
-        const errorMessage = page.locator('p.text-pink').first();
-        await expect(errorMessage).toBeVisible({ timeout: 10_000 });
+        test('field email required', async ({ page }) => {
+            await expect(SEL.AUTH.register.email(page)).toHaveAttribute(
+                'required',
+                '',
+            );
+        });
 
-        // Verifikasi warnanya bukan hitam
-        const color = await errorMessage.evaluate(
-            (el) => getComputedStyle(el).color,
-        );
-        expect(color).not.toBe('rgb(0, 0, 0)');
+        test('field password required', async ({ page }) => {
+            await expect(SEL.AUTH.register.password(page)).toHaveAttribute(
+                'required',
+                '',
+            );
+        });
+
+        test('field password_confirmation required', async ({ page }) => {
+            await expect(
+                SEL.AUTH.register.passwordConfirmation(page),
+            ).toHaveAttribute('required', '');
+        });
+
+        test('semua input punya autocomplete yang sesuai', async ({ page }) => {
+            await expect(SEL.AUTH.register.name(page)).toHaveAttribute(
+                'autocomplete',
+                'name',
+            );
+            await expect(SEL.AUTH.register.email(page)).toHaveAttribute(
+                'autocomplete',
+                'email',
+            );
+            await expect(SEL.AUTH.register.username(page)).toHaveAttribute(
+                'autocomplete',
+                'username',
+            );
+            await expect(SEL.AUTH.register.password(page)).toHaveAttribute(
+                'autocomplete',
+                'new-password',
+            );
+            await expect(
+                SEL.AUTH.register.passwordConfirmation(page),
+            ).toHaveAttribute('autocomplete', 'new-password');
+        });
     });
 
-    /*
-    |--------------------------------------------------------------------------
-    | UI Interaction — Toggle Password & Strength
-    |--------------------------------------------------------------------------
-    */
+    // ==========================================
+    // CONTRACT — PASSWORD STRENGTH
+    // ==========================================
 
-    test('toggle password menampilkan dan menyembunyikan password', async ({
-        page,
-    }) => {
-        const passwordInput = page.locator('input#password');
-        await expect(passwordInput).toHaveAttribute('type', 'password');
+    test.describe('Contract — Password Strength Indicator', () => {
+        test.beforeEach(async ({ page, asGuest }) => {
+            await asGuest();
+            await page.goto('/register');
+        });
 
-        // Klik toggle pertama (untuk password)
-        const toggle = page.getByLabel('Tampilkan password').first();
-        await toggle.click();
+        test('menampilkan checklist password saat password diisi', async ({ page }) => {
+            // Belum ada checklist saat password kosong
+            await expect(
+                page.getByText(/Minimal 8 karakter/i),
+            ).not.toBeVisible();
 
-        await expect(passwordInput).toHaveAttribute('type', 'text');
+            await SEL.AUTH.register.password(page).fill('abc');
+
+            // FIX: teks FE = "Minimal 8 karakter"
+            await expect(
+                page.getByText(/Minimal 8 karakter/i).first(),
+            ).toBeVisible();
+        });
+
+        test('label "Lemah" muncul untuk password pendek', async ({ page }) => {
+            await SEL.AUTH.register.password(page).fill('abc');
+
+            await expect(
+                page.getByText(/^Lemah$/i).first(),
+            ).toBeVisible();
+        });
+
+        test('label "Kuat" muncul untuk password kompleks', async ({ page }) => {
+            await SEL.AUTH.register.password(page).fill('Password123!');
+
+            await expect(
+                page.getByText(/Kuat|Sangat Kuat/i).first(),
+            ).toBeVisible();
+        });
     });
 
-    test('indikator kekuatan password muncul saat password diisi', async ({
-        page,
-    }) => {
-        await page.fill('input#password', 'abc');
-        await expect(page.locator('text=Lemah')).toBeVisible();
 
-        await page.fill('input#password', 'Abcdefg1');
-        await expect(page.locator('text=Kuat')).toBeVisible();
+    // ==========================================
+    // CONTRACT — TOGGLE PASSWORD
+    // ==========================================
 
-        await page.fill('input#password', 'Abcdefgh123!');
-        await expect(page.locator('text=Sangat Kuat')).toBeVisible();
+    test.describe('Contract — Toggle Password', () => {
+        test.beforeEach(async ({ page, asGuest }) => {
+            await asGuest();
+            await page.goto('/register');
+        });
+
+        test('toggle password utama mengubah type', async ({ page }) => {
+            const input = SEL.AUTH.register.password(page);
+            await expect(input).toHaveAttribute('type', 'password');
+
+            // FIX: aria-label spesifik untuk field password
+            await page.getByRole('button', { name: /^Tampilkan password$/i }).click();
+            await expect(input).toHaveAttribute('type', 'text');
+        });
+
+        test('toggle konfirmasi password mengubah type', async ({ page }) => {
+            const input = SEL.AUTH.register.passwordConfirmation(page);
+            await expect(input).toHaveAttribute('type', 'password');
+
+            // FIX: aria-label spesifik untuk field konfirmasi
+            await page.getByRole('button', {
+                name: /Tampilkan konfirmasi password/i,
+            }).click();
+            await expect(input).toHaveAttribute('type', 'text');
+        });
     });
 
-    /*
-    |--------------------------------------------------------------------------
-    | Usability & Accessibility (a11y)
-    |--------------------------------------------------------------------------
-    */
+    // ==========================================
+    // VALIDASI BROWSER (submit diblokir HTML5 / JS)
+    // ==========================================
 
-    test('semua input memiliki label yang terasosiasi', async ({ page }) => {
-        await expect(page.locator('label[for="name"]')).toBeVisible();
-        await expect(page.locator('label[for="username"]')).toBeVisible();
-        await expect(page.locator('label[for="email"]')).toBeVisible();
-        await expect(page.locator('label[for="password"]')).toBeVisible();
-        await expect(
-            page.locator('label[for="password_confirmation"]'),
-        ).toBeVisible();
+   test.describe('Validasi Browser', () => {
+        test.beforeEach(async ({ page, asGuest }) => {
+            await asGuest();
+            await page.goto('/register');
+        });
+
+        test('submit tanpa name → tetap di /register', async ({ page }) => {
+            await SEL.AUTH.register.email(page).fill('test@example.com');
+            await SEL.AUTH.register.username(page).fill('testuser');
+            await SEL.AUTH.register.password(page).fill(VALID_PASSWORD);
+            await SEL.AUTH.register.passwordConfirmation(page).fill(VALID_PASSWORD);
+            await SEL.AUTH.register.termsCheckbox(page).check();  // FIX: centang terms dulu
+
+            await SEL.AUTH.register.submit(page).click();
+
+            await expect(page).toHaveURL('/register');
+        });
+
+        test('tombol submit disabled saat terms belum dicentang', async ({ page }) => {
+            await SEL.AUTH.register.name(page).fill('Test User');
+            await SEL.AUTH.register.username(page).fill('testuser');
+            await SEL.AUTH.register.email(page).fill('test@example.com');
+            await SEL.AUTH.register.password(page).fill(VALID_PASSWORD);
+            await SEL.AUTH.register.passwordConfirmation(page).fill(VALID_PASSWORD);
+
+            // FIX: tombol disabled by design saat terms kosong
+            await expect(SEL.AUTH.register.submit(page)).toBeDisabled();
+
+            // Setelah centang terms, tombol enabled
+            await SEL.AUTH.register.termsCheckbox(page).check();
+            await expect(SEL.AUTH.register.submit(page)).not.toBeDisabled();
+        });
+
+        test('password mismatch → tombol submit disabled', async ({ page }) => {
+            await SEL.AUTH.register.name(page).fill('Test User');
+            await SEL.AUTH.register.username(page).fill('testuser');
+            await SEL.AUTH.register.email(page).fill('test@example.com');
+            await SEL.AUTH.register.password(page).fill('password123');
+            await SEL.AUTH.register.passwordConfirmation(page).fill('password456');
+            await SEL.AUTH.register.termsCheckbox(page).check();
+
+            await expect(
+                page.getByText(/Konfirmasi password tidak cocok/i),
+            ).toBeVisible();
+
+            await expect(SEL.AUTH.register.submit(page)).toBeDisabled();
+        });
+
+        test('email format invalid → submit diblokir browser', async ({ page }) => {
+            await SEL.AUTH.register.name(page).fill('Test User');
+            await SEL.AUTH.register.username(page).fill('testuser');
+            await SEL.AUTH.register.email(page).fill('bukan-email');
+            await SEL.AUTH.register.password(page).fill(VALID_PASSWORD);
+            await SEL.AUTH.register.passwordConfirmation(page).fill(VALID_PASSWORD);
+            await SEL.AUTH.register.termsCheckbox(page).check();
+
+            await SEL.AUTH.register.submit(page).click();
+
+            await expect(page).toHaveURL('/register');
+        });
     });
 
-    test('tombol toggle password memiliki aria-label', async ({ page }) => {
-        const toggle = page.getByLabel('Tampilkan password').first();
-        await expect(toggle).toBeVisible();
-        await expect(toggle).toHaveAttribute('type', 'button');
+    // ==========================================
+    // VALIDASI SERVER (submit terkirim, ditolak server)
+    // ==========================================
+
+    test.describe('Validasi Server', () => {
+        test.beforeEach(async ({ page, asGuest }) => {
+            await asGuest();
+            await page.goto('/register');
+        });
+
+        test('email duplikat dengan seed admin → error', async ({ page }) => {
+            await SEL.AUTH.register.name(page).fill('Test User');
+            await SEL.AUTH.register.username(page).fill(
+                `dup${Date.now()}`.toLowerCase(),
+            );
+            await SEL.AUTH.register.email(page).fill(SEED_USERS.admin.email);
+            await SEL.AUTH.register.password(page).fill(VALID_PASSWORD);
+            await SEL.AUTH.register
+                .passwordConfirmation(page)
+                .fill(VALID_PASSWORD);
+            await SEL.AUTH.register.termsCheckbox(page).check();
+
+            await Promise.all([
+                page.waitForResponse(
+                    (resp) =>
+                        resp.url().includes('/register') &&
+                        resp.request().method() === 'POST',
+                    { timeout: 15_000 },
+                ),
+                SEL.AUTH.register.submit(page).click(),
+            ]);
+
+            await expect(page).toHaveURL('/register');
+            await expect(
+                page.getByText(/Email ini sudah terdaftar/i),
+            ).toBeVisible({ timeout: 10_000 });
+        });
+
+        test('username duplikat dengan seed admin → error', async ({ page }) => {
+            const email = `dup-u-${Date.now()}@test.com`;
+
+            await SEL.AUTH.register.name(page).fill('Test User');
+            await SEL.AUTH.register.username(page).fill(
+                SEED_USERS.admin.username,
+            );
+            await SEL.AUTH.register.email(page).fill(email);
+            await SEL.AUTH.register.password(page).fill(VALID_PASSWORD);
+            await SEL.AUTH.register
+                .passwordConfirmation(page)
+                .fill(VALID_PASSWORD);
+            await SEL.AUTH.register.termsCheckbox(page).check();
+
+            await Promise.all([
+                page.waitForResponse(
+                    (resp) =>
+                        resp.url().includes('/register') &&
+                        resp.request().method() === 'POST',
+                    { timeout: 15_000 },
+                ),
+                SEL.AUTH.register.submit(page).click(),
+            ]);
+
+            await expect(page).toHaveURL('/register');
+            await expect(
+                page.getByText(/Username ini sudah digunakan/i),
+            ).toBeVisible({ timeout: 10_000 });
+        });
     });
 
-    test('user yang sudah login tidak bisa akses halaman register', async ({
-        page,
-        asClient,
-    }) => {
-        await asClient();
+    // ==========================================
+    // MUTATION — HAPPY PATH (serial)
+    // ==========================================
 
-        // Coba akses /register
-        await page.goto('/register');
+    test.describe.serial('Mutation — Register Valid', () => {
+        test('register valid → auto-login → redirect /client/dashboard', async ({
+            page,
+            asGuest,
+        }) => {
+            const suffix = Date.now();
+            const email = `newclient-${suffix}@test.com`;
+            const username = `newclient${suffix}`.toLowerCase();
 
-        // Harus di-redirect ke halaman lain (dashboard atau home)
-        await expect(page).not.toHaveURL('/register');
+            await asGuest();
+            await page.goto('/register');
+
+            await SEL.AUTH.register.name(page).fill('New Client E2E');
+            await SEL.AUTH.register.username(page).fill(username);
+            await SEL.AUTH.register.email(page).fill(email);
+            await SEL.AUTH.register.password(page).fill(VALID_PASSWORD);
+            await SEL.AUTH.register
+                .passwordConfirmation(page)
+                .fill(VALID_PASSWORD);
+            await SEL.AUTH.register.termsCheckbox(page).check();
+
+            await Promise.all([
+                page.waitForURL('/client/dashboard', { timeout: 15_000 }),
+                SEL.AUTH.register.submit(page).click(),
+            ]);
+
+            await expect(page).toHaveURL('/client/dashboard');
+        });
+
+        test('register client → user role=client, must_change_password=false', async ({
+            page,
+            asGuest,
+        }) => {
+            const suffix = Date.now();
+            const email = `newclient2-${suffix}@test.com`;
+            const username = `newclient2${suffix}`.toLowerCase();
+
+            await asGuest();
+            await page.goto('/register');
+
+            await SEL.AUTH.register.name(page).fill('New Client 2 E2E');
+            await SEL.AUTH.register.username(page).fill(username);
+            await SEL.AUTH.register.email(page).fill(email);
+            await SEL.AUTH.register.password(page).fill(VALID_PASSWORD);
+            await SEL.AUTH.register
+                .passwordConfirmation(page)
+                .fill(VALID_PASSWORD);
+            await SEL.AUTH.register.termsCheckbox(page).check();
+
+            await Promise.all([
+                page.waitForURL('/client/dashboard', { timeout: 15_000 }),
+                SEL.AUTH.register.submit(page).click(),
+            ]);
+
+            // User baru tidak kena force change password
+            await expect(page).not.toHaveURL('/change-password');
+
+            // Bisa akses dashboard langsung (tidak redirect)
+            await page.goto('/client/dashboard');
+            await expect(page).toHaveURL('/client/dashboard');
+        });
+
+        test('user baru bisa logout dan login ulang', async ({
+            page,
+            asGuest,
+        }) => {
+            const suffix = Date.now();
+            const email = `newclient3-${suffix}@test.com`;
+            const username = `newclient3${suffix}`.toLowerCase();
+
+            await asGuest();
+            await page.goto('/register');
+
+            await SEL.AUTH.register.name(page).fill('New Client 3 E2E');
+            await SEL.AUTH.register.username(page).fill(username);
+            await SEL.AUTH.register.email(page).fill(email);
+            await SEL.AUTH.register.password(page).fill(VALID_PASSWORD);
+            await SEL.AUTH.register
+                .passwordConfirmation(page)
+                .fill(VALID_PASSWORD);
+            await SEL.AUTH.register.termsCheckbox(page).check();
+
+            await Promise.all([
+                page.waitForURL('/client/dashboard', { timeout: 15_000 }),
+                SEL.AUTH.register.submit(page).click(),
+            ]);
+
+            // Logout
+            await asGuest();
+
+            // Login ulang dengan kredensial baru
+            await page.goto('/login');
+            await SEL.AUTH.login.email(page).fill(email);
+            await SEL.AUTH.login.password(page).fill(VALID_PASSWORD);
+
+            await Promise.all([
+                page.waitForURL('/client/dashboard', { timeout: 15_000 }),
+                SEL.AUTH.login.submit(page).click(),
+            ]);
+
+            await expect(page).toHaveURL('/client/dashboard');
+        });
     });
 });

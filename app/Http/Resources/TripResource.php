@@ -20,15 +20,15 @@ final class TripResource extends JsonResource
      * Bentuk data trip yang dikirim ke frontend.
      *
      * Catatan penting:
-     * - Bila `days` di-eager-load, WAJIB disertai `days.trip` agar
-     *   `TripDayResource` tidak memicu N+1 saat memanggil
-     *   `jamMulai()`, `jamSelesai()`, `lokasi()`, `isToday()`.
-     *   Contoh: `Trip::with(['days.trip', ...])`.
-     * - Relasi `booking` dibatasi ke subset yang dibutuhkan UI trip
-     *   (bukan `BookingResource` utuh) untuk menghindari siklus
-     *   `BookingResource` -> `TripResource` -> `BookingResource`.
-     * - `snapshot_package` TIDAK dikirim mentah (besar dan internal);
-     *   field turunan `snapshot_nama` dan `snapshot_durasi_hari`
+     * - Bila days di-eager-load, WAJIB disertai days.trip agar
+     *   TripDayResource tidak memicu N+1 saat memanggil
+     *   jamMulai(), jamSelesai(), lokasi(), isToday().
+     *   Contoh: Trip::with(['days.trip', ...]).
+     * - Relasi booking dibatasi ke subset yang dibutuhkan UI trip
+     *   (bukan BookingResource utuh) untuk menghindari siklus
+     *   BookingResource -> TripResource -> BookingResource.
+     * - snapshot_package TIDAK dikirim mentah (besar dan internal);
+     *   field turunan snapshot_nama dan snapshot_durasi_hari
      *   disediakan untuk display.
      *
      * @return array<string, mixed>
@@ -41,15 +41,15 @@ final class TripResource extends JsonResource
             'booking_id' => $this->booking_id,
             'package_id' => $this->package_id,
             'mitra_id' => $this->mitra_id,
-            'tanggal_mulai' => $this->tanggal_mulai?->format('Y-m-d'),
-            'tanggal_selesai' => $this->tanggal_selesai?->format('Y-m-d'),
+            'tanggal_mulai' => $this->tanggal_mulai->format('Y-m-d'),
+            'tanggal_selesai' => $this->tanggal_selesai->format('Y-m-d'),
             'jumlah_peserta' => $this->jumlah_peserta,
             'timezone' => $this->timezone,
             'status' => $this->status->value,
             'statusLabel' => $this->status->label(),
             'snapshot_nama' => $this->snapshotNama(),
             'snapshot_durasi_hari' => $this->snapshotDurasiHari(),
-            'created_at' => $this->created_at?->toIso8601String(),
+            'created_at' => $this->created_at->toIso8601String(),
 
             'mitra' => $this->whenLoaded('mitra', function (): ?array {
                 /** @var User|null $mitra */
@@ -96,7 +96,7 @@ final class TripResource extends JsonResource
                     'id' => $booking->id,
                     'kode' => $booking->kode,
                     'jumlah_peserta' => $booking->jumlah_peserta,
-                    'tanggal_keberangkatan' => $booking->tanggal_keberangkatan?->format('Y-m-d'),
+                    'tanggal_keberangkatan' => $booking->tanggal_keberangkatan->format('Y-m-d'),
                     'status' => $booking->status->value,
                     'client' => $booking->relationLoaded('client') && $booking->client !== null
                         ? [

@@ -1,171 +1,416 @@
+/**
+ * ============================================================
+ * Admin Reports — Mitra Performance Page — Component Test
+ * ============================================================
+ *
+ * Fokus pengujian:
+ *   1. Isolation & Mocking  → Inertia, API getMitraReport, menu,
+ *                             & child components di-mock anchor-aware.
+ *   2. Props & Rendering    → header, export buttons URL, tabs,
+ *                             filter, summary, table.
+ *   3. Interaction          → apply filter → getMitraReport.
+ *   4. Reactivity           → URL export buttons berubah saat startDate
+ *                             atau endDate diubah.
+ * ============================================================
+ */
+
+import { render, screen, fireEvent } from '@testing-library/svelte';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/svelte';
-import MitraReport from '../Mitra.svelte';
+import { tick } from 'svelte';
+import Mitra from '../Mitra.svelte';
 
 // ============================================================
-// MOCK INERTIA — lengkap (pola sama seperti Payouts yang lulus)
+// 1. HOISTED MOCK REGISTRY
 // ============================================================
-const mockRouterGet = vi.fn();
+const mockUpdaters = vi.hoisted(() => new Set<() => void>());
 
+// ============================================================
+// 2. MOCK — INERTIA
+// ============================================================
 vi.mock('@inertiajs/svelte', () => ({
-    router: {
-        get: (...args: any[]) => mockRouterGet(...args),
+    inertia: vi.fn(),
+}));
+
+// ============================================================
+// 3. MOCK — API ADMIN
+// ============================================================
+vi.mock('@/api/admin', () => ({
+    getMitraReport: vi.fn(),
+}));
+
+// ============================================================
+// 4. MOCK — MENUS
+// ============================================================
+vi.mock('@/utils/menus', () => ({
+    adminMenu: [],
+}));
+
+// ============================================================
+// 5. MOCK — DASHBOARD LAYOUT
+// ============================================================
+vi.mock('@/components/layout/DashboardLayout.svelte', () => ({
+    default: (anchor: Node, props: { children?: (anchor: Node) => void }) => {
+        props.children?.(anchor);
+        return {};
     },
-    inertia: () => ({
-        update: vi.fn(),
-        destroy: vi.fn(),
-    }),
-    page: {
-        get props() {
-            return {
-                auth: {
-                    user: {
-                        id: 1,
-                        name: 'Admin Test',
-                        username: 'admin',
-                        email: 'admin@example.com',
-                        role: 'admin',
-                    },
-                },
-                unread_notifications: 0,
-                flash: {},
+}));
+
+// ============================================================
+// 6. MOCK — PAGE HEADER (render title & actions)
+// ============================================================
+vi.mock('@/global/PageHeader.svelte', () => ({
+    default: (
+        anchor: Node,
+        props: { title: string; description?: string; actions?: (anchor: Node) => void },
+    ) => {
+        const el = document.createElement('div');
+        el.setAttribute('data-testid', 'page-header');
+        el.innerHTML = `<h1>${props.title}</h1><p>${props.description ?? ''}</p>`;
+        anchor.parentNode?.insertBefore(el, anchor);
+        props.actions?.(anchor);
+        return {};
+    },
+}));
+
+// ============================================================
+// 7. MOCK — REPORT TABS
+// ============================================================
+vi.mock('@/components/reports/ReportTabs.svelte', () => ({
+    default: (anchor: Node, props: { active: string }) => {
+        const el = document.createElement('div');
+        el.setAttribute('data-testid', 'report-tabs');
+        el.setAttribute('data-active', props.active);
+        anchor.parentNode?.insertBefore(el, anchor);
+        return {};
+    },
+}));
+
+// ============================================================
+// 8. MOCK — REPORT FILTER (reactive bind startDate/endDate)
+// ============================================================
+vi.mock('@/components/reports/ReportFilter.svelte', () => ({
+    default: (
+        anchor: Node,
+        props: {
+            startDate: string;
+            endDate: string;
+            onApply: () => void;
+        },
+    ) => {
+        const el = document.createElement('div');
+        el.setAttribute('data-testid', 'report-filter');
+        anchor.parentNode?.insertBefore(el, anchor);
+
+        const update = () => {
+            el.innerHTML = '';
+
+            const startInput = document.createElement('input');
+            startInput.type = 'date';
+            startInput.setAttribute('aria-label', 'Start Date');
+            startInput.value = props.startDate ?? '';
+            startInput.oninput = (e) => {
+                props.startDate = (e.target as HTMLInputElement).value;
             };
-        },
-        get url() {
-            return '/admin/reports/mitra';
-        },
-        get component() {
-            return 'Admin/Reports/Mitra';
-        },
+            el.appendChild(startInput);
+
+            const endInput = document.createElement('input');
+            endInput.type = 'date';
+            endInput.setAttribute('aria-label', 'End Date');
+            endInput.value = props.endDate ?? '';
+            endInput.oninput = (e) => {
+                props.endDate = (e.target as HTMLInputElement).value;
+            };
+            el.appendChild(endInput);
+
+            const applyBtn = document.createElement('button');
+            applyBtn.type = 'button';
+            applyBtn.textContent = 'Apply';
+            applyBtn.onclick = () => props.onApply();
+            el.appendChild(applyBtn);
+        };
+
+        update();
+        mockUpdaters.add(update);
+        return {};
     },
 }));
 
 // ============================================================
-// MOCK formatCurrency
+// 9. MOCK — EXPORT BUTTONS
 // ============================================================
-vi.mock('@/utils/formatCurrency', () => ({
-    formatCurrency: (val: number) => `Rp ${val.toLocaleString('id-ID')}`,
+vi.mock('@/components/reports/ExportButtons.svelte', () => ({
+    default: (anchor: Node, props: { pdfUrl: string; excelUrl: string }) => {
+        const el = document.createElement('div');
+        el.setAttribute('data-testid', 'export-buttons');
+        el.setAttribute('data-pdf-url', props.pdfUrl);
+        el.setAttribute('data-excel-url', props.excelUrl);
+        anchor.parentNode?.insertBefore(el, anchor);
+
+        const update = () => {
+            el.setAttribute('data-pdf-url', props.pdfUrl);
+            el.setAttribute('data-excel-url', props.excelUrl);
+        };
+
+        mockUpdaters.add(update);
+        return {};
+    },
 }));
 
-// ❌ TIDAK ADA mock DashboardLayout / PageHeader / ReportTabs /
-//    ReportFilter / ExportButtons — semua dirender asli.
+// ============================================================
+// 10. MOCK — MITRA SUMMARY
+// ============================================================
+vi.mock('@/components/admin/reports/MitraSummary.svelte', () => ({
+    default: (anchor: Node, props: { totalMitra: number; totalTrip: number }) => {
+        const el = document.createElement('div');
+        el.setAttribute('data-testid', 'mitra-summary');
+        el.setAttribute('data-total-mitra', String(props.totalMitra));
+        el.setAttribute('data-total-trip', String(props.totalTrip));
+        anchor.parentNode?.insertBefore(el, anchor);
+        return {};
+    },
+}));
 
 // ============================================================
-// HELPERS
+// 11. MOCK — MITRA TABLE
 // ============================================================
-const createMockData = (overrides: any = {}) => ({
-    total_mitra: 10,
-    total_trip_completed: 25,
-    mitras: [
-        {
-            id: 1,
-            name: 'Budi Santoso',
-            email: 'budi@ptabc.com',
-            total_trip: 15,
-            total_honor: 15000000,
-        },
-        {
-            id: 2,
-            name: 'Ani Wijaya',
-            email: 'ani@gmail.com',
-            total_trip: 10,
-            total_honor: 10000000,
-        },
-    ],
+vi.mock('@/components/admin/reports/MitraTable.svelte', () => ({
+    default: (anchor: Node, props: { mitras: any[] }) => {
+        const el = document.createElement('div');
+        el.setAttribute('data-testid', 'mitra-table');
+        el.setAttribute('data-mitras-count', String(props.mitras?.length ?? 0));
+        anchor.parentNode?.insertBefore(el, anchor);
+        return {};
+    },
+}));
+
+// ============================================================
+// 12. STATIC IMPORT
+// ============================================================
+import { getMitraReport } from '@/api/admin';
+
+// ============================================================
+// 13. HELPERS
+// ============================================================
+async function syncUI(): Promise<void> {
+    await tick();
+    mockUpdaters.forEach((fn) => fn());
+}
+
+// ============================================================
+// 14. FIXTURES
+// ============================================================
+const makeMitras = (count = 1) =>
+    Array.from({ length: count }, (_, i) => ({
+        id: i + 1,
+        name: `Mitra ${i + 1}`,
+        email: `mitra${i + 1}@test.com`,
+        total_trip: 5 + i,
+        total_revenue: 5000000 * (i + 1),
+    }));
+
+const makeProps = (overrides = {}) => ({
+    data: {
+        total_mitra: 3,
+        total_trip_completed: 15,
+        mitras: makeMitras(3),
+    },
+    filters: {
+        start_date: '2026-01-01',
+        end_date: '2026-06-30',
+    },
     ...overrides,
 });
 
-const defaultFilters = { start_date: '2026-01-01', end_date: '2026-01-31' };
-
-const renderPage = (overrides: any = {}) =>
-    render(MitraReport, {
-        props: {
-            data: createMockData(),
-            filters: defaultFilters,
-            ...overrides,
-        },
-    });
-
-beforeEach(() => {
-    vi.clearAllMocks();
-});
+const renderPage = (props = makeProps()) =>
+    render(Mitra, { props });
 
 // ============================================================
-// KATEGORI 1 — RENDERING DASAR
+// 15. TEST SUITE
 // ============================================================
-describe('Admin Reports Mitra — Rendering Dasar', () => {
-    it('merender judul halaman laporan mitra', () => {
-        renderPage();
-
-        // Judul muncul di DashboardLayout (topbar) + PageHeader.
-        const titles = screen.getAllByText(/Laporan.*Mitra|Kinerja Mitra|Rekap.*Mitra/i);
-        expect(titles.length).toBeGreaterThanOrEqual(1);
-    });
-});
-
-// ============================================================
-// KATEGORI 2 — KARTU RINGKASAN
-// ============================================================
-describe('Admin Reports Mitra — Kartu Ringkasan', () => {
-    it('menampilkan Total Mitra Aktif', () => {
-        renderPage();
-
-        expect(
-            screen.getByText(/Total Mitra Aktif/i),
-        ).toBeInTheDocument();
-        // Nilai "10" muncul di kartu ringkasan DAN di tabel (total_trip Ani).
-        expect(screen.getAllByText('10').length).toBeGreaterThanOrEqual(1);
+describe('Admin Reports — Mitra Performance Page', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockUpdaters.clear();
     });
 
-    it('menampilkan Total Trip Diselesaikan', () => {
-        renderPage();
+    // ----------------------------------------------------------
+    // 15.1 RENDERING — Header & Tabs
+    // ----------------------------------------------------------
+    describe('Rendering — Header', () => {
+        it('menampilkan judul & deskripsi halaman', () => {
+            renderPage();
 
-        expect(
-            screen.getByText(/Total Trip Diselesaikan/i),
-        ).toBeInTheDocument();
-        expect(screen.getAllByText('25').length).toBeGreaterThanOrEqual(1);
-    });
-});
+            expect(
+                screen.getByRole('heading', { level: 1, name: 'Kinerja Mitra' }),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByText(/Evaluasi performa pemandu wisata Anda/i),
+            ).toBeInTheDocument();
+        });
 
-// ============================================================
-// KATEGORI 3 — TABEL KINERJA MITRA
-// ============================================================
-describe('Admin Reports Mitra — Tabel Kinerja', () => {
-    it('menampilkan nama mitra', () => {
-        renderPage();
+        it('merender ReportTabs dengan active="mitra"', () => {
+            renderPage();
 
-        expect(screen.getByText('Budi Santoso')).toBeInTheDocument();
-        expect(screen.getByText('Ani Wijaya')).toBeInTheDocument();
-    });
-
-    it('menampilkan email mitra', () => {
-        renderPage();
-
-        expect(screen.getByText('budi@ptabc.com')).toBeInTheDocument();
-        expect(screen.getByText('ani@gmail.com')).toBeInTheDocument();
+            expect(screen.getByTestId('report-tabs')).toHaveAttribute(
+                'data-active',
+                'mitra',
+            );
+        });
     });
 
-    it('menampilkan total trip per mitra', () => {
-        renderPage();
+    // ----------------------------------------------------------
+    // 15.2 RENDERING — Export Buttons
+    // ----------------------------------------------------------
+    describe('Rendering — Export Buttons', () => {
+        it('merender ExportButtons dengan URL dari startDate & endDate', () => {
+            renderPage();
 
-        // "15" unik (hanya total_trip Budi).
-        expect(screen.getAllByText('15').length).toBeGreaterThanOrEqual(1);
-        // "10" muncul juga di kartu ringkasan → pakai getAllByText.
-        expect(screen.getAllByText('10').length).toBeGreaterThanOrEqual(1);
+            const exportBtns = screen.getByTestId('export-buttons');
+            expect(exportBtns.getAttribute('data-pdf-url')).toBe(
+                '/admin/reports/mitra/export-pdf?start_date=2026-01-01&end_date=2026-06-30',
+            );
+            expect(exportBtns.getAttribute('data-excel-url')).toBe(
+                '/admin/reports/mitra/export-excel?start_date=2026-01-01&end_date=2026-06-30',
+            );
+        });
     });
 
-    it('menampilkan total honor terformat', () => {
-        renderPage();
+    // ----------------------------------------------------------
+    // 15.3 RENDERING — Sub Components
+    // ----------------------------------------------------------
+    describe('Rendering — Sub Components', () => {
+        it('merender ReportFilter', () => {
+            renderPage();
+            expect(screen.getByTestId('report-filter')).toBeInTheDocument();
+        });
 
-        expect(screen.getAllByText(/Rp 15\.000\.000/i).length).toBeGreaterThanOrEqual(1);
-        expect(screen.getAllByText(/Rp 10\.000\.000/i).length).toBeGreaterThanOrEqual(1);
+        it('meneruskan total_mitra & total_trip_completed ke MitraSummary', () => {
+            renderPage();
+
+            const summary = screen.getByTestId('mitra-summary');
+            expect(summary).toHaveAttribute('data-total-mitra', '3');
+            expect(summary).toHaveAttribute('data-total-trip', '15');
+        });
+
+        it('meneruskan mitras ke MitraTable', () => {
+            renderPage();
+            expect(screen.getByTestId('mitra-table')).toHaveAttribute(
+                'data-mitras-count',
+                '3',
+            );
+        });
     });
 
-    it('menampilkan empty state jika tidak ada mitra', () => {
-        renderPage({ data: createMockData({ mitras: [] }) });
+    // ----------------------------------------------------------
+    // 15.4 INTERACTION — Apply Filter
+    // ----------------------------------------------------------
+    describe('Interaction — Apply Filter', () => {
+        it('memanggil getMitraReport dengan startDate & endDate saat ini', async () => {
+            renderPage();
 
-        expect(
-            screen.getByText(/Belum ada data mitra/i),
-        ).toBeInTheDocument();
+            await fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+
+            expect(getMitraReport).toHaveBeenCalledOnce();
+            expect(getMitraReport).toHaveBeenCalledWith(
+                { start_date: '2026-01-01', end_date: '2026-06-30' },
+                { preserveState: true },
+            );
+        });
+
+        it('memanggil getMitraReport dengan tanggal yang diubah user', async () => {
+            renderPage();
+
+            await fireEvent.input(screen.getByLabelText('Start Date'), {
+                target: { value: '2026-02-01' },
+            });
+            await fireEvent.input(screen.getByLabelText('End Date'), {
+                target: { value: '2026-03-31' },
+            });
+            await syncUI();
+
+            await fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+
+            expect(getMitraReport).toHaveBeenCalledWith(
+                { start_date: '2026-02-01', end_date: '2026-03-31' },
+                { preserveState: true },
+            );
+        });
+    });
+
+    // ----------------------------------------------------------
+    // 15.5 REACTIVITY — Export URL Update
+    // ----------------------------------------------------------
+    describe('Reactivity — Export URL Update', () => {
+        it('URL export berubah saat startDate/endDate diubah', async () => {
+            renderPage();
+
+            const exportBtns = screen.getByTestId('export-buttons');
+            expect(exportBtns.getAttribute('data-pdf-url')).toContain(
+                'start_date=2026-01-01',
+            );
+
+            await fireEvent.input(screen.getByLabelText('Start Date'), {
+                target: { value: '2026-03-01' },
+            });
+            await fireEvent.input(screen.getByLabelText('End Date'), {
+                target: { value: '2026-09-30' },
+            });
+            await syncUI();
+
+            expect(exportBtns.getAttribute('data-pdf-url')).toContain(
+                'start_date=2026-03-01',
+            );
+            expect(exportBtns.getAttribute('data-pdf-url')).toContain(
+                'end_date=2026-09-30',
+            );
+            expect(exportBtns.getAttribute('data-excel-url')).toContain(
+                'start_date=2026-03-01',
+            );
+        });
+    });
+
+    // ----------------------------------------------------------
+    // 15.6 EDGE CASE
+    // ----------------------------------------------------------
+    describe('Edge Cases', () => {
+        it('handle mitras kosong', () => {
+            renderPage(
+                makeProps({
+                    data: { total_mitra: 0, total_trip_completed: 0, mitras: [] },
+                }),
+            );
+
+            expect(screen.getByTestId('mitra-table')).toHaveAttribute(
+                'data-mitras-count',
+                '0',
+            );
+        });
+
+        it('handle total 0', () => {
+            renderPage(
+                makeProps({
+                    data: { total_mitra: 0, total_trip_completed: 0, mitras: [] },
+                }),
+            );
+
+            const summary = screen.getByTestId('mitra-summary');
+            expect(summary).toHaveAttribute('data-total-mitra', '0');
+            expect(summary).toHaveAttribute('data-total-trip', '0');
+        });
+
+        it('handle tanggal sama (start = end)', async () => {
+            renderPage(
+                makeProps({
+                    filters: { start_date: '2026-01-01', end_date: '2026-01-01' },
+                }),
+            );
+
+            await fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+
+            expect(getMitraReport).toHaveBeenCalledWith(
+                { start_date: '2026-01-01', end_date: '2026-01-01' },
+                { preserveState: true },
+            );
+        });
     });
 });

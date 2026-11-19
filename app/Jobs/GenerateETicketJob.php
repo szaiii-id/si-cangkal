@@ -54,7 +54,7 @@ final class GenerateETicketJob implements ShouldQueue
 
     /**
      * Tentukan nama queue tempat job ini akan dijalankan.
-     * 
+     *
      * Ini adalah cara yang benar di Laravel 11+ untuk mengatur queue,
      * bukan dengan mendeklarasikan properti `$queue` secara manual.
      */

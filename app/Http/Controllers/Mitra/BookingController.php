@@ -19,19 +19,6 @@ use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
-/**
- * Controller booking untuk mitra.
- *
- * Tanggung jawab:
- * - Daftar & detail booking yang ditujukan ke mitra.
- * - Verifikasi / tolak bukti transfer.
- * - Batalkan booking (dengan alasan).
- * - Unggah bukti transfer atas nama client (pesanan manual).
- * - Akses privat bukti transfer (S-09/B-01).
- *
- * Otorisasi: via `BookingPolicy` di setiap method (S-02/S-03).
- * Refund ditangani terpisah di `Mitra\RefundController`.
- */
 final class BookingController extends Controller
 {
     public function __construct(
@@ -40,9 +27,6 @@ final class BookingController extends Controller
         private readonly BookingCancellationService $bookingCancellationService,
     ) {}
 
-    /**
-     * Daftar booking mitra.
-     */
     public function index(ListBookingRequest $request): InertiaResponse
     {
         $mitra = $request->user();
@@ -64,15 +48,10 @@ final class BookingController extends Controller
                 'search' => $filters['search'],
                 'status' => $filters['status'],
             ],
+            'statusCounts' => $this->bookingQueryService->countByStatusForMitra($mitra),
         ]);
     }
 
-    /**
-     * Detail booking.
-     *
-     * Eager-load `mitra.bankAccounts` wajib karena `BookingResource`
-     * mengirim rekening mitra. Tanpa eager-load: N+1 per booking.
-     */
     public function show(Booking $booking): InertiaResponse
     {
         $this->authorize('view', $booking);
@@ -92,13 +71,6 @@ final class BookingController extends Controller
         ]);
     }
 
-    /**
-     * Verifikasi pembayaran.
-     *
-     * Guard tambahan: meskipun Policy `verifyPayment` tidak mengecek
-     * keberadaan file bukti, kita tolak verifikasi tanpa bukti agar
-     * mitra tidak "verifikasi kosong".
-     */
     public function verifyPayment(Booking $booking): RedirectResponse
     {
         $this->authorize('verifyPayment', $booking);
@@ -116,9 +88,6 @@ final class BookingController extends Controller
         }
     }
 
-    /**
-     * Tolak bukti pembayaran (dengan alasan wajib).
-     */
     public function rejectPayment(RejectPaymentRequest $request, Booking $booking): RedirectResponse
     {
         $this->authorize('rejectPayment', $booking);
@@ -136,9 +105,6 @@ final class BookingController extends Controller
         }
     }
 
-    /**
-     * Batalkan booking (dengan alasan wajib).
-     */
     public function cancel(CancelBookingRequest $request, Booking $booking): RedirectResponse
     {
         $this->authorize('cancelByMitra', $booking);
@@ -158,9 +124,6 @@ final class BookingController extends Controller
         }
     }
 
-    /**
-     * Unggah bukti transfer (untuk pesanan manual atas nama client).
-     */
     public function uploadProof(UploadPaymentProofRequest $request, Booking $booking): RedirectResponse
     {
         $this->authorize('uploadProof', $booking);
@@ -173,13 +136,6 @@ final class BookingController extends Controller
         return back()->with('status', 'Bukti transfer berhasil diunggah.');
     }
 
-    /**
-     * Akses privat bukti transfer (S-09/B-01).
-     *
-     * File disimpan di disk `local`, tidak bisa diakses via `/storage/`.
-     * Route ini adalah satu-satunya jalan untuk mitra melihat kembali
-     * bukti transfer yang diunggah client (atau dirinya sendiri).
-     */
     public function downloadProof(Booking $booking): StreamedResponse
     {
         $this->authorize('view', $booking);

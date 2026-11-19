@@ -5,7 +5,7 @@
  * Setiap shard punya:
  * - Proses Playwright sendiri
  * - Web server sendiri (port 8000 + shardIndex) — dari webServer config
- * - Database sendiri (titiktemu_db_testing_w{shardIndex}) — dari e2e/config.ts
+ * - Database sendiri (sicangkal_db_testing_w{shardIndex}) — dari e2e/config.ts
  * - Browser sendiri
  *
  * Hasil: N browser terbuka paralel, N DB terpisah, 0 race condition.
@@ -30,22 +30,22 @@ const SKIP_CLEANUP = process.env.SKIP_CLEANUP === 'true';
 const SKIP_HEALTHCHECK = process.env.SKIP_HEALTHCHECK === 'true';
 
 const BASE_PORT = 8000;
-const STARTUP_STAGGER_MS = 300; // jeda antar spawn shard
-const PORT_FREE_TIMEOUT_MS = 5_000; // max tunggu port bebas
-const HEALTHCHECK_TIMEOUT_MS = 60_000; // max tunggu server siap
+const STARTUP_STAGGER_MS = 1_500;
+const PORT_FREE_TIMEOUT_MS = 5_000;
+const HEALTHCHECK_TIMEOUT_MS = 60_000;
 const HEALTHCHECK_INTERVAL_MS = 500;
 
 // ==========================================
 // VALIDASI
 // ==========================================
 if (!Number.isInteger(TOTAL_SHARDS) || TOTAL_SHARDS < 1) {
-    console.error(`❌ TOTAL_SHARDS harus integer >= 1, dapat: ${TOTAL_SHARDS}`);
+    console.error(`   TOTAL_SHARDS harus integer >= 1, dapat: ${TOTAL_SHARDS}`);
     process.exit(1);
 }
 
 if (TOTAL_SHARDS > 32) {
     console.warn(
-        `⚠️  TOTAL_SHARDS=${TOTAL_SHARDS} sangat besar. ` +
+        `   TOTAL_SHARDS=${TOTAL_SHARDS} sangat besar. ` +
         `Pastikan CPU & RAM cukup (1 shard ≈ 1 browser + 1 php -S).`,
     );
 }
@@ -54,10 +54,6 @@ if (TOTAL_SHARDS > 32) {
 // HELPER: PORT & PROSES
 // ==========================================
 
-/**
- * Cek apakah port sedang dipakai. Return PID atau null.
- * Menggunakan `lsof` (Linux/macOS). Fallback ke `ss` jika perlu.
- */
 function getPidOnPort(port: number): number | null {
     try {
         const out = execSync(`lsof -ti:${port}`, {
@@ -67,19 +63,14 @@ function getPidOnPort(port: number): number | null {
 
         if (!out) return null;
 
-        // lsof bisa return multiple PID (newline-separated) — ambil yang pertama
         const firstLine = out.split('\n')[0].trim();
         const pid = Number(firstLine);
         return Number.isInteger(pid) && pid > 0 ? pid : null;
     } catch {
-        // lsof return exit 1 jika tidak ada proses — bukan error
         return null;
     }
 }
 
-/**
- * Kill proses berdasarkan PID. Return true jika berhasil.
- */
 function killPid(pid: number, signal: NodeJS.Signals = 'SIGKILL'): boolean {
     try {
         process.kill(pid, signal);
@@ -89,9 +80,6 @@ function killPid(pid: number, signal: NodeJS.Signals = 'SIGKILL'): boolean {
     }
 }
 
-/**
- * Tunggu sampai port bebas (tidak ada proses). Return true jika bebas.
- */
 async function waitPortFree(
     port: number,
     timeoutMs: number,
@@ -106,16 +94,12 @@ async function waitPortFree(
     return false;
 }
 
-/**
- * Health-check: pastikan server di port melayani request.
- * Return true jika server merespons (status apa pun selain 0).
- */
 async function waitServerReady(
     port: number,
     timeoutMs: number,
 ): Promise<boolean> {
     const deadline = Date.now() + timeoutMs;
-    const url = `http://127.0.0.1:${port}/up`; // Laravel health endpoint
+    const url = `http://127.0.0.1:${port}/_test/health`;
 
     while (Date.now() < deadline) {
         try {
@@ -129,7 +113,6 @@ async function waitServerReady(
 
             clearTimeout(timer);
 
-            // Server merespons (200/404/500 semua OK — yang penting hidup)
             if (response.status > 0) return true;
         } catch {
             // Server belum siap — retry
@@ -144,15 +127,6 @@ async function waitServerReady(
 // ==========================================
 // CLEANUP SERVER LAMA (PER PORT)
 // ==========================================
-/**
- * Best practice: kill PER PORT yang akan dipakai, bukan pkill luas.
- *
- * Kenapa:
- * - `pkill -f "php -S 127.0.0.1:80"` cocok dengan 8000–8099 — bisa
- *   membunuh server shard lain yang sedang jalan (jika ada).
- * - Kill per port presisi: hanya port yang akan kita pakai.
- * - Verifikasi port bebas setelah kill — gagal cepat jika masih dipakai.
- */
 if (!SKIP_CLEANUP) {
     console.log(`🧹 Membersihkan server lama di port ${BASE_PORT}-${BASE_PORT + TOTAL_SHARDS - 1}...`);
 
@@ -167,12 +141,11 @@ if (!SKIP_CLEANUP) {
             if (killPid(pid, 'SIGKILL')) {
                 killedCount++;
             } else {
-                console.warn(`  [port ${port}] ⚠️  Gagal kill PID ${pid} (permission?)`);
+                console.warn(`  [port ${port}]    Gagal kill PID ${pid} (permission?)`);
             }
         }
     }
 
-    // Tunggu semua port bebas (dengan timeout)
     console.log('  Menunggu port bebas...');
 
     for (let i = 0; i < TOTAL_SHARDS; i++) {
@@ -182,7 +155,7 @@ if (!SKIP_CLEANUP) {
         if (!free) {
             const pid = getPidOnPort(port);
             console.error(
-                `❌ Port ${port} masih dipakai (PID ${pid ?? '?'}) setelah ${PORT_FREE_TIMEOUT_MS}ms.`,
+                `   Port ${port} masih dipakai (PID ${pid ?? '?'}) setelah ${PORT_FREE_TIMEOUT_MS}ms.`,
             );
             console.error(
                 `   Cek manual: lsof -i:${port}\n` +
@@ -192,7 +165,7 @@ if (!SKIP_CLEANUP) {
         }
     }
 
-    console.log(`✅ Cleanup selesai (${killedCount} proses di-kill, semua port bebas).\n`);
+    console.log(` Cleanup selesai (${killedCount} proses di-kill, semua port bebas).\n`);
 } else {
     console.log('⏭️  SKIP_CLEANUP=true — lewati cleanup.\n');
 }
@@ -208,7 +181,6 @@ console.log(`   Base port: ${BASE_PORT} - ${BASE_PORT + TOTAL_SHARDS - 1}`);
 console.log('='.repeat(60));
 console.log('');
 
-// Debug: konfirmasi TOTAL_SHARDS terbaca di parent
 console.log(`[parent] TOTAL_SHARDS=${TOTAL_SHARDS}, PID=${process.pid}`);
 console.log('');
 
@@ -216,12 +188,9 @@ console.log('');
 // SPAWN SHARDS (DENGAN STAGGER)
 // ==========================================
 /**
- * Best practice: stagger spawn — jangan 8 proses sekaligus.
+ * ⚠️ FIX: Panggil binary Playwright langsung dari node_modules.
  *
- * Kenapa:
- * - 8 `php -S` bind port bersamaan → CPU spike → binding lambat
- * - 8 browser spawn bersamaan → RAM spike → OOM
- * - Stagger 300ms → beban merata → start lebih stabil
+ * Ini memastikan TIDAK ADA `vite-plus` atau Vitest yang terpicu.
  */
 type ShardProc = {
     index: number;
@@ -236,34 +205,28 @@ for (let i = 0; i < TOTAL_SHARDS; i++) {
     const port = BASE_PORT + i;
 
     const args = [
-        'playwright',
         'test',
         `--shard=${i + 1}/${TOTAL_SHARDS}`,
-        '--reporter=list',
     ];
 
     if (SHARD_FILTER) {
         args.push(SHARD_FILTER);
     }
 
-    console.log(
-        `[shard-${i}] SHARD_INDEX=${i}, port=${port}`,
-    );
+    console.log(`[shard-${i}] SHARD_INDEX=${i}, port=${port}`);
 
-    // ✅ Pakai `bun x` langsung (bukan `bunx`) — env PASTI diteruskan
-    const proc = spawn('bun', ['x', ...args], {
+    // ✅ Panggil binary langsung
+    const proc = spawn('./node_modules/.bin/playwright', args, {
         env: {
             ...process.env,
             SHARD_INDEX: String(i),
             TOTAL_SHARDS: String(TOTAL_SHARDS),
         },
         stdio: 'inherit',
-        // ❌ shell: true DIHAPUS — ini yang menyebabkan SHARD_INDEX hilang
     });
 
-    // Tangani error spawn (misal bun tidak ada di PATH)
     proc.on('error', (err) => {
-        console.error(`[shard-${i}] ❌ Gagal spawn: ${err.message}`);
+        console.error(`[shard-${i}]    Gagal spawn: ${err.message}`);
     });
 
     procs.push({
@@ -273,7 +236,6 @@ for (let i = 0; i < TOTAL_SHARDS; i++) {
         proc,
     });
 
-    // Stagger — beri jeda antar spawn
     if (i < TOTAL_SHARDS - 1) {
         await sleep(STARTUP_STAGGER_MS);
     }
@@ -282,15 +244,6 @@ for (let i = 0; i < TOTAL_SHARDS; i++) {
 // ==========================================
 // HEALTH-CHECK (OPSIONAL)
 // ==========================================
-/**
- * Best practice: health-check per shard sebelum menunggu hasil.
- *
- * Kenapa:
- * - Mendeteksi shard yang web server-nya gagal start (port zombie, dll)
- * - Gagal cepat dengan pesan jelas, bukan menunggu 30 menit lalu gagal acak
- *
- * Health endpoint: `/up` (Laravel default) — ringan, tidak butuh auth.
- */
 if (!SKIP_HEALTHCHECK) {
     console.log('\n🏥 Health-check per shard...\n');
 
@@ -304,7 +257,7 @@ if (!SKIP_HEALTHCHECK) {
     const unhealthy = healthResults.filter((r) => !r.ready);
 
     if (unhealthy.length > 0) {
-        console.error('❌ Shard berikut web server-nya tidak siap:');
+        console.error('   Shard berikut web server-nya tidak siap:');
         for (const { index, port } of unhealthy) {
             const pid = getPidOnPort(port);
             console.error(
@@ -318,9 +271,8 @@ if (!SKIP_HEALTHCHECK) {
             '   - php -S gagal start (cek permission storage)\n' +
             '   - APP_ENV salah (route /_test/* tidak terdaftar)\n',
         );
-        // Jangan exit — biarkan proses lain selesai, lalu ringkasan
     } else {
-        console.log('✅ Semua shard siap.\n');
+        console.log(' Semua shard siap.\n');
     }
 } else {
     console.log('⏭️  SKIP_HEALTHCHECK=true — lewati health-check.\n');
@@ -358,7 +310,7 @@ let failed = 0;
 let totalDuration = 0;
 
 for (const { index, code, duration } of results) {
-    const status = code === 0 ? '✅ PASSED' : '❌ FAILED';
+    const status = code === 0 ? ' PASSED' : '   FAILED';
     const seconds = (duration / 1000).toFixed(1);
     console.log(
         `  Shard ${index}: ${status.padEnd(10)} exit=${code}  (${seconds}s)`,
@@ -378,7 +330,7 @@ console.log('='.repeat(60));
 if (failed === 0) {
     console.log('🎉 Semua shard lulus!\n');
 } else {
-    console.log(`⚠️  ${failed} shard gagal.\n`);
+    console.log(`   ${failed} shard gagal.\n`);
 }
 
 process.exit(failed > 0 ? 1 : 0);

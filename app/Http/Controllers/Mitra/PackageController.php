@@ -13,20 +13,6 @@ use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
-/**
- * Controller paket wisata untuk mitra.
- *
- * Perubahan dari versi lama:
- * - Semua `abort_unless($package->mitra_id === auth()->id(), 403)`
- *   diganti `$this->authorize(...)` via `PackagePolicy` (S-02/S-03).
- * - `update()` memakai `PackageService::updateWithRelations()` —
- *   logika sinkronisasi JSON days/facilities dipindah dari controller
- *   (SOC/NF-03). Controller turun dari ~70 baris menjadi ~15 baris.
- * - `store()` memakai `StorePackageRequest` (sudah dipakai sebelumnya).
- * - `update()` memakai `UpdatePackageRequest` (sudah ada).
- * - `index()` memanggil `$this->authorize('viewAny', Package::class)`
- *   untuk konsistensi.
- */
 final class PackageController extends Controller
 {
     public function __construct(
@@ -67,8 +53,8 @@ final class PackageController extends Controller
         );
 
         return redirect()
-            ->route('mitra.packages.edit', $package->id)
-            ->with('status', 'Paket dasar berhasil dibuat. Silakan lengkapi Itinerary dan Fasilitas di bawah ini.');
+            ->route('mitra.packages.complete-phase2', $package->id)
+            ->with('status', 'Paket dasar berhasil dibuat. Silakan lengkapi Itinerary dan Fasilitas.');
     }
 
     public function show(Package $package): InertiaResponse
@@ -93,6 +79,17 @@ final class PackageController extends Controller
         ]);
     }
 
+    public function completePhase2(Package $package): InertiaResponse
+    {
+        $this->authorize('update', $package);
+
+        $package->load(['days', 'facilities']);
+
+        return Inertia::render('Mitra/Packages/CompletePhase2', [
+            'package' => $package,
+        ]);
+    }
+
     public function update(UpdatePackageRequest $request, Package $package): RedirectResponse
     {
         $this->authorize('update', $package);
@@ -102,7 +99,7 @@ final class PackageController extends Controller
 
             return redirect()
                 ->route('mitra.packages.show', $package->id)
-                ->with('status', 'Paket, Rencana Perjalanan, dan Fasilitas berhasil diperbarui!');
+                ->with('status', 'Paket, Rencana Perjalanan, dan Fasilitas berhasil diperbarui.');
         } catch (ValidationException $e) {
             return back()->withErrors($e->errors())->withInput();
         } catch (\Throwable $e) {

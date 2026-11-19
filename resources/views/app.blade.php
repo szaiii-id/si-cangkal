@@ -4,7 +4,7 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
-        {{-- ✅ CSRF token untuk fetch() non-Inertia (FCM token, dll) --}}
+        {{--  CSRF token untuk fetch() non-Inertia (FCM token, dll) --}}
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
         <link rel="icon" href="/favicon.ico" sizes="any">

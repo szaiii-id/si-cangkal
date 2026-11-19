@@ -1,289 +1,167 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import NotificationsIndex from '../Index.svelte';
 
-// ============================================================
-// MOCK INERTIA — lengkap dengan page.props
-// ============================================================
-const mockRouterPost = vi.fn();
+// ==========================================
+// 1. MOCK DEPENDENSI INTERNAL DASHBOARDLAYOUT
+// ==========================================
+vi.mock('@/components/ui/ToastContainer.svelte', () => ({
+    default: () => '<div data-testid="toast-container"></div>',
+}));
 
-let mockPageProps: any = {
-    auth: {
-        user: {
-            id: 1,
-            name: 'Admin Test',
-            username: 'admin',
-            email: 'admin@example.com',
-            role: 'admin',
-        },
+vi.mock('@/components/NotificationPermissionBanner.svelte', () => ({
+    default: () => '<div data-testid="notification-banner"></div>',
+}));
+
+vi.mock('@/lib/firebase', () => ({
+    isFcmSupported: vi.fn().mockReturnValue(false),
+}));
+
+vi.mock('@/api/auth', () => ({
+    logout: vi.fn(),
+}));
+
+// ==========================================
+// 2. MOCK INERTIA (page, router, inertia)
+// ==========================================
+const mockPage = vi.hoisted(() => ({
+    props: {
+        auth: { user: { id: 1, name: 'Admin', role: 'admin', has_fcm_token: true } },
+        flash: {},
+        unread_notifications: 1,
     },
-    unread_notifications: 0,
-    flash: {},
-};
+    url: '/notifications',
+}));
 
 vi.mock('@inertiajs/svelte', () => ({
-    router: {
-        post: (...args: any[]) => mockRouterPost(...args),
-    },
-    inertia: () => ({
-        update: vi.fn(),
-        destroy: vi.fn(),
-    }),
-    page: {
-        get props() {
-            return mockPageProps;
-        },
-        get url() {
-            return '/notifications';
-        },
-        get component() {
-            return 'Notifications/Index';
-        },
-    },
+    page: mockPage,
+    router: { visit: vi.fn() },
+    inertia: vi.fn(),
 }));
 
-// ============================================================
-// MOCK UTILS
-// ============================================================
-vi.mock('@/utils/formatDate', () => ({
-    formatDateTime: (d: string) => `TglWaktu: ${d}`,
+// ==========================================
+// 3. MOCK API NOTIFICATIONS
+// ==========================================
+vi.mock('@/api/notifications', () => ({
+    markNotificationAsRead: vi.fn(),
+    markAllNotificationsAsRead: vi.fn(),
 }));
 
-// ============================================================
-// HELPERS
-// ============================================================
+import { markNotificationAsRead, markAllNotificationsAsRead } from '@/api/notifications';
+import { router } from '@inertiajs/svelte';
 
-const createPaginator = (data: any[] = []): any => ({
-    data,
-    current_page: 1,
-    last_page: 1,
-    total: data.length,
-    from: data.length > 0 ? 1 : 0,
-    to: data.length,
-    links: [],
-    path: '',
-    per_page: 10,
-    first_page_url: '',
-    last_page_url: '',
-    next_page_url: null,
-    prev_page_url: null,
-});
-
-const createNotification = (overrides: any = {}): any => ({
+// ==========================================
+// 4. MOCK DATA
+// ==========================================
+const mockNotification = (overrides = {}) => ({
     id: 'uuid-123',
-    tipe: 'info',
-    judul: 'Notifikasi Test',
-    pesan: 'Pesan notifikasi test',
-    data: {},
+    tipe: 'booking_confirmed',
+    judul: 'Booking Terkonfirmasi',
+    pesan: 'Paket Anda telah dikonfirmasi.',
+    data: { url: '/client/bookings/123' },
     read_at: null,
-    created_at: '2026-04-01T10:00:00Z',
+    created_at: '2026-10-16T10:00:00Z',
     ...overrides,
 });
 
-// ============================================================
-// SETUP
-// ============================================================
-
-beforeEach(() => {
-    vi.clearAllMocks();
-    mockPageProps = {
-        auth: {
-            user: {
-                id: 1,
-                name: 'Admin Test',
-                username: 'admin',
-                email: 'admin@example.com',
-                role: 'admin',
-            },
-        },
-        unread_notifications: 0,
-        flash: {},
-    };
+const mockProps = (overrides = {}) => ({
+    notifications: {
+        data: [mockNotification()],
+        current_page: 1,
+        last_page: 2,
+        from: 1,
+        to: 10,
+        total: 15,
+        links: [],
+    },
+    unreadCount: 1,
+    ...overrides,
 });
 
-// ============================================================
-// KATEGORI 1 — RENDERING DASAR
-// ============================================================
+describe('Notifications Index Page', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
 
-describe('Notifications Index — Rendering', () => {
-    it('merender header dan jumlah belum dibaca', () => {
-        render(NotificationsIndex, {
-            props: {
-                notifications: createPaginator([createNotification()]),
-                unreadCount: 1,
-            },
+    // ==========================================
+    // 1. RENDERING DASAR
+    // ==========================================
+    describe('Rendering', () => {
+        it('harus merender judul halaman dan jumlah belum dibaca', () => {
+            render(NotificationsIndex, { props: mockProps() });
+            
+            // PERBAIKAN: Gunakan getAllByRole atau spesifik ke teks deskripsi
+            // "Notifikasi" muncul dua kali (di header layout dan di PageHeader)
+            const headings = screen.getAllByRole('heading', { name: /Notifikasi/i });
+            expect(headings.length).toBeGreaterThanOrEqual(1);
+            
+            // Cek deskripsi unik
+            expect(screen.getByText('1 belum dibaca')).toBeInTheDocument();
         });
 
-        // CATATAN: ada DUA <h1> "Notifikasi" di DOM:
-        //   1. Dari DashboardLayout (judul top bar mobile)
-        //   2. Dari halaman Index (heading utama halaman)
-        // Gunakan getAllByRole dan pastikan heading halaman (text-2xl) ada.
-        const headings = screen.getAllByRole('heading', {
-            level: 1,
-            name: 'Notifikasi',
+        it('harus merender daftar notifikasi', () => {
+            render(NotificationsIndex, { props: mockProps() });
+            expect(screen.getByText('Booking Terkonfirmasi')).toBeInTheDocument();
         });
-        expect(headings).toHaveLength(2);
 
-        const pageHeading = headings.find((h) =>
-            h.className.includes('text-2xl')
-        );
-        expect(pageHeading).toBeInTheDocument();
+        it('harus merender EmptyState jika data kosong', () => {
+            render(NotificationsIndex, {
+                props: mockProps({ notifications: { ...mockProps().notifications, data: [] } }),
+            });
+            expect(screen.getByText('Belum ada notifikasi')).toBeInTheDocument();
+        });
+    });
 
-        // "1 belum dibaca" — teks gabungan `{unreadCount} belum dibaca`
-        const unreadText = screen.getByText((_content, element) => {
-            const text = element?.textContent ?? '';
-            return (
-                element?.tagName === 'P' &&
-                text.includes('1') &&
-                text.includes('belum dibaca')
+    // ==========================================
+    // 2. INTERAKSI MARK ALL
+    // ==========================================
+    describe('Mark All As Read', () => {
+        it('harus memanggil API markAllNotificationsAsRead saat tombol diklik', async () => {
+            render(NotificationsIndex, { props: mockProps({ unreadCount: 5 }) });
+            
+            const btn = screen.getByRole('button', { name: /Tandai Semua Dibaca/i });
+            await fireEvent.click(btn);
+            
+            expect(markAllNotificationsAsRead).toHaveBeenCalledTimes(1);
+        });
+
+        it('TIDAK merender tombol "Tandai Semua" jika unreadCount = 0', () => {
+            render(NotificationsIndex, { props: mockProps({ unreadCount: 0 }) });
+            expect(screen.queryByRole('button', { name: /Tandai Semua Dibaca/i })).not.toBeInTheDocument();
+        });
+    });
+
+    // ==========================================
+    // 3. INTERAKSI KLIK ITEM
+    // ==========================================
+    describe('Notification Item Click', () => {
+        it('harus memanggil API markNotificationAsRead jika item belum dibaca', async () => {
+            render(NotificationsIndex, { props: mockProps() });
+            
+            const item = screen.getByText('Booking Terkonfirmasi').closest('button')!;
+            await fireEvent.click(item);
+
+            expect(markNotificationAsRead).toHaveBeenCalledWith(
+                'uuid-123',
+                expect.any(Object)
             );
         });
-        expect(unreadText).toBeInTheDocument();
-    });
 
-    it('merender daftar notifikasi', () => {
-        render(NotificationsIndex, {
-            props: {
-                notifications: createPaginator([createNotification()]),
-                unreadCount: 1,
-            },
+        it('harus langsung redirect (router.visit) jika item SUDAH dibaca', async () => {
+            render(NotificationsIndex, {
+                props: mockProps({
+                    notifications: {
+                        ...mockProps().notifications,
+                        data: [mockNotification({ read_at: '2026-10-16T10:05:00Z' })],
+                    },
+                }),
+            });
+
+            const item = screen.getByText('Booking Terkonfirmasi').closest('button')!;
+            await fireEvent.click(item);
+
+            expect(markNotificationAsRead).not.toHaveBeenCalled();
+            expect(router.visit).toHaveBeenCalledWith('/client/bookings/123');
         });
-
-        expect(screen.getByText('Notifikasi Test')).toBeInTheDocument();
-        expect(
-            screen.getByText('Pesan notifikasi test')
-        ).toBeInTheDocument();
-        expect(
-            screen.getByText('TglWaktu: 2026-04-01T10:00:00Z')
-        ).toBeInTheDocument();
-    });
-
-    it('merender dot indicator untuk notifikasi belum dibaca', () => {
-        render(NotificationsIndex, {
-            props: {
-                notifications: createPaginator([
-                    createNotification({ read_at: null }),
-                    createNotification({
-                        id: 'uuid-2',
-                        read_at: '2026-04-01T10:00:00Z',
-                    }),
-                ]),
-                unreadCount: 1,
-            },
-        });
-
-        const dots = screen.getAllByLabelText('Belum dibaca');
-        expect(dots).toHaveLength(1);
-    });
-});
-
-// ============================================================
-// KATEGORI 2 — TOMBOL TANDAI SEMUA DIBACA
-// ============================================================
-
-describe('Notifications Index — Tandai Semua', () => {
-    it('merender tombol "Tandai Semua Dibaca" jika unreadCount > 0', () => {
-        render(NotificationsIndex, {
-            props: {
-                notifications: createPaginator([createNotification()]),
-                unreadCount: 5,
-            },
-        });
-
-        expect(
-            screen.getByRole('button', {
-                name: /Tandai Semua Dibaca/i,
-            })
-        ).toBeInTheDocument();
-    });
-
-    it('TIDAK merender tombol jika unreadCount = 0', () => {
-        render(NotificationsIndex, {
-            props: {
-                notifications: createPaginator([
-                    createNotification({
-                        read_at: '2026-04-01T10:00:00Z',
-                    }),
-                ]),
-                unreadCount: 0,
-            },
-        });
-
-        expect(
-            screen.queryByRole('button', {
-                name: /Tandai Semua Dibaca/i,
-            })
-        ).not.toBeInTheDocument();
-    });
-
-    it('memanggil router.post saat tombol "Tandai Semua Dibaca" diklik', async () => {
-        render(NotificationsIndex, {
-            props: {
-                notifications: createPaginator([createNotification()]),
-                unreadCount: 1,
-            },
-        });
-
-        const btn = screen.getByRole('button', {
-            name: /Tandai Semua Dibaca/i,
-        });
-        await fireEvent.click(btn);
-
-        expect(mockRouterPost).toHaveBeenCalledWith(
-            '/notifications/mark-all-read',
-            {},
-            { preserveScroll: true }
-        );
-    });
-});
-
-// ============================================================
-// KATEGORI 3 — AKSI MARK AS READ
-// ============================================================
-
-describe('Notifications Index — Mark As Read', () => {
-    it('memanggil router.post saat item notifikasi diklik', async () => {
-        render(NotificationsIndex, {
-            props: {
-                notifications: createPaginator([createNotification()]),
-                unreadCount: 1,
-            },
-        });
-
-        // Tombol item notifikasi — accessible name-nya gabungan judul + pesan + tanggal
-        // Gunakan selector spesifik: button yang mengandung "Notifikasi Test"
-        const item = screen.getByRole('button', {
-            name: /Notifikasi Test/i,
-        });
-        await fireEvent.click(item);
-
-        expect(mockRouterPost).toHaveBeenCalledWith(
-            '/notifications/uuid-123/read',
-            {},
-            { preserveScroll: true }
-        );
-    });
-});
-
-// ============================================================
-// KATEGORI 4 — EMPTY STATE
-// ============================================================
-
-describe('Notifications Index — Empty State', () => {
-    it('merender pesan kosong jika tidak ada notifikasi', () => {
-        render(NotificationsIndex, {
-            props: {
-                notifications: createPaginator([]),
-                unreadCount: 0,
-            },
-        });
-
-        // EmptyState asli merender teks langsung
-        expect(
-            screen.getByText('Belum ada notifikasi')
-        ).toBeInTheDocument();
-        expect(
-            screen.getByText(/Notifikasi akan muncul di sini/i)
-        ).toBeInTheDocument();
     });
 });

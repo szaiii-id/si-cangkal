@@ -5,7 +5,8 @@
     import Pagination from '@/global/Pagination.svelte';
     import SearchInput from '@/global/SearchInput.svelte';
     import StatusTabs from '@/global/StatusTabs.svelte';
-    import { router, inertia } from '@inertiajs/svelte';
+    import { inertia } from '@inertiajs/svelte';
+    import { getTrips } from '@/api/mitra';
     import type { MitraTripIndexProps } from '@/types/props';
     import type { TripStatus } from '@/types/enum';
     import type { StatusTab } from '@/types';
@@ -22,10 +23,7 @@
     } from '@/utils/timezone';
     import { mitraMenu } from '@/utils/menus';
 
-    // ==========================================
     // PROPS
-    // ==========================================
-
     let {
         trips,
         filters,
@@ -37,20 +35,14 @@
         },
     }: MitraTripIndexProps = $props();
 
-    // ==========================================
     // STATE
-    // ==========================================
-
     // svelte-ignore state_referenced_locally
     let search = $state(filters.search ?? '');
     // svelte-ignore state_referenced_locally
     let selectedStatus = $state(filters.status ?? '');
     let searchTimeout: ReturnType<typeof setTimeout>;
 
-    // ==========================================
     // FILTER HANDLERS
-    // ==========================================
-
     function buildQuery() {
         return {
             search,
@@ -61,7 +53,7 @@
     }
 
     function navigate(): void {
-        router.get('/mitra/trips', buildQuery(), {
+        getTrips(buildQuery(), {
             preserveState: true,
             preserveScroll: true,
             replace: true,
@@ -83,15 +75,11 @@
         search = '';
         selectedStatus = '';
         clearTimeout(searchTimeout);
-        router.get(
-            '/mitra/trips',
-            {},
-            {
-                preserveState: true,
-                preserveScroll: true,
-                replace: true,
-            },
-        );
+        getTrips({}, {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+        });
     }
 
     let hasActiveFilters = $derived(
@@ -105,10 +93,7 @@
         ),
     );
 
-    // ==========================================
     // STATUS TABS
-    // ==========================================
-
     const tripStatusKeys: TripStatus[] = [
         'scheduled',
         'active',
@@ -130,10 +115,7 @@
             })),
     ]);
 
-    // ==========================================
     // HELPERS — TIMEZONE AWARE
-    // ==========================================
-
     function isTripToday(trip: {
         timezone: string;
         tanggal_mulai: string;
@@ -149,7 +131,7 @@
 </script>
 
 <svelte:head>
-    <title>Jadwal Perjalanan | Titiktemu</title>
+    <title>Jadwal Perjalanan | SI-CANGKAL</title>
 </svelte:head>
 
 <DashboardLayout title="Jadwal Perjalanan" menuItems={mitraMenu}>
@@ -158,10 +140,7 @@
         description="Daftar jadwal perjalanan (trip) yang sedang Anda kelola."
     />
 
-    <!-- Card -->
-    <div
-        class="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden"
-    >
+    <div class="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
         <!-- Toolbar -->
         <div class="p-4 sm:p-6 border-b border-gray-100 space-y-4">
             <StatusTabs
@@ -198,111 +177,52 @@
                         use:inertia
                         class="group block bg-white border border-gray-200 rounded-2xl p-4 hover:border-pink/30 hover:shadow-md transition-all"
                     >
-                        <div
-                            class="flex flex-col sm:flex-row sm:items-center gap-4"
-                        >
-                            <div
-                                class="flex items-start gap-3 flex-1 min-w-0"
-                            >
-                                <div
-                                    class="w-12 h-12 rounded-2xl bg-linear-to-br from-pink-dark to-purple flex items-center justify-center text-white font-extrabold text-lg shadow-md shrink-0"
-                                >
+                        <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+                            <div class="flex items-start gap-3 flex-1 min-w-0">
+                                <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-pink-dark to-purple flex items-center justify-center text-white font-extrabold text-lg shadow-md shrink-0">
                                     {trip.package?.nama
                                         ?.charAt(0)
                                         ?.toUpperCase() ?? '?'}
                                 </div>
                                 <div class="min-w-0 flex-1">
-                                    <div
-                                        class="flex flex-wrap items-center gap-2 mb-1"
-                                    >
-                                        <span
-                                            class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-extrabold {tripStatusBadge(
-                                                trip.status,
-                                            )}"
-                                        >
-                                            {tripStatusLabel(
-                                                trip.status,
-                                            )}
+                                    <div class="flex flex-wrap items-center gap-2 mb-1">
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-extrabold {tripStatusBadge(trip.status)}">
+                                            {tripStatusLabel(trip.status)}
                                         </span>
                                         {#if isTripToday(trip) && trip.status === 'active'}
-                                            <span
-                                                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple/10 text-purple-text border border-purple/20"
-                                            >
-                                                <span
-                                                    class="w-1.5 h-1.5 rounded-full bg-purple animate-pulse"
-                                                ></span>
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple/10 text-purple-text border border-purple/20">
+                                                <span class="w-1.5 h-1.5 rounded-full bg-purple animate-pulse"></span>
                                                 Hari ini
                                             </span>
                                         {/if}
                                     </div>
-                                    <h3
-                                        class="text-sm font-extrabold text-dark truncate group-hover:text-pink-text transition-colors"
-                                    >
+                                    <h3 class="text-sm font-extrabold text-dark truncate group-hover:text-pink-text transition-colors">
                                         {trip.package?.nama ?? 'Paket'}
                                     </h3>
-                                    <p
-                                        class="text-[11px] text-gray-500 font-mono mt-0.5"
-                                    >
+                                    <p class="text-[11px] text-gray-500 font-mono mt-0.5">
                                         {trip.kode}
                                     </p>
-                                    <div
-                                        class="flex flex-wrap items-center gap-3 text-xs text-gray-500 mt-1"
-                                    >
-                                        <span
-                                            class="inline-flex items-center gap-1"
-                                        >
-                                            <svg
-                                                class="w-3 h-3"
-                                                fill="none"
-                                                viewBox="0 0 24 24"
-                                                stroke="currentColor"
-                                                stroke-width="2.5"
-                                                aria-hidden="true"
-                                            >
-                                                <path
-                                                    stroke-linecap="round"
-                                                    stroke-linejoin="round"
-                                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                                                />
+                                    <div class="flex flex-wrap items-center gap-3 text-xs text-gray-500 mt-1">
+                                        <span class="inline-flex items-center gap-1">
+                                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                             </svg>
-                                            {formatDate(
-                                                trip.tanggal_mulai,
-                                            )}
+                                            {formatDate(trip.tanggal_mulai)}
                                         </span>
-                                        <span
-                                            >{formatDurasiFromRange(
-                                                trip.tanggal_mulai,
-                                                trip.tanggal_selesai,
-                                            )}</span
-                                        >
-                                        <span
-                                            >{trip.jumlah_peserta}
-                                            peserta</span
-                                        >
+                                        <span>{formatDurasiFromRange(trip.tanggal_mulai, trip.tanggal_selesai)}</span>
+                                        <span>{trip.jumlah_peserta} peserta</span>
                                     </div>
                                 </div>
                             </div>
-                            <div
-                                class="shrink-0 self-end sm:self-center"
-                            >
-                                <div
-                                    class="w-8 h-8 rounded-full bg-pink-dark/10 text-pink-text flex items-center justify-center group-hover:bg-pink-dark group-hover:text-white transition-all"
-                                    aria-hidden="true"
-                                >
-                                    <svg
-                                        class="w-4 h-4"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        stroke="currentColor"
-                                        stroke-width="2.5"
-                                    >
-                                        <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            d="M14 5l7 7m0 0l-7 7m7-7H3"
-                                        />
+                            
+                            <!-- Tombol Detail dengan Teks -->
+                            <div class="shrink-0 self-end sm:self-center">
+                                <span class="inline-flex items-center gap-1 px-4 py-2 rounded-full bg-pink-dark text-white text-xs font-bold shadow-sm group-hover:bg-sun-dark transition-all whitespace-nowrap">
+                                    Detail
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
                                     </svg>
-                                </div>
+                                </span>
                             </div>
                         </div>
                     </a>

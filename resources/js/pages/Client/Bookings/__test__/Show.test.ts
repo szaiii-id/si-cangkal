@@ -1,214 +1,328 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
-import BookingShow from '../Show.svelte';
+import { render, screen, fireEvent } from '@testing-library/svelte';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import Show from '../Show.svelte';
 
 // ============================================================
-// MOCK INERTIA
+// HOISTED MOCK REGISTRY
 // ============================================================
-const mockRouterPost = vi.fn();
+const mockRouter = vi.hoisted(() => ({
+    post: vi.fn(),
+    visit: vi.fn(),
+}));
+const mockUpdaters = vi.hoisted(() => new Set<() => void>());
 
+// ============================================================
+// MOCK — INERTIA & API
+// ============================================================
 vi.mock('@inertiajs/svelte', () => ({
-    router: {
-        post: (...args: any[]) => mockRouterPost(...args),
-    },
-    inertia: () => ({
-        update: vi.fn(),
-        destroy: vi.fn(),
-    }),
-    page: {
-        get props() {
-            return {
-                auth: {
-                    user: {
-                        id: 1,
-                        name: 'Client Test',
-                        username: 'client',
-                        email: 'client@example.com',
-                        role: 'client',
-                    },
-                },
-                unread_notifications: 0,
-                flash: {},
-            };
-        },
-        get url() {
-            return '/client/bookings/1';
-        },
-        get component() {
-            return 'Client/Bookings/Show';
-        },
-    },
+    inertia: vi.fn(),
+    router: mockRouter,
+    useForm: vi.fn(() => ({
+        payment_proof: null,
+        processing: false,
+        errors: {},
+        post: vi.fn(),
+        reset: vi.fn(),
+    })),
 }));
 
 // ============================================================
-// MOCK KOMPONEN UI — hanya yang tidak kritis
+// MOCK — UTILS
 // ============================================================
-vi.mock('@/global/ImageUploader.svelte', () => ({
-    default: () => null,
-}));
-vi.mock('@/global/RupiahInput.svelte', () => ({
-    default: () => null,
+vi.mock('@/utils/bookingRules', () => ({
+    canClientCancelBooking: vi.fn((status: string) => status === 'pending_payment'),
+    needsMitraCancel: vi.fn((status: string) => status === 'confirmed'),
+    getBookingStatusDescription: vi.fn((status: string) => `Deskripsi untuk ${status}`),
 }));
 
-// ============================================================
-// MOCK UTILS
-// ============================================================
-vi.mock('@/utils/enums', () => ({
-    bookingStatusBadge: (s: string) => `badge-${s}`,
-    bookingStatusLabel: (s: string) => `Label ${s}`,
-    paymentMetodeLabel: (s: string) => `Metode ${s}`,
+vi.mock('@/utils/countdown', () => ({
+    formatBookingCountdown: vi.fn(() => ({
+        label: '00:59:59',
+        isExpiringSoon: false,
+    })),
 }));
 
 vi.mock('@/utils/formatCurrency', () => ({
-    formatCurrency: (n: number | string) => `Rp ${n}`,
+    formatCurrency: vi.fn((v: string | number) => `Rp ${v}`),
+}));
+vi.mock('@/utils/formatDate', () => ({ formatDate: vi.fn((v) => `Date: ${v}`) }));
+vi.mock('@/utils/duration', () => ({ formatDurasi: vi.fn(() => '3H 2M') }));
+vi.mock('@/utils/toast.svelte', () => ({ showToast: vi.fn() }));
+vi.mock('@/utils/enums', () => ({
+    paymentMetodeLabel: vi.fn((m) => m),
+    bookingStatusBadge: vi.fn((s) => s),
+    bookingStatusLabel: vi.fn((s) => s),
 }));
 
-vi.mock('@/utils/formatDate', () => ({
-    formatDate: (d: string) => `Tgl: ${d}`,
-    formatDateTime: (d: string) => `TglWaktu: ${d}`,
+// ============================================================
+// MOCK — CHILD COMPONENTS
+// ============================================================
+vi.mock('@/components/layout/ClientLayout.svelte', () => ({
+    default: (anchor: Node, props: any) => {
+        props.children?.(anchor);
+        return {};
+    },
 }));
 
-vi.mock('@/utils/duration', () => ({
-    formatDurasi: (h: number, m: number) => `${h} Hari ${m} Malam`,
+vi.mock('@/global/ConfirmModal.svelte', () => ({
+    default: (anchor: Node, props: any) => {
+        const el = document.createElement('div');
+        el.setAttribute('data-testid', 'confirm-modal');
+        anchor.parentNode?.insertBefore(el, anchor);
+
+        const update = () => {
+            el.innerHTML = '';
+            if (!props.open) return;
+            el.innerHTML = `
+                <p>${props.description}</p>
+                <button type="button" data-action="confirm">${props.confirmLabel}</button>
+            `;
+            const btn = el.querySelector('button');
+            if (btn) btn.onclick = () => props.onConfirm?.();
+        };
+
+        update();
+        mockUpdaters.add(update);
+        return {};
+    },
 }));
+
+vi.mock('@/components/booking/BookingStatusBanner.svelte', () => ({
+    default: (anchor: Node, props: any) => {
+        const el = document.createElement('div');
+        el.setAttribute('data-testid', 'status-banner');
+        el.textContent = `Status: ${props.status}`;
+        anchor.parentNode?.insertBefore(el, anchor);
+        return {};
+    },
+}));
+
+vi.mock('@/components/booking/UploadProofForm.svelte', () => ({
+    default: (anchor: Node, props: any) => {
+        const el = document.createElement('div');
+        el.setAttribute('data-testid', 'upload-proof');
+        el.setAttribute('data-has-proof', String(props.hasProof));
+        anchor.parentNode?.insertBefore(el, anchor);
+        return {};
+    },
+}));
+
+vi.mock('@/components/booking/RefundStatusCard.svelte', () => ({
+    default: (anchor: Node, props: any) => {
+        const el = document.createElement('div');
+        el.setAttribute('data-testid', 'refund-card');
+        el.textContent = `Refund: ${props.amount} (${props.status})`;
+        anchor.parentNode?.insertBefore(el, anchor);
+        return {};
+    },
+}));
+
+vi.mock('@/components/shared/ETicketDownloadButton.svelte', () => ({
+    default: (anchor: Node, props: any) => {
+        const el = document.createElement('div');
+        el.setAttribute('data-testid', 'eticket-btn');
+        el.textContent = `E-Ticket: ${props.eticket?.kode || 'Ready'}`;
+        anchor.parentNode?.insertBefore(el, anchor);
+        return {};
+    },
+}));
+
+vi.mock('@/components/booking/ParticipantList.svelte', () => ({
+    default: (anchor: Node, props: any) => {
+        const el = document.createElement('div');
+        el.setAttribute('data-testid', 'participant-list');
+        el.textContent = `${props.participants.length} peserta`;
+        anchor.parentNode?.insertBefore(el, anchor);
+        return {};
+    },
+}));
+
+vi.mock('@/components/booking/PaymentHistory.svelte', () => ({
+    default: (anchor: Node, props: any) => {
+        const el = document.createElement('div');
+        el.setAttribute('data-testid', 'payment-history');
+        el.textContent = `${props.payments.length} pembayaran`;
+        anchor.parentNode?.insertBefore(el, anchor);
+        return {};
+    },
+}));
+
+// ============================================================
+// STATIC IMPORT
+// ============================================================
+import { canClientCancelBooking, needsMitraCancel } from '@/utils/bookingRules';
 
 // ============================================================
 // HELPERS
 // ============================================================
+async function syncUI() {
+    await Promise.resolve();
+    mockUpdaters.forEach((fn) => fn());
+}
 
-const createMockBooking = (overrides: any = {}): any => ({
+// ============================================================
+// FIXTURES
+// ============================================================
+const makeBooking = (overrides = {}) => ({
     id: 1,
-    kode: 'BK-123',
+    kode: 'BK-001',
     status: 'pending_payment',
-    tanggal_keberangkatan: '2026-05-01',
+    total_harga: '1500000',
+    tanggal_keberangkatan: '2026-02-01',
     jumlah_peserta: 2,
-    total_harga: '3000000',
-    catatan: 'Catatan booking',
-    expired_at: null,
-    created_at: '2026-04-01T10:00:00Z',
-    updated_at: '2026-04-01T10:00:00Z',
-    package: {
-        id: 10,
-        nama: 'Paket Bali',
-        kode: 'PKT-BALI',
-        slug: 'paket-bali',
-        timezone: 'Asia/Jakarta',
-        harga_per_orang: '1500000',
-        harga_per_rombongan: null,
-        durasi_hari: 3,
-        durasi_malam: 2,
-        cover_image: null,
-    },
-    participants: [
-        { id: 1, nama: 'Budi', umur: 30, no_hp: '08123', catatan: null },
-        { id: 2, nama: 'Ani', umur: 28, no_hp: '08987', catatan: 'Alergi seafood' },
-    ],
+    expired_at: '2026-01-20T12:00:00Z',
+    has_payment_proof: false,
+    package: { id: 1, nama: 'Paket Bali', kode: 'PKT-001', durasi_hari: 3, durasi_malam: 2 },
+    participants: [{ id: 1, nama: 'Budi' }],
     payments: [],
+    mitra: {
+        name: 'PT Mitra',
+        telepon: '08123456789',
+        // ✅ FIX: pakai `nama_penyedia`, bukan `nama_bank`
+        bankAccounts: [
+            {
+                id: 1,
+                tipe: 'bank',
+                nama_penyedia: 'BCA',           // ← source: `acc.nama_penyedia`
+                nomor_rekening: '123456789',     // ← source: `acc.nomor_rekening`
+                nama_pemilik: 'PT Mitra',        // ← source: `acc.nama_pemilik`
+                is_primary: true,                // ← source: `acc.is_primary`
+            },
+        ],
+    },
     ...overrides,
 });
 
-// ============================================================
-// SETUP
-// ============================================================
-
-beforeEach(() => {
-    vi.clearAllMocks();
-});
-
-// ============================================================
-// KATEGORI 1 — RENDERING DATA
-// ============================================================
-
-describe('Client Booking Show — Rendering Data', () => {
-    it('merender status banner dan info booking', () => {
-        render(BookingShow, { props: { booking: createMockBooking() } });
-
-        // `Label pending_payment` muncul 2x (banner + badge)
-        expect(screen.getAllByText('Label pending_payment').length).toBeGreaterThanOrEqual(1);
-
-        // ✅ `BK-123` muncul 2x (banner + info card)
-        expect(screen.getAllByText('BK-123').length).toBeGreaterThanOrEqual(1);
-
-        expect(screen.getByText(/Silakan transfer sesuai total/i)).toBeInTheDocument();
+const renderPage = (props = {}) =>
+    render(Show, {
+        props: {
+            booking: makeBooking(),
+            eticket: null,
+            refunds: [],
+            ...props,
+        },
     });
 
-    it('merender info paket dan peserta', () => {
-        render(BookingShow, { props: { booking: createMockBooking() } });
-
-        expect(screen.getByText('Paket Bali')).toBeInTheDocument();
-        expect(screen.getByText('3 Hari 2 Malam')).toBeInTheDocument();
-        expect(screen.getAllByText('Rp 3000000').length).toBeGreaterThan(0);
-
-        expect(screen.getByText('Budi')).toBeInTheDocument();
-        expect(screen.getByText('Ani')).toBeInTheDocument();
-        expect(screen.getByText('Alergi seafood')).toBeInTheDocument();
-    });
-
-    it('merender empty state pembayaran jika tidak ada payments', () => {
-        render(BookingShow, { props: { booking: createMockBooking() } });
-
-        expect(screen.getByText('Belum ada pembayaran')).toBeInTheDocument();
-    });
-});
-
 // ============================================================
-// KATEGORI 2 — AKSI & MODAL
+// TEST SUITE
 // ============================================================
-
-describe('Client Booking Show — Aksi & Modal', () => {
-    it('menampilkan tombol upload bukti jika status pending_payment', () => {
-        render(BookingShow, { props: { booking: createMockBooking() } });
-
-        const uploadBtns = screen.getAllByRole('button', {
-            name: /Upload Bukti Transfer|Upload Bukti Bayar/i,
-        });
-        expect(uploadBtns.length).toBeGreaterThan(0);
+describe('Client Bookings — Show Page', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        vi.useFakeTimers();
+        mockUpdaters.clear();
     });
 
-    it('membuka modal upload saat tombol diklik', async () => {
-        render(BookingShow, { props: { booking: createMockBooking() } });
+    afterEach(() => {
+        vi.useRealTimers();
+    });
 
-        const btn = screen.getAllByRole('button', { name: /Upload Bukti/i })[0];
-        await fireEvent.click(btn);
-
-        // ✅ Setelah modal terbuka, gunakan ID unik dari FormModal
-        await waitFor(() => {
-            const modalTitle = document.querySelector('#form-modal-title');
-            expect(modalTitle).not.toBeNull();
-            expect(modalTitle?.textContent?.trim()).toBe('Upload Bukti Transfer');
+    describe('Rendering — Header & Banner', () => {
+        it('menampilkan banner status dan tombol kembali', () => {
+            renderPage();
+            expect(screen.getByTestId('status-banner')).toHaveTextContent('Status: pending_payment');
+            expect(screen.getByRole('link', { name: /Kembali ke Pesanan Saya/i })).toHaveAttribute('href', '/client/bookings');
         });
     });
 
-    it('membuka modal cancel saat tombol Batalkan diklik', async () => {
-        render(BookingShow, { props: { booking: createMockBooking() } });
+    describe('Rendering — Data Paket & Peserta', () => {
+        it('menampilkan nama paket dan detail kode', () => {
+            renderPage();
+            expect(screen.getByText('Paket Bali')).toBeInTheDocument();
+            expect(screen.getByText('PKT-001')).toBeInTheDocument();
+        });
 
-        const btn = screen.getByRole('button', { name: /Batalkan Booking/i });
-        await fireEvent.click(btn);
+        it('meneruskan data ke ParticipantList', () => {
+            renderPage();
+            expect(screen.getByTestId('participant-list')).toHaveTextContent('1 peserta');
+        });
 
-        // ConfirmModal juga punya #confirm-modal-title
-        await waitFor(() => {
-            const modalTitle = document.querySelector('#confirm-modal-title');
-            expect(modalTitle).not.toBeNull();
-            expect(modalTitle?.textContent?.trim()).toBe('Batalkan Booking?');
+        it('meneruskan data ke PaymentHistory', () => {
+            renderPage({ booking: makeBooking({ payments: [{ id: 1 }] }) });
+            expect(screen.getByTestId('payment-history')).toHaveTextContent('1 pembayaran');
         });
     });
 
-    it('menampilkan E-Ticket card jika props eticket diberikan', () => {
-        const eticket = {
-            uuid: '123',
-            pdf_url: '/eticket/123.pdf',
-            generated_at: '2026-05-02T10:00:00Z',
-        };
-        render(BookingShow, {
-            props: {
-                booking: createMockBooking({ status: 'confirmed' }),
-                eticket,
-            },
+    describe('Rendering — Pending Payment State', () => {
+        it('menampilkan UploadProofForm dan rekening jika status pending_payment', () => {
+            renderPage();
+            expect(screen.getByTestId('upload-proof')).toBeInTheDocument();
+            expect(screen.getByText('Rekening Tujuan Transfer')).toBeInTheDocument();
+            expect(screen.getByText('BCA')).toBeInTheDocument();
+            expect(screen.getByText('123456789')).toBeInTheDocument();
         });
 
-        expect(screen.getByText('E-Ticket Siap')).toBeInTheDocument();
+        it('TIDAK menampilkan UploadProofForm jika status confirmed', () => {
+            renderPage({ booking: makeBooking({ status: 'confirmed' }) });
+            expect(screen.queryByTestId('upload-proof')).not.toBeInTheDocument();
+        });
+    });
 
-        const link = screen.getByRole('link', { name: /Download E-Ticket/i });
-        expect(link).toHaveAttribute('href', '/eticket/123.pdf');
+    describe('Rendering — E-Ticket & Refund', () => {
+        it('menampilkan ETicketDownloadButton jika eticket ada', () => {
+            renderPage({ eticket: { kode: 'ET-001' } });
+            expect(screen.getByTestId('eticket-btn')).toBeInTheDocument();
+        });
+
+        it('menampilkan RefundStatusCard jika refunds tidak kosong', () => {
+            renderPage({ refunds: [{ amount: '500000', status: 'SUCCEEDED' }] });
+            expect(screen.getByTestId('refund-card')).toHaveTextContent('Refund: 500000');
+        });
+    });
+
+    describe('Interaction — Cancel Booking', () => {
+        it('menampilkan tombol Batalkan Pesanan jika status pending_payment', () => {
+            renderPage();
+            expect(screen.getByRole('button', { name: 'Batalkan Pesanan' })).toBeInTheDocument();
+        });
+
+        it('menampilkan info pembatalan via mitra jika status confirmed', () => {
+            renderPage({ booking: makeBooking({ status: 'confirmed' }) });
+            expect(screen.getByText('Pembatalan via Mitra')).toBeInTheDocument();
+        });
+
+        it('membuka ConfirmModal saat tombol batalkan diklik', async () => {
+            renderPage();
+            
+            await fireEvent.click(screen.getByRole('button', { name: 'Batalkan Pesanan' }));
+            await syncUI();
+
+            const modal = screen.getByTestId('confirm-modal');
+            expect(modal).toHaveTextContent('Ya, Batalkan');
+        });
+
+        it('memanggil router.post /cancel saat konfirmasi modal diklik', async () => {
+            renderPage();
+            
+            await fireEvent.click(screen.getByRole('button', { name: 'Batalkan Pesanan' }));
+            await syncUI();
+
+            const confirmBtn = screen.getByRole('button', { name: 'Ya, Batalkan' });
+            await fireEvent.click(confirmBtn);
+
+            expect(mockRouter.post).toHaveBeenCalledWith(
+                '/client/bookings/1/cancel',
+                {},
+                expect.any(Object)
+            );
+        });
+    });
+
+    describe('Interaction — Copy Rekening', () => {
+        it('memanggil clipboard.writeText dan menampilkan toast', async () => {
+            const writeTextMock = vi.fn().mockResolvedValue(undefined);
+            Object.defineProperty(navigator, 'clipboard', {
+                value: { writeText: writeTextMock },
+                writable: true,
+                configurable: true,
+            });
+
+            renderPage();
+            
+            const copyBtn = screen.getByRole('button', { name: /Salin Rekening/i });
+            await fireEvent.click(copyBtn);
+
+            expect(writeTextMock).toHaveBeenCalledWith('123456789');
+        });
     });
 });

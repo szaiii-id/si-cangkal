@@ -14,14 +14,14 @@ class BookingSeeder extends Seeder
     public function run(): void
     {
         // ========================================
-        // 12 BOOKING REALISTIS
+        // 11 BOOKING REALISTIS
         // ========================================
         $bookings = [
             // ---- PENDING PAYMENT (belum bayar) ----
             [
-                'kode' => 'BKG-' . now()->year . '-001',
+                'kode' => 'BKG-'.now()->year.'-001',
                 'client_email' => 'rina.kartika@gmail.com',
-                'package_kode' => 'PKG-' . now()->year . '-001',
+                'package_kode' => 'PKG-'.now()->year.'-001',
                 'tanggal_keberangkatan' => now()->addDays(21)->format('Y-m-d'),
                 'status' => BookingStatus::PENDING_PAYMENT,
                 'expired_at' => now()->addHours(24),
@@ -32,9 +32,9 @@ class BookingSeeder extends Seeder
                 'catatan' => 'Mohon dijemput pagi karena flight pagi.',
             ],
             [
-                'kode' => 'BKG-' . now()->year . '-002',
+                'kode' => 'BKG-'.now()->year.'-002',
                 'client_email' => 'andi.pratama@yahoo.com',
-                'package_kode' => 'PKG-' . now()->year . '-004',
+                'package_kode' => 'PKG-'.now()->year.'-004',
                 'tanggal_keberangkatan' => now()->addDays(18)->format('Y-m-d'),
                 'status' => BookingStatus::PENDING_PAYMENT,
                 'expired_at' => now()->addHours(24),
@@ -49,9 +49,9 @@ class BookingSeeder extends Seeder
 
             // ---- PENDING (sudah upload bukti, menunggu verifikasi) ----
             [
-                'kode' => 'BKG-' . now()->year . '-003',
+                'kode' => 'BKG-'.now()->year.'-003',
                 'client_email' => 'siti.nurhaliza@gmail.com',
-                'package_kode' => 'PKG-' . now()->year . '-006',
+                'package_kode' => 'PKG-'.now()->year.'-006',
                 'tanggal_keberangkatan' => now()->addDays(14)->format('Y-m-d'),
                 'status' => BookingStatus::PENDING_PAYMENT,
                 'expired_at' => now()->addHours(20),
@@ -64,9 +64,9 @@ class BookingSeeder extends Seeder
 
             // ---- PAYMENT VERIFIED ----
             [
-                'kode' => 'BKG-' . now()->year . '-004',
+                'kode' => 'BKG-'.now()->year.'-004',
                 'client_email' => 'budi.hartono@gmail.com',
-                'package_kode' => 'PKG-' . now()->year . '-002',
+                'package_kode' => 'PKG-'.now()->year.'-002',
                 'tanggal_keberangkatan' => now()->addDays(10)->format('Y-m-d'),
                 'status' => BookingStatus::PAYMENT_VERIFIED,
                 'participants' => [
@@ -78,9 +78,9 @@ class BookingSeeder extends Seeder
 
             // ---- CONFIRMED ----
             [
-                'kode' => 'BKG-' . now()->year . '-005',
+                'kode' => 'BKG-'.now()->year.'-005',
                 'client_email' => 'dewi.lestari@gmail.com',
-                'package_kode' => 'PKG-' . now()->year . '-005',
+                'package_kode' => 'PKG-'.now()->year.'-005',
                 'tanggal_keberangkatan' => now()->addDays(7)->format('Y-m-d'),
                 'status' => BookingStatus::CONFIRMED,
                 'participants' => [
@@ -92,9 +92,9 @@ class BookingSeeder extends Seeder
                 'catatan' => 'Rombongan kantor, mohon invoice terpisah.',
             ],
             [
-                'kode' => 'BKG-' . now()->year . '-006',
+                'kode' => 'BKG-'.now()->year.'-006',
                 'client_email' => 'reza.aditya@outlook.com',
-                'package_kode' => 'PKG-' . now()->year . '-003',
+                'package_kode' => 'PKG-'.now()->year.'-003',
                 'tanggal_keberangkatan' => now()->addDays(5)->format('Y-m-d'),
                 'status' => BookingStatus::CONFIRMED,
                 'participants' => [
@@ -105,10 +105,10 @@ class BookingSeeder extends Seeder
 
             // ---- IN PROGRESS (sedang berjalan) ----
             [
-                'kode' => 'BKG-' . now()->year . '-007',
+                'kode' => 'BKG-'.now()->year.'-007',
                 'client_email' => 'maya.anggraini@gmail.com',
-                'package_kode' => 'PKG-' . now()->year . '-006',
-                'tanggal_keberangkatan' => now()->subDays(1)->format('Y-m-d'),
+                'package_kode' => 'PKG-'.now()->year.'-006',
+                'tanggal_keberangkatan' => now()->subDay()->format('Y-m-d'),
                 'status' => BookingStatus::IN_PROGRESS,
                 'participants' => [
                     ['nama' => 'Maya Anggraini', 'umur' => 34, 'no_hp' => '081234567015', 'catatan' => null],
@@ -120,9 +120,9 @@ class BookingSeeder extends Seeder
 
             // ---- COMPLETED (selesai) ----
             [
-                'kode' => 'BKG-' . now()->year . '-008',
+                'kode' => 'BKG-'.now()->year.'-008',
                 'client_email' => 'fajar.nugroho@gmail.com',
-                'package_kode' => 'PKG-' . now()->year . '-001',
+                'package_kode' => 'PKG-'.now()->year.'-001',
                 'tanggal_keberangkatan' => now()->subDays(7)->format('Y-m-d'),
                 'status' => BookingStatus::COMPLETED,
                 'participants' => [
@@ -132,9 +132,9 @@ class BookingSeeder extends Seeder
                 ],
             ],
             [
-                'kode' => 'BKG-' . now()->year . '-009',
+                'kode' => 'BKG-'.now()->year.'-009',
                 'client_email' => 'rina.kartika@gmail.com',
-                'package_kode' => 'PKG-' . now()->year . '-002',
+                'package_kode' => 'PKG-'.now()->year.'-002',
                 'tanggal_keberangkatan' => now()->subDays(14)->format('Y-m-d'),
                 'status' => BookingStatus::COMPLETED,
                 'participants' => [
@@ -145,10 +145,10 @@ class BookingSeeder extends Seeder
 
             // ---- CANCELLED ----
             [
-                'kode' => 'BKG-' . now()->year . '-010',
+                'kode' => 'BKG-'.now()->year.'-010',
                 'client_email' => 'andi.pratama@yahoo.com',
-                'package_kode' => 'PKG-' . now()->year . '-003',
-                'tanggal_keberangkatan' => now()->addDays(3)->format('Y-m-d'),
+                'package_kode' => 'PKG-'.now()->year.'-003',
+                'tanggal_keberangkatan' => now()->addDay()->format('Y-m-d'),
                 'status' => BookingStatus::CANCELLED,
                 'participants' => [
                     ['nama' => 'Andi Pratama', 'umur' => 32, 'no_hp' => '081234567003', 'catatan' => null],
@@ -157,9 +157,9 @@ class BookingSeeder extends Seeder
                 'catatan' => 'Dibatalkan karena ada urusan mendadak. Mohon refund.',
             ],
             [
-                'kode' => 'BKG-' . now()->year . '-011',
+                'kode' => 'BKG-'.now()->year.'-011',
                 'client_email' => 'siti.nurhaliza@gmail.com',
-                'package_kode' => 'PKG-' . now()->year . '-004',
+                'package_kode' => 'PKG-'.now()->year.'-004',
                 'tanggal_keberangkatan' => now()->addDays(4)->format('Y-m-d'),
                 'status' => BookingStatus::CANCELLED,
                 'participants' => [
@@ -174,8 +174,9 @@ class BookingSeeder extends Seeder
             $client = User::where('email', $data['client_email'])->first();
             $package = Package::where('kode', $data['package_kode'])->first();
 
-            if (! $client || ! $package) {
-                $this->command->warn("⚠️ Skip {$data['kode']}: client/package tidak ditemukan.");
+            if (! $client instanceof User || ! $package instanceof Package) {
+                $this->command->warn("  Skip {$data['kode']}: client/package tidak ditemukan.");
+
                 continue;
             }
 
@@ -193,7 +194,7 @@ class BookingSeeder extends Seeder
                     'total_harga' => $totalHarga,
                     'status' => $data['status']->value,
                     'payment_proof_path' => $data['payment_proof_path'] ?? null,
-                    'payment_verified_at' => in_array($data['status'], [BookingStatus::CONFIRMED, BookingStatus::IN_PROGRESS, BookingStatus::COMPLETED]) ? now() : null,
+                    'payment_verified_at' => in_array($data['status'], [BookingStatus::CONFIRMED, BookingStatus::IN_PROGRESS, BookingStatus::COMPLETED], true) ? now() : null,
                     'expired_at' => $data['expired_at'] ?? null,
                     'catatan' => $data['catatan'] ?? null,
                 ]
@@ -212,6 +213,6 @@ class BookingSeeder extends Seeder
             }
         }
 
-        $this->command->info('✅ BookingSeeder selesai (11 booking, berbagai status).');
+        $this->command->info('BookingSeeder selesai (11 booking, berbagai status).');
     }
 }

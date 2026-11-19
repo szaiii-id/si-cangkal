@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Enums\BookingStatus;
 use App\Enums\RefundReason;
 use App\Enums\RefundStatus;
 use App\Models\Booking;
@@ -15,11 +14,11 @@ class RefundSeeder extends Seeder
 {
     public function run(): void
     {
-        $admin = User::where('email', 'admin@titiktemu.test')->first();
+        $admin = User::where('email', 'admin@sicangkal.test')->first();
 
         // Refund untuk BKG-010 (CANCELLED, sudah bayar)
         $this->seedRefund(
-            'BKG-' . now()->year . '-010',
+            'BKG-'.now()->year.'-010',
             RefundReason::REQUESTED_BY_CUSTOMER,
             RefundStatus::PENDING,
             700000, // 2 peserta × Rp 350.000
@@ -28,14 +27,14 @@ class RefundSeeder extends Seeder
 
         // Refund untuk BKG-011 (CANCELLED karena expired, sudah pernah bayar)
         $this->seedRefund(
-            'BKG-' . now()->year . '-011',
+            'BKG-'.now()->year.'-011',
             RefundReason::CANCELLATION,
             RefundStatus::SUCCEEDED,
             1500000, // 2 peserta × Rp 750.000
             'Auto-cancel karena expired. Refund sudah ditransfer balik.',
         );
 
-        $this->command->info('✅ RefundSeeder selesai (2 refund).');
+        $this->command->info(' RefundSeeder selesai (2 refund).');
     }
 
     protected function seedRefund(
@@ -48,7 +47,8 @@ class RefundSeeder extends Seeder
         $booking = Booking::where('kode', $bookingKode)->first();
 
         if (! $booking) {
-            $this->command->warn("⚠️ Booking {$bookingKode} tidak ditemukan.");
+            $this->command->warn("  Booking {$bookingKode} tidak ditemukan.");
+
             return;
         }
 
@@ -78,6 +78,6 @@ class RefundSeeder extends Seeder
             );
         }
 
-        $this->command->line("✅ Refund dibuat: {$bookingKode} ({$status->value})");
+        $this->command->line(" Refund dibuat: {$bookingKode} ({$status->value})");
     }
 }

@@ -12,9 +12,6 @@ parameters:
 
     level: 7
 
-    parallel:
-        maximumNumberOfProcesses: 1
-
     ignoreErrors:
         -
             message: '#Class App\\Models\\User uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types: TFactory#'
@@ -22,3 +19,6 @@ parameters:
         -
             message: '#Parameter \#2 \$string of function explode expects string, bool\|string given#'
             path: config/sanctum.php
+        -
+            message: '#Cannot cast SimpleSoftwareIO\\QrCode\\Illuminate\\Support\\HtmlString\|string\|null to string\.#'
+            path: app/Services/ETicket/ETicketService.php

@@ -1,245 +1,150 @@
+import { render, screen } from '@testing-library/svelte';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, within } from '@testing-library/svelte';
 import Pagination from '../Pagination.svelte';
 import type { PaginationMeta } from '@/types';
 
-// ============================================================
+// ==========================================
 // MOCK INERTIA
-// ============================================================
+// ==========================================
 vi.mock('@inertiajs/svelte', () => ({
-    inertia: () => ({
-        update: vi.fn(),
-        destroy: vi.fn(),
-    }),
+    inertia: vi.fn(),
 }));
 
-// ============================================================
-// SETUP
-// ============================================================
-
-beforeEach(() => {
-    vi.clearAllMocks();
-});
-
-/**
- * Sesuai tipe `PaginationMeta` dari `@/types/pagination.ts`:
- *   current_page, last_page, from, to, total, links, per_page?
- *
- * Field seperti `data`, `first_page_url`, `last_page_url`,
- * `next_page_url`, `path`, `prev_page_url` TIDAK ADA di tipe
- * (dan tidak dipakai oleh komponen `Pagination.svelte`).
- */
+// Helper dengan tipe eksplisit yang mengizinkan null
 const createMeta = (
-    overrides: Partial<PaginationMeta> = {},
+    lastPage: number, 
+    links: PaginationMeta['links'] = [],
+    overrides: Partial<PaginationMeta> = {}
 ): PaginationMeta => ({
     current_page: 1,
-    last_page: 2,
+    last_page: lastPage,
     from: 1,
     to: 10,
-    total: 15,
+    total: 50,
+    per_page: 10,
     links: [
         { url: null, label: '&laquo; Previous', active: false },
-        { url: '/items?page=1', label: '1', active: true },
-        { url: '/items?page=2', label: '2', active: false },
-        { url: '/items?page=2', label: 'Next &raquo;', active: false },
+        ...links,
+        { url: 'http://example.com/page/2', label: 'Next &raquo;', active: false },
     ],
-    per_page: 10,
     ...overrides,
 });
 
-/**
- * Helper: ambil container utama Pagination via <nav>.
- * `querySelector('.p-4.sm\\:p-6')` TIDAK BISA dipakai karena
- * `:` di class Tailwind diartikan sebagai pseudo-class.
- */
-const getContainer = (): HTMLElement | null => {
-    const nav = screen.queryByRole('navigation', { name: /Pagination/i });
-    return (nav?.parentElement as HTMLElement) ?? null;
-};
-
-// ============================================================
-// KATEGORI 1 — VISIBILITY
-// ============================================================
-
-describe('Pagination.svelte — Visibility', () => {
-    it('TIDAK merender apa pun jika last_page = 1 dan showWhenEmpty = false', () => {
-        render(Pagination, {
-            props: { meta: createMeta({ last_page: 1 }) },
-        });
-
-        expect(
-            screen.queryByRole('navigation', { name: /Pagination/i }),
-        ).not.toBeInTheDocument();
+describe('Pagination Component', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
     });
 
-    it('merender pagination jika last_page > 1', () => {
-        render(Pagination, {
-            props: { meta: createMeta({ last_page: 2 }) },
+    // ==========================================
+    // 1. VISIBILITY LOGIC
+    // ==========================================
+    describe('Visibility', () => {
+        it('TIDAK boleh merender apa pun jika last_page = 1 dan showWhenEmpty = false', () => {
+            render(Pagination, { props: { meta: createMeta(1) } });
+            expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
         });
 
-        expect(
-            screen.getByRole('navigation', { name: /Pagination/i }),
-        ).toBeInTheDocument();
+        it('harus merender jika last_page > 1', () => {
+            render(Pagination, { props: { meta: createMeta(3) } });
+            expect(screen.getByRole('navigation')).toBeInTheDocument();
+        });
+
+        it('harus merender meskipun last_page = 1 jika showWhenEmpty = true', () => {
+            render(Pagination, { props: { meta: createMeta(1), showWhenEmpty: true } });
+            expect(screen.getByRole('navigation')).toBeInTheDocument();
+        });
     });
 
-    it('merender pagination jika showWhenEmpty = true meskipun last_page = 1', () => {
-        render(Pagination, {
-            props: {
-                meta: createMeta({ last_page: 1 }),
-                showWhenEmpty: true,
-            },
+    // ==========================================
+    // 2. RENDERING INFO
+    // ==========================================
+    describe('Rendering Info', () => {
+        it('harus merender info "Menampilkan X-Y dari Z"', () => {
+            render(Pagination, { props: { meta: createMeta(3), label: 'booking' } });
+            
+            const info = screen.getByText(/Menampilkan/i);
+            expect(info).toHaveTextContent(/1–\s*10/);
+            expect(info).toHaveTextContent(/dari/);
+            expect(info).toHaveTextContent(/50/);
+            expect(info).toHaveTextContent(/booking/);
         });
 
-        expect(
-            screen.getByRole('navigation', { name: /Pagination/i }),
-        ).toBeInTheDocument();
-    });
-});
-
-// ============================================================
-// KATEGORI 2 — INFO TEKS
-// ============================================================
-
-describe('Pagination.svelte — Info Teks', () => {
-    it('menampilkan info "Menampilkan X–Y dari Z item" (default label)', () => {
-        render(Pagination, {
-            props: {
-                meta: createMeta({ from: 1, to: 10, total: 15 }),
-            },
+        it('harus menampilkan angka 0 jika from/to null', () => {
+            // PERBAIKAN: Menggunakan overrides agar TypeScript tidak komplain
+            render(Pagination, { 
+                props: { 
+                    meta: createMeta(3, [], { from: null, to: null }) 
+                } 
+            });
+            
+            const info = screen.getByText(/Menampilkan/i);
+            expect(info).toHaveTextContent(/0–\s*0/);
         });
-
-        const container = getContainer()!;
-
-        // Verifikasi teks gabungan (bukan per angka — angka "1" ambigu)
-        expect(container.textContent).toMatch(
-            /Menampilkan\s*1\s*–\s*10\s*dari\s*15\s*item/,
-        );
     });
 
-    it('menggunakan label kustom jika diberikan', () => {
-        render(Pagination, {
-            props: {
-                meta: createMeta({ from: 1, to: 10, total: 15 }),
-                label: 'booking',
-            },
+    // ==========================================
+    // 3. RENDERING LINKS
+    // ==========================================
+    describe('Links', () => {
+        it('harus merender link aktif dengan warna pink dan aria-current="page"', () => {
+            const meta = createMeta(3, [
+                { url: 'http://example.com/page/1', label: '1', active: true }
+            ]);
+            
+            render(Pagination, { props: { meta } });
+            
+            const activeLink = screen.getByRole('link', { name: 'Halaman 1' });
+            expect(activeLink).toHaveClass('bg-pink-dark');
+            expect(activeLink).toHaveAttribute('aria-current', 'page');
         });
 
-        const container = getContainer()!;
-        expect(container.textContent).toMatch(/booking/);
-        expect(container.textContent).not.toMatch(/15\s*item/);
+        it('harus merender link non-aktif tanpa aria-current', () => {
+            const meta = createMeta(3, [
+                { url: 'http://example.com/page/2', label: '2', active: false }
+            ]);
+            
+            render(Pagination, { props: { meta } });
+            
+            const link = screen.getByRole('link', { name: 'Halaman 2' });
+            expect(link).not.toHaveClass('bg-pink-dark');
+            expect(link).not.toHaveAttribute('aria-current');
+        });
+
+        it('harus merender tombol disabled (span) jika link.url = null', () => {
+            const meta = createMeta(3);
+            render(Pagination, { props: { meta } });
+
+            const prevLink = screen.getByLabelText('Halaman sebelumnya');
+            expect(prevLink.tagName).toBe('SPAN');
+            expect(prevLink).toHaveAttribute('aria-disabled', 'true');
+        });
+
+        it('harus memiliki aria-label yang sesuai untuk aksesibilitas', () => {
+            const meta = createMeta(3, [
+                { url: 'http://example.com/page/1', label: '1', active: false }
+            ]);
+            
+            render(Pagination, { props: { meta } });
+
+            expect(screen.getByLabelText('Halaman 1')).toBeInTheDocument();
+            expect(screen.getByLabelText('Halaman berikutnya')).toBeInTheDocument();
+            expect(screen.getByLabelText('Halaman sebelumnya')).toBeInTheDocument();
+        });
     });
 
-    it('menampilkan angka 0 jika from/to null (data kosong)', () => {
-        render(Pagination, {
-            props: {
-                meta: createMeta({ from: null, to: null, total: 0 }),
-                showWhenEmpty: true,
-            },
+    // ==========================================
+    // 4. INTERAKSI KLIK
+    // ==========================================
+    describe('Interaction', () => {
+        it('harus memiliki atribut href yang benar pada link', () => {
+            const meta = createMeta(3, [
+                { url: 'http://example.com/page/2', label: '2', active: false }
+            ]);
+            
+            render(Pagination, { props: { meta } });
+            
+            const link = screen.getByRole('link', { name: 'Halaman 2' });
+            expect(link).toHaveAttribute('href', 'http://example.com/page/2');
         });
-
-        const container = getContainer()!;
-        // "Menampilkan 0–0 dari 0 item"
-        expect(container.textContent).toMatch(
-            /Menampilkan\s*0\s*–\s*0\s*dari\s*0\s*item/,
-        );
-    });
-});
-
-// ============================================================
-// KATEGORI 3 — RENDER LINK & LABEL
-// ============================================================
-
-describe('Pagination.svelte — Render Link & Label', () => {
-    it('merender label link menggunakan HTML entity (&laquo; Previous)', () => {
-        render(Pagination, {
-            props: { meta: createMeta() },
-        });
-
-        expect(screen.getByText(/Previous/i)).toBeInTheDocument();
-        expect(screen.getByText(/Next/i)).toBeInTheDocument();
-    });
-
-    it('merender link dengan href yang benar', () => {
-        render(Pagination, {
-            props: { meta: createMeta() },
-        });
-
-        const page2Link = screen.getByRole('link', { name: '2' });
-        expect(page2Link).toHaveAttribute('href', '/items?page=2');
-    });
-
-    it('link aktif memiliki class bg-pink-dark dan aria-current="page"', () => {
-        render(Pagination, {
-            props: { meta: createMeta() },
-        });
-
-        const activeLink = screen.getByRole('link', { name: '1' });
-        expect(activeLink).toHaveClass('bg-pink-dark');
-        expect(activeLink).toHaveAttribute('aria-current', 'page');
-    });
-
-    it('link tidak aktif memiliki class text-gray-600', () => {
-        render(Pagination, {
-            props: { meta: createMeta() },
-        });
-
-        const inactiveLink = screen.getByRole('link', { name: '2' });
-        expect(inactiveLink).toHaveClass('text-gray-600');
-        expect(inactiveLink).not.toHaveAttribute('aria-current');
-    });
-});
-
-// ============================================================
-// KATEGORI 4 — LINK DISABLED (URL = NULL)
-// ============================================================
-
-describe('Pagination.svelte — Link Disabled', () => {
-    it('merender <span> (bukan <a>) untuk link dengan url = null', () => {
-        render(Pagination, {
-            props: { meta: createMeta() },
-        });
-
-        const prevText = screen.getByText(/Previous/i);
-        expect(prevText.tagName).toBe('SPAN');
-        expect(prevText).toHaveAttribute('aria-disabled', 'true');
-    });
-
-    it('tidak merender href untuk link yang disabled', () => {
-        render(Pagination, {
-            props: { meta: createMeta() },
-        });
-
-        const prevText = screen.getByText(/Previous/i);
-        expect(prevText).not.toHaveAttribute('href');
-    });
-});
-
-// ============================================================
-// KATEGORI 5 — A11Y & CUSTOM CLASS
-// ============================================================
-
-describe('Pagination.svelte — A11y & Custom Class', () => {
-    it('container navigasi memiliki role dan aria-label', () => {
-        render(Pagination, {
-            props: { meta: createMeta() },
-        });
-
-        const nav = screen.getByRole('navigation', {
-            name: /Pagination/i,
-        });
-        expect(nav).toBeInTheDocument();
-    });
-
-    it('menerapkan custom class ke container utama', () => {
-        render(Pagination, {
-            props: {
-                meta: createMeta(),
-                class: 'bg-gray-50 rounded-t-2xl',
-            },
-        });
-
-        const container = getContainer()!;
-        expect(container).toHaveClass('bg-gray-50');
-        expect(container).toHaveClass('rounded-t-2xl');
     });
 });

@@ -5,7 +5,8 @@ import { svelte } from '@sveltejs/vite-plugin-svelte';
 export default defineConfig({
     plugins: [svelte()],
     resolve: {
-        conditions: ['browser'],
+        // Tambahkan 'svelte' agar @inertiajs/svelte bisa di-resolve
+        conditions: ['svelte', 'browser', 'module', 'import', 'default'],
         alias: {
             '@': fileURLToPath(new URL('./resources/js', import.meta.url)),
         },

@@ -1,60 +1,15 @@
 <script lang="ts">
-    /**
-     * ConfirmModal — modal konfirmasi generik.
-     *
-     * Mendukung variant (danger/warning/success/info), optional reason textarea,
-     * dan custom body via `children` snippet.
-     *
-     * @example Basic
-     *   <ConfirmModal
-     *       bind:open={showDeleteModal}
-     *       variant="danger"
-     *       title="Hapus Paket?"
-     *       description="Tindakan ini tidak bisa dibatalkan."
-     *       confirmLabel="Ya, Hapus"
-     *       onConfirm={deletePackage}
-     *   />
-     *
-     * @example Dengan Reason
-     *   <ConfirmModal
-     *       bind:open={showRejectModal}
-     *       variant="danger"
-     *       title="Tolak Laporan?"
-     *       description="Mitra harus upload ulang."
-     *       requiresReason
-     *       bind:reasonValue={reason}
-     *       reasonError={errors.reason}
-     *       confirmLabel="Ya, Tolak"
-     *       onConfirm={submitReject}
-     *   />
-     *
-     * @example Dengan Custom Body (children)
-     *   <ConfirmModal
-     *       bind:open={showVerifyModal}
-     *       variant="success"
-     *       title="Verifikasi Pembayaran?"
-     *       confirmLabel="Ya, Verifikasi"
-     *       onConfirm={submitVerify}
-     *   >
-     *       {#snippet children()}
-     *           <label for="catatan" class="...">Catatan</label>
-     *           <textarea id="catatan" bind:value={catatan} ...></textarea>
-     *       {/snippet}
-     *   </ConfirmModal>
-     */
-
     import type { Snippet } from 'svelte';
+    import { tick } from 'svelte';
 
     // ==========================================
     // TYPES
     // ==========================================
-
     type Variant = 'danger' | 'warning' | 'success' | 'info';
 
     // ==========================================
     // PROPS
     // ==========================================
-
     let {
         open = $bindable(false),
         variant = 'info',
@@ -94,33 +49,20 @@
     } = $props();
 
     // ==========================================
-    // STYLING MAPS
+    // STYLING MAPS (Sama seperti sebelumnya)
     // ==========================================
-
     const iconBgClass: Record<Variant, string> = {
-        danger: 'bg-red-100',
-        warning: 'bg-sun/10',
-        success: 'bg-green/10',
-        info: 'bg-blue/10',
+        danger: 'bg-red-100', warning: 'bg-sun/10', success: 'bg-green/10', info: 'bg-blue/10',
     };
-
     const iconColorClass: Record<Variant, string> = {
-        danger: 'text-red-600',
-        warning: 'text-sun-text',
-        success: 'text-green-text',
-        info: 'text-blue',
+        danger: 'text-red-600', warning: 'text-sun-text', success: 'text-green-text', info: 'text-blue',
     };
-
     const iconPath: Record<Variant, string> = {
-        danger:
-            'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z',
-        warning:
-            'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z',
-        success:
-            'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+        danger: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z',
+        warning: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z',
+        success: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
         info: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
     };
-
     const confirmClass: Record<Variant, string> = {
         danger: 'bg-red-600 hover:bg-red-700 text-white',
         warning: 'bg-sun-dark hover:bg-sun text-white',
@@ -129,20 +71,57 @@
     };
 
     // ==========================================
+    // STATE & REFS (Untuk Focus Management)
+    // ==========================================
+    let modalRef = $state<HTMLDivElement>();
+    let cancelBtnRef = $state<HTMLButtonElement>();
+    let previouslyFocusedElement: HTMLElement | null = null;
+
+    // ==========================================
     // DERIVED
     // ==========================================
-
     let canConfirm = $derived(
         !processing &&
             !disabled &&
-            (!requiresReason ||
-                reasonValue.trim().length >= minReasonLength),
+            (!requiresReason || reasonValue.trim().length >= minReasonLength)
     );
+
+    let reasonHint = $derived(
+        requiresReason && reasonValue.trim().length > 0 && reasonValue.trim().length < minReasonLength
+            ? `Minimal ${minReasonLength} karakter.`
+            : ''
+    );
+
+    // ==========================================
+    // EFFECTS (Body Lock & Focus Management)
+    // ==========================================
+    $effect(() => {
+        if (open) {
+            // 1. Simpan elemen yang sedang fokus sebelum modal dibuka
+            previouslyFocusedElement = document.activeElement as HTMLElement;
+            
+            // 2. Kunci scroll body
+            document.body.style.overflow = 'hidden';
+
+            // 3. Fokuskan tombol Batal (pilihan paling aman) setelah render
+            tick().then(() => cancelBtnRef?.focus());
+        } else {
+            // 1. Lepas kunci scroll body
+            document.body.style.overflow = '';
+
+            // 2. Kembalikan fokus ke elemen sebelumnya
+            previouslyFocusedElement?.focus();
+        }
+
+        // Cleanup saat komponen dihancurkan
+        return () => {
+            document.body.style.overflow = '';
+        };
+    });
 
     // ==========================================
     // HANDLERS
     // ==========================================
-
     function close(): void {
         if (processing) return;
         open = false;
@@ -155,7 +134,29 @@
     }
 
     function handleKeydown(e: KeyboardEvent): void {
-        if (e.key === 'Escape') close();
+        if (e.key === 'Escape') {
+            close();
+            return;
+        }
+
+        // FOCUS TRAP: Cegah Tab keluar dari modal
+        if (e.key === 'Tab' && modalRef) {
+            const focusable = modalRef.querySelectorAll<HTMLElement>(
+                'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+            );
+            if (focusable.length === 0) return;
+
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+
+            if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault();
+                last.focus();
+            } else if (!e.shiftKey && document.activeElement === last) {
+                e.preventDefault();
+                first.focus();
+            }
+        }
     }
 </script>
 
@@ -167,48 +168,30 @@
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-modal-title"
+        bind:this={modalRef}
     >
+        <!-- Backdrop -->
         <button
             type="button"
             class="absolute inset-0 bg-black/50 backdrop-blur-sm cursor-default"
             onclick={close}
             aria-label="Tutup modal"
+            tabindex="-1"
         ></button>
 
         <div
             class="relative bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto"
         >
             <div class="flex items-start gap-4 mb-5">
-                <div
-                    class="w-12 h-12 rounded-2xl {iconBgClass[
-                        variant
-                    ]} flex items-center justify-center flex-shrink-0"
-                >
-                    <svg
-                        class="w-6 h-6 {iconColorClass[variant]}"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        stroke-width="2"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d={iconPath[variant]}
-                        />
+                <div class="w-12 h-12 rounded-2xl {iconBgClass[variant]} flex items-center justify-center flex-shrink-0">
+                    <svg class="w-6 h-6 {iconColorClass[variant]}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d={iconPath[variant]} />
                     </svg>
                 </div>
                 <div class="flex-1 min-w-0">
-                    <h3
-                        id="confirm-modal-title"
-                        class="text-lg font-extrabold text-dark mb-1"
-                    >
-                        {title}
-                    </h3>
+                    <h3 id="confirm-modal-title" class="text-lg font-extrabold text-dark mb-1">{title}</h3>
                     {#if description}
-                        <p class="text-sm text-gray-600 leading-relaxed">
-                            {description}
-                        </p>
+                        <p class="text-sm text-gray-600 leading-relaxed">{description}</p>
                     {/if}
                 </div>
             </div>
@@ -221,11 +204,8 @@
 
             {#if requiresReason}
                 <div class="mb-4">
-                    <label
-                        for="confirm-reason"
-                        class="block text-xs font-bold text-dark mb-1.5"
-                    >
-                        {reasonLabel} <span class="text-pink">*</span>
+                    <label for="confirm-reason" class="block text-xs font-bold text-dark mb-1.5">
+                        {reasonLabel} <span class="text-pink" aria-hidden="true">*</span>
                     </label>
                     <textarea
                         id="confirm-reason"
@@ -239,20 +219,21 @@
                             ? 'border-red-300 bg-red-50 focus:ring-2 focus:ring-red-100 focus:border-red-500'
                             : 'border-gray-200 focus:ring-2 focus:ring-pink/10 focus:border-pink focus:bg-white'}"
                         aria-invalid={reasonError ? 'true' : undefined}
+                        aria-describedby={reasonError ? 'reason-error' : undefined}
                     ></textarea>
                     {#if reasonError}
-                        <p
-                            class="text-pink text-[11px] mt-1 font-bold"
-                            aria-live="polite"
-                        >
+                        <p id="reason-error" class="text-pink text-[11px] mt-1 font-bold" aria-live="polite">
                             {reasonError}
                         </p>
+                    {:else if reasonHint}
+                        <p class="text-gray-400 text-[11px] mt-1 font-medium">{reasonHint}</p>
                     {/if}
                 </div>
             {/if}
 
             <div class="flex gap-2">
                 <button
+                    bind:this={cancelBtnRef}
                     type="button"
                     onclick={close}
                     disabled={processing}
@@ -264,29 +245,12 @@
                     type="button"
                     onclick={confirm}
                     disabled={!canConfirm}
-                    class="flex-1 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full {confirmClass[
-                        variant
-                    ]} font-bold text-sm transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="flex-1 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full {confirmClass[variant]} font-bold text-sm transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {#if processing}
-                        <svg
-                            class="w-4 h-4 animate-spin"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                        >
-                            <circle
-                                class="opacity-25"
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                stroke-width="4"
-                            ></circle>
-                            <path
-                                class="opacity-75"
-                                fill="currentColor"
-                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                            ></path>
+                        <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                         </svg>
                         Memproses...
                     {:else}

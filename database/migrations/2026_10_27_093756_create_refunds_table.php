@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
 
             $table->foreignId('booking_id')->constrained('bookings')->cascadeOnDelete();
-            
+
             // Relasi Mitra (Denormalisasi)
             $table->foreignId('mitra_id')->nullable()->after('booking_id')->constrained('users')->restrictOnDelete();
 
@@ -20,7 +20,7 @@ return new class extends Migration
             $table->string('currency', 10)->default('IDR');
             $table->string('reason', 30);
             $table->string('status', 20)->default('PENDING');
-            
+
             $table->string('failure_code', 100)->nullable();
             $table->decimal('refund_fee_amount', 12, 2)->nullable();
 

@@ -7,40 +7,14 @@ use App\Models\Booking;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\UploadedFile;
 
-/**
- * Validasi upload bukti transfer oleh client.
- *
- * Menggantikan validasi inline di `Client\BookingController@uploadProof`
- * (S-02, S-08: OWASP A01 & A04).
- *
- * Aturan:
- * - Hanya client yang boleh upload.
- * - Booking harus miliknya dan berstatus `pending_payment` (S-01).
- * - File harus gambar, MIME diizinkan, ukuran wajar, dan dimensi
- *   dibatasi (S-08: mencegah decompression bomb / image bomb).
- *
- * Catatan: validasi status booking juga tersedia di `BookingPolicy::uploadProof`.
- * FormRequest memvalidasinya lebih awal agar error 422 dikembalikan sebelum
- * request menyentuh Service atau Policy. Keduanya adalah "defense in depth",
- * bukan duplikasi yang tidak perlu.
- */
 final class UploadPaymentProofRequest extends FormRequest
 {
-    /**
-     * Apakah user diizinkan melakukan request ini.
-     *
-     * Cek role dilakukan di sini (bukan di Policy) karena Policy menerima
-     * Booking sebagai argumen dan dipanggil belakangan di controller.
-     * FormRequest hanya memvalidasi "apakah aktor adalah client".
-     */
     public function authorize(): bool
     {
         return $this->user()?->isClient() === true;
     }
 
     /**
-     * Aturan validasi.
-     *
      * @return array<string, array<int, mixed>|string>
      */
     public function rules(): array
@@ -58,8 +32,6 @@ final class UploadPaymentProofRequest extends FormRequest
     }
 
     /**
-     * Pesan error Bahasa Indonesia.
-     *
      * @return array<string, string>
      */
     public function messages(): array
@@ -75,8 +47,6 @@ final class UploadPaymentProofRequest extends FormRequest
     }
 
     /**
-     * Nama atribut untuk pesan error.
-     *
      * @return array<string, string>
      */
     public function attributes(): array
@@ -89,10 +59,10 @@ final class UploadPaymentProofRequest extends FormRequest
     /**
      * Ambil file bukti transfer sebagai `UploadedFile` (non-null).
      *
-     * Method ini aman dipanggil SETELAH `validate()` lolos; aturan
-     * `required` pada `payment_proof` menjamin file tersedia.
-     * Cast eksplisit menghilangkan `UploadedFile|array|null` yang
-     * dikembalikan `$this->file()` agar memenuhi signature
+     * Aman dipanggil SETELAH `validate()` lolos — aturan `required`
+     * pada `payment_proof` menjamin file tersedia. Cast eksplisit
+     * menghilangkan `UploadedFile|array|null` yang dikembalikan
+     * `$this->file()` agar memenuhi signature
      * `BookingPaymentService::uploadProof(Booking, UploadedFile)`.
      */
     public function paymentProof(): UploadedFile
@@ -104,13 +74,6 @@ final class UploadPaymentProofRequest extends FormRequest
     }
 
     /**
-     * Validasi tambahan setelah aturan dasar lolos.
-     *
-     * Memastikan booking pada route adalah milik client dan berstatus
-     * `pending_payment`. Pengecekan ini duplikat dengan Policy, tetapi
-     * menghasilkan response 422 yang lebih cepat dan informatif
-     * (bukan 403 dari Policy).
-     *
      * @return array<int, callable>
      */
     public function after(): array

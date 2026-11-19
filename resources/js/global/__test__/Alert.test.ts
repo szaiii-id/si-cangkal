@@ -1,131 +1,107 @@
-import { describe, it, expect } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
+import { describe, it, expect } from 'vitest';
 import Alert from '../Alert.svelte';
 
-// ============================================================
-// KATEGORI 1 — UI CONTRACT & VARIANTS
-// ============================================================
+describe('Alert Component (Refactored)', () => {
+    // ==========================================
+    // 1. PROPS & RENDERING
+    // ==========================================
+    describe('Rendering Props', () => {
+        it('harus merender title dan message dengan benar', () => {
+            render(Alert, {
+                props: {
+                    title: 'Berhasil!',
+                    message: 'Data Anda telah disimpan.',
+                },
+            });
 
-describe('Alert.svelte — UI Contract & Variants', () => {
-    it('merender default variant "info" dengan warna yang benar', () => {
-        render(Alert, { props: { title: 'Info Alert' } });
-        
-        // Cek text
-        expect(screen.getByText('Info Alert')).toBeInTheDocument();
-        
-        // Cek kontainer background (info = bg-blue-50)
-        const container = document.querySelector('.bg-blue-50');
-        expect(container).toBeInTheDocument();
-        expect(container?.className).toContain('border-blue-500');
-    });
-
-    it('merender variant "success" (hijau)', () => {
-        render(Alert, { props: { variant: 'success', title: 'Sukses' } });
-        expect(screen.getByText('Sukses')).toBeInTheDocument();
-        expect(document.querySelector('.bg-green-50')).toBeInTheDocument();
-    });
-
-    it('merender variant "error" (merah)', () => {
-        render(Alert, { props: { variant: 'error', title: 'Error' } });
-        expect(screen.getByText('Error')).toBeInTheDocument();
-        expect(document.querySelector('.bg-red-50')).toBeInTheDocument();
-    });
-
-    it('merender variant "warning" (kuning)', () => {
-        render(Alert, { props: { variant: 'warning', title: 'Peringatan' } });
-        expect(screen.getByText('Peringatan')).toBeInTheDocument();
-        expect(document.querySelector('.bg-yellow-50')).toBeInTheDocument();
-    });
-});
-
-// ============================================================
-// KATEGORI 2 — TITLE, MESSAGE, & CHILDREN
-// ============================================================
-
-describe('Alert.svelte — Konten (Title, Message, Children)', () => {
-    it('merender title saja', () => {
-        render(Alert, { props: { title: 'Judul Saja' } });
-        expect(screen.getByText('Judul Saja')).toBeInTheDocument();
-    });
-
-    it('merender message saja', () => {
-        render(Alert, { props: { message: 'Pesan saja' } });
-        expect(screen.getByText('Pesan saja')).toBeInTheDocument();
-    });
-
-    it('merender title dan message sekaligus', () => {
-        render(Alert, { 
-            props: { 
-                title: 'Judul', 
-                message: 'Deskripsi pesan' 
-            } 
+            expect(screen.getByText('Berhasil!')).toBeInTheDocument();
+            expect(screen.getByText('Data Anda telah disimpan.')).toBeInTheDocument();
         });
-        expect(screen.getByText('Judul')).toBeInTheDocument();
-        expect(screen.getByText('Deskripsi pesan')).toBeInTheDocument();
-    });
 
-    it('merender children (snippet) jika disediakan', () => {
-        // Render dengan snippet children (Svelte 5)
-        render(Alert, {
-            props: {
-                title: 'Dengan Children',
-                // Simulasi snippet children
-                children: () => {
-                    const el = document.createElement('div');
-                    el.textContent = 'Konten Custom HTML';
-                    return el;
-                }
-            }
+        it('harus menerapkan warna (variant) error dengan benar', () => {
+            render(Alert, {
+                props: { variant: 'error', message: 'Terjadi kesalahan' },
+            });
+
+            // Menggunakan getByRole('alert') karena kita menambahkan role="alert"
+            const alertDiv = screen.getByRole('alert');
+            expect(alertDiv).toHaveClass('bg-red-50');
+            expect(alertDiv).toHaveClass('border-red-500');
         });
-        expect(screen.getByText('Dengan Children')).toBeInTheDocument();
-        // expect(screen.getByText('Konten Custom HTML')).toBeInTheDocument(); 
-        // Note: Test render manual DOM node via snippet bisa berbeda tergantung implementation testing library
-    });
 
-    it('tidak error jika title, message, dan children semuanya kosong', () => {
-        render(Alert, { props: {} });
-        // Hanya merender icon dan container
-        expect(document.querySelector('.bg-blue-50')).toBeInTheDocument();
-    });
-});
+        it('harus menerapkan class tambahan dari props className', () => {
+            render(Alert, {
+                props: { variant: 'info', message: 'Info', class: 'mt-4 mb-5' },
+            });
 
-// ============================================================
-// KATEGORI 3 — DISMISSIBLE (FITUR TUTUP)
-// ============================================================
-
-describe('Alert.svelte — Dismissible', () => {
-    it('TIDAK menampilkan tombol close jika dismissible = false (default)', () => {
-        render(Alert, { props: { title: 'Test' } });
-        expect(screen.queryByRole('button', { name: /Tutup/i })).not.toBeInTheDocument();
-    });
-
-    it('menampilkan tombol close jika dismissible = true', () => {
-        render(Alert, { 
-            props: { 
-                title: 'Test', 
-                dismissible: true 
-            } 
+            const alertDiv = screen.getByRole('alert');
+            expect(alertDiv).toHaveClass('mt-4');
+            expect(alertDiv).toHaveClass('mb-5');
         });
-        expect(screen.getByRole('button', { name: /Tutup/i })).toBeInTheDocument();
     });
 
-    it('menghilangkan alert dari DOM saat tombol close diklik', async () => {
-        render(Alert, { 
-            props: { 
-                title: 'Akan Ditutup', 
-                dismissible: true 
-            } 
+    // ==========================================
+    // 2. AKSESIBILITAS (a11y)
+    // ==========================================
+    describe('Accessibility', () => {
+        it('harus memiliki role="alert" agar dibaca screen reader', () => {
+            render(Alert, { props: { message: 'Peringatan' } });
+            const alertDiv = screen.getByRole('alert');
+            expect(alertDiv).toBeInTheDocument();
+            expect(alertDiv).toHaveAttribute('aria-live', 'polite');
         });
-        
-        // Pastikan alert dan tombol ada
-        expect(screen.getByText('Akan Ditutup')).toBeInTheDocument();
-        const closeBtn = screen.getByRole('button', { name: /Tutup/i });
-        
-        // Klik tombol close
-        await fireEvent.click(closeBtn);
 
-        // Alert harus hilang dari DOM (karena `{#if visible}`)
-        expect(screen.queryByText('Akan Ditutup')).not.toBeInTheDocument();
-        expect(screen.queryByRole('button', { name: /Tutup/i })).not.toBeInTheDocument();
+        it('ikon SVG harus disembunyikan dari screen reader (aria-hidden)', () => {
+            const { container } = render(Alert, { props: { message: 'Info' } });
+            const svg = container.querySelector('svg');
+            expect(svg).toHaveAttribute('aria-hidden', 'true');
+        });
+    });
+
+    // ==========================================
+    // 3. USER INTERACTION & REACTIVITY
+    // ==========================================
+    describe('User Interaction', () => {
+        it('TIDAK boleh menampilkan tombol tutup jika dismissible=false', () => {
+            render(Alert, { props: { message: 'Pesan', dismissible: false } });
+            const closeButton = screen.queryByRole('button', { name: /tutup/i });
+            expect(closeButton).not.toBeInTheDocument();
+        });
+
+        it('harus menampilkan tombol tutup dan menyembunyikan alert saat diklik', async () => {
+            render(Alert, {
+                props: { message: 'Akan ditutup', dismissible: true },
+            });
+
+            // Pastikan alert awalnya ada
+            expect(screen.getByRole('alert')).toBeInTheDocument();
+
+            // Klik tombol tutup
+            const closeButton = screen.getByRole('button', { name: /tutup/i });
+            await fireEvent.click(closeButton);
+
+            // Alert harus hilang dari DOM (karena $state visible = false)
+            expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        });
+    });
+
+    // ==========================================
+    // 4. REACTIVITY (Rerender)
+    // ==========================================
+    describe('Reactivity', () => {
+        it('harus mengubah warna jika prop variant diubah (Rerender)', async () => {
+            const { rerender } = render(Alert, {
+                props: { variant: 'info', message: 'Info' },
+            });
+
+            let alertDiv = screen.getByRole('alert');
+            expect(alertDiv).toHaveClass('bg-blue-50');
+
+            await rerender({ variant: 'warning', message: 'Info' });
+            
+            alertDiv = screen.getByRole('alert');
+            expect(alertDiv).toHaveClass('bg-yellow-50');
+        });
     });
 });

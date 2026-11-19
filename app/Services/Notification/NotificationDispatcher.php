@@ -3,29 +3,20 @@
 namespace App\Services\Notification;
 
 use App\Models\User;
+use App\Services\Notification\Contracts\FirebaseNotificationServiceInterface;
+use App\Services\Notification\Contracts\NotificationDispatcherInterface;
+use App\Services\Notification\Contracts\NotificationServiceInterface;
 use Illuminate\Support\Facades\Log;
 
-/**
- * NotificationDispatcher — Gerbang Pusat Notifikasi.
- *
- * Menyatukan dua lapis notifikasi:
- * 1. IN-APP (Database) — Ikon lonceng di aplikasi.
- * 2. PUSH (FCM) — Notifikasi yang muncul di layar HP.
- *
- * ✅ Deep Linking: Dispatcher otomatis menentukan URL tujuan
- * berdasarkan `tipe` notifikasi dan `role` user. `url` disimpan
- * di `data` (DB) DAN dikirim ke FCM, sehingga klik notifikasi
- * in-app maupun push sama-sama redirect ke halaman yang sama.
- */
-final class NotificationDispatcher
+final class NotificationDispatcher implements NotificationDispatcherInterface
 {
     public function __construct(
-        private readonly NotificationService $notificationService,
-        private readonly FirebaseNotificationService $firebaseNotificationService,
+        private readonly NotificationServiceInterface $notificationService,
+        private readonly FirebaseNotificationServiceInterface $firebaseNotificationService,
     ) {}
 
     /**
-     * Kirim notifikasi lengkap (In-App + Push).
+     * @param  array<string, mixed>  $data
      */
     public function send(
         User $user,
@@ -34,32 +25,34 @@ final class NotificationDispatcher
         string $pesan,
         array $data = []
     ): void {
-        // ✅ Hitung URL DULU, sebelum simpan ke DB
         $url = $this->resolveUrl($tipe, $user, $data);
-
-        // Gabungkan `url` ke `data` — agar konsisten di DB & FCM
         $dataWithUrl = array_merge($data, ['url' => $url]);
 
-        // ==========================================
-        // 1. LAPIS IN-APP (Database)
-        // ==========================================
         $this->notificationService->create(
             user: $user,
             tipe: $tipe,
             judul: $judul,
             pesan: $pesan,
-            data: $dataWithUrl, // ← `url` IKUT tersimpan di DB
+            data: $dataWithUrl,
         );
 
-        // ==========================================
-        // 2. LAPIS PUSH (Firebase FCM)
-        // ==========================================
         if (empty($user->fcm_token)) {
             return;
         }
 
-        // Payload data untuk FCM harus array of strings
-        $fcmData = array_map('strval', $dataWithUrl);
+        /** @var array<string, string> $fcmData */
+        $fcmData = [];
+
+        foreach ($dataWithUrl as $key => $value) {
+            $keyString = (string) $key;
+
+            if ($keyString === '') {
+                continue;
+            }
+
+            $fcmData[$keyString] = (string) $value;
+        }
+
         $fcmData['tipe'] = $tipe;
 
         try {
@@ -79,12 +72,11 @@ final class NotificationDispatcher
     }
 
     /**
-     * Tentukan URL tujuan berdasarkan tipe notifikasi & role user.
+     * @param  array<string, mixed>  $data
      */
     private function resolveUrl(string $tipe, User $user, array $data): string
     {
-        // Prioritas 1: Pemanggil sudah menentukan URL eksplisit
-        if (!empty($data['url'])) {
+        if (! empty($data['url'])) {
             return (string) $data['url'];
         }
 
@@ -93,7 +85,6 @@ final class NotificationDispatcher
         $role = $user->role;
 
         return match ($tipe) {
-            // Booking-related
             'payment_proof_uploaded',
             'booking_confirmed',
             'payment_verified',
@@ -105,7 +96,6 @@ final class NotificationDispatcher
                 ? "/{$role}/bookings/{$bookingId}"
                 : "/{$role}/bookings",
 
-            // Refund-related
             'refund_requested',
             'refund_succeeded',
             'refund_rejected',
@@ -113,17 +103,14 @@ final class NotificationDispatcher
                 ? "/{$role}/refunds"
                 : "/{$role}/refunds",
 
-            // Trip-related
             'trip_started',
             'trip_completed',
             'trip_reminder' => $bookingId
                 ? "/{$role}/trips"
                 : "/{$role}/trips",
 
-            // Admin-specific
             'mitra_registered' => '/admin/mitras',
 
-            // Fallback
             default => '/notifications',
         };
     }

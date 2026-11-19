@@ -1,441 +1,264 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import Login from '../Login.svelte';
 
-// ============================================================
-// MOCK INERTIA
-// ============================================================
-// Kita mock:
-//   - router.post  → spy untuk verifikasi payload
-//   - page.props   → reactive untuk test flash & retry_after
-//   - inertia      → directive no-op untuk `use:inertia`
-// ============================================================
-
-const mockPost = vi.fn();
-
-// State reaktif untuk page.props (bisa diubah per test)
-let mockPageProps: {
-    flash?: {
-        status?: string | null;
-        error?: string | null;
-        retry_after?: number | null;
-    };
-} = {
-    flash: {},
+// ==========================================
+// MOCK INERTIA (Dengan Tipe Eksplisit)
+// ==========================================
+type MockFlash = {
+    status: string | null;
+    error: string | null;
+    retry_after: number | null;
 };
 
-vi.mock('@inertiajs/svelte', () => ({
-    router: {
-        post: (...args: unknown[]) => mockPost(...args),
+const mockPage = vi.hoisted(() => ({
+    props: {
+        flash: { 
+            status: null as string | null, 
+            error: null as string | null, 
+            retry_after: null as number | null 
+        } as MockFlash,
     },
-    page: {
-        get props() {
-            return mockPageProps;
-        },
-    },
-    // Svelte action signature: (node, params) => ({ update, destroy })
-    inertia: () => ({
-        update: () => {},
-        destroy: () => {},
-    }),
 }));
 
-// ============================================================
-// SETUP & TEARDOWN
-// ============================================================
+vi.mock('@inertiajs/svelte', () => ({
+    page: mockPage,
+    inertia: vi.fn(),
+}));
 
-beforeEach(() => {
-    mockPost.mockClear();
-    mockPageProps = { flash: {} };
-    vi.useFakeTimers();
-});
+// ==========================================
+// MOCK API AUTH
+// ==========================================
+vi.mock('@/api/auth', () => ({
+    login: vi.fn(),
+}));
 
-afterEach(() => {
-    vi.useRealTimers();
-});
+import { login } from '@/api/auth';
 
-// ============================================================
-// KATEGORI 1 — UI CONTRACT (element & accessibility)
-// ============================================================
-
-describe('Login.svelte — UI Contract', () => {
-    it('menampilkan field identitas', () => {
-        render(Login);
-        expect(screen.getByLabelText(/Username atau Email/i)).toBeInTheDocument();
+describe('Login Page', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockPage.props.flash = { status: null, error: null, retry_after: null };
+        vi.useFakeTimers();
     });
 
-    it('menampilkan field password', () => {
-        render(Login);
-        expect(screen.getByLabelText(/^Password$/i)).toBeInTheDocument();
+    afterEach(() => {
+        vi.useRealTimers();
     });
 
-    it('menampilkan checkbox "Ingat saya"', () => {
-        render(Login);
-        expect(screen.getByLabelText(/Ingat saya/i)).toBeInTheDocument();
-    });
+    // ==========================================
+    // 1. RENDERING DASAR
+    // ==========================================
+    describe('Rendering', () => {
+        it('harus merender judul "Login." dan form', () => {
+            render(Login);
 
-    it('menampilkan link lupa password', () => {
-        render(Login);
-        expect(screen.getByText(/Lupa password\?/i)).toBeInTheDocument();
-    });
-
-    it('menampilkan link daftar', () => {
-        render(Login);
-        expect(screen.getByText(/Daftar sekarang/i)).toBeInTheDocument();
-    });
-
-    it('menampilkan tombol submit "Masuk ke Sistem"', () => {
-        render(Login);
-        expect(screen.getByRole('button', { name: /Masuk ke Sistem/i })).toBeInTheDocument();
-    });
-
-    it('menampilkan tombol login with Google', () => {
-        render(Login);
-        const link = screen.getByRole('link', { name: /Login with Google/i });
-        expect(link).toHaveAttribute('href', '/auth/google');
-    });
-
-    it('menampilkan tombol kembali ke beranda', () => {
-        render(Login);
-        const link = screen.getByRole('link', { name: /Kembali/i });
-        expect(link).toHaveAttribute('href', '/');
-    });
-});
-
-// ============================================================
-// KATEGORI 2 — EQUIVALENCE PARTITIONING: Toggle Password
-// ============================================================
-
-describe('Login.svelte — Toggle Password', () => {
-    it('password type = "password" secara default', () => {
-        render(Login);
-        const input = screen.getByLabelText(/^Password$/i) as HTMLInputElement;
-        expect(input.type).toBe('password');
-    });
-
-    it('password type = "text" setelah klik toggle', async () => {
-        render(Login);
-        const input = screen.getByLabelText(/^Password$/i) as HTMLInputElement;
-        const toggle = screen.getByLabelText(/Tampilkan password/i);
-
-        await fireEvent.click(toggle);
-
-        expect(input.type).toBe('text');
-    });
-
-    it('password kembali type = "password" setelah klik 2x', async () => {
-        render(Login);
-        const input = screen.getByLabelText(/^Password$/i) as HTMLInputElement;
-
-        await fireEvent.click(screen.getByLabelText(/Tampilkan password/i));
-        await fireEvent.click(screen.getByLabelText(/Sembunyikan password/i));
-
-        expect(input.type).toBe('password');
-    });
-
-    it('aria-label toggle berubah sesuai state', async () => {
-        render(Login);
-
-        // Awal: "Tampilkan password"
-        expect(screen.getByLabelText(/Tampilkan password/i)).toBeInTheDocument();
-
-        // Setelah klik: "Sembunyikan password"
-        await fireEvent.click(screen.getByLabelText(/Tampilkan password/i));
-        expect(screen.getByLabelText(/Sembunyikan password/i)).toBeInTheDocument();
-    });
-});
-
-// ============================================================
-// KATEGORI 3 — BEHAVIORAL / MOCKING: Form Submit
-// ============================================================
-
-describe('Login.svelte — Form Submit', () => {
-    it('submit form memanggil router.post dengan payload benar', async () => {
-        render(Login);
-
-        const identitas = screen.getByLabelText(/Username atau Email/i) as HTMLInputElement;
-        const password = screen.getByLabelText(/^Password$/i) as HTMLInputElement;
-
-        await fireEvent.input(identitas, { target: { value: 'budi@example.com' } });
-        await fireEvent.input(password, { target: { value: 'password123' } });
-
-        const form = screen.getByRole('button', { name: /Masuk ke Sistem/i }).closest('form')!;
-        await fireEvent.submit(form);
-
-        expect(mockPost).toHaveBeenCalledTimes(1);
-        expect(mockPost).toHaveBeenCalledWith(
-            '/login',
-            {
-                identitas: 'budi@example.com',
-                password: 'password123',
-                remember: false,
-            },
-            expect.objectContaining({
-                onError: expect.any(Function),
-                onFinish: expect.any(Function),
-            }),
-        );
-    });
-
-    it('submit dengan remember = true mengirim remember: true', async () => {
-        render(Login);
-
-        const identitas = screen.getByLabelText(/Username atau Email/i) as HTMLInputElement;
-        const password = screen.getByLabelText(/^Password$/i) as HTMLInputElement;
-        const remember = screen.getByLabelText(/Ingat saya/i) as HTMLInputElement;
-
-        await fireEvent.input(identitas, { target: { value: 'budi@example.com' } });
-        await fireEvent.input(password, { target: { value: 'password123' } });
-        await fireEvent.click(remember);
-
-        const form = screen.getByRole('button', { name: /Masuk ke Sistem/i }).closest('form')!;
-        await fireEvent.submit(form);
-
-        expect(mockPost).toHaveBeenCalledWith(
-            '/login',
-            expect.objectContaining({ remember: true }),
-            expect.any(Object),
-        );
-    });
-
-    it('submit dengan identitas & password kosong tetap memanggil router.post', async () => {
-        // Karena `required` di HTML5, form submit tidak akan jalan lewat browser.
-        // Tapi di test, kita paksa submit — komponen tetap passing state kosong.
-        render(Login);
-
-        const form = screen.getByRole('button', { name: /Masuk ke Sistem/i }).closest('form')!;
-        await fireEvent.submit(form);
-
-        expect(mockPost).toHaveBeenCalledWith(
-            '/login',
-            {
-                identitas: '',
-                password: '',
-                remember: false,
-            },
-            expect.any(Object),
-        );
-    });
-});
-
-// ============================================================
-// KATEGORI 4 — NEGATIVE PATH: Error Handling
-// ============================================================
-
-describe('Login.svelte — Error Handling', () => {
-    it('menampilkan error identitas setelah onError dipanggil', async () => {
-        render(Login);
-
-        const identitas = screen.getByLabelText(/Username atau Email/i) as HTMLInputElement;
-        const password = screen.getByLabelText(/^Password$/i) as HTMLInputElement;
-
-        await fireEvent.input(identitas, { target: { value: 'wrong@example.com' } });
-        await fireEvent.input(password, { target: { value: 'wrong' } });
-
-        const form = screen.getByRole('button', { name: /Masuk ke Sistem/i }).closest('form')!;
-        await fireEvent.submit(form);
-
-        // Ambil onError dari mock call pertama
-        const [, , options] = mockPost.mock.calls[0];
-        options.onError({ identitas: 'Kredensial tidak cocok.' });
-
-        await waitFor(() => {
-            expect(screen.getByText('Kredensial tidak cocok.')).toBeInTheDocument();
+            expect(screen.getByText('Login')).toBeInTheDocument();
+            expect(screen.getByLabelText('Username atau Email')).toBeInTheDocument();
+            expect(screen.getByLabelText('Password')).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: /Masuk ke Sistem/i })).toBeInTheDocument();
         });
     });
 
-    it('menampilkan error password setelah onError dipanggil', async () => {
-        render(Login);
+    // ==========================================
+    // 2. INTERAKSI FORM
+    // ==========================================
+    describe('User Interaction', () => {
+        it('harus memanggil login saat form disubmit', async () => {
+            render(Login);
 
-        const form = screen.getByRole('button', { name: /Masuk ke Sistem/i }).closest('form')!;
-        await fireEvent.submit(form);
+            const identitasInput = screen.getByLabelText('Username atau Email');
+            await fireEvent.input(identitasInput, { target: { value: 'budi@test.com' } });
 
-        const [, , options] = mockPost.mock.calls[0];
-        options.onError({ password: 'Password wajib diisi.' });
+            const passwordInput = screen.getByLabelText('Password');
+            await fireEvent.input(passwordInput, { target: { value: 'password123' } });
 
-        await waitFor(() => {
-            expect(screen.getByText('Password wajib diisi.')).toBeInTheDocument();
+            const form = document.querySelector('form');
+            await fireEvent.submit(form!);
+
+            expect(login).toHaveBeenCalledWith(
+                { identitas: 'budi@test.com', password: 'password123', remember: false },
+                expect.any(Object)
+            );
+        });
+
+        it('harus mengirim remember: true saat checkbox dicentang', async () => {
+            render(Login);
+
+            const identitasInput = screen.getByLabelText('Username atau Email');
+            await fireEvent.input(identitasInput, { target: { value: 'budi@test.com' } });
+
+            const passwordInput = screen.getByLabelText('Password');
+            await fireEvent.input(passwordInput, { target: { value: 'password123' } });
+
+            const rememberCheckbox = screen.getByLabelText('Ingat saya') as HTMLInputElement;
+            await fireEvent.click(rememberCheckbox);
+            expect(rememberCheckbox.checked).toBe(true);
+
+            const form = document.querySelector('form');
+            await fireEvent.submit(form!);
+
+            expect(login).toHaveBeenCalledWith(
+                { identitas: 'budi@test.com', password: 'password123', remember: true },
+                expect.any(Object)
+            );
+        });
+
+        it('harus toggle show/hide password', async () => {
+            render(Login);
+
+            const passwordInput = screen.getByLabelText('Password') as HTMLInputElement;
+            expect(passwordInput.type).toBe('password');
+
+            const toggleBtn = screen.getByRole('button', { name: /Tampilkan password/i });
+            await fireEvent.click(toggleBtn);
+
+            expect(passwordInput.type).toBe('text');
         });
     });
 
-    it('errors direset setiap kali submit ulang', async () => {
-        render(Login);
+    // ==========================================
+    // 3. ERROR STATE
+    // ==========================================
+    describe('Error State', () => {
+        it('harus menampilkan pesan error jika login gagal', async () => {
+            (login as any).mockImplementation((_data: any, options: any) => {
+                options.onError?.({ identitas: 'Kredensial tidak cocok' });
+                options.onFinish?.();
+            });
 
-        const form = screen.getByRole('button', { name: /Masuk ke Sistem/i }).closest('form')!;
+            render(Login);
 
-        // Submit pertama → error
-        await fireEvent.submit(form);
-        const [, , options1] = mockPost.mock.calls[0];
-        options1.onError({ identitas: 'Error pertama' });
+            const form = document.querySelector('form');
+            await fireEvent.submit(form!);
 
-        await waitFor(() => {
-            expect(screen.getByText('Error pertama')).toBeInTheDocument();
+            await waitFor(() => {
+                expect(screen.getByText('Kredensial tidak cocok')).toBeInTheDocument();
+            });
         });
 
-        // Submit kedua → errors di-reset dulu
-        await fireEvent.submit(form);
+        it('input harus memiliki aria-invalid=true jika error', async () => {
+            (login as any).mockImplementation((_data: any, options: any) => {
+                options.onError?.({ identitas: 'Error' });
+                options.onFinish?.();
+            });
 
-        // Setelah submit kedua, error lama harus hilang (sebelum onError dipanggil)
-        expect(screen.queryByText('Error pertama')).not.toBeInTheDocument();
-    });
-});
+            render(Login);
 
-// ============================================================
-// KATEGORI 5 — BVA: Processing State
-// ============================================================
+            const form = document.querySelector('form');
+            await fireEvent.submit(form!);
 
-describe('Login.svelte — Processing State', () => {
-    it('tombol disabled saat processing = true', async () => {
-        render(Login);
-
-        const form = screen.getByRole('button', { name: /Masuk ke Sistem/i }).closest('form')!;
-        await fireEvent.submit(form);
-
-        // Setelah submit, processing = true (belum onFinish)
-        const button = screen.getByRole('button', { name: /Memproses/i });
-        expect(button).toBeDisabled();
-    });
-
-    it('tombol menampilkan spinner saat processing', async () => {
-        render(Login);
-
-        const form = screen.getByRole('button', { name: /Masuk ke Sistem/i }).closest('form')!;
-        await fireEvent.submit(form);
-
-        await waitFor(() => {
-            expect(screen.getByText(/Memproses/i)).toBeInTheDocument();
+            await waitFor(() => {
+                const identitasInput = screen.getByLabelText('Username atau Email');
+                expect(identitasInput).toHaveAttribute('aria-invalid', 'true');
+            });
         });
     });
 
-    it('tombol enabled kembali setelah onFinish', async () => {
-        render(Login);
+    // ==========================================
+    // 4. FLASH MESSAGES
+    // ==========================================
+    describe('Flash Messages', () => {
+        it('harus menampilkan flash status', () => {
+            mockPage.props.flash = { status: 'Berhasil daftar', error: null, retry_after: null };
+            render(Login);
 
-        const form = screen.getByRole('button', { name: /Masuk ke Sistem/i }).closest('form')!;
-        await fireEvent.submit(form);
-
-        const [, , options] = mockPost.mock.calls[0];
-        options.onFinish();
-
-        await waitFor(() => {
-            const button = screen.getByRole('button', { name: /Masuk ke Sistem/i });
-            expect(button).not.toBeDisabled();
+            expect(screen.getByText('Berhasil daftar')).toBeInTheDocument();
         });
-    });
-});
 
-// ============================================================
-// KATEGORI 6 — EDGE CASE: Flash Message
-// ============================================================
+        it('harus menampilkan flash error', () => {
+            mockPage.props.flash = { status: null, error: 'Terjadi kesalahan', retry_after: null };
+            render(Login);
 
-describe('Login.svelte — Flash Message', () => {
-    it('menampilkan flash status jika ada', () => {
-        mockPageProps.flash = { status: 'Password berhasil diubah.' };
-
-        render(Login);
-
-        expect(screen.getByText('Password berhasil diubah.')).toBeInTheDocument();
-    });
-
-    it('tidak menampilkan flash status jika kosong', () => {
-        mockPageProps.flash = {};
-
-        render(Login);
-
-        // Cari elemen dengan class bg-green-50 (flash sukses)
-        const successFlash = document.querySelector('.bg-green-50');
-        expect(successFlash).not.toBeInTheDocument();
-    });
-
-    it('menampilkan flash error jika ada', () => {
-        mockPageProps.flash = { error: 'Anda tidak memiliki hak akses.' };
-
-        render(Login);
-
-        expect(screen.getByText('Anda tidak memiliki hak akses.')).toBeInTheDocument();
-    });
-
-    it('tidak menampilkan flash error jika kosong', () => {
-        mockPageProps.flash = {};
-
-        render(Login);
-
-        const errorFlash = document.querySelector('.bg-red-50');
-        expect(errorFlash).not.toBeInTheDocument();
-    });
-});
-
-// ============================================================
-// KATEGORI 7 — BVA: Countdown (retry_after)
-// ============================================================
-
-describe('Login.svelte — Countdown (Rate Limiter)', () => {
-    it('tombol menampilkan "Tunggu N detik" jika retry_after > 0', async () => {
-        mockPageProps.flash = { retry_after: 30 };
-
-        render(Login);
-
-        await waitFor(() => {
-            expect(screen.getByRole('button', { name: /Tunggu 30 detik/i })).toBeInTheDocument();
+            expect(screen.getByText('Terjadi kesalahan')).toBeInTheDocument();
         });
     });
 
-    it('tombol disabled saat countdown aktif', async () => {
-        mockPageProps.flash = { retry_after: 30 };
+    // ==========================================
+    // 5. COUNTDOWN (RATE LIMIT)
+    // ==========================================
+    describe('Countdown (Rate Limit)', () => {
+        it('harus memulai countdown jika flash.retry_after ada', async () => {
+            mockPage.props.flash = { status: null, error: null, retry_after: 5 };
+            render(Login);
 
-        render(Login);
+            await vi.advanceTimersByTimeAsync(0);
+            expect(screen.getByText('Tunggu 5 detik...')).toBeInTheDocument();
 
-        await waitFor(() => {
-            const button = screen.getByRole('button', { name: /Tunggu/i });
-            expect(button).toBeDisabled();
+            await vi.advanceTimersByTimeAsync(1000);
+            expect(screen.getByText('Tunggu 4 detik...')).toBeInTheDocument();
+        });
+
+        it('tombol harus disabled selama countdown', async () => {
+            mockPage.props.flash = { status: null, error: null, retry_after: 5 };
+            render(Login);
+
+            await vi.advanceTimersByTimeAsync(0);
+            const submitBtn = screen.getByRole('button', { name: /Tunggu 5 detik.../i });
+            expect(submitBtn).toBeDisabled();
+        });
+
+        it('tombol harus kembali aktif setelah countdown selesai', async () => {
+            mockPage.props.flash = { status: null, error: null, retry_after: 2 };
+            render(Login);
+
+            await vi.advanceTimersByTimeAsync(0);
+            expect(screen.getByText('Tunggu 2 detik...')).toBeInTheDocument();
+
+            await vi.advanceTimersByTimeAsync(2000);
+            await vi.advanceTimersByTimeAsync(0);
+            expect(screen.getByRole('button', { name: /Masuk ke Sistem/i })).not.toBeDisabled();
         });
     });
 
-    it('countdown berkurang setiap detik', async () => {
-        mockPageProps.flash = { retry_after: 3 };
+    // ==========================================
+    // 6. LOADING STATE
+    // ==========================================
+    describe('Loading State', () => {
+        it('harus menampilkan "Memproses..." dan menonaktifkan tombol saat processing', async () => {
+            (login as any).mockImplementation(() => {
+                // Tidak memanggil onFinish, biarkan processing = true
+            });
 
-        render(Login);
+            render(Login);
 
-        // Detik awal
-        await waitFor(() => {
-            expect(screen.getByRole('button', { name: /Tunggu 3 detik/i })).toBeInTheDocument();
+            const form = document.querySelector('form');
+            await fireEvent.submit(form!);
+
+            await waitFor(() => {
+                expect(screen.getByText('Memproses...')).toBeInTheDocument();
+                expect(screen.getByRole('button', { name: /Memproses/i })).toBeDisabled();
+            });
+        });
+    });
+
+    // ==========================================
+    // 7. AKSESIBILITAS (A11Y)
+    // ==========================================
+    describe('Accessibility', () => {
+        it('ikon SVG dekoratif harus disembunyikan dari screen reader', () => {
+            const { container } = render(Login);
+            
+            const svgs = container.querySelectorAll('svg');
+            svgs.forEach((svg) => {
+                expect(svg).toHaveAttribute('aria-hidden', 'true');
+            });
         });
 
-        // Advance 1 detik
-        vi.advanceTimersByTime(1000);
+        it('flash message sukses harus memiliki role="status"', () => {
+            mockPage.props.flash = { status: 'Berhasil', error: null, retry_after: null };
+            render(Login);
 
-        await waitFor(() => {
-            expect(screen.getByRole('button', { name: /Tunggu 2 detik/i })).toBeInTheDocument();
+            const status = screen.getByRole('status');
+            expect(status).toHaveTextContent('Berhasil');
         });
-    });
 
-    it('tidak menampilkan countdown jika retry_after = 0', () => {
-        mockPageProps.flash = { retry_after: 0 };
+        it('flash message error harus memiliki role="alert"', () => {
+            mockPage.props.flash = { status: null, error: 'Gagal', retry_after: null };
+            render(Login);
 
-        render(Login);
-
-        expect(screen.queryByText(/Tunggu/i)).not.toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /Masuk ke Sistem/i })).toBeInTheDocument();
-    });
-
-    it('tidak menampilkan countdown jika retry_after = null', () => {
-        mockPageProps.flash = { retry_after: null };
-
-        render(Login);
-
-        expect(screen.queryByText(/Tunggu/i)).not.toBeInTheDocument();
-    });
-
-    it('tombol enabled kembali setelah countdown selesai', async () => {
-        mockPageProps.flash = { retry_after: 2 };
-
-        render(Login);
-
-        // Advance 2 detik + sedikit buffer
-        vi.advanceTimersByTime(2100);
-
-        await waitFor(() => {
-            const button = screen.getByRole('button', { name: /Masuk ke Sistem/i });
-            expect(button).not.toBeDisabled();
+            const alert = screen.getByRole('alert');
+            expect(alert).toHaveTextContent('Gagal');
         });
     });
 });

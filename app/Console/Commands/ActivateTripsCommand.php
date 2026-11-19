@@ -38,7 +38,6 @@ class ActivateTripsCommand extends Command
 
         $result = $tripService->activateDueTrips();
 
-        // Output
         if ($result['activated'] === 0 && $result['skipped_no_mitra'] === 0) {
             $this->info('Tidak ada trip yang perlu diaktifkan.');
 
@@ -71,24 +70,23 @@ class ActivateTripsCommand extends Command
         $skippedNoMitra = 0;
 
         foreach ($candidates as $trip) {
-            // Cek timezone-aware
             $tripToday = Timezone::today($trip->timezoneOrDefault());
             $tanggalMulai = Carbon::parse($trip->tanggal_mulai);
 
             if ($tanggalMulai->greaterThan($tripToday)) {
-                continue; // belum waktunya di timezone trip
+                continue;
             }
 
             if (! $trip->hasMitra()) {
                 $skippedNoMitra++;
-                $this->line("<fg=yellow>{$trip->kode}</> - belum punya mitra ({$trip->package?->nama})");
+                $this->line("<fg=yellow>{$trip->kode}</> - belum punya mitra ({$trip->package->nama})");
 
                 continue;
             }
 
             $willActivate++;
-            $mitraName = $trip->mitra?->name ?? "mitra_id={$trip->mitra_id}";
-            $this->line("<fg=green>{$trip->kode}</> - {$trip->package?->nama} (mitra: {$mitraName})");
+            $mitraName = $trip->mitra->name;
+            $this->line("<fg=green>{$trip->kode}</> - {$trip->package->nama} (mitra: {$mitraName})");
         }
 
         $this->newLine();

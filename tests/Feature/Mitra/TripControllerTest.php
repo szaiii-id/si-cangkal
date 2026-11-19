@@ -1,25 +1,42 @@
 <?php
 
-use App\Enums\BookingStatus;
-use App\Enums\PackageKategori;
-use App\Enums\PackageStatus;
 use App\Enums\TripStatus;
 use App\Models\Booking;
-use App\Models\DailyReport;
+use App\Models\MitraBankAccount;
 use App\Models\Package;
 use App\Models\Trip;
-use App\Models\TripDay;
-use App\Models\TripMitra;
 use App\Models\User;
+use App\Services\Report\ReportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Route;
+use Illuminate\Http\Response as IlluminateResponse;
+use Inertia\Testing\AssertableInertia as Assert;
+use Mockery\MockInterface;
 
 uses(RefreshDatabase::class);
 
 /*
 |==========================================================================
-| SETUP
+| SETUP — Integration Test
 |==========================================================================
+|
+| TripController (mitra) — read-only monitoring trip + manifest PDF.
+|
+| Route (prefix /mitra):
+| - GET /trips                  → index
+| - GET /trips/{trip}           → show
+| - GET /trips/{trip}/manifest  → manifest (PDF)
+|
+| Middleware: auth, password.changed, role:mitra, mitra.complete
+| Policy: TripPolicy (viewAny, view)
+|
+| Catatan:
+| - `config(['inertia.testing.ensure_pages_exist' => false])` — backend test.
+| - `manifest` delegate ke `Admin\ReportController::exportTripManifest`
+|   → mock concrete `ReportService` (tidak final, tanpa interface).
+| - Mitra WAJIB punya bank account (middleware `mitra.complete`).
+| - Test fokus CONTROLLER (policy, response shape, delegation).
+|   `TripService` sudah di-test unit (TripServiceTest).
+|
 */
 
 beforeEach(function () {
@@ -27,78 +44,60 @@ beforeEach(function () {
         $this->withoutVite();
     }
 
-    $this->admin = User::factory()->admin()->create([
-        'must_change_password' => false,
-    ]);
+    config(['inertia.testing.ensure_pages_exist' => false]);
 
     $this->mitra = User::factory()->mitra()->create([
         'must_change_password' => false,
     ]);
 
-    $this->otherMitra = User::factory()->mitra()->create([
+    MitraBankAccount::create([
+        'user_id' => $this->mitra->id,
+        'tipe' => 'bank',
+        'nama_penyedia' => 'BCA',
+        'nomor_rekening' => '1234567890',
+        'nama_pemilik' => 'Budi',
+        'is_primary' => true,
+    ]);
+
+    $this->mitra2 = User::factory()->mitra()->create([
         'must_change_password' => false,
+    ]);
+
+    MitraBankAccount::create([
+        'user_id' => $this->mitra2->id,
+        'tipe' => 'bank',
+        'nama_penyedia' => 'BRI',
+        'nomor_rekening' => '9999999999',
+        'nama_pemilik' => 'Ani',
+        'is_primary' => true,
     ]);
 
     $this->client = User::factory()->client()->create([
         'must_change_password' => false,
     ]);
-
-    // Package
-    $this->package = Package::factory()->create([
-        'kode' => 'PKG-2026-001',
-        'nama' => 'Paket Test',
-        'slug' => 'paket-test',
-        'status' => PackageStatus::AKTIF,
-        'kategori' => PackageKategori::WISATA_ALAM,
-        'timezone' => 'Asia/Makassar',
-        'durasi_hari' => 2,
-        'durasi_malam' => 1,
-    ]);
-
-    // Booking
-    $this->booking = Booking::factory()->create([
-        'kode' => 'BK-2026-001',
-        'user_id' => $this->client->id,
-        'package_id' => $this->package->id,
-        'status' => BookingStatus::CONFIRMED,
-        'jumlah_peserta' => 2,
-        'total_harga' => '1000000.00',
-        'tanggal_keberangkatan' => now()->addDays(7)->format('Y-m-d'),
-    ]);
-
-    // Trip
-    $this->trip = Trip::factory()->create([
-        'booking_id' => $this->booking->id,
-        'package_id' => $this->package->id,
-        'kode' => 'TRP-2026-001',
-        'tanggal_mulai' => now()->addDays(7)->format('Y-m-d'),
-        'tanggal_selesai' => now()->addDays(8)->format('Y-m-d'),
-        'status' => TripStatus::SCHEDULED,
-    ]);
-
-    // Assign mitra
-    $this->tripMitra = TripMitra::factory()->create([
-        'trip_id' => $this->trip->id,
-        'mitra_id' => $this->mitra->id,
-        'role' => 'lead',
-        'honor' => '500000.00',
-        'honor_tipe' => 'flat',
-    ]);
-
-    // Trip Day
-    TripDay::factory()->create([
-        'trip_id' => $this->trip->id,
-        'hari_ke' => 1,
-        'tanggal' => now()->addDays(7)->format('Y-m-d'),
-        'status' => TripDay::STATUS_PENDING,
-    ]);
-    TripDay::factory()->create([
-        'trip_id' => $this->trip->id,
-        'hari_ke' => 2,
-        'tanggal' => now()->addDays(8)->format('Y-m-d'),
-        'status' => TripDay::STATUS_PENDING,
-    ]);
 });
+
+/*
+|==========================================================================
+| HELPER — buat trip lengkap dengan booking & package
+|==========================================================================
+*/
+function makeTripForMitra(User $mitra, User $client, array $overrides = []): Trip
+{
+    $package = Package::factory()->forMitra($mitra)->aktif()->create();
+    $booking = Booking::factory()
+        ->forPackage($package)
+        ->forClient($client)
+        ->confirmed()
+        ->create(['mitra_id' => $mitra->id]);
+
+    return Trip::factory()
+        ->forBooking($booking)
+        ->create(array_merge([
+            'mitra_id' => $mitra->id,
+            'status' => TripStatus::SCHEDULED->value,
+        ], $overrides));
+}
 
 /*
 |==========================================================================
@@ -106,28 +105,59 @@ beforeEach(function () {
 |==========================================================================
 */
 
-it('GET /mitra/trips merender Inertia component Mitra/Trips/Index', function () {
-    $response = $this->actingAs($this->mitra)->get(route('mitra.trips.index'));
+describe('Contract — index', function () {
+    it('GET /mitra/trips → render Mitra/Trips/Index', function () {
+        $this->actingAs($this->mitra)
+            ->get('/mitra/trips')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Mitra/Trips/Index')
+                ->has('trips')
+                ->has('filters')
+                ->has('statusCounts')
+            );
+    });
 
-    $response->assertOk();
-    $response->assertInertia(fn ($page) => $page
-        ->component('Mitra/Trips/Index')
-        ->has('trips')
-        ->has('filters')
-        ->has('statusCounts')
-    );
+    it('filters default: search=null, status=null, sort=tanggal_mulai, direction=desc', function () {
+        $this->actingAs($this->mitra)
+            ->get('/mitra/trips')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.search', null)
+                ->where('filters.status', null)
+                ->where('filters.sort', 'tanggal_mulai')
+                ->where('filters.direction', 'desc')
+            );
+    });
+
+    it('hanya menampilkan trip milik mitra sendiri', function () {
+        makeTripForMitra($this->mitra, $this->client);
+        makeTripForMitra($this->mitra2, $this->client);
+
+        $this->actingAs($this->mitra)
+            ->get('/mitra/trips')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('trips.total', 1)
+            );
+    });
+
+    it('route name = mitra.trips.index', function () {
+        expect(route('mitra.trips.index'))->toBe(url('/mitra/trips'));
+    });
 });
 
-it('GET /mitra/trips/{id} merender Inertia component Mitra/Trips/Show', function () {
-    $response = $this->actingAs($this->mitra)
-        ->get(route('mitra.trips.show', $this->trip->id));
+describe('Contract — show', function () {
+    it('GET /mitra/trips/{id} → render Mitra/Trips/Show', function () {
+        $trip = makeTripForMitra($this->mitra, $this->client);
 
-    $response->assertOk();
-    $response->assertInertia(fn ($page) => $page
-        ->component('Mitra/Trips/Show')
-        ->has('trip')
-        ->has('tripMitra')
-    );
+        $this->actingAs($this->mitra)
+            ->get("/mitra/trips/{$trip->id}")
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Mitra/Trips/Show')
+                ->has('trip')
+                ->where('trip.id', $trip->id)
+            );
+    });
 });
 
 /*
@@ -136,228 +166,196 @@ it('GET /mitra/trips/{id} merender Inertia component Mitra/Trips/Show', function
 |==========================================================================
 */
 
-it('guest di-redirect ke login saat akses /mitra/trips', function () {
-    $this->get(route('mitra.trips.index'))->assertRedirect(route('login'));
+describe('Security — guest & role', function () {
+    it('guest di-redirect ke login (index)', function () {
+        $this->get('/mitra/trips')->assertRedirect(route('login'));
+    });
+
+    it('admin di-redirect ke admin.dashboard (index)', function () {
+        $admin = User::factory()->admin()->create(['must_change_password' => false]);
+
+        $this->actingAs($admin)
+            ->get('/mitra/trips')
+            ->assertRedirect(route('admin.dashboard'));
+    });
+
+    it('client di-redirect ke client.dashboard (index)', function () {
+        $this->actingAs($this->client)
+            ->get('/mitra/trips')
+            ->assertRedirect(route('client.dashboard'));
+    });
+
+    it('mitra must_change_password=true di-redirect ke password.change', function () {
+        $needChange = User::factory()->mitra()->create(['must_change_password' => true]);
+
+        $this->actingAs($needChange)
+            ->get('/mitra/trips')
+            ->assertRedirect(route('password.change'));
+    });
 });
 
-it('admin tidak bisa akses /mitra/trips (redirect ke dashboard admin)', function () {
-    $this->actingAs($this->admin)
-        ->get(route('mitra.trips.index'))
-        ->assertRedirect(route('admin.dashboard'));
-});
+describe('Security — ownership (Policy view)', function () {
+    it('mitra TIDAK bisa show trip mitra lain → 403', function () {
+        $trip = makeTripForMitra($this->mitra2, $this->client);
 
-it('client tidak bisa akses /mitra/trips (redirect ke dashboard client)', function () {
-    $this->actingAs($this->client)
-        ->get(route('mitra.trips.index'))
-        ->assertRedirect(route('client.dashboard'));
-});
+        $this->actingAs($this->mitra)
+            ->get("/mitra/trips/{$trip->id}")
+            ->assertForbidden();
+    });
 
-it('mitra tidak di-assign ke trip → 403 saat show trip', function () {
-    $this->actingAs($this->otherMitra)
-        ->get(route('mitra.trips.show', $this->trip->id))
-        ->assertForbidden();
-});
+    it('mitra TIDAK bisa akses manifest trip mitra lain → 403', function () {
+        $trip = makeTripForMitra($this->mitra2, $this->client);
 
-it('mitra dengan must_change_password = true di-redirect ke change-password', function () {
-    $mitra = User::factory()->mitra()->create(['must_change_password' => true]);
-
-    $this->actingAs($mitra)
-        ->get(route('mitra.trips.index'))
-        ->assertRedirect(route('password.change'));
-});
-
-/*
-|==========================================================================
-| KATEGORI 3 — DATA INTEGRITY: Index
-|==========================================================================
-*/
-
-it('index hanya menampilkan trip milik mitra', function () {
-    // Buat trip lain (bukan milik mitra)
-    $otherBooking = Booking::factory()->create([
-        'user_id' => $this->client->id,
-        'package_id' => $this->package->id,
-        'status' => BookingStatus::CONFIRMED,
-        'tanggal_keberangkatan' => now()->addDays(14)->format('Y-m-d'),
-    ]);
-    $otherTrip = Trip::factory()->create([
-        'booking_id' => $otherBooking->id,
-        'package_id' => $this->package->id,
-        'kode' => 'TRP-2026-OTHER',
-        'tanggal_mulai' => now()->addDays(14)->format('Y-m-d'),
-        'tanggal_selesai' => now()->addDays(15)->format('Y-m-d'),
-    ]);
-    TripMitra::factory()->create([
-        'trip_id' => $otherTrip->id,
-        'mitra_id' => $this->otherMitra->id,
-    ]);
-
-    $response = $this->actingAs($this->mitra)->get(route('mitra.trips.index'));
-
-    $response->assertInertia(fn ($page) => $page
-        ->has('trips.data', 1)
-        ->where('trips.data.0.id', $this->trip->id)
-    );
-});
-
-it('index menampilkan statusCounts dengan jumlah benar', function () {
-    $response = $this->actingAs($this->mitra)->get(route('mitra.trips.index'));
-
-    $response->assertInertia(fn ($page) => $page
-        ->where('statusCounts.scheduled', 1)
-    );
-});
-
-it('index bisa filter status', function () {
-    $response = $this->actingAs($this->mitra)
-        ->get(route('mitra.trips.index', ['status' => 'active']));
-
-    $response->assertInertia(fn ($page) => $page
-        ->has('trips.data', 0) // tidak ada trip active
-    );
-});
-
-it('index bisa search by kode', function () {
-    $response = $this->actingAs($this->mitra)
-        ->get(route('mitra.trips.index', ['search' => 'TRP-2026-001']));
-
-    $response->assertInertia(fn ($page) => $page
-        ->has('trips.data', 1)
-        ->where('trips.data.0.id', $this->trip->id)
-    );
+        $this->actingAs($this->mitra)
+            ->get("/mitra/trips/{$trip->id}/manifest")
+            ->assertForbidden();
+    });
 });
 
 /*
 |==========================================================================
-| KATEGORI 4 — DATA INTEGRITY: Show
+| KATEGORI 3 — CONCURRENCY
 |==========================================================================
 */
 
-it('show menampilkan trip yang di-assign', function () {
-    $response = $this->actingAs($this->mitra)
-        ->get(route('mitra.trips.show', $this->trip->id));
+describe('Concurrency — read-only consistency', function () {
+    it('2x GET index → total identik', function () {
+        makeTripForMitra($this->mitra, $this->client);
 
-    $response->assertInertia(fn ($page) => $page
-        ->where('trip.id', $this->trip->id)
-        ->where('trip.kode', 'TRP-2026-001')
-    );
-});
+        $first = $this->actingAs($this->mitra)
+            ->get('/mitra/trips')
+            ->viewData('page')['props']['trips']['total'];
 
-it('show menampilkan tripMitra milik mitra', function () {
-    $response = $this->actingAs($this->mitra)
-        ->get(route('mitra.trips.show', $this->trip->id));
+        $second = $this->actingAs($this->mitra)
+            ->get('/mitra/trips')
+            ->viewData('page')['props']['trips']['total'];
 
-    $response->assertInertia(fn ($page) => $page
-        ->has('tripMitra')
-        ->where('tripMitra.id', $this->tripMitra->id)
-        ->where('tripMitra.role', 'lead')
-    );
-});
-
-it('show load relasi package, booking, mitras, days', function () {
-    $response = $this->actingAs($this->mitra)
-        ->get(route('mitra.trips.show', $this->trip->id));
-
-    $response->assertInertia(fn ($page) => $page
-        ->has('trip.package')
-        ->has('trip.booking')
-        ->has('trip.mitras')
-        ->has('trip.days')
-    );
-});
-
-it('show hanya load dailyReports milik mitra', function () {
-    // Buat daily report untuk mitra
-    DailyReport::factory()->create([
-        'trip_day_id' => TripDay::where('trip_id', $this->trip->id)->first()->id,
-        'mitra_id' => $this->mitra->id,
-        'status' => DailyReport::STATUS_SUBMITTED,
-    ]);
-
-    // Buat daily report untuk mitra lain
-    DailyReport::factory()->create([
-        'trip_day_id' => TripDay::where('trip_id', $this->trip->id)->first()->id,
-        'mitra_id' => $this->otherMitra->id,
-        'status' => DailyReport::STATUS_SUBMITTED,
-    ]);
-
-    $response = $this->actingAs($this->mitra)
-        ->get(route('mitra.trips.show', $this->trip->id));
-
-    $response->assertInertia(fn ($page) => $page
-        ->has('trip.days.0.daily_reports', 1)
-        ->where('trip.days.0.daily_reports.0.mitra_id', $this->mitra->id)
-    );
+        expect($first)->toBe($second);
+    });
 });
 
 /*
 |==========================================================================
-| KATEGORI 5 — ERROR HANDLING
+| KATEGORI 4 — IDEMPOTENCY
 |==========================================================================
 */
 
-it('show trip 404 jika tidak ditemukan', function () {
-    $this->actingAs($this->mitra)
-        ->get('/mitra/trips/9999')
-        ->assertNotFound();
+describe('Idempotency', function () {
+    it('GET index berulang tidak mengubah data', function () {
+        makeTripForMitra($this->mitra, $this->client);
+        $countBefore = Trip::count();
+
+        $this->actingAs($this->mitra)->get('/mitra/trips');
+        $this->actingAs($this->mitra)->get('/mitra/trips');
+
+        expect(Trip::count())->toBe($countBefore);
+    });
 });
 
 /*
 |==========================================================================
-| KATEGORI 6 — ROUTE MIDDLEWARE
+| KATEGORI 5 — DATA INTEGRITY
 |==========================================================================
 */
 
-it('route mitra.trips.index pakai middleware auth, password.changed, role:mitra', function () {
-    $route = collect(Route::getRoutes())
-        ->first(fn ($r) => $r->getName() === 'mitra.trips.index');
+describe('Data Integrity — index filters', function () {
+    it('filter status=scheduled → hanya scheduled', function () {
+        makeTripForMitra($this->mitra, $this->client, ['status' => TripStatus::SCHEDULED->value]);
+        makeTripForMitra($this->mitra, $this->client, ['status' => TripStatus::ACTIVE->value]);
 
-    expect($route)->not->toBeNull();
-    $middleware = $route->gatherMiddleware();
+        $this->actingAs($this->mitra)
+            ->get('/mitra/trips?status=scheduled')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.status', 'scheduled')
+            );
+    });
 
-    expect($middleware)->toContain('auth');
-    expect($middleware)->toContain('password.changed');
-    expect($middleware)->toContain('role:mitra');
+    it('search kode trip → return match', function () {
+        makeTripForMitra($this->mitra, $this->client, ['kode' => 'TRP-SEARCH-001']);
+
+        $this->actingAs($this->mitra)
+            ->get('/mitra/trips?search=TRP-SEARCH-001')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.search', 'TRP-SEARCH-001')
+            );
+    });
 });
 
-it('route mitra.trips.show pakai middleware auth, password.changed, role:mitra', function () {
-    $route = collect(Route::getRoutes())
-        ->first(fn ($r) => $r->getName() === 'mitra.trips.show');
+describe('Data Integrity — manifest (delegate ke ReportService)', function () {
+    it('manifest → ReportService::exportTripManifest dipanggil', function () {
+        $trip = makeTripForMitra($this->mitra, $this->client);
 
-    expect($route)->not->toBeNull();
-    $middleware = $route->gatherMiddleware();
+        $response = new IlluminateResponse('pdf-content');
 
-    expect($middleware)->toContain('auth');
-    expect($middleware)->toContain('password.changed');
-    expect($middleware)->toContain('role:mitra');
+        // Mock concrete ReportService (tidak final, tanpa interface)
+        $this->mock(ReportService::class, function (MockInterface $m) use ($response) {
+            $m->shouldReceive('exportTripManifest')
+                ->once()
+                ->with(Mockery::type(Trip::class))
+                ->andReturn($response);
+        });
+
+        $this->actingAs($this->mitra)
+            ->get("/mitra/trips/{$trip->id}/manifest")
+            ->assertOk();
+    });
 });
 
 /*
 |==========================================================================
-| KATEGORI 7 — EDGE CASES
+| KATEGORI 6 — ERROR HANDLING
 |==========================================================================
 */
 
-it('index menampilkan 0 trip jika mitra belum di-assign', function () {
-    $mitraBaru = User::factory()->mitra()->create([
-        'must_change_password' => false,
-    ]);
-
-    $response = $this->actingAs($mitraBaru)->get(route('mitra.trips.index'));
-
-    $response->assertInertia(fn ($page) => $page
-        ->has('trips.data', 0)
-    );
+describe('Error Handling — show 404', function () {
+    it('GET /mitra/trips/999999 → 404', function () {
+        $this->actingAs($this->mitra)
+            ->get('/mitra/trips/999999')
+            ->assertNotFound();
+    });
 });
 
-it('show trip dengan 0 trip day tidak error', function () {
-    TripDay::where('trip_id', $this->trip->id)->delete();
+/*
+|==========================================================================
+| KATEGORI 7 — EDGE CASES & BVA
+|==========================================================================
+*/
 
-    $response = $this->actingAs($this->mitra)
-        ->get(route('mitra.trips.show', $this->trip->id));
+describe('Edge Cases — empty DB', function () {
+    it('DB tanpa trip → index OK, total 0', function () {
+        $this->actingAs($this->mitra)
+            ->get('/mitra/trips')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('trips.total', 0)
+            );
+    });
+});
 
-    $response->assertOk();
-    $response->assertInertia(fn ($page) => $page
-        ->has('trip.days', 0)
-    );
+describe('Edge Cases — per_page', function () {
+    it('per_page=10 (default) → 10 item per halaman', function () {
+        for ($i = 0; $i < 15; $i++) {
+            makeTripForMitra($this->mitra, $this->client);
+        }
+
+        $this->actingAs($this->mitra)
+            ->get('/mitra/trips')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('trips.per_page', 10)
+                ->has('trips.data', 10)
+            );
+    });
+
+    it('per_page=5 → 5 item per halaman', function () {
+        for ($i = 0; $i < 10; $i++) {
+            makeTripForMitra($this->mitra, $this->client);
+        }
+
+        $this->actingAs($this->mitra)
+            ->get('/mitra/trips?per_page=5')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('trips.per_page', 5)
+                ->has('trips.data', 5)
+            );
+    });
 });

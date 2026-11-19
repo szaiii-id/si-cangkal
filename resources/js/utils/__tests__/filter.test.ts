@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createFilter } from '../filters.svelte';
+import { createFilter } from '../../lib/filters.svelte';
 
 // ============================================================
 // MOCK INERTIA

@@ -1,0 +1,1 @@
+<div data-testid="password-checklist"></div>

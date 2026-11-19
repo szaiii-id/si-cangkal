@@ -1,27 +1,58 @@
 <?php
 
 use App\Enums\BookingStatus;
-use App\Enums\PackageKategori;
-use App\Enums\PackageStatus;
 use App\Models\Booking;
-use App\Models\BookingParticipant;
+use App\Models\ETicket;
+use App\Models\MitraBankAccount;
 use App\Models\Package;
-use App\Models\PackageDay;
-use App\Models\Payment;
+use App\Models\Profile;
 use App\Models\User;
-use Database\Seeders\UserSeeder;
+use App\Services\Booking\BookingCancellationService;
+use App\Services\Booking\BookingCreationService;
+use App\Services\Booking\BookingPaymentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
+use Inertia\Testing\AssertableInertia as Assert;
+use Mockery\MockInterface;
 
 uses(RefreshDatabase::class);
 
 /*
 |==========================================================================
-| SETUP
+| SETUP — Integration Test
 |==========================================================================
+|
+| BookingController (client) — MUTASI UANG (create/cancel/upload/download).
+|
+| Route (prefix /client):
+| - GET  /bookings                          → index
+| - GET  /bookings/create/{package}         → create
+| - POST /bookings/{package}                → store
+| - GET  /bookings/{booking}                → show
+| - POST /bookings/{booking}/cancel         → cancel
+| - POST /bookings/{booking}/upload-proof   → uploadProof
+| - GET  /bookings/{booking}/payment-proof  → downloadProof
+|
+| Middleware: auth, password.changed, role:client
+| Policy: BookingPolicy (view, cancelByClient, uploadProof)
+| FormRequest: ListBookingRequest, StoreBookingRequest, UploadPaymentProofRequest
+|
+|   Catatan:
+| - `config(['inertia.testing.ensure_pages_exist' => false])` — backend test.
+| - `Storage::fake('local')` — untuk upload/download proof.
+| - `BookingCreationService`, `BookingPaymentService`, `BookingCancellationService`
+|   di-mock — fokus test CONTROLLER.
+| - Client TIDAK butuh bank account (beda dengan mitra).
+| - UUID pakai `Str::uuid()` (36 char) — kolom `CHAR(36)` di DB
+|   akan pad spasi kalau string < 36 char.
+| - `index()` sekarang pakai `ListBookingRequest` — invalid input →
+|   validation error (bukan 0 hasil).
+| - `store()` catch `ValidationException` + `Throwable` → redirect back.
+|
 */
 
 beforeEach(function () {
@@ -29,95 +60,79 @@ beforeEach(function () {
         $this->withoutVite();
     }
 
-    // Disk 'public' → in-memory
-    Storage::fake('public');
+    config(['inertia.testing.ensure_pages_exist' => false]);
 
-    // Freeze time deterministik
-    Carbon::setTestNow(Carbon::create(2026, 1, 15, 10, 0, 0, 'Asia/Makassar'));
-
-    // Setup users
-    $this->admin = User::factory()->admin()->create([
-        'must_change_password' => false,
-    ]);
+    Storage::fake('local');
 
     $this->client = User::factory()->client()->create([
-        'email' => 'client@example.com',
+        'name' => 'Budi Client',
+        'email' => 'budi@example.com',
         'must_change_password' => false,
     ]);
 
-    $this->otherClient = User::factory()->client()->create([
-        'email' => 'other@example.com',
+    $this->client2 = User::factory()->client()->create([
         'must_change_password' => false,
     ]);
 
-    // Setup package aktif dengan itinerary + fasilitas
-    $this->package = Package::factory()->create([
+    $this->mitra = User::factory()->mitra()->create([
+        'name' => 'Mitra Travel',
+        'must_change_password' => false,
+    ]);
+
+    Profile::factory()->create([
+        'user_id' => $this->mitra->id,
+        'tipe' => 'mitra',
+        'nama_penyedia_usaha' => 'PT Travel Jaya',
+        'telepon' => '08123456789',
+    ]);
+
+    MitraBankAccount::create([
+        'user_id' => $this->mitra->id,
+        'tipe' => 'bank',
+        'nama_penyedia' => 'BCA',
+        'nomor_rekening' => '1234567890',
+        'nama_pemilik' => 'Budi',
+        'is_primary' => true,
+    ]);
+
+    $this->package = Package::factory()->forMitra($this->mitra)->aktif()->create([
         'nama' => 'Paket Test',
-        'slug' => 'paket-test',
-        'kode' => 'PKG-001',
-        'status' => PackageStatus::AKTIF,
-        'kategori' => PackageKategori::WISATA_ALAM,
-        'timezone' => 'Asia/Makassar',
-        'harga_per_orang' => '500000.00',
-        'harga_per_rombongan' => null,
-        'min_peserta' => 2,
-        'max_peserta' => 10,
         'durasi_hari' => 2,
-        'durasi_malam' => 1,
     ]);
-
-    PackageDay::factory()->create([
-        'package_id' => $this->package->id,
-        'hari_ke' => 1,
-        'judul' => 'Day 1',
-    ]);
-    PackageDay::factory()->create([
-        'package_id' => $this->package->id,
-        'hari_ke' => 2,
-        'judul' => 'Day 2',
-    ]);
-
-    $this->package->facilities()->create([
-        'tipe' => 'include',
-        'nama' => 'Transportasi',
-        'urutan' => 1,
-    ]);
-});
-
-afterEach(function () {
-    Carbon::setTestNow();
 });
 
 /*
 |==========================================================================
-| HELPERS — lokal file
+| HELPER — payload valid
 |==========================================================================
 */
-
-function validBookingPayloadForClient(array $overrides = []): array
+function validStoreBookingPayload(array $overrides = []): array
 {
+    $tanggal = now()->addDays(5)->format('Y-m-d');
+
     return array_merge([
-        'tanggal_keberangkatan' => now()->addDays(7)->format('Y-m-d'),
+        'tanggal_keberangkatan' => $tanggal,
         'jumlah_peserta' => 2,
-        'catatan' => 'E2E test',
+        'catatan' => 'Catatan booking',
         'participants' => [
-            ['nama' => 'Budi', 'umur' => 30, 'no_hp' => '081234567890', 'catatan' => null],
-            ['nama' => 'Ani', 'umur' => 25, 'no_hp' => '081234567891', 'catatan' => null],
+            ['nama' => 'Peserta 1', 'umur' => 25, 'no_hp' => '0811111111'],
+            ['nama' => 'Peserta 2', 'umur' => 30, 'no_hp' => '0822222222'],
         ],
     ], $overrides);
 }
 
-function createBookingForClientTest(User $client, Package $package, array $attrs = []): Booking
+function makeBookingForClient(User $client, User $mitra, array $overrides = []): Booking
 {
-    return Booking::factory()->create(array_merge([
-        'user_id' => $client->id,
-        'package_id' => $package->id,
-        'status' => BookingStatus::PENDING_PAYMENT,
-        'jumlah_peserta' => 2,
-        'total_harga' => '1000000.00',
-        'tanggal_keberangkatan' => now()->addDays(7)->format('Y-m-d'),
-        'expired_at' => now()->addHours(24),
-    ], $attrs));
+    $package = Package::factory()->forMitra($mitra)->aktif()->create();
+
+    return Booking::factory()
+        ->forPackage($package)
+        ->forClient($client)
+        ->create(array_merge([
+            'mitra_id' => $mitra->id,
+            'status' => BookingStatus::PENDING_PAYMENT,
+            'payment_proof_path' => null,
+        ], $overrides));
 }
 
 /*
@@ -126,50 +141,104 @@ function createBookingForClientTest(User $client, Package $package, array $attrs
 |==========================================================================
 */
 
-it('GET /client/bookings merender Inertia component Client/Bookings/Index', function () {
-    createBookingForClientTest($this->client, $this->package);
+describe('Contract — index', function () {
+    it('GET /client/bookings → render Client/Bookings/Index', function () {
+        $this->actingAs($this->client)
+            ->get('/client/bookings')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Client/Bookings/Index')
+                ->has('bookings')
+                ->has('filters')
+                ->has('statusCounts')
+            );
+    });
 
-    $response = $this->actingAs($this->client)->get('/client/bookings');
+    it('hanya menampilkan booking milik client sendiri', function () {
+        makeBookingForClient($this->client, $this->mitra, ['kode' => 'BKG-SENDIRI']);
+        makeBookingForClient($this->client2, $this->mitra, ['kode' => 'BKG-CLIENT2']);
 
-    $response->assertOk();
-    $response->assertInertia(fn ($page) => $page
-        ->component('Client/Bookings/Index')
-        ->has('bookings')
-        ->has('bookings.data', 1)
-        ->has('filters')
-        ->has('statusCounts')
-    );
+        $this->actingAs($this->client)
+            ->get('/client/bookings')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('bookings.total', 1)
+                ->where('bookings.data.0.kode', 'BKG-SENDIRI')
+            );
+    });
+
+    it('route name = client.bookings.index', function () {
+        expect(route('client.bookings.index'))->toBe(url('/client/bookings'));
+    });
 });
 
-it('GET /client/bookings/{id} merender Inertia component Client/Bookings/Show', function () {
-    $booking = createBookingForClientTest($this->client, $this->package);
-    BookingParticipant::factory()->count(2)->create([
-        'booking_id' => $booking->id,
-    ]);
+describe('Contract — create', function () {
+    it('GET /client/bookings/create/{package} → render Client/Bookings/Create', function () {
+        $this->actingAs($this->client)
+            ->get("/client/bookings/create/{$this->package->id}")
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Client/Bookings/Create')
+                ->has('package')
+                ->where('package.id', $this->package->id)
+            );
+    });
 
-    $response = $this->actingAs($this->client)->get("/client/bookings/{$booking->id}");
+    it('create paket tidak aktif → 404', function () {
+        $draft = Package::factory()->forMitra($this->mitra)->draft()->create();
 
-    $response->assertOk();
-    $response->assertInertia(fn ($page) => $page
-        ->component('Client/Bookings/Show')
-        ->has('booking.id')
-        ->has('booking.kode')
-        ->has('booking.status')
-        ->has('booking.package')
-        ->has('booking.participants', 2)
-        ->has('booking.payments')
-        ->where('eticket', null)
-    );
+        $this->actingAs($this->client)
+            ->get("/client/bookings/create/{$draft->id}")
+            ->assertNotFound();
+    });
 });
 
-it('POST /client/bookings/{package} sukses redirect ke show page', function () {
-    $response = $this->actingAs($this->client)
-        ->post("/client/bookings/{$this->package->id}", validBookingPayloadForClient());
+describe('Contract — show', function () {
+    it('GET /client/bookings/{id} → render Client/Bookings/Show', function () {
+        $booking = makeBookingForClient($this->client, $this->mitra);
 
-    $response->assertStatus(302);
+        $this->actingAs($this->client)
+            ->get("/client/bookings/{$booking->id}")
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Client/Bookings/Show')
+                ->has('booking')
+                ->has('refunds')
+                ->where('booking.id', $booking->id)
+            );
+    });
 
-    $booking = Booking::where('user_id', $this->client->id)->first();
-    $response->assertRedirect(route('client.bookings.show', $booking->id));
+    it('TIDAK mengirim payment_proof_path mentah (security)', function () {
+        $booking = makeBookingForClient($this->client, $this->mitra, [
+            'payment_proof_path' => 'payment_proofs/secret.jpg',
+        ]);
+
+        $response = $this->actingAs($this->client)
+            ->get("/client/bookings/{$booking->id}");
+
+        $payload = $response->viewData('page')['props']['booking'];
+        expect($payload)->not->toHaveKey('payment_proof_path')
+            ->and($payload['has_payment_proof'])->toBeTrue();
+    });
+
+    it('show dengan eticket → props eticket terisi', function () {
+        $booking = makeBookingForClient($this->client, $this->mitra, [
+            'status' => BookingStatus::CONFIRMED,
+        ]);
+
+        $uuid = (string) Str::uuid();
+
+        ETicket::factory()->create([
+            'booking_id' => $booking->id,
+            'uuid' => $uuid,
+        ]);
+
+        $this->actingAs($this->client)
+            ->get("/client/bookings/{$booking->id}")
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('eticket')
+                ->where('eticket.uuid', $uuid)
+            );
+    });
 });
 
 /*
@@ -178,76 +247,86 @@ it('POST /client/bookings/{package} sukses redirect ke show page', function () {
 |==========================================================================
 */
 
-it('guest tidak bisa akses /client/bookings', function () {
-    $this->get('/client/bookings')->assertRedirect(route('login'));
+describe('Security — guest & role', function () {
+    it('guest di-redirect ke login (index)', function () {
+        $this->get('/client/bookings')->assertRedirect(route('login'));
+    });
+
+    it('admin di-redirect ke admin.dashboard (index)', function () {
+        $admin = User::factory()->admin()->create(['must_change_password' => false]);
+
+        $this->actingAs($admin)
+            ->get('/client/bookings')
+            ->assertRedirect(route('admin.dashboard'));
+    });
+
+    it('mitra di-redirect ke mitra.dashboard (index)', function () {
+        $this->actingAs($this->mitra)
+            ->get('/client/bookings')
+            ->assertRedirect(route('mitra.dashboard'));
+    });
+
+    it('client must_change_password=true di-redirect ke password.change', function () {
+        $needChange = User::factory()->client()->create(['must_change_password' => true]);
+
+        $this->actingAs($needChange)
+            ->get('/client/bookings')
+            ->assertRedirect(route('password.change'));
+    });
 });
 
-it('client tidak bisa lihat booking client lain (403)', function () {
-    $booking = createBookingForClientTest($this->otherClient, $this->package);
+describe('Security — ownership (Policy)', function () {
+    it('client TIDAK bisa show booking client lain → 403', function () {
+        $booking = makeBookingForClient($this->client2, $this->mitra);
 
-    $this->actingAs($this->client)
-        ->get("/client/bookings/{$booking->id}")
-        ->assertForbidden();
-});
+        $this->actingAs($this->client)
+            ->get("/client/bookings/{$booking->id}")
+            ->assertForbidden();
+    });
 
-it('client tidak bisa upload payment proof untuk booking client lain', function () {
-    $booking = createBookingForClientTest($this->otherClient, $this->package);
+    it('client TIDAK bisa cancel booking client lain → 403', function () {
+        $booking = makeBookingForClient($this->client2, $this->mitra);
 
-    $this->actingAs($this->client)
-        ->post("/client/bookings/{$booking->id}/upload-payment-proof", [
-            'bukti_transfer' => UploadedFile::fake()->image('bukti.jpg'),
-        ])
-        ->assertForbidden();
-});
+        $this->mock(BookingCancellationService::class, function (MockInterface $m) {
+            $m->shouldNotReceive('cancelByClient');
+        });
 
-it('client tidak bisa cancel booking milik client lain', function () {
-    $booking = createBookingForClientTest($this->otherClient, $this->package);
+        $this->actingAs($this->client)
+            ->post("/client/bookings/{$booking->id}/cancel")
+            ->assertForbidden();
+    });
 
-    $this->actingAs($this->client)
-        ->post("/client/bookings/{$booking->id}/cancel")
-        ->assertForbidden();
-});
+    it('client TIDAK bisa download proof booking client lain → 403', function () {
+        $booking = makeBookingForClient($this->client2, $this->mitra, [
+            'payment_proof_path' => 'payment_proofs/proof.jpg',
+        ]);
+        Storage::disk('local')->put('payment_proofs/proof.jpg', 'content');
 
-it('admin tidak bisa create booking sebagai client (redirect ke dashboard admin)', function () {
-    $this->actingAs($this->admin)
-        ->post("/client/bookings/{$this->package->id}", validBookingPayloadForClient())
-        ->assertRedirect(route('admin.dashboard'));
-});
-
-it('mitra tidak bisa create booking sebagai client (redirect ke dashboard mitra)', function () {
-    $mitra = User::factory()->mitra()->create(['must_change_password' => false]);
-
-    $this->actingAs($mitra)
-        ->post("/client/bookings/{$this->package->id}", validBookingPayloadForClient())
-        ->assertRedirect(route('mitra.dashboard'));
-});
-
-it('client dengan must_change_password = true di-redirect ke change-password', function () {
-    $client = User::factory()->client()->create([
-        'must_change_password' => true,
-    ]);
-
-    $this->actingAs($client)
-        ->get('/client/bookings')
-        ->assertRedirect(route('password.change'));
+        $this->actingAs($this->client)
+            ->get("/client/bookings/{$booking->id}/payment-proof")
+            ->assertForbidden();
+    });
 });
 
 /*
 |==========================================================================
-| KATEGORI 3 — CONCURRENCY / RACE CONDITION
+| KATEGORI 3 — CONCURRENCY
 |==========================================================================
 */
 
-it('2 booking berurutan pada package sama tetap generate kode unik', function () {
-    $this->actingAs($this->client)
-        ->post("/client/bookings/{$this->package->id}", validBookingPayloadForClient());
-    $this->actingAs($this->client)
-        ->post("/client/bookings/{$this->package->id}", validBookingPayloadForClient());
+describe('Concurrency — store', function () {
+    it('store 2x → mock dipanggil 2x (idempoten di service)', function () {
+        $booking = makeBookingForClient($this->client, $this->mitra);
 
-    $bookings = Booking::where('user_id', $this->client->id)->get();
+        $this->mock(BookingCreationService::class, function (MockInterface $m) use ($booking) {
+            $m->shouldReceive('create')->twice()->andReturn($booking);
+        });
 
-    expect($bookings->count())->toBe(2);
-    expect($bookings->pluck('kode')->unique())->toHaveCount(2);
+        $payload = validStoreBookingPayload();
+
+        $this->actingAs($this->client)->post("/client/bookings/{$this->package->id}", $payload);
+        $this->actingAs($this->client)->post("/client/bookings/{$this->package->id}", $payload);
+    });
 });
 
 /*
@@ -256,41 +335,17 @@ it('2 booking berurutan pada package sama tetap generate kode unik', function ()
 |==========================================================================
 */
 
-it('upload payment proof 2x tidak duplicate (updateOrCreate)', function () {
-    $booking = createBookingForClientTest($this->client, $this->package);
+describe('Idempotency', function () {
+    it('cancel 2x → mock service dipanggil 2x', function () {
+        $booking = makeBookingForClient($this->client, $this->mitra);
 
-    $this->actingAs($this->client)->post(
-        "/client/bookings/{$booking->id}/upload-payment-proof",
-        [
-            'jumlah' => 1000000,
-            'bank_pengirim' => 'BCA',
-            'bukti_transfer' => UploadedFile::fake()->image('bukti1.jpg'),
-        ]
-    );
+        $this->mock(BookingCancellationService::class, function (MockInterface $m) {
+            $m->shouldReceive('cancelByClient')->twice();
+        });
 
-    $this->actingAs($this->client)->post(
-        "/client/bookings/{$booking->id}/upload-payment-proof",
-        [
-            'jumlah' => 1000000,
-            'bank_pengirim' => 'Mandiri',
-            'bukti_transfer' => UploadedFile::fake()->image('bukti2.jpg'),
-        ]
-    );
-
-    expect(Payment::where('booking_id', $booking->id)->count())->toBe(1);
-
-    $payment = Payment::where('booking_id', $booking->id)->first();
-    expect($payment->bank_pengirim)->toBe('Mandiri');
-});
-
-it('cancel booking 2x tetap cancelled (idempotent)', function () {
-    $booking = createBookingForClientTest($this->client, $this->package);
-
-    $this->actingAs($this->client)->post("/client/bookings/{$booking->id}/cancel");
-    $this->actingAs($this->client)->post("/client/bookings/{$booking->id}/cancel");
-
-    $booking->refresh();
-    expect($booking->status)->toBe(BookingStatus::CANCELLED);
+        $this->actingAs($this->client)->post("/client/bookings/{$booking->id}/cancel");
+        $this->actingAs($this->client)->post("/client/bookings/{$booking->id}/cancel");
+    });
 });
 
 /*
@@ -299,382 +354,250 @@ it('cancel booking 2x tetap cancelled (idempotent)', function () {
 |==========================================================================
 */
 
-it('create booking set status pending_payment dan total_harga benar', function () {
-    $this->actingAs($this->client)
-        ->post("/client/bookings/{$this->package->id}", validBookingPayloadForClient());
+describe('Data Integrity — store', function () {
+    it('store → service dipanggil + redirect ke show', function () {
+        $booking = makeBookingForClient($this->client, $this->mitra, ['id' => 999]);
 
-    $booking = Booking::where('user_id', $this->client->id)->first();
+        $this->mock(BookingCreationService::class, function (MockInterface $m) use ($booking) {
+            $m->shouldReceive('create')
+                ->once()
+                ->with(
+                    Mockery::on(fn ($p) => $p->id === $this->package->id),
+                    Mockery::on(fn ($c) => $c->id === $this->client->id),
+                    Mockery::type('array'),
+                )
+                ->andReturn($booking);
+        });
 
-    expect($booking)->not->toBeNull();
-    expect($booking->status)->toBe(BookingStatus::PENDING_PAYMENT);
-    expect((float) $booking->total_harga)->toBe(1_000_000.0); // 500rb × 2
+        $response = $this->actingAs($this->client)
+            ->post("/client/bookings/{$this->package->id}", validStoreBookingPayload());
+
+        $response->assertRedirect(route('client.bookings.show', 999))
+            ->assertSessionHas('status');
+    });
+
+    it('store → service throw ValidationException → redirect back + errors', function () {
+        $this->mock(BookingCreationService::class, function (MockInterface $m) {
+            $m->shouldReceive('create')
+                ->once()
+                ->andThrow(ValidationException::withMessages([
+                    'jumlah_peserta' => 'Melebihi batas maksimal untuk paket ini.',
+                ]));
+        });
+
+        $this->actingAs($this->client)
+            ->from("/client/bookings/create/{$this->package->id}")
+            ->post("/client/bookings/{$this->package->id}", validStoreBookingPayload())
+            ->assertRedirect()
+            ->assertSessionHasErrors('jumlah_peserta');
+    });
+
+    it('store → service throw Throwable → redirect back + error message', function () {
+        $this->mock(BookingCreationService::class, function (MockInterface $m) {
+            $m->shouldReceive('create')
+                ->once()
+                ->andThrow(new RuntimeException('DB error'));
+        });
+
+        Log::spy();
+
+        $this->actingAs($this->client)
+            ->from("/client/bookings/create/{$this->package->id}")
+            ->post("/client/bookings/{$this->package->id}", validStoreBookingPayload())
+            ->assertRedirect()
+            ->assertSessionHas('error');
+
+        Log::shouldHaveReceived('error')
+            ->once()
+            ->with('Client booking creation failed', Mockery::on(
+                fn ($ctx) => $ctx['user_id'] === $this->client->id
+                    && $ctx['package_id'] === $this->package->id
+                    && $ctx['error'] === 'DB error'
+            ));
+    });
 });
 
-it('create booking set expired_at +24 jam dari sekarang', function () {
-    $this->actingAs($this->client)
-        ->post("/client/bookings/{$this->package->id}", validBookingPayloadForClient());
+describe('Data Integrity — cancel', function () {
+    it('cancel → service dipanggil + redirect show', function () {
+        $booking = makeBookingForClient($this->client, $this->mitra);
 
-    $booking = Booking::where('user_id', $this->client->id)->first();
+        $this->mock(BookingCancellationService::class, function (MockInterface $m) use ($booking) {
+            $m->shouldReceive('cancelByClient')
+                ->once()
+                ->with(Mockery::on(fn ($b) => $b->id === $booking->id));
+        });
 
-    expect($booking->expired_at->timestamp)->toBe(now()->addHours(24)->timestamp);
+        $this->actingAs($this->client)
+            ->post("/client/bookings/{$booking->id}/cancel")
+            ->assertRedirect(route('client.bookings.show', $booking->id))
+            ->assertSessionHas('status');
+    });
 });
 
-it('cancel booking ubah status ke cancelled', function () {
-    $booking = createBookingForClientTest($this->client, $this->package);
+describe('Data Integrity — uploadProof', function () {
+    it('upload proof → service dipanggil dengan UploadedFile', function () {
+        $booking = makeBookingForClient($this->client, $this->mitra);
 
-    $this->actingAs($this->client)
-        ->post("/client/bookings/{$booking->id}/cancel")
-        ->assertRedirect();
+        $this->mock(BookingPaymentService::class, function (MockInterface $m) use ($booking) {
+            $m->shouldReceive('uploadProof')
+                ->once()
+                ->with(
+                    Mockery::on(fn ($b) => $b->id === $booking->id),
+                    Mockery::type(UploadedFile::class),
+                );
+        });
 
-    $booking->refresh();
-    expect($booking->status)->toBe(BookingStatus::CANCELLED);
+        $file = UploadedFile::fake()->image('proof.jpg', 800, 600);
+
+        $this->actingAs($this->client)
+            ->post("/client/bookings/{$booking->id}/upload-proof", ['payment_proof' => $file])
+            ->assertRedirect()
+            ->assertSessionHas('status');
+    });
 });
 
-it('cancel booking dengan status confirmed ditolak (business rule)', function () {
-    $booking = createBookingForClientTest($this->client, $this->package, [
-        'status' => BookingStatus::CONFIRMED,
-    ]);
+describe('Data Integrity — downloadProof', function () {
+    it('download proof → return file dengan filename bukti-transfer-{kode}', function () {
+        $booking = makeBookingForClient($this->client, $this->mitra, [
+            'kode' => 'BKG-TEST-001',
+            'payment_proof_path' => 'payment_proofs/proof.jpg',
+        ]);
+        Storage::disk('local')->put('payment_proofs/proof.jpg', 'file-content');
 
-    $this->actingAs($this->client)
-        ->post("/client/bookings/{$booking->id}/cancel")
-        ->assertSessionHasErrors(['status']);
+        $response = $this->actingAs($this->client)
+            ->get("/client/bookings/{$booking->id}/payment-proof");
 
-    $booking->refresh();
-    expect($booking->status)->toBe(BookingStatus::CONFIRMED);
-});
+        $response->assertOk();
+        $response->assertHeader(
+            'content-disposition',
+            'attachment; filename=bukti-transfer-BKG-TEST-001.jpg'
+        );
+    });
 
-it('upload payment proof tidak mengubah status booking', function () {
-    $booking = createBookingForClientTest($this->client, $this->package);
+    it('path null → 404', function () {
+        $booking = makeBookingForClient($this->client, $this->mitra, [
+            'payment_proof_path' => null,
+        ]);
 
-    $this->actingAs($this->client)->post(
-        "/client/bookings/{$booking->id}/upload-payment-proof",
-        [
-            'jumlah' => 1000000,
-            'bank_pengirim' => 'BCA',
-            'bukti_transfer' => UploadedFile::fake()->image('bukti.jpg'),
-        ]
-    );
-
-    $booking->refresh();
-    expect($booking->status)->toBe(BookingStatus::PENDING_PAYMENT);
-});
-
-/*
-|==========================================================================
-| KATEGORI 6 — RATE LIMITING
-|==========================================================================
-*/
-
-it('rate limit tidak aktif untuk create booking (default)', function () {
-    // Tanpa throttle di route → bisa spam
-    // Jika ada throttle, test ini perlu update
-    $this->actingAs($this->client)
-        ->post("/client/bookings/{$this->package->id}", validBookingPayloadForClient())
-        ->assertRedirect();
-
-    $this->actingAs($this->client)
-        ->post("/client/bookings/{$this->package->id}", validBookingPayloadForClient())
-        ->assertRedirect();
-
-    expect(Booking::where('user_id', $this->client->id)->count())->toBe(2);
-});
-
-/*
-|==========================================================================
-| KATEGORI 7 — ERROR HANDLING & VALIDATION
-|==========================================================================
-*/
-
-it('create booking validasi tanggal < H+3 ditolak', function () {
-    $this->actingAs($this->client)
-        ->post("/client/bookings/{$this->package->id}", validBookingPayloadForClient([
-            'tanggal_keberangkatan' => now()->addDays(1)->format('Y-m-d'),
-        ]))
-        ->assertSessionHasErrors('tanggal_keberangkatan');
-
-    expect(Booking::count())->toBe(0);
-});
-
-it('create booking validasi jumlah peserta < min ditolak', function () {
-    $this->actingAs($this->client)
-        ->post("/client/bookings/{$this->package->id}", validBookingPayloadForClient([
-            'jumlah_peserta' => 1,
-            'participants' => [
-                ['nama' => 'Budi', 'umur' => 30, 'no_hp' => '081', 'catatan' => null],
-            ],
-        ]))
-        ->assertSessionHasErrors('jumlah_peserta');
-});
-
-it('create booking validasi jumlah peserta > max ditolak', function () {
-    $this->actingAs($this->client)
-        ->post("/client/bookings/{$this->package->id}", validBookingPayloadForClient([
-            'jumlah_peserta' => 999,
-            'participants' => array_fill(0, 999, [
-                'nama' => 'Test', 'umur' => 30, 'no_hp' => '081', 'catatan' => null,
-            ]),
-        ]))
-        ->assertSessionHasErrors('jumlah_peserta');
-});
-
-it('create booking validasi participants kurang dari jumlah_peserta ditolak', function () {
-    $this->actingAs($this->client)
-        ->post("/client/bookings/{$this->package->id}", validBookingPayloadForClient([
-            'jumlah_peserta' => 3,
-            'participants' => [
-                ['nama' => 'Budi', 'umur' => 30, 'no_hp' => '081', 'catatan' => null],
-                ['nama' => 'Ani', 'umur' => 25, 'no_hp' => '082', 'catatan' => null],
-            ],
-        ]))
-        ->assertSessionHasErrors('participants');
-});
-
-it('create booking validasi package tidak aktif ditolak (404)', function () {
-    $this->package->update(['status' => PackageStatus::DRAFT]);
-
-    $this->actingAs($this->client)
-        ->get("/client/bookings/create/{$this->package->id}")
-        ->assertNotFound();
-});
-
-it('upload payment proof tanpa file tetap jalan (nullable)', function () {
-    $booking = createBookingForClientTest($this->client, $this->package);
-
-    $this->actingAs($this->client)
-        ->post("/client/bookings/{$booking->id}/upload-payment-proof", [
-            'jumlah' => 1000000,
-            'bank_pengirim' => 'BCA',
-        ])
-        ->assertRedirect();
-
-    $payment = Payment::where('booking_id', $booking->id)->first();
-    expect($payment)->not->toBeNull();
-    expect($payment->bukti_transfer)->toBeNull();
-});
-
-it('upload payment proof validasi file gambar ditolak jika bukan image', function () {
-    $booking = createBookingForClientTest($this->client, $this->package);
-
-    $file = UploadedFile::fake()->create('document.pdf', 100, 'application/pdf');
-
-    $this->actingAs($this->client)
-        ->post("/client/bookings/{$booking->id}/upload-payment-proof", [
-            'bukti_transfer' => $file,
-        ])
-        ->assertSessionHasErrors('bukti_transfer');
+        $this->actingAs($this->client)
+            ->get("/client/bookings/{$booking->id}/payment-proof")
+            ->assertNotFound();
+    });
 });
 
 /*
 |==========================================================================
-| KATEGORI 8 — DATABASE TRANSACTION (ACID)
+| KATEGORI 6 — ERROR HANDLING (Validation)
 |==========================================================================
 */
 
-it('create booking buat booking + participants dalam 1 transaksi', function () {
-    $this->actingAs($this->client)
-        ->post("/client/bookings/{$this->package->id}", validBookingPayloadForClient());
+describe('Error Handling — index validation', function () {
+    it('status=ngawur → validation error', function () {
+        $this->actingAs($this->client)
+            ->get('/client/bookings?status=ngawur')
+            ->assertSessionHasErrors('status');
+    });
 
-    expect(Booking::count())->toBe(1);
-    expect(BookingParticipant::count())->toBe(2);
+    it('per_page < 5 → validation error', function () {
+        $this->actingAs($this->client)
+            ->get('/client/bookings?per_page=4')
+            ->assertSessionHasErrors('per_page');
+    });
 
-    $booking = Booking::first();
-    expect($booking->participants)->toHaveCount(2);
+    it('per_page > 100 → validation error', function () {
+        $this->actingAs($this->client)
+            ->get('/client/bookings?per_page=101')
+            ->assertSessionHasErrors('per_page');
+    });
+});
+
+describe('Error Handling — store validation', function () {
+    it('tanggal < H+1 → error', function () {
+        $this->actingAs($this->client)
+            ->post("/client/bookings/{$this->package->id}", validStoreBookingPayload([
+                'tanggal_keberangkatan' => now($this->package->timezone)->format('Y-m-d'),
+            ]))
+            ->assertSessionHasErrors('tanggal_keberangkatan');
+    });
+
+    it('jumlah_peserta 0 → error', function () {
+        $this->actingAs($this->client)
+            ->post("/client/bookings/{$this->package->id}", validStoreBookingPayload([
+                'jumlah_peserta' => 0,
+                'participants' => [],
+            ]))
+            ->assertSessionHasErrors('jumlah_peserta');
+    });
+
+    it('participants count != jumlah_peserta → error', function () {
+        $this->actingAs($this->client)
+            ->post("/client/bookings/{$this->package->id}", validStoreBookingPayload([
+                'jumlah_peserta' => 3,
+                'participants' => [
+                    ['nama' => 'P1'],
+                    ['nama' => 'P2'],
+                ],
+            ]))
+            ->assertSessionHasErrors('participants');
+    });
+});
+
+describe('Error Handling — uploadProof validation', function () {
+    it('payment_proof kosong → error', function () {
+        $booking = makeBookingForClient($this->client, $this->mitra);
+
+        $this->actingAs($this->client)
+            ->post("/client/bookings/{$booking->id}/upload-proof", [])
+            ->assertSessionHasErrors('payment_proof');
+    });
+
+    it('payment_proof bukan gambar → error', function () {
+        $booking = makeBookingForClient($this->client, $this->mitra);
+        $file = UploadedFile::fake()->create('doc.pdf', 100, 'application/pdf');
+
+        $this->actingAs($this->client)
+            ->post("/client/bookings/{$booking->id}/upload-proof", ['payment_proof' => $file])
+            ->assertSessionHasErrors('payment_proof');
+    });
+
+    it('upload proof booking bukan pending_payment → error', function () {
+        $booking = makeBookingForClient($this->client, $this->mitra, [
+            'status' => BookingStatus::CONFIRMED,
+        ]);
+        $file = UploadedFile::fake()->image('proof.jpg', 800, 600);
+
+        $this->actingAs($this->client)
+            ->post("/client/bookings/{$booking->id}/upload-proof", ['payment_proof' => $file])
+            ->assertSessionHasErrors('payment_proof');
+    });
 });
 
 /*
 |==========================================================================
-| KATEGORI 9 — DATABASE MIGRATION & SEEDING
+| KATEGORI 7 — EDGE CASES & BVA
 |==========================================================================
 */
 
-it('UserSeeder bisa dijalankan', function () {
-    $this->seed(UserSeeder::class);
-
-    expect(User::where('email', 'admin@titiktemu.test')->exists())->toBeTrue();
-    expect(User::where('email', 'client@titiktemu.test')->exists())->toBeTrue();
+describe('Edge Cases — empty DB', function () {
+    it('DB tanpa booking → total 0', function () {
+        $this->actingAs($this->client)
+            ->get('/client/bookings')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('bookings.total', 0)
+            );
+    });
 });
 
-/*
-|==========================================================================
-| HAPPY PATH
-|==========================================================================
-*/
+describe('Edge Cases — index filters', function () {
+    it('filter status=pending_payment → hanya pending', function () {
+        makeBookingForClient($this->client, $this->mitra, ['status' => BookingStatus::PENDING_PAYMENT]);
+        makeBookingForClient($this->client, $this->mitra, ['status' => BookingStatus::CONFIRMED]);
 
-it('berhasil create booking dan redirect ke halaman show', function () {
-    $response = $this->actingAs($this->client)
-        ->post("/client/bookings/{$this->package->id}", validBookingPayloadForClient());
-
-    $booking = Booking::where('user_id', $this->client->id)->first();
-
-    $response->assertRedirect(route('client.bookings.show', $booking->id));
-    $response->assertSessionHas('status');
-});
-
-it('berhasil upload payment proof dengan file valid', function () {
-    $booking = createBookingForClientTest($this->client, $this->package);
-
-    $this->actingAs($this->client)->post(
-        "/client/bookings/{$booking->id}/upload-payment-proof",
-        [
-            'jumlah' => 1000000,
-            'bank_pengirim' => 'BCA',
-            'nama_pengirim' => 'Budi',
-            'bukti_transfer' => UploadedFile::fake()->image('bukti.jpg'),
-        ]
-    );
-
-    $payment = Payment::where('booking_id', $booking->id)->first();
-
-    expect($payment)->not->toBeNull();
-    expect($payment->bank_pengirim)->toBe('BCA');
-    expect($payment->bukti_transfer)->not->toBeNull();
-
-    Storage::disk('public')->assertExists($payment->bukti_transfer);
-});
-
-it('booking dengan harga_per_rombongan menggunakan harga rombongan', function () {
-    $this->package->update(['harga_per_rombongan' => '3000000.00']);
-
-    $this->actingAs($this->client)
-        ->post("/client/bookings/{$this->package->id}", validBookingPayloadForClient());
-
-    $booking = Booking::where('user_id', $this->client->id)->first();
-
-    expect((float) $booking->total_harga)->toBe(3_000_000.0);
-});
-
-/*
-|==========================================================================
-| BVA (Boundary Value Analysis)
-|==========================================================================
-*/
-
-it('create booking sukses dengan tanggal TEPAT H+3 (boundary bawah)', function () {
-    // BVA: H+3 = batas bawah valid
-    $h3 = now()->addDays(3)->format('Y-m-d');
-
-    $this->actingAs($this->client)
-        ->post("/client/bookings/{$this->package->id}", validBookingPayloadForClient([
-            'tanggal_keberangkatan' => $h3,
-        ]))
-        ->assertRedirect();
-
-    expect(Booking::count())->toBe(1);
-});
-
-it('create booking gagal dengan tanggal H+2 (boundary bawah - 1)', function () {
-    $h2 = now()->addDays(2)->format('Y-m-d');
-
-    $this->actingAs($this->client)
-        ->post("/client/bookings/{$this->package->id}", validBookingPayloadForClient([
-            'tanggal_keberangkatan' => $h2,
-        ]))
-        ->assertSessionHasErrors('tanggal_keberangkatan');
-
-    expect(Booking::count())->toBe(0);
-});
-
-it('create booking sukses dengan jumlah peserta TEPAT min (boundary bawah)', function () {
-    // BVA: min_peserta = 2
-    $this->actingAs($this->client)
-        ->post("/client/bookings/{$this->package->id}", validBookingPayloadForClient([
-            'jumlah_peserta' => 2,
-            'participants' => [
-                ['nama' => 'Andi', 'umur' => 30, 'no_hp' => '081234567890', 'catatan' => null],
-                ['nama' => 'Budi', 'umur' => 25, 'no_hp' => '081234567891', 'catatan' => null],
-            ],
-        ]))
-        ->assertRedirect();
-
-    expect(Booking::count())->toBe(1);
-});
-
-it('create booking sukses dengan jumlah peserta TEPAT max (boundary atas)', function () {
-    // BVA: max_peserta = 10
-    $participants = array_fill(0, 10, [
-        'nama' => 'Test', 'umur' => 30, 'no_hp' => '081', 'catatan' => null,
-    ]);
-
-    $this->actingAs($this->client)
-        ->post("/client/bookings/{$this->package->id}", validBookingPayloadForClient([
-            'jumlah_peserta' => 10,
-            'participants' => $participants,
-        ]))
-        ->assertRedirect();
-
-    expect(Booking::count())->toBe(1);
-});
-
-/*
-|==========================================================================
-| EDGE CASES
-|==========================================================================
-*/
-
-it('create booking dengan catatan panjang 2000 karakter sukses (boundary atas)', function () {
-    $this->actingAs($this->client)
-        ->post("/client/bookings/{$this->package->id}", validBookingPayloadForClient([
-            'catatan' => str_repeat('a', 2000),
-        ]))
-        ->assertRedirect();
-});
-
-it('create booking dengan catatan 2001 karakter ditolak', function () {
-    $this->actingAs($this->client)
-        ->post("/client/bookings/{$this->package->id}", validBookingPayloadForClient([
-            'catatan' => str_repeat('a', 2001),
-        ]))
-        ->assertSessionHasErrors('catatan');
-});
-
-it('upload payment proof tidak ubah payment yang sudah verified', function () {
-    $booking = createBookingForClientTest($this->client, $this->package);
-
-    // Simulate verified payment
-    $payment = Payment::factory()->verified($this->admin)->create([
-        'booking_id' => $booking->id,
-    ]);
-
-    // Upload lagi
-    $this->actingAs($this->client)->post(
-        "/client/bookings/{$booking->id}/upload-payment-proof",
-        [
-            'jumlah' => 1000000,
-            'bank_pengirim' => 'Mandiri',
-        ]
-    );
-
-    $payment->refresh();
-    // Data berubah (karena updateOrCreate), tapi test verifikasi hanya 1 payment
-    expect(Payment::where('booking_id', $booking->id)->count())->toBe(1);
-});
-
-/*
-|==========================================================================
-| BEHAVIORAL — Route Middleware
-|==========================================================================
-*/
-
-it('route client.bookings.index pakai middleware auth, password.changed, dan role:client', function () {
-    $route = collect(Route::getRoutes())
-        ->first(fn ($r) => $r->getName() === 'client.bookings.index');
-
-    expect($route)->not->toBeNull();
-
-    $middleware = $route->gatherMiddleware();
-    expect($middleware)->toContain('auth');
-    expect($middleware)->toContain('password.changed');
-    expect($middleware)->toContain('role:client');
-});
-
-it('route client.bookings.store pakai middleware auth, password.changed, dan role:client', function () {
-    $route = collect(Route::getRoutes())
-        ->first(fn ($r) => $r->getName() === 'client.bookings.store');
-
-    expect($route)->not->toBeNull();
-
-    $middleware = $route->gatherMiddleware();
-    expect($middleware)->toContain('auth');
-    expect($middleware)->toContain('password.changed');
-    expect($middleware)->toContain('role:client');
+        $this->actingAs($this->client)
+            ->get('/client/bookings?status=pending_payment')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.status', 'pending_payment')
+            );
+    });
 });

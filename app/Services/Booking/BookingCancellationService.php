@@ -3,10 +3,15 @@
 namespace App\Services\Booking;
 
 use App\Enums\BookingStatus;
+use App\Enums\PaymentMetode;
+use App\Enums\RefundReason;
+use App\Enums\RefundStatus;
 use App\Models\Booking;
+use App\Models\Payment;
+use App\Models\Refund;
 use App\Models\User;
 use App\Repositories\Contracts\BookingRepositoryInterface;
-use App\Services\Notification\NotificationDispatcher;
+use App\Services\Notification\Contracts\NotificationDispatcherInterface;
 use App\Support\AuditLogger;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -14,36 +19,13 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
-/**
- * Service pembatalan booking.
- *
- * Hasil pemecahan `BookingService` (PRD 5.7). Bertanggung jawab atas:
- * - `cancelByClient`         : client membatalkan bookingnya sendiri.
- * - `cancelByMitra`          : mitra membatalkan booking.
- * - `expirePendingBookings`  : scheduler auto-cancel booking yang expired.
- *
- * Perbaikan yang diterapkan:
- * - B-02 : file bukti transfer dihapus dari disk `local` saat booking
- *          dibatalkan, agar storage tidak bengkak.
- * - S-16 : setiap pembatalan diaudit via `AuditLogger`.
- *
- * Catatan FCM:
- * - Semua notifikasi via `NotificationDispatcher` (in-app + push).
- * - Notifikasi dikirim DI LUAR transaksi DB agar kegagalan FCM
- *   tidak me-rollback pembatalan.
- */
-final class BookingCancellationService
+class BookingCancellationService
 {
     public function __construct(
         private readonly BookingRepositoryInterface $bookingRepository,
-        private readonly NotificationDispatcher $notificationDispatcher,
+        private readonly NotificationDispatcherInterface $notificationDispatcher,
     ) {}
 
-    /**
-     * Client membatalkan booking miliknya sendiri.
-     *
-     * @throws ValidationException
-     */
     public function cancelByClient(Booking $booking): Booking
     {
         if (! $booking->status->canBeCancelledByClient()) {
@@ -69,17 +51,11 @@ final class BookingCancellationService
             actorRole: 'client',
         );
 
-        // ✅ Notifikasi ke Mitra bahwa Client membatalkan
         $this->notifyMitraCancelledByClient($cancelled);
 
         return $cancelled;
     }
 
-    /**
-     * Mitra membatalkan booking.
-     *
-     * @throws ValidationException
-     */
     public function cancelByMitra(Booking $booking, User $mitra, string $alasan): Booking
     {
         if ($booking->mitra_id !== $mitra->id) {
@@ -100,24 +76,61 @@ final class BookingCancellationService
             ]);
         }
 
-        $cancelled = $this->cancel(
-            booking: $booking,
-            reason: "Dibatalkan oleh mitra: {$alasan}",
-            actorId: $mitra->id,
-            actorRole: 'mitra',
-        );
+        $cancelled = DB::transaction(function () use ($booking, $mitra, $alasan): Booking {
+            $oldProofPath = $booking->payment_proof_path;
+            $currentStatus = $booking->status; // Simpan status SEBELUM diubah
 
-        // ✅ Notifikasi ke Client bahwa Mitra membatalkan
+            // 1. Ubah status booking menjadi CANCELLED
+            $updated = $this->bookingRepository->update($booking, [
+                'status' => BookingStatus::CANCELLED->value,
+                'catatan' => $this->mergeCatatan($booking->catatan, "Dibatalkan oleh mitra: {$alasan}"),
+            ]);
+
+            $this->deletePaymentProof($oldProofPath);
+
+            // 2. Buat Refund jika booking sudah dibayar sebelumnya
+            if (in_array($currentStatus, [BookingStatus::PAYMENT_VERIFIED, BookingStatus::CONFIRMED, BookingStatus::IN_PROGRESS])) {
+
+                // Buat record Refund (Status: PENDING)
+                Refund::create([
+                    'booking_id' => $booking->id,
+                    'mitra_id' => $mitra->id,
+                    'amount' => $booking->total_harga,
+                    'currency' => 'IDR',
+                    'reason' => RefundReason::CANCELLATION,
+                    'status' => RefundStatus::PENDING,
+                    'initiated_by_mitra' => $mitra->id,
+                    'catatan' => 'Refund otomatis karena booking dibatalkan oleh Mitra. Alasan: '.$alasan,
+                ]);
+
+                // BEST PRACTICE: Catat Payment negatif sebagai jejak pengembalian dana
+                Payment::create([
+                    'booking_id' => $booking->id,
+                    'jumlah' => -1 * (float) $booking->total_harga,
+                    'metode' => PaymentMetode::TRANSFER_MANUAL->value,
+                    'verified_by' => $mitra->id,
+                    'verified_at' => now(),
+                    'catatan' => 'Dana dikembalikan via Refund (Dibatalkan oleh Mitra)',
+                ]);
+            }
+
+            AuditLogger::log('booking.cancelled', [
+                'actor_id' => $mitra->id,
+                'actor_role' => 'mitra',
+                'booking_id' => $updated->id,
+                'booking_kode' => $updated->kode,
+                'reason' => "Dibatalkan oleh mitra: {$alasan}",
+                'had_payment_proof' => $oldProofPath !== null && $oldProofPath !== '',
+            ]);
+
+            return $updated;
+        });
+
         $this->notifyClientCancelledByMitra($cancelled, $alasan);
 
         return $cancelled;
     }
 
-    /**
-     * Scheduler: auto-cancel booking yang sudah melewati `expired_at`.
-     *
-     * @return int Jumlah booking yang berhasil di-cancel.
-     */
     public function expirePendingBookings(): int
     {
         $expired = $this->bookingRepository->findExpired();
@@ -132,7 +145,6 @@ final class BookingCancellationService
                     actorRole: 'system',
                 );
 
-                // ✅ Notifikasi ke Client bahwa booking expired
                 $this->notifyClientExpired($cancelled);
 
                 $count++;
@@ -148,12 +160,6 @@ final class BookingCancellationService
         return $count;
     }
 
-    /**
-     * Inti pembatalan: update status, hapus file bukti, audit.
-     * ⚠️ Hanya handle DB. Notifikasi di-handle oleh pemanggil.
-     *
-     * @throws \Throwable
-     */
     private function cancel(
         Booking $booking,
         string $reason,
@@ -183,9 +189,6 @@ final class BookingCancellationService
         });
     }
 
-    /**
-     * Hapus file bukti transfer dari disk `local` (B-02).
-     */
     private function deletePaymentProof(?string $path): void
     {
         if ($path === null || $path === '') {
@@ -199,9 +202,6 @@ final class BookingCancellationService
         }
     }
 
-    /**
-     * Gabungkan catatan lama dengan catatan pembatalan baru.
-     */
     private function mergeCatatan(?string $existing, string $new): string
     {
         $timestamp = now()->format('Y-m-d H:i');
@@ -216,30 +216,28 @@ final class BookingCancellationService
     // NOTIFICATION HELPERS
     // ==========================================
 
-    /**
-     * Notifikasi ke Client saat Mitra membatalkan booking.
-     */
     private function notifyClientCancelledByMitra(Booking $booking, string $alasan): void
     {
         $client = $booking->client;
-        if ($client === null) return;
+        if ($client === null) {
+            return;
+        }
 
         $this->notificationDispatcher->send(
             user: $client,
             tipe: 'booking_cancelled',
             judul: 'Booking Dibatalkan oleh Mitra',
-            pesan: "Booking {$booking->kode} telah dibatalkan oleh mitra. Alasan: {$alasan}",
+            pesan: "Booking {$booking->kode} telah dibatalkan oleh mitra. Alasan: {$alasan}. Dana akan dikembalikan.",
             data: ['booking_id' => $booking->id],
         );
     }
 
-    /**
-     * Notifikasi ke Mitra saat Client membatalkan booking.
-     */
     private function notifyMitraCancelledByClient(Booking $booking): void
     {
         $mitra = $booking->mitra;
-        if ($mitra === null) return;
+        if ($mitra === null) {
+            return;
+        }
 
         $this->notificationDispatcher->send(
             user: $mitra,
@@ -250,13 +248,12 @@ final class BookingCancellationService
         );
     }
 
-    /**
-     * Notifikasi ke Client saat booking expired (auto-cancel).
-     */
     private function notifyClientExpired(Booking $booking): void
     {
         $client = $booking->client;
-        if ($client === null) return;
+        if ($client === null) {
+            return;
+        }
 
         $this->notificationDispatcher->send(
             user: $client,

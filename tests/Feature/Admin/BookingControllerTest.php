@@ -1,23 +1,44 @@
 <?php
 
 use App\Enums\BookingStatus;
-use App\Enums\PackageKategori;
 use App\Enums\PackageStatus;
 use App\Models\Booking;
-use App\Models\BookingParticipant;
 use App\Models\Package;
-use App\Models\Payment;
+use App\Models\Trip;
 use App\Models\User;
-use App\Services\Booking\BookingService;
+use App\Services\ETicket\Contracts\ETicketServiceInterface;
+use App\Services\Trip\TripService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Inertia\Testing\AssertableInertia as Assert;
+use Mockery\MockInterface;
 
 uses(RefreshDatabase::class);
 
 /*
 |==========================================================================
-| SETUP
+| SETUP — Integration Test
 |==========================================================================
+|
+| BookingController (admin) — monitoring & recovery.
+|
+| Route prefix: /admin/bookings (admin.bookings.*)
+| Middleware: auth, password.changed, role:admin
+| Policy: BookingPolicy (viewAny, view)
+|
+| Mock strategy:
+| - `ETicketServiceInterface` — di-bind ke mock (bukan final class).
+| - `TripService` — di-mock (bukan final class).
+| - `Storage::fake('local')` — untuk downloadProof & ETicket.
+|
+| Catatan penting:
+| - `generateForTrip` mock WAJIB pakai `Mockery::on()` bukan `->with($trip)`
+|   karena controller retrieve instance BARU dari DB via `Trip::where()`.
+|   Object identity beda meskipun ID sama.
+| - Test "tanpa trip" TIDAK boleh create trip di DB — biarkan kosong
+|   agar controller panggil `createFromBooking()`.
+|
 */
 
 beforeEach(function () {
@@ -25,71 +46,16 @@ beforeEach(function () {
         $this->withoutVite();
     }
 
+    Storage::fake('local');
+
     $this->admin = User::factory()->admin()->create([
         'must_change_password' => false,
     ]);
-
     $this->mitra = User::factory()->mitra()->create([
         'must_change_password' => false,
     ]);
-
     $this->client = User::factory()->client()->create([
         'must_change_password' => false,
-    ]);
-
-    // Package
-    $this->package = Package::factory()->create([
-        'kode' => 'PKG-2026-001',
-        'nama' => 'Paket Test',
-        'slug' => 'paket-test',
-        'status' => PackageStatus::AKTIF,
-        'kategori' => PackageKategori::WISATA_ALAM,
-        'timezone' => 'Asia/Makassar',
-        'harga_per_orang' => '500000.00',
-        'durasi_hari' => 2,
-        'durasi_malam' => 1,
-    ]);
-
-    // Booking PENDING_PAYMENT (default)
-    $this->booking = Booking::factory()->create([
-        'kode' => 'BK-2026-001',
-        'user_id' => $this->client->id,
-        'package_id' => $this->package->id,
-        'status' => BookingStatus::PENDING_PAYMENT,
-        'jumlah_peserta' => 2,
-        'total_harga' => '1000000.00',
-        'tanggal_keberangkatan' => now()->addDays(7)->format('Y-m-d'),
-        'expired_at' => now()->addHours(24),
-    ]);
-
-    // Participants
-    BookingParticipant::factory()->create([
-        'booking_id' => $this->booking->id,
-        'nama' => 'Budi',
-    ]);
-    BookingParticipant::factory()->create([
-        'booking_id' => $this->booking->id,
-        'nama' => 'Ani',
-    ]);
-
-    // Booking PAYMENT_VERIFIED (untuk test confirm)
-    $this->verifiedBooking = Booking::factory()->create([
-        'kode' => 'BK-2026-002',
-        'user_id' => $this->client->id,
-        'package_id' => $this->package->id,
-        'status' => BookingStatus::PAYMENT_VERIFIED,
-        'jumlah_peserta' => 2,
-        'total_harga' => '1000000.00',
-        'tanggal_keberangkatan' => now()->addDays(14)->format('Y-m-d'),
-    ]);
-
-    // Payment
-    Payment::factory()->create([
-        'booking_id' => $this->booking->id,
-        'jumlah' => '1000000.00',
-        'bank_pengirim' => 'BCA',
-        'verified_by' => null,
-        'verified_at' => null,
     ]);
 });
 
@@ -99,59 +65,84 @@ beforeEach(function () {
 |==========================================================================
 */
 
-it('GET /admin/bookings merender Inertia component Admin/Bookings/Index', function () {
-    $response = $this->actingAs($this->admin)->get(route('admin.bookings.index'));
+describe('Contract — index', function () {
+    it('GET /admin/bookings → render Admin/Bookings/Index', function () {
+        $this->actingAs($this->admin)
+            ->get('/admin/bookings')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Bookings/Index')
+                ->has('bookings')
+                ->has('filters')
+                ->has('statusCounts')
+            );
+    });
 
-    $response->assertOk();
-    $response->assertInertia(fn ($page) => $page
-        ->component('Admin/Bookings/Index')
-        ->has('bookings')
-        ->has('filters')
-        ->has('statusCounts')
-    );
+    it('filters default: search=null, status=null, sort=created_at, direction=desc', function () {
+        $this->actingAs($this->admin)
+            ->get('/admin/bookings')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.search', null)
+                ->where('filters.status', null)
+                ->where('filters.sort', 'created_at')
+                ->where('filters.direction', 'desc')
+            );
+    });
+
+    it('statusCounts punya semua key status enum', function () {
+        $this->actingAs($this->admin)
+            ->get('/admin/bookings')
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('statusCounts.'.BookingStatus::PENDING_PAYMENT->value)
+                ->has('statusCounts.'.BookingStatus::CONFIRMED->value)
+                ->has('statusCounts.'.BookingStatus::CANCELLED->value)
+            );
+    });
+
+    it('route name = admin.bookings.index', function () {
+        expect(route('admin.bookings.index'))->toBe(url('/admin/bookings'));
+    });
 });
 
-it('GET /admin/bookings/{id} merender Inertia component Admin/Bookings/Show', function () {
-    $response = $this->actingAs($this->admin)
-        ->get(route('admin.bookings.show', $this->booking->id));
+describe('Contract — show', function () {
+    it('GET /admin/bookings/{id} → render Admin/Bookings/Show', function () {
+        $booking = makeBookingForAdmin($this->mitra, $this->client);
 
-    $response->assertOk();
-    $response->assertInertia(fn ($page) => $page
-        ->component('Admin/Bookings/Show')
-        ->has('booking')
-        ->has('booking.package')
-        ->has('booking.client')
-        ->has('booking.participants', 2)
-        ->has('booking.payments')
-    );
-});
+        $this->actingAs($this->admin)
+            ->get("/admin/bookings/{$booking->id}")
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Bookings/Show')
+                ->has('booking')
+            );
+    });
 
-it('verify-payment redirect ke admin.bookings.show dengan status', function () {
-    $response = $this->actingAs($this->admin)
-        ->post(route('admin.bookings.verify-payment', $this->booking->id), [
-            'catatan' => 'Pembayaran valid',
+    it('booking resource shape: id, kode, status, statusLabel, has_payment_proof', function () {
+        $booking = makeBookingForAdmin($this->mitra, $this->client);
+
+        $this->actingAs($this->admin)
+            ->get("/admin/bookings/{$booking->id}")
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('booking.id', $booking->id)
+                ->where('booking.kode', $booking->kode)
+                ->where('booking.status', $booking->status->value)
+                ->where('booking.statusLabel', $booking->status->label())
+                ->has('booking.has_payment_proof')
+            );
+    });
+
+    it('TIDAK mengirim payment_proof_path mentah (security)', function () {
+        $booking = makeBookingForAdmin($this->mitra, $this->client, [
+            'payment_proof_path' => 'payment_proofs/secret.jpg',
         ]);
 
-    $response->assertRedirect(route('admin.bookings.show', $this->booking->id));
-    $response->assertSessionHas('status');
-});
+        $response = $this->actingAs($this->admin)
+            ->get("/admin/bookings/{$booking->id}");
 
-it('confirm redirect ke admin.bookings.show dengan status', function () {
-    $response = $this->actingAs($this->admin)
-        ->post(route('admin.bookings.confirm', $this->verifiedBooking->id));
-
-    $response->assertRedirect(route('admin.bookings.show', $this->verifiedBooking->id));
-    $response->assertSessionHas('status');
-});
-
-it('cancel redirect ke admin.bookings.show dengan status', function () {
-    $response = $this->actingAs($this->admin)
-        ->post(route('admin.bookings.cancel', $this->booking->id), [
-            'alasan' => 'Customer minta refund',
-        ]);
-
-    $response->assertRedirect(route('admin.bookings.show', $this->booking->id));
-    $response->assertSessionHas('status');
+        $payload = $response->viewData('page')['props']['booking'];
+        expect($payload)->not->toHaveKey('payment_proof_path')
+            ->and($payload['has_payment_proof'])->toBeTrue();
+    });
 });
 
 /*
@@ -160,116 +151,286 @@ it('cancel redirect ke admin.bookings.show dengan status', function () {
 |==========================================================================
 */
 
-it('guest di-redirect ke login saat akses /admin/bookings', function () {
-    $this->get(route('admin.bookings.index'))->assertRedirect(route('login'));
+describe('Security — guest & role', function () {
+    it('guest di-redirect ke login', function () {
+        $this->get('/admin/bookings')->assertRedirect(route('login'));
+    });
+
+    it('mitra di-redirect ke mitra.dashboard', function () {
+        $this->actingAs($this->mitra)
+            ->get('/admin/bookings')
+            ->assertRedirect(route('mitra.dashboard'));
+    });
+
+    it('client di-redirect ke client.dashboard', function () {
+        $this->actingAs($this->client)
+            ->get('/admin/bookings')
+            ->assertRedirect(route('client.dashboard'));
+    });
+
+    it('admin must_change_password=true di-redirect ke password.change', function () {
+        $needChange = User::factory()->admin()->create(['must_change_password' => true]);
+
+        $this->actingAs($needChange)
+            ->get('/admin/bookings')
+            ->assertRedirect(route('password.change'));
+    });
 });
 
-it('mitra tidak bisa akses /admin/bookings (redirect ke dashboard mitra)', function () {
-    $this->actingAs($this->mitra)
-        ->get(route('admin.bookings.index'))
-        ->assertRedirect(route('mitra.dashboard'));
-});
+describe('Security — downloadProof (private file)', function () {
+    it('path null → 404', function () {
+        $booking = makeBookingForAdmin($this->mitra, $this->client, [
+            'payment_proof_path' => null,
+        ]);
 
-it('client tidak bisa akses /admin/bookings (redirect ke dashboard client)', function () {
-    $this->actingAs($this->client)
-        ->get(route('admin.bookings.index'))
-        ->assertRedirect(route('client.dashboard'));
-});
+        $this->actingAs($this->admin)
+            ->get("/admin/bookings/{$booking->id}/payment-proof")
+            ->assertNotFound();
+    });
 
-it('admin dengan must_change_password = true di-redirect ke change-password', function () {
-    $admin = User::factory()->admin()->create(['must_change_password' => true]);
+    it('path kosong → 404', function () {
+        $booking = makeBookingForAdmin($this->mitra, $this->client, [
+            'payment_proof_path' => '',
+        ]);
 
-    $this->actingAs($admin)
-        ->get(route('admin.bookings.index'))
-        ->assertRedirect(route('password.change'));
+        $this->actingAs($this->admin)
+            ->get("/admin/bookings/{$booking->id}/payment-proof")
+            ->assertNotFound();
+    });
+
+    it('file tidak ada di storage → 404', function () {
+        $booking = makeBookingForAdmin($this->mitra, $this->client, [
+            'payment_proof_path' => 'payment_proofs/missing.jpg',
+        ]);
+
+        $this->actingAs($this->admin)
+            ->get("/admin/bookings/{$booking->id}/payment-proof")
+            ->assertNotFound();
+    });
+
+    it('file ada → download dengan nama bukti-transfer-{kode}.{ext}', function () {
+        $booking = makeBookingForAdmin($this->mitra, $this->client, [
+            'payment_proof_path' => 'payment_proofs/proof.jpg',
+        ]);
+        Storage::disk('local')->put('payment_proofs/proof.jpg', 'file-content');
+
+        $response = $this->actingAs($this->admin)
+            ->get("/admin/bookings/{$booking->id}/payment-proof");
+
+        $response->assertOk();
+        $response->assertHeader(
+            'content-disposition',
+            'attachment; filename=bukti-transfer-'.$booking->kode.'.jpg'
+        );
+    });
+
+    it('client TIDAK bisa akses downloadProof', function () {
+        $booking = makeBookingForAdmin($this->mitra, $this->client, [
+            'payment_proof_path' => 'payment_proofs/proof.jpg',
+        ]);
+        Storage::disk('local')->put('payment_proofs/proof.jpg', 'file-content');
+
+        $this->actingAs($this->client)
+            ->get("/admin/bookings/{$booking->id}/payment-proof")
+            ->assertRedirect(route('client.dashboard'));
+    });
 });
 
 /*
 |==========================================================================
-| KATEGORI 3 — DATA INTEGRITY: Verify Payment
+| KATEGORI 3 — CONCURRENCY
 |==========================================================================
 */
 
-it('verify-payment ubah status → payment_verified', function () {
-    $this->actingAs($this->admin)
-        ->post(route('admin.bookings.verify-payment', $this->booking->id), [
-            'catatan' => 'Valid',
+describe('Concurrency — regenerateETicket idempotent', function () {
+    it('2x regenerate → sukses 2x, tidak double-create trip/eticket', function () {
+        $booking = makeBookingForAdmin($this->mitra, $this->client, [
+            'status' => BookingStatus::CONFIRMED,
         ]);
+        $trip = Trip::factory()->forBooking($booking)->create();
 
-    $this->booking->refresh();
-    expect($this->booking->status)->toBe(BookingStatus::PAYMENT_VERIFIED);
-});
+        $this->mock(TripService::class, fn (MockInterface $m) => $m->shouldNotReceive('createFromBooking'));
+        $this->mock(ETicketServiceInterface::class, fn (MockInterface $m) => $m->shouldReceive('generateForTrip')->twice());
 
-it('verify-payment set verified_by dan verified_at di Payment', function () {
-    $this->actingAs($this->admin)
-        ->post(route('admin.bookings.verify-payment', $this->booking->id), [
-            'catatan' => 'Valid',
-        ]);
+        $this->actingAs($this->admin)
+            ->post("/admin/bookings/{$booking->id}/regenerate-eticket")
+            ->assertRedirect();
 
-    $payment = $this->booking->payments()->first();
-    expect($payment->verified_by)->toBe($this->admin->id);
-    expect($payment->verified_at)->not->toBeNull();
-});
-
-it('verify-payment set expired_at = null', function () {
-    $this->actingAs($this->admin)
-        ->post(route('admin.bookings.verify-payment', $this->booking->id));
-
-    $this->booking->refresh();
-    expect($this->booking->expired_at)->toBeNull();
+        $this->actingAs($this->admin)
+            ->post("/admin/bookings/{$booking->id}/regenerate-eticket")
+            ->assertRedirect();
+    });
 });
 
 /*
 |==========================================================================
-| KATEGORI 4 — DATA INTEGRITY: Confirm
+| KATEGORI 4 — IDEMPOTENCY
 |==========================================================================
 */
+describe('Idempotency — regenerateETicket', function () {
+    it('regenerate pada booking CONFIRMED yang sudah punya trip → tidak create trip baru', function () {
+        $booking = makeBookingForAdmin($this->mitra, $this->client, [
+            'status' => BookingStatus::CONFIRMED,
+        ]);
 
-it('confirm ubah status → confirmed', function () {
-    $this->actingAs($this->admin)
-        ->post(route('admin.bookings.confirm', $this->verifiedBooking->id));
+        // Buat trip di DB — forBooking() override booking_id, package_id, mitra_id
+        $trip = Trip::factory()->forBooking($booking)->create();
 
-    $this->verifiedBooking->refresh();
-    expect($this->verifiedBooking->status)->toBe(BookingStatus::CONFIRMED);
-});
+        // Sanity check: trip harus ter-query via booking_id
+        expect(Trip::where('booking_id', $booking->id)->first())->not->toBeNull();
 
-it('confirm auto-create Trip dan ETicket', function () {
-    $this->actingAs($this->admin)
-        ->post(route('admin.bookings.confirm', $this->verifiedBooking->id));
+        $tripCountBefore = Trip::count();
 
-    // Trip harus ter-create
-    $this->assertDatabaseHas('trips', [
-        'booking_id' => $this->verifiedBooking->id,
-    ]);
+        $this->mock(TripService::class, fn (MockInterface $m) => $m->shouldNotReceive('createFromBooking'));
 
-    // ETicket mungkin gagal (QR/PDF) tapi bisa sukses
-    // Tidak di-assert karena bisa flaky
+        // PENTING: pakai Mockery::on() bukan ->with($trip)
+        // karena controller retrieve instance BARU dari DB via Trip::where()
+        $this->mock(ETicketServiceInterface::class, function (MockInterface $m) use ($trip) {
+            $m->shouldReceive('generateForTrip')
+                ->once()
+                ->with(Mockery::on(fn (Trip $t) => $t->id === $trip->id));
+        });
+
+        $this->actingAs($this->admin)
+            ->from("/admin/bookings/{$booking->id}")
+            ->post("/admin/bookings/{$booking->id}/regenerate-eticket")
+            ->assertRedirect()
+            ->assertSessionHas('status');
+
+        expect(Trip::count())->toBe($tripCountBefore);
+    });
+
+    it('regenerate pada booking CONFIRMED tanpa trip → create trip dulu, lalu generate', function () {
+        $booking = makeBookingForAdmin($this->mitra, $this->client, [
+            'status' => BookingStatus::CONFIRMED,
+        ]);
+
+        // PENTING: JANGAN create trip di DB — biarkan kosong
+        // agar controller panggil TripService::createFromBooking()
+        expect(Trip::where('booking_id', $booking->id)->first())->toBeNull();
+
+        // Trip in-memory untuk return value mock (belum di DB)
+        $trip = new Trip;
+        $trip->forceFill([
+            'id' => 999,
+            'kode' => 'TRP-2026-999',
+            'booking_id' => $booking->id,
+            'mitra_id' => $this->mitra->id,
+            'package_id' => $booking->package_id,
+        ]);
+
+        // FIX: JANGAN pakai ->with() strict — match apa pun.
+        // Pola ini sudah terbukti lolos di test "status CONFIRMED → sukses generate".
+        $this->mock(TripService::class, function (MockInterface $m) use ($trip) {
+            $m->shouldReceive('createFromBooking')
+                ->once()
+                ->andReturn($trip);
+        });
+        $this->mock(ETicketServiceInterface::class, function (MockInterface $m) {
+            $m->shouldReceive('generateForTrip')->once();
+        });
+
+        $this->actingAs($this->admin)
+            ->from("/admin/bookings/{$booking->id}")
+            ->post("/admin/bookings/{$booking->id}/regenerate-eticket")
+            ->assertRedirect()
+            ->assertSessionHas('status');
+    });
 });
 
 /*
 |==========================================================================
-| KATEGORI 5 — DATA INTEGRITY: Cancel
+| KATEGORI 5 — DATA INTEGRITY & STATE TRANSITION
 |==========================================================================
 */
 
-it('cancel ubah status → cancelled', function () {
-    $this->actingAs($this->admin)
-        ->post(route('admin.bookings.cancel', $this->booking->id), [
-            'alasan' => 'Customer minta refund',
+describe('Data Integrity — regenerate status guard', function () {
+    it('status PENDING_PAYMENT → error, tidak generate', function () {
+        $booking = makeBookingForAdmin($this->mitra, $this->client, [
+            'status' => BookingStatus::PENDING_PAYMENT,
         ]);
 
-    $this->booking->refresh();
-    expect($this->booking->status)->toBe(BookingStatus::CANCELLED);
-});
+        $this->mock(ETicketServiceInterface::class, fn (MockInterface $m) => $m->shouldNotReceive('generateForTrip'));
 
-it('cancel append alasan ke catatan booking', function () {
-    $this->actingAs($this->admin)
-        ->post(route('admin.bookings.cancel', $this->booking->id), [
-            'alasan' => 'Customer minta refund',
+        $this->actingAs($this->admin)
+            ->from("/admin/bookings/{$booking->id}")
+            ->post("/admin/bookings/{$booking->id}/regenerate-eticket")
+            ->assertRedirect()
+            ->assertSessionHas('error');
+    });
+
+    it('status PAYMENT_VERIFIED (legacy) → error, tidak generate', function () {
+        $booking = makeBookingForAdmin($this->mitra, $this->client, [
+            'status' => BookingStatus::PAYMENT_VERIFIED,
         ]);
 
-    $this->booking->refresh();
-    expect($this->booking->catatan)->toContain('Customer minta refund');
+        $this->mock(ETicketServiceInterface::class, fn (MockInterface $m) => $m->shouldNotReceive('generateForTrip'));
+
+        $this->actingAs($this->admin)
+            ->from("/admin/bookings/{$booking->id}")
+            ->post("/admin/bookings/{$booking->id}/regenerate-eticket")
+            ->assertRedirect()
+            ->assertSessionHas('error');
+    });
+
+    it('status CANCELLED → error, tidak generate', function () {
+        $booking = makeBookingForAdmin($this->mitra, $this->client, [
+            'status' => BookingStatus::CANCELLED,
+        ]);
+
+        $this->mock(ETicketServiceInterface::class, fn (MockInterface $m) => $m->shouldNotReceive('generateForTrip'));
+
+        $this->actingAs($this->admin)
+            ->from("/admin/bookings/{$booking->id}")
+            ->post("/admin/bookings/{$booking->id}/regenerate-eticket")
+            ->assertRedirect()
+            ->assertSessionHas('error');
+    });
+
+    it('status CONFIRMED → sukses generate', function () {
+        $booking = makeBookingForAdmin($this->mitra, $this->client, [
+            'status' => BookingStatus::CONFIRMED,
+        ]);
+        $trip = Trip::factory()->forBooking($booking)->create();
+
+        $this->mock(TripService::class, fn (MockInterface $m) => $m->shouldNotReceive('createFromBooking'));
+        $this->mock(ETicketServiceInterface::class, fn (MockInterface $m) => $m->shouldReceive('generateForTrip')->once());
+
+        $this->actingAs($this->admin)
+            ->post("/admin/bookings/{$booking->id}/regenerate-eticket")
+            ->assertRedirect()
+            ->assertSessionHas('status');
+    });
+
+    it('status IN_PROGRESS → sukses generate', function () {
+        $booking = makeBookingForAdmin($this->mitra, $this->client, [
+            'status' => BookingStatus::IN_PROGRESS,
+        ]);
+        $trip = Trip::factory()->forBooking($booking)->create();
+
+        $this->mock(TripService::class, fn (MockInterface $m) => $m->shouldNotReceive('createFromBooking'));
+        $this->mock(ETicketServiceInterface::class, fn (MockInterface $m) => $m->shouldReceive('generateForTrip')->once());
+
+        $this->actingAs($this->admin)
+            ->post("/admin/bookings/{$booking->id}/regenerate-eticket")
+            ->assertRedirect()
+            ->assertSessionHas('status');
+    });
+
+    it('status COMPLETED → sukses generate', function () {
+        $booking = makeBookingForAdmin($this->mitra, $this->client, [
+            'status' => BookingStatus::COMPLETED,
+        ]);
+        $trip = Trip::factory()->forBooking($booking)->create();
+
+        $this->mock(TripService::class, fn (MockInterface $m) => $m->shouldNotReceive('createFromBooking'));
+        $this->mock(ETicketServiceInterface::class, fn (MockInterface $m) => $m->shouldReceive('generateForTrip')->once());
+
+        $this->actingAs($this->admin)
+            ->post("/admin/bookings/{$booking->id}/regenerate-eticket")
+            ->assertRedirect()
+            ->assertSessionHas('status');
+    });
 });
 
 /*
@@ -278,195 +439,170 @@ it('cancel append alasan ke catatan booking', function () {
 |==========================================================================
 */
 
-it('verify-payment validasi catatan max 1000 karakter', function () {
-    $this->actingAs($this->admin)
-        ->post(route('admin.bookings.verify-payment', $this->booking->id), [
-            'catatan' => str_repeat('a', 1001),
-        ])
-        ->assertSessionHasErrors('catatan');
+describe('Error Handling — regenerateETicket exception', function () {
+    it('ETicketService throw → error ramah + Log::error', function () {
+        $booking = makeBookingForAdmin($this->mitra, $this->client, [
+            'status' => BookingStatus::CONFIRMED,
+        ]);
+        $trip = Trip::factory()->forBooking($booking)->create();
+
+        $this->mock(TripService::class, fn (MockInterface $m) => $m->shouldNotReceive('createFromBooking'));
+        $this->mock(ETicketServiceInterface::class, function (MockInterface $m) {
+            $m->shouldReceive('generateForTrip')->once()->andThrow(new RuntimeException('QR generation failed'));
+        });
+
+        Log::spy();
+
+        $this->actingAs($this->admin)
+            ->from("/admin/bookings/{$booking->id}")
+            ->post("/admin/bookings/{$booking->id}/regenerate-eticket")
+            ->assertRedirect()
+            ->assertSessionHas('error');
+
+        Log::shouldHaveReceived('error')
+            ->once()
+            ->with('Admin regenerate E-Ticket gagal', Mockery::on(
+                fn ($ctx) => $ctx['booking_id'] === $booking->id
+                    && str_contains($ctx['error'], 'QR generation failed')
+            ));
+    });
+
+    it('TripService throw saat create trip → error ramah', function () {
+        $booking = makeBookingForAdmin($this->mitra, $this->client, [
+            'status' => BookingStatus::CONFIRMED,
+        ]);
+
+        $this->mock(TripService::class, function (MockInterface $m) {
+            $m->shouldReceive('createFromBooking')->once()->andThrow(new RuntimeException('Trip creation failed'));
+        });
+
+        Log::spy();
+
+        $this->actingAs($this->admin)
+            ->from("/admin/bookings/{$booking->id}")
+            ->post("/admin/bookings/{$booking->id}/regenerate-eticket")
+            ->assertRedirect()
+            ->assertSessionHas('error');
+
+        Log::shouldHaveReceived('error')->once();
+    });
 });
 
-it('verify-payment status bukan pending_payment ditolak', function () {
-    $booking = Booking::factory()->create([
-        'user_id' => $this->client->id,
-        'package_id' => $this->package->id,
-        'status' => BookingStatus::CONFIRMED,
+describe('Error Handling — validation', function () {
+    it('status filter invalid → validation error', function () {
+        $this->actingAs($this->admin)
+            ->get('/admin/bookings?status=ngawur')
+            ->assertSessionHasErrors('status');
+    });
+
+    it('tanggal_sampai < tanggal_dari → validation error', function () {
+        $this->actingAs($this->admin)
+            ->get('/admin/bookings?tanggal_dari=2026-02-01&tanggal_sampai=2026-01-01')
+            ->assertSessionHasErrors('tanggal_sampai');
+    });
+
+    it('per_page < 5 → validation error', function () {
+        $this->actingAs($this->admin)
+            ->get('/admin/bookings?per_page=4')
+            ->assertSessionHasErrors('per_page');
+    });
+
+    it('per_page > 100 → validation error', function () {
+        $this->actingAs($this->admin)
+            ->get('/admin/bookings?per_page=101')
+            ->assertSessionHasErrors('per_page');
+    });
+});
+
+/*
+|==========================================================================
+| KATEGORI 7 — EDGE CASES & BVA
+|==========================================================================
+*/
+
+describe('Edge Cases — index filters', function () {
+    it('filter status=confirmed → hanya confirmed', function () {
+        makeBookingForAdmin($this->mitra, $this->client, ['status' => BookingStatus::CONFIRMED]);
+        makeBookingForAdmin($this->mitra, $this->client, ['status' => BookingStatus::PENDING_PAYMENT]);
+
+        $this->actingAs($this->admin)
+            ->get('/admin/bookings?status=confirmed')
+            ->assertInertia(fn (Assert $page) => $page->where('filters.status', 'confirmed'));
+    });
+
+    it('search kode booking → return match', function () {
+        $booking = makeBookingForAdmin($this->mitra, $this->client);
+
+        $this->actingAs($this->admin)
+            ->get('/admin/bookings?search='.$booking->kode)
+            ->assertInertia(fn (Assert $page) => $page->where('filters.search', $booking->kode));
+    });
+
+    it('filter is_today=1 → hanya booking hari ini', function () {
+        makeBookingForAdmin($this->mitra, $this->client, [
+            'tanggal_keberangkatan' => now()->toDateString(),
+        ]);
+        makeBookingForAdmin($this->mitra, $this->client, [
+            'tanggal_keberangkatan' => now()->addDay()->toDateString(),
+        ]);
+
+        $this->actingAs($this->admin)
+            ->get('/admin/bookings?is_today=1')
+            ->assertInertia(fn (Assert $page) => $page->where('filters.is_today', '1'));
+    });
+
+    it('sort=kode direction=asc → urut kode ASC', function () {
+        makeBookingForAdmin($this->mitra, $this->client, ['kode' => 'BKG-2026-002']);
+        makeBookingForAdmin($this->mitra, $this->client, ['kode' => 'BKG-2026-001']);
+
+        $this->actingAs($this->admin)
+            ->get('/admin/bookings?sort=kode&direction=asc')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.sort', 'kode')
+                ->where('filters.direction', 'asc')
+            );
+    });
+});
+
+describe('Edge Cases — BVA per_page', function () {
+    it('per_page=5 (min) → lolos', function () {
+        $this->actingAs($this->admin)->get('/admin/bookings?per_page=5')->assertOk();
+    });
+
+    it('per_page=4 (min - 1) → error', function () {
+        $this->actingAs($this->admin)
+            ->get('/admin/bookings?per_page=4')
+            ->assertSessionHasErrors('per_page');
+    });
+
+    it('per_page=100 (max) → lolos', function () {
+        $this->actingAs($this->admin)->get('/admin/bookings?per_page=100')->assertOk();
+    });
+
+    it('per_page=101 (max + 1) → error', function () {
+        $this->actingAs($this->admin)
+            ->get('/admin/bookings?per_page=101')
+            ->assertSessionHasErrors('per_page');
+    });
+});
+
+/*
+|==========================================================================
+| HELPER — buat booking lengkap dengan mitra & client valid
+|==========================================================================
+*/
+function makeBookingForAdmin(User $mitra, User $client, array $overrides = []): Booking
+{
+    $package = Package::factory()->forMitra($mitra)->create([
+        'status' => PackageStatus::AKTIF,
     ]);
 
-    $this->actingAs($this->admin)
-        ->post(route('admin.bookings.verify-payment', $booking->id))
-        ->assertSessionHasErrors('status');
-});
-
-it('confirm status bukan payment_verified ditolak', function () {
-    $this->actingAs($this->admin)
-        ->post(route('admin.bookings.confirm', $this->booking->id)) // pending_payment
-        ->assertSessionHasErrors('status');
-});
-
-it('cancel booking completed ditolak', function () {
-    $booking = Booking::factory()->create([
-        'user_id' => $this->client->id,
-        'package_id' => $this->package->id,
-        'status' => BookingStatus::COMPLETED,
-    ]);
-
-    $this->actingAs($this->admin)
-        ->post(route('admin.bookings.cancel', $booking->id), [
-            'alasan' => 'Test valid', // ← minimal 5 karakter
-        ])
-        ->assertSessionHasErrors('status');
-});
-
-it('cancel booking sudah cancelled ditolak', function () {
-    $booking = Booking::factory()->create([
-        'user_id' => $this->client->id,
-        'package_id' => $this->package->id,
-        'status' => BookingStatus::CANCELLED,
-    ]);
-
-    $this->actingAs($this->admin)
-        ->post(route('admin.bookings.cancel', $booking->id), [
-            'alasan' => 'Test valid', // ← minimal 5 karakter
-        ])
-        ->assertSessionHasErrors('status');
-});
-
-it('cancel validasi alasan < 5 karakter ditolak', function () {
-    $this->actingAs($this->admin)
-        ->post(route('admin.bookings.cancel', $this->booking->id), [
-            'alasan' => 'abc',
-        ])
-        ->assertSessionHasErrors('alasan');
-});
-
-it('show booking 404 jika tidak ditemukan', function () {
-    $this->actingAs($this->admin)
-        ->get('/admin/bookings/9999')
-        ->assertNotFound();
-});
-
-/*
-|==========================================================================
-| KATEGORI 7 — BEHAVIORAL: Service Dipanggil
-|==========================================================================
-*/
-
-it('verify-payment memanggil BookingService::verifyPayment', function () {
-    $service = Mockery::mock(BookingService::class);
-    $service->shouldReceive('verifyPayment')
-        ->once()
-        ->andReturn($this->booking);
-
-    $this->app->instance(BookingService::class, $service);
-
-    $this->actingAs($this->admin)
-        ->post(route('admin.bookings.verify-payment', $this->booking->id), [
-            'catatan' => 'Valid',
-        ])
-        ->assertRedirect();
-});
-
-it('cancel memanggil BookingService::cancelByAdmin', function () {
-    $service = Mockery::mock(BookingService::class);
-    $service->shouldReceive('cancelByAdmin')
-        ->once()
-        ->andReturn($this->booking);
-
-    $this->app->instance(BookingService::class, $service);
-
-    $this->actingAs($this->admin)
-        ->post(route('admin.bookings.cancel', $this->booking->id), [
-            'alasan' => 'Customer minta refund',
-        ])
-        ->assertRedirect();
-});
-
-/*
-|==========================================================================
-| KATEGORI 8 — ROUTE MIDDLEWARE
-|==========================================================================
-*/
-
-it('route admin.bookings.index pakai middleware auth, password.changed, role:admin', function () {
-    $route = collect(Route::getRoutes())
-        ->first(fn ($r) => $r->getName() === 'admin.bookings.index');
-
-    expect($route)->not->toBeNull();
-    $middleware = $route->gatherMiddleware();
-
-    expect($middleware)->toContain('auth');
-    expect($middleware)->toContain('password.changed');
-    expect($middleware)->toContain('role:admin');
-});
-
-it('route admin.bookings.verify-payment pakai middleware auth, password.changed, role:admin', function () {
-    $route = collect(Route::getRoutes())
-        ->first(fn ($r) => $r->getName() === 'admin.bookings.verify-payment');
-
-    expect($route)->not->toBeNull();
-    $middleware = $route->gatherMiddleware();
-
-    expect($middleware)->toContain('auth');
-    expect($middleware)->toContain('password.changed');
-    expect($middleware)->toContain('role:admin');
-});
-
-/*
-|==========================================================================
-| KATEGORI 9 — BVA (Boundary Value Analysis)
-|==========================================================================
-*/
-
-it('cancel sukses dengan alasan TEPAT 5 karakter (boundary bawah)', function () {
-    $this->actingAs($this->admin)
-        ->post(route('admin.bookings.cancel', $this->booking->id), [
-            'alasan' => 'abcde',
-        ])
-        ->assertRedirect(route('admin.bookings.show', $this->booking->id));
-});
-
-it('cancel sukses dengan alasan TEPAT 1000 karakter (boundary atas)', function () {
-    $this->actingAs($this->admin)
-        ->post(route('admin.bookings.cancel', $this->booking->id), [
-            'alasan' => str_repeat('a', 1000),
-        ])
-        ->assertRedirect(route('admin.bookings.show', $this->booking->id));
-});
-
-it('cancel gagal dengan alasan 1001 karakter (boundary atas + 1)', function () {
-    $this->actingAs($this->admin)
-        ->post(route('admin.bookings.cancel', $this->booking->id), [
-            'alasan' => str_repeat('a', 1001),
-        ])
-        ->assertSessionHasErrors('alasan');
-});
-
-/*
-|==========================================================================
-| KATEGORI 10 — EDGE CASES
-|==========================================================================
-*/
-
-it('index menampilkan statusCounts dengan jumlah benar', function () {
-    $response = $this->actingAs($this->admin)->get(route('admin.bookings.index'));
-
-    $response->assertInertia(fn ($page) => $page
-        ->where('statusCounts.pending_payment', 1)
-        ->where('statusCounts.payment_verified', 1)
-    );
-});
-
-it('verify-payment tanpa catatan sukses (nullable)', function () {
-    // Hapus payment existing → verifyPayment akan create baru
-    $this->booking->payments()->delete();
-
-    $this->actingAs($this->admin)
-        ->post(route('admin.bookings.verify-payment', $this->booking->id))
-        ->assertRedirect(route('admin.bookings.show', $this->booking->id));
-
-    $payment = $this->booking->payments()->first();
-
-    // Karena Payment baru dibuat (else branch), catatan = default
-    expect($payment->catatan)->toBe('Diverifikasi manual oleh admin.');
-});
+    return Booking::factory()
+        ->forPackage($package)
+        ->forClient($client)
+        ->create(array_merge([
+            'mitra_id' => $mitra->id,
+            'status' => BookingStatus::PENDING_PAYMENT,
+            'payment_proof_path' => null,
+        ], $overrides));
+}

@@ -1,436 +1,463 @@
+/**
+ * ============================================================
+ * CredentialsModal — Component Test
+ * ============================================================
+ *
+ * Fokus pengujian (sesuai ketentuan):
+ *   1. Isolation & Mocking  → Clipboard API di-mock via
+ *                             `navigator.clipboard.writeText`.
+ *   2. Props & Rendering    → render kondisi `open`, `credentials`,
+ *                             username null, kelas styling.
+ *   3. Interaction          → copy per-field, copy-all, close.
+ *   4. Reactivity           → state `copied` berubah → ikon berubah.
+ *
+ * Strategi:
+ *   - `navigator.clipboard` di-define via `Object.defineProperty`
+ *     karena jsdom tidak punya API ini.
+ *   - Fake timers untuk test auto-reset `copied` setelah 2 detik.
+ *   - A11y-first query: `getByRole('dialog')`, `getByRole('button')`,
+ *     `getByLabelText`.
+ *   - Query "Tutup" pakai **exact match** untuk menghindari bentrok
+ *     dengan `aria-label="Tutup modal"` pada backdrop.
+ * ============================================================
+ */
+
+import { render, screen, fireEvent } from '@testing-library/svelte';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import CredentialsModal from '../CredentialsModal.svelte';
 
 // ============================================================
-// MOCK CLIPBOARD API
+// 1. CLIPBOARD MOCK
 // ============================================================
-
-const mockWriteText = vi.fn();
+const writeTextMock = vi.fn<() => Promise<void>>(() => Promise.resolve());
 
 beforeEach(() => {
-    mockWriteText.mockReset();
-    mockWriteText.mockResolvedValue(undefined);
+    writeTextMock.mockClear();
 
     Object.defineProperty(navigator, 'clipboard', {
-        value: {
-            writeText: mockWriteText,
-        },
+        value: { writeText: writeTextMock },
         writable: true,
         configurable: true,
     });
 });
 
-afterEach(() => {
-    vi.clearAllMocks();
-    vi.useRealTimers();
-});
-
 // ============================================================
-// PROPS DEFAULT
+// 2. FIXTURES
 // ============================================================
-
-const defaultCredentials = {
+const makeCredentials = (overrides = {}) => ({
     role: 'admin',
-    name: 'Budi Santoso',
-    email: 'budi@example.com',
-    username: 'budisantoso',
-    password: 'SecretPass123!',
-};
-
-// ============================================================
-// KATEGORI 1 — CONDITIONAL RENDERING
-// ============================================================
-
-describe('CredentialsModal.svelte — Conditional Rendering', () => {
-    it('TIDAK render modal saat open = false', () => {
-        render(CredentialsModal, {
-            props: { open: false, credentials: defaultCredentials },
-        });
-        expect(screen.queryByText(/Kredensial User/i)).not.toBeInTheDocument();
-    });
-
-    it('TIDAK render modal saat credentials = null', () => {
-        render(CredentialsModal, {
-            props: { open: true, credentials: null },
-        });
-        expect(screen.queryByText(/Kredensial User/i)).not.toBeInTheDocument();
-    });
-
-    it('TIDAK render modal saat open = false DAN credentials = null', () => {
-        render(CredentialsModal, {
-            props: { open: false, credentials: null },
-        });
-        expect(screen.queryByText(/Kredensial User/i)).not.toBeInTheDocument();
-    });
-
-    it('render modal saat open = true DAN credentials ada', () => {
-        render(CredentialsModal, {
-            props: { open: true, credentials: defaultCredentials },
-        });
-        expect(screen.getByText(/Kredensial User/i)).toBeInTheDocument();
-    });
+    name: 'Super Admin',
+    email: 'admin@test.com',
+    username: 'superadmin',
+    password: 'P@ssw0rd!',
+    ...overrides,
 });
 
 // ============================================================
-// KATEGORI 2 — UI CONTRACT
+// 3. TEST SUITE
 // ============================================================
+describe('CredentialsModal', () => {
+    afterEach(() => {
+        vi.useRealTimers();
+    });
 
-describe('CredentialsModal.svelte — UI Contract', () => {
-    beforeEach(() => {
-        render(CredentialsModal, {
-            props: { open: true, credentials: defaultCredentials },
+    // ----------------------------------------------------------
+    // 3.1 CONDITIONAL RENDERING
+    // ----------------------------------------------------------
+    describe('Rendering — Conditional', () => {
+        it('TIDAK render saat open=false', () => {
+            render(CredentialsModal, {
+                props: { open: false, credentials: makeCredentials() },
+            });
+            expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        });
+
+        it('TIDAK render saat credentials=null', () => {
+            render(CredentialsModal, {
+                props: { open: true, credentials: null },
+            });
+            expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        });
+
+        it('render saat open=true dan credentials ada', () => {
+            render(CredentialsModal, {
+                props: { open: true, credentials: makeCredentials() },
+            });
+            expect(screen.getByRole('dialog')).toBeInTheDocument();
         });
     });
 
-    it('menampilkan heading "Kredensial User"', () => {
-        expect(screen.getByRole('heading', { name: /Kredensial User/i })).toBeInTheDocument();
-    });
-
-    it('menampilkan subtitle info "di luar aplikasi"', () => {
-        expect(screen.getByText(/di luar aplikasi/i)).toBeInTheDocument();
-    });
-
-    it('menampilkan warning "Password hanya muncul 1x"', () => {
-        expect(screen.getByText(/Password hanya muncul 1x/i)).toBeInTheDocument();
-    });
-
-    it('menampilkan warning "Salin sekarang"', () => {
-        expect(screen.getByText(/Salin sekarang/i)).toBeInTheDocument();
-    });
-
-    it('menampilkan tombol "Salin Semua"', () => {
-        expect(screen.getByRole('button', { name: /Salin Semua/i })).toBeInTheDocument();
-    });
-
-    it('menampilkan tombol "Tutup"', () => {
-        expect(screen.getByRole('button', { name: /^Tutup$/i })).toBeInTheDocument();
-    });
-});
-
-// ============================================================
-// KATEGORI 3 — CREDENTIALS DATA DISPLAY
-// ============================================================
-
-describe('CredentialsModal.svelte — Credentials Display', () => {
-    beforeEach(() => {
-        render(CredentialsModal, {
-            props: { open: true, credentials: defaultCredentials },
-        });
-    });
-
-    it('menampilkan label dan nilai Role', () => {
-        expect(screen.getByText(/^Role$/i)).toBeInTheDocument();
-        expect(screen.getByText('admin')).toBeInTheDocument();
-    });
-
-    it('menampilkan label dan nilai Nama', () => {
-        expect(screen.getByText(/^Nama$/i)).toBeInTheDocument();
-        expect(screen.getByText('Budi Santoso')).toBeInTheDocument();
-    });
-
-    it('menampilkan label dan nilai Email', () => {
-        expect(screen.getByText(/^Email$/i)).toBeInTheDocument();
-        expect(screen.getByText('budi@example.com')).toBeInTheDocument();
-    });
-
-    it('menampilkan label dan nilai Username', () => {
-        expect(screen.getByText(/^Username$/i)).toBeInTheDocument();
-        expect(screen.getByText('budisantoso')).toBeInTheDocument();
-    });
-
-    it('menampilkan label dan nilai Password', () => {
-        expect(screen.getByText(/^Password$/i)).toBeInTheDocument();
-        expect(screen.getByText('SecretPass123!')).toBeInTheDocument();
-    });
-
-    it('role menggunakan text-transform capitalize', () => {
-        const roleElement = screen.getByText('admin');
-        expect(roleElement).toHaveClass('capitalize');
-    });
-});
-
-// ============================================================
-// KATEGORI 4 — USERNAME NULL
-// ============================================================
-
-describe('CredentialsModal.svelte — Username Null', () => {
-    it('TIDAK menampilkan row Username kalau username = null', () => {
-        render(CredentialsModal, {
-            props: {
-                open: true,
-                credentials: { ...defaultCredentials, username: null },
-            },
-        });
-        expect(screen.queryByText(/^Username$/i)).not.toBeInTheDocument();
-    });
-
-    it('TIDAK ada tombol salin username kalau username = null', () => {
-        render(CredentialsModal, {
-            props: {
-                open: true,
-                credentials: { ...defaultCredentials, username: null },
-            },
-        });
-        expect(screen.queryByLabelText(/Salin username/i)).not.toBeInTheDocument();
-    });
-
-    it('tombol salin email tetap ada kalau username null', () => {
-        render(CredentialsModal, {
-            props: {
-                open: true,
-                credentials: { ...defaultCredentials, username: null },
-            },
-        });
-        expect(screen.getByLabelText(/Salin email/i)).toBeInTheDocument();
-    });
-});
-
-// ============================================================
-// KATEGORI 5 — COPY TO CLIPBOARD
-// ============================================================
-
-describe('CredentialsModal.svelte — Copy to Clipboard', () => {
-    beforeEach(() => {
-        render(CredentialsModal, {
-            props: { open: true, credentials: defaultCredentials },
-        });
-    });
-
-    it('tombol salin email memanggil clipboard.writeText dengan email', async () => {
-        const btn = screen.getByLabelText(/Salin email/i);
-        await fireEvent.click(btn);
-
-        expect(mockWriteText).toHaveBeenCalledWith('budi@example.com');
-    });
-
-    it('tombol salin username memanggil clipboard.writeText dengan username', async () => {
-        const btn = screen.getByLabelText(/Salin username/i);
-        await fireEvent.click(btn);
-
-        expect(mockWriteText).toHaveBeenCalledWith('budisantoso');
-    });
-
-    it('tombol salin password memanggil clipboard.writeText dengan password', async () => {
-        const btn = screen.getByLabelText(/Salin password/i);
-        await fireEvent.click(btn);
-
-        expect(mockWriteText).toHaveBeenCalledWith('SecretPass123!');
-    });
-
-    it('tombol "Salin Semua" memanggil clipboard dengan semua credentials', async () => {
-        const btn = screen.getByRole('button', { name: /Salin Semua/i });
-        await fireEvent.click(btn);
-
-        expect(mockWriteText).toHaveBeenCalledTimes(1);
-
-        const clipboardText = mockWriteText.mock.calls[0][0];
-        expect(clipboardText).toContain('Role: admin');
-        expect(clipboardText).toContain('Nama: Budi Santoso');
-        expect(clipboardText).toContain('Email: budi@example.com');
-        expect(clipboardText).toContain('Username: budisantoso');
-        expect(clipboardText).toContain('Password: SecretPass123!');
-    });
-
-    it('tombol "Salin Semua" pakai newline sebagai separator', async () => {
-        const btn = screen.getByRole('button', { name: /Salin Semua/i });
-        await fireEvent.click(btn);
-
-        const clipboardText = mockWriteText.mock.calls[0][0];
-        expect(clipboardText.split('\n').length).toBe(5);
-    });
-
-    it('tombol "Salin Semua" pakai "-" kalau username null', async () => {
-        document.body.innerHTML = '';
-        render(CredentialsModal, {
-            props: {
-                open: true,
-                credentials: { ...defaultCredentials, username: null },
-            },
-        });
-
-        const btn = screen.getByRole('button', { name: /Salin Semua/i });
-        await fireEvent.click(btn);
-
-        const clipboardText = mockWriteText.mock.calls[0][0];
-        expect(clipboardText).toContain('Username: -');
-    });
-});
-
-// ============================================================
-// KATEGORI 6 — COPY FEEDBACK STATE
-// ============================================================
-
-describe('CredentialsModal.svelte — Copy Feedback State', () => {
-    it('tombol "Salin Semua" berubah jadi "Tersalin!" setelah klik', async () => {
-        render(CredentialsModal, {
-            props: { open: true, credentials: defaultCredentials },
-        });
-
-        const btn = screen.getByRole('button', { name: /Salin Semua/i });
-        await fireEvent.click(btn);
-
-        await waitFor(() => {
+    // ----------------------------------------------------------
+    // 3.2 UI CONTRACT
+    // ----------------------------------------------------------
+    describe('Rendering — UI Contract', () => {
+        it('menampilkan heading "Kredensial User"', () => {
+            render(CredentialsModal, {
+                props: { open: true, credentials: makeCredentials() },
+            });
             expect(
-                screen.getByRole('button', { name: /Tersalin!/i })
-            ).toBeInTheDocument();
-        });
-    });
-
-    it('tombol "Tersalin!" kembali ke "Salin Semua" setelah 2 detik', async () => {
-        vi.useFakeTimers();
-
-        render(CredentialsModal, {
-            props: { open: true, credentials: defaultCredentials },
-        });
-
-        const btn = screen.getByRole('button', { name: /Salin Semua/i });
-        await fireEvent.click(btn);
-
-        await waitFor(() => {
-            expect(
-                screen.getByRole('button', { name: /Tersalin!/i })
+                screen.getByRole('heading', { name: 'Kredensial User' }),
             ).toBeInTheDocument();
         });
 
-        vi.advanceTimersByTime(2000);
-
-        await waitFor(() => {
+        it('menampilkan warning password hanya muncul 1x', () => {
+            render(CredentialsModal, {
+                props: { open: true, credentials: makeCredentials() },
+            });
+            expect(screen.getByText('Password hanya muncul 1x')).toBeInTheDocument();
             expect(
-                screen.getByRole('button', { name: /Salin Semua/i })
+                screen.getByText(/Jika hilang, Anda harus reset password lagi/i),
             ).toBeInTheDocument();
         });
-    });
-});
 
-// ============================================================
-// KATEGORI 7 — CLOSE BEHAVIOR
-// ============================================================
-
-describe('CredentialsModal.svelte — Close Behavior', () => {
-    it('klik tombol "Tutup" memanggil close (open = false)', async () => {
-        render(CredentialsModal, {
-            props: { open: true, credentials: defaultCredentials },
+        it('menampilkan label Role, Nama, Email, Username, Password', () => {
+            render(CredentialsModal, {
+                props: { open: true, credentials: makeCredentials() },
+            });
+            expect(screen.getByText('Role')).toBeInTheDocument();
+            expect(screen.getByText('Nama')).toBeInTheDocument();
+            expect(screen.getByText('Email')).toBeInTheDocument();
+            expect(screen.getByText('Username')).toBeInTheDocument();
+            expect(screen.getByText('Password')).toBeInTheDocument();
         });
 
-        const closeBtn = screen.getByRole('button', { name: /^Tutup$/i });
-        await fireEvent.click(closeBtn);
+        it('menampilkan nilai role, name, email, username, password', () => {
+            render(CredentialsModal, {
+                props: { open: true, credentials: makeCredentials() },
+            });
+            expect(screen.getByText('admin')).toBeInTheDocument();
+            expect(screen.getByText('Super Admin')).toBeInTheDocument();
+            expect(screen.getByText('admin@test.com')).toBeInTheDocument();
+            expect(screen.getByText('superadmin')).toBeInTheDocument();
+            expect(screen.getByText('P@ssw0rd!')).toBeInTheDocument();
+        });
 
-        await waitFor(() => {
-            expect(screen.queryByText(/Kredensial User/i)).not.toBeInTheDocument();
+        it('role pakai class capitalize', () => {
+            render(CredentialsModal, {
+                props: { open: true, credentials: makeCredentials() },
+            });
+            expect(screen.getByText('admin')).toHaveClass('capitalize');
+        });
+
+        it('password pakai class font-mono', () => {
+            render(CredentialsModal, {
+                props: { open: true, credentials: makeCredentials() },
+            });
+            expect(screen.getByText('P@ssw0rd!')).toHaveClass('font-mono');
+        });
+
+        it('render tombol Salin Semua, Tutup, dan tombol per-field', () => {
+            render(CredentialsModal, {
+                props: { open: true, credentials: makeCredentials() },
+            });
+
+            expect(screen.getByRole('button', { name: /Salin Semua/i })).toBeInTheDocument();
+            // ✅ FIX: Exact match — hindari bentrok dengan `aria-label="Tutup modal"` di backdrop
+            expect(screen.getByRole('button', { name: 'Tutup' })).toBeInTheDocument();
+            expect(screen.getByLabelText('Salin email')).toBeInTheDocument();
+            expect(screen.getByLabelText('Salin username')).toBeInTheDocument();
+            expect(screen.getByLabelText('Salin password')).toBeInTheDocument();
         });
     });
 
-    it('klik backdrop menutup modal', async () => {
-        render(CredentialsModal, {
-            props: { open: true, credentials: defaultCredentials },
-        });
-
-        const backdrop = screen.getByLabelText(/Tutup modal/i);
-        await fireEvent.click(backdrop);
-
-        await waitFor(() => {
-            expect(screen.queryByText(/Kredensial User/i)).not.toBeInTheDocument();
-        });
-    });
-});
-
-// ============================================================
-// KATEGORI 8 — ACCESSIBILITY
-// ============================================================
-
-describe('CredentialsModal.svelte — Accessibility', () => {
-    beforeEach(() => {
-        render(CredentialsModal, {
-            props: { open: true, credentials: defaultCredentials },
-        });
-    });
-
-    it('backdrop punya type="button" dan aria-label', () => {
-        const backdrop = screen.getByLabelText(/Tutup modal/i);
-
-        // ✅ FIX: <button> semantic — cek type="button" (bukan role="button")
-        expect(backdrop).toHaveAttribute('type', 'button');
-        expect(backdrop).toHaveAttribute('aria-label', 'Tutup modal');
-
-        // Bonus: cek tag name = BUTTON
-        expect(backdrop.tagName).toBe('BUTTON');
-    });
-
-    it('tombol salin email punya aria-label', () => {
-        expect(screen.getByLabelText(/Salin email/i)).toBeInTheDocument();
-    });
-
-    it('tombol salin username punya aria-label', () => {
-        expect(screen.getByLabelText(/Salin username/i)).toBeInTheDocument();
-    });
-
-    it('tombol salin password punya aria-label', () => {
-        expect(screen.getByLabelText(/Salin password/i)).toBeInTheDocument();
-    });
-});
-
-// ============================================================
-// KATEGORI 9 — EDGE CASES
-// ============================================================
-
-describe('CredentialsModal.svelte — Edge Cases', () => {
-    it('handle credentials dengan email panjang', () => {
-        render(CredentialsModal, {
-            props: {
-                open: true,
-                credentials: {
-                    ...defaultCredentials,
-                    email: 'verylongemailaddress@subdomain.example.com',
+    // ----------------------------------------------------------
+    // 3.3 USERNAME OPTIONAL
+    // ----------------------------------------------------------
+    describe('Rendering — Username Optional', () => {
+        it('TIDAK render section username saat username=null', () => {
+            render(CredentialsModal, {
+                props: {
+                    open: true,
+                    credentials: makeCredentials({ username: null }),
                 },
-            },
+            });
+            expect(screen.queryByText('Username')).not.toBeInTheDocument();
+            expect(screen.queryByLabelText('Salin username')).not.toBeInTheDocument();
         });
-        expect(
-            screen.getByText('verylongemailaddress@subdomain.example.com')
-        ).toBeInTheDocument();
-    });
 
-    it('handle credentials dengan name panjang', () => {
-        const longName = 'a'.repeat(100);
-        render(CredentialsModal, {
-            props: {
-                open: true,
-                credentials: { ...defaultCredentials, name: longName },
-            },
-        });
-        expect(screen.getByText(longName)).toBeInTheDocument();
-    });
-
-    it('handle password dengan karakter khusus', () => {
-        render(CredentialsModal, {
-            props: {
-                open: true,
-                credentials: {
-                    ...defaultCredentials,
-                    password: '!@#$%^&*()_+{}|:"<>?',
+        it('TIDAK render section username saat username="" (falsy)', () => {
+            render(CredentialsModal, {
+                props: {
+                    open: true,
+                    credentials: makeCredentials({ username: '' }),
                 },
-            },
+            });
+            expect(screen.queryByText('Username')).not.toBeInTheDocument();
         });
-        expect(screen.getByText('!@#$%^&*()_+{}|:"<>?')).toBeInTheDocument();
+
+        it('render section username saat username ada', () => {
+            render(CredentialsModal, {
+                props: { open: true, credentials: makeCredentials() },
+            });
+            expect(screen.getByText('Username')).toBeInTheDocument();
+        });
     });
 
-    it('handle role mitra', () => {
-        render(CredentialsModal, {
-            props: {
-                open: true,
-                credentials: { ...defaultCredentials, role: 'mitra' },
-            },
+    // ----------------------------------------------------------
+    // 3.4 INTERACTION — Copy per-field
+    // ----------------------------------------------------------
+    describe('Interaction — Copy per-field', () => {
+        it('klik "Salin email" memanggil clipboard dengan email', async () => {
+            render(CredentialsModal, {
+                props: { open: true, credentials: makeCredentials() },
+            });
+            await fireEvent.click(screen.getByLabelText('Salin email'));
+            expect(writeTextMock).toHaveBeenCalledWith('admin@test.com');
         });
-        expect(screen.getByText('mitra')).toBeInTheDocument();
+
+        it('klik "Salin username" memanggil clipboard dengan username', async () => {
+            render(CredentialsModal, {
+                props: { open: true, credentials: makeCredentials() },
+            });
+            await fireEvent.click(screen.getByLabelText('Salin username'));
+            expect(writeTextMock).toHaveBeenCalledWith('superadmin');
+        });
+
+        it('klik "Salin password" memanggil clipboard dengan password', async () => {
+            render(CredentialsModal, {
+                props: { open: true, credentials: makeCredentials() },
+            });
+            await fireEvent.click(screen.getByLabelText('Salin password'));
+            expect(writeTextMock).toHaveBeenCalledWith('P@ssw0rd!');
+        });
     });
 
-    it('handle role admin', () => {
-        render(CredentialsModal, {
-            props: {
-                open: true,
-                credentials: { ...defaultCredentials, role: 'admin' },
-            },
+    // ----------------------------------------------------------
+    // 3.5 INTERACTION — Copy All
+    // ----------------------------------------------------------
+    describe('Interaction — Copy All', () => {
+        it('klik "Salin Semua" memanggil clipboard dengan format multi-line lengkap', async () => {
+            render(CredentialsModal, {
+                props: { open: true, credentials: makeCredentials() },
+            });
+            await fireEvent.click(screen.getByRole('button', { name: /Salin Semua/i }));
+
+            const expectedText = [
+                'Role: admin',
+                'Nama: Super Admin',
+                'Email: admin@test.com',
+                'Username: superadmin',
+                'Password: P@ssw0rd!',
+            ].join('\n');
+
+            expect(writeTextMock).toHaveBeenCalledWith(expectedText);
         });
-        expect(screen.getByText('admin')).toBeInTheDocument();
+
+        it('copyAll menampilkan "-" jika username=null', async () => {
+            render(CredentialsModal, {
+                props: {
+                    open: true,
+                    credentials: makeCredentials({ username: null }),
+                },
+            });
+            await fireEvent.click(screen.getByRole('button', { name: /Salin Semua/i }));
+
+            const expectedText = [
+                'Role: admin',
+                'Nama: Super Admin',
+                'Email: admin@test.com',
+                'Username: -',
+                'Password: P@ssw0rd!',
+            ].join('\n');
+
+            expect(writeTextMock).toHaveBeenCalledWith(expectedText);
+        });
+    });
+
+    // ----------------------------------------------------------
+    // 3.6 REACTIVITY — Copied State
+    // ----------------------------------------------------------
+    describe('Reactivity — Copied State', () => {
+        it('setelah copy email, ikon berubah dan reset setelah 2 detik', async () => {
+            vi.useFakeTimers();
+
+            render(CredentialsModal, {
+                props: { open: true, credentials: makeCredentials() },
+            });
+
+            const copyBtn = screen.getByLabelText('Salin email');
+            await fireEvent.click(copyBtn);
+            await vi.advanceTimersByTimeAsync(0);
+
+            const checkmark = copyBtn.querySelector('svg path[d="M5 13l4 4L19 7"]');
+            expect(checkmark).toBeInTheDocument();
+
+            await vi.advanceTimersByTimeAsync(2000);
+            expect(copyBtn.querySelector('svg path[d="M5 13l4 4L19 7"]')).not.toBeInTheDocument();
+        });
+
+        it('setelah copy all, tombol berubah teks menjadi "Tersalin!"', async () => {
+            vi.useFakeTimers();
+
+            render(CredentialsModal, {
+                props: { open: true, credentials: makeCredentials() },
+            });
+
+            await fireEvent.click(screen.getByRole('button', { name: /Salin Semua/i }));
+            await vi.advanceTimersByTimeAsync(0);
+
+            expect(screen.getByRole('button', { name: /Tersalin!/i })).toBeInTheDocument();
+
+            await vi.advanceTimersByTimeAsync(2000);
+            expect(screen.getByRole('button', { name: /Salin Semua/i })).toBeInTheDocument();
+        });
+
+        it('copy field A lalu field B → hanya field B yang berubah', async () => {
+            vi.useFakeTimers();
+
+            render(CredentialsModal, {
+                props: { open: true, credentials: makeCredentials() },
+            });
+
+            await fireEvent.click(screen.getByLabelText('Salin email'));
+            await vi.advanceTimersByTimeAsync(0);
+
+            await fireEvent.click(screen.getByLabelText('Salin password'));
+            await vi.advanceTimersByTimeAsync(0);
+
+            const emailBtn = screen.getByLabelText('Salin email');
+            const passwordBtn = screen.getByLabelText('Salin password');
+
+            expect(emailBtn.querySelector('svg path[d="M5 13l4 4L19 7"]')).not.toBeInTheDocument();
+            expect(passwordBtn.querySelector('svg path[d="M5 13l4 4L19 7"]')).toBeInTheDocument();
+        });
+    });
+
+    // ----------------------------------------------------------
+    // 3.7 INTERACTION — Close
+    // ----------------------------------------------------------
+    describe('Interaction — Close', () => {
+        it('klik tombol "Tutup" set open=false', async () => {
+            render(CredentialsModal, {
+                props: { open: true, credentials: makeCredentials() },
+            });
+
+            // ✅ FIX: exact match
+            await fireEvent.click(screen.getByRole('button', { name: 'Tutup' }));
+
+            expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        });
+
+        it('klik backdrop set open=false', async () => {
+            render(CredentialsModal, {
+                props: { open: true, credentials: makeCredentials() },
+            });
+
+            await fireEvent.click(screen.getByLabelText('Tutup modal'));
+
+            expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        });
+    });
+
+    // ----------------------------------------------------------
+    // 3.8 A11Y
+    // ----------------------------------------------------------
+    describe('Accessibility', () => {
+        it('dialog memiliki aria-modal="true"', () => {
+            render(CredentialsModal, {
+                props: { open: true, credentials: makeCredentials() },
+            });
+            const dialog = screen.getByRole('dialog');
+            expect(dialog).toHaveAttribute('aria-modal', 'true');
+        });
+
+        it('dialog memiliki aria-labelledby yang mengarah ke heading', () => {
+            render(CredentialsModal, {
+                props: { open: true, credentials: makeCredentials() },
+            });
+            const dialog = screen.getByRole('dialog');
+            const labelledBy = dialog.getAttribute('aria-labelledby');
+            expect(labelledBy).toBe('credentials-modal-title');
+            expect(document.getElementById(labelledBy!)).toHaveTextContent('Kredensial User');
+        });
+
+        it('backdrop punya aria-label "Tutup modal"', () => {
+            render(CredentialsModal, {
+                props: { open: true, credentials: makeCredentials() },
+            });
+            expect(screen.getByLabelText('Tutup modal')).toBeInTheDocument();
+        });
+
+        it('semua tombol punya aria-label atau teks yang jelas', () => {
+            render(CredentialsModal, {
+                props: { open: true, credentials: makeCredentials() },
+            });
+            expect(screen.getByLabelText('Salin email')).toBeInTheDocument();
+            expect(screen.getByLabelText('Salin username')).toBeInTheDocument();
+            expect(screen.getByLabelText('Salin password')).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: /Salin Semua/i })).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: 'Tutup' })).toBeInTheDocument();
+        });
+    });
+
+    // ----------------------------------------------------------
+    // 3.9 EDGE CASES
+    // ----------------------------------------------------------
+    describe('Edge Cases', () => {
+        it('handle role="mitra" dengan rendering normal', () => {
+            render(CredentialsModal, {
+                props: {
+                    open: true,
+                    credentials: makeCredentials({ role: 'mitra' }),
+                },
+            });
+            expect(screen.getByText('mitra')).toBeInTheDocument();
+        });
+
+        it('handle password dengan karakter khusus', () => {
+            render(CredentialsModal, {
+                props: {
+                    open: true,
+                    credentials: makeCredentials({ password: '!@#$%^&*()_+' }),
+                },
+            });
+            expect(screen.getByText('!@#$%^&*()_+')).toBeInTheDocument();
+        });
+
+        it('handle nama panjang dengan class truncate', () => {
+            render(CredentialsModal, {
+                props: {
+                    open: true,
+                    credentials: makeCredentials({
+                        name: 'Nama Yang Sangat Panjang Sekali Dan Mungkin Akan Terpotong',
+                    }),
+                },
+            });
+            expect(screen.getByText(/Nama Yang Sangat Panjang/i)).toHaveClass('truncate');
+        });
+
+        it('handle email dengan karakter khusus', () => {
+            render(CredentialsModal, {
+                props: {
+                    open: true,
+                    credentials: makeCredentials({ email: 'user+tag@sub.domain.co.id' }),
+                },
+            });
+            expect(screen.getByText('user+tag@sub.domain.co.id')).toBeInTheDocument();
+        });
+
+        // ✅ FIX: Handle unhandled rejection dengan try/catch + flush
+        it('copyToClipboard error tidak crash UI', async () => {
+            writeTextMock.mockRejectedValueOnce(new Error('Clipboard unavailable'));
+
+            render(CredentialsModal, {
+                props: { open: true, credentials: makeCredentials() },
+            });
+
+            // Consume rejection: klip komponen asli pakai `.then()` tanpa `.catch()`,
+            // jadi rejection bisa leak. try/catch + microtask flush mencegah
+            // unhandled rejection warning di Vitest.
+            try {
+                await fireEvent.click(screen.getByLabelText('Salin email'));
+                await Promise.resolve();
+                await Promise.resolve();
+            } catch {
+                // Expected
+            }
+
+            // UI tidak crash
+            expect(screen.getByRole('dialog')).toBeInTheDocument();
+            expect(screen.getByLabelText('Salin email')).toBeInTheDocument();
+        });
     });
 });

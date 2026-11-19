@@ -4,7 +4,6 @@
     // ==========================================
     // PROPS
     // ==========================================
-
     let {
         toast,
         onDismiss,
@@ -16,16 +15,9 @@
     // ==========================================
     // CONFIG
     // ==========================================
-
     const variantConfig: Record<
         ToastVariant,
-        {
-            bg: string;
-            border: string;
-            text: string;
-            iconBg: string;
-            icon: string;
-        }
+        { bg: string; border: string; text: string; iconBg: string; icon: string; }
     > = {
         success: {
             bg: 'bg-green-50',
@@ -60,42 +52,26 @@
     // ==========================================
     // DERIVED
     // ==========================================
-
     let config = $derived(variantConfig[toast.variant]);
 </script>
 
 <div
     class="flex items-start gap-3 p-4 rounded-2xl shadow-lg border backdrop-blur-sm
         {config.bg} {config.border} {config.text}
-        animate-[toast-in_0.3s_ease-out]"
+        animate-toast-in"
     role="alert"
     aria-live="polite"
 >
     <!-- Icon -->
-    <div
-        class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 {config.iconBg}"
-    >
-        <svg
-            class="w-4 h-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="2.5"
-            aria-hidden="true"
-        >
-            <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d={config.icon}
-            />
+    <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 {config.iconBg}">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d={config.icon} />
         </svg>
     </div>
 
     <!-- Message -->
     <div class="flex-1 min-w-0">
-        <p class="text-sm font-bold leading-relaxed break-words">
-            {toast.message}
-        </p>
+        <p class="text-sm font-bold leading-relaxed break-words">{toast.message}</p>
     </div>
 
     <!-- Close button -->
@@ -107,19 +83,18 @@
             {config.iconBg}"
         aria-label="Tutup notifikasi"
     >
-        <svg
-            class="w-3.5 h-3.5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="3"
-            aria-hidden="true"
-        >
-            <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M6 18L18 6M6 6l12 12"
-            />
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
         </svg>
     </button>
 </div>
+
+<style>
+    @keyframes toast-in {
+        from { opacity: 0; transform: translateY(-10px) scale(0.95); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .animate-toast-in {
+        animation: toast-in 0.3s ease-out;
+    }
+</style>

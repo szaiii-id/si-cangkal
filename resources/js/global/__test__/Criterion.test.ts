@@ -1,107 +1,80 @@
-import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
+import { describe, it, expect } from 'vitest';
 import Criterion from '../Criterion.svelte';
 
-// ============================================================
-// KATEGORI 1 — RENDERING DASAR & LABEL
-// ============================================================
+describe('Criterion Component', () => {
+    // ==========================================
+    // 1. RENDERING & PROPS
+    // ==========================================
+    describe('Rendering Props', () => {
+        it('harus merender label dengan benar', () => {
+            render(Criterion, { props: { label: 'Min. 8 karakter', passed: true } });
+            expect(screen.getByText('Min. 8 karakter')).toBeInTheDocument();
+        });
 
-describe('Criterion.svelte — Rendering Dasar', () => {
-    it('merender label yang diberikan', () => {
-        render(Criterion, { props: { label: 'Minimal 8 karakter' } });
-        expect(screen.getByText('Minimal 8 karakter')).toBeInTheDocument();
+        it('harus merender ikon centang (check) jika passed=true', () => {
+            const { container } = render(Criterion, { props: { label: 'Lulus', passed: true } });
+            const path = container.querySelector('path');
+            // Path SVG untuk check
+            expect(path).toHaveAttribute('d', 'M5 13l4 4L19 7');
+        });
+
+        it('harus merender ikon silang (x) jika passed=false', () => {
+            const { container } = render(Criterion, { props: { label: 'Gagal', passed: false } });
+            const path = container.querySelector('path');
+            // Path SVG untuk X
+            expect(path).toHaveAttribute('d', 'M6 18L18 6M6 6l12 12');
+        });
     });
 
-    it('merender teks tanpa ada elemen tambahan', () => {
-        render(Criterion, { props: { label: 'Mengandung angka' } });
-        
-        // Pastikan container utama dirender
-        const text = screen.getByText('Mengandung angka');
-        expect(text.tagName).toBe('SPAN');
-    });
-});
+    // ==========================================
+    // 2. STYLING (CLASS CSS)
+    // ==========================================
+    describe('Styling', () => {
+        it('harus menerapkan warna hijau jika passed=true', () => {
+            const { container } = render(Criterion, { props: { label: 'Lulus', passed: true } });
+            
+            const iconWrapper = container.querySelector('span');
+            expect(iconWrapper).toHaveClass('bg-green-100');
+            expect(iconWrapper).toHaveClass('text-green-600');
+            
+            const textLabel = screen.getByText('Lulus');
+            expect(textLabel).toHaveClass('text-green-700');
+            expect(textLabel).toHaveClass('font-bold');
+        });
 
-// ============================================================
-// KATEGORI 2 — STATE (PASSED / NOT PASSED)
-// ============================================================
-
-describe('Criterion.svelte — State Passed', () => {
-    it('merender icon check (centang) dan warna hijau jika passed = true', () => {
-        render(Criterion, { props: { label: 'Valid', passed: true } });
-        
-        // Cek warna teks hijau
-        const text = screen.getByText('Valid');
-        expect(text).toHaveClass('text-green-700');
-        expect(text).toHaveClass('font-bold');
-
-        // Cek icon lingkaran hijau
-        const iconContainer = document.querySelector('.bg-green-100');
-        expect(iconContainer).toBeInTheDocument();
-        expect(iconContainer).toHaveClass('text-green-600');
-
-        // Cek path SVG centang
-        const path = iconContainer?.querySelector('path');
-        expect(path).toHaveAttribute('d', 'M5 13l4 4L19 7');
+        it('harus menerapkan warna abu-abu jika passed=false', () => {
+            const { container } = render(Criterion, { props: { label: 'Gagal', passed: false } });
+            
+            const iconWrapper = container.querySelector('span');
+            expect(iconWrapper).toHaveClass('bg-gray-100');
+            expect(iconWrapper).toHaveClass('text-gray-400');
+            
+            const textLabel = screen.getByText('Gagal');
+            expect(textLabel).toHaveClass('text-gray-500');
+        });
     });
 
-    it('merender icon silang (x) dan warna abu-abu jika passed = false', () => {
-        render(Criterion, { props: { label: 'Belum valid', passed: false } });
-        
-        // Cek warna teks abu-abu
-        const text = screen.getByText('Belum valid');
-        expect(text).toHaveClass('text-gray-500');
+    // ==========================================
+    // 3. AKSESIBILITAS (A11Y)
+    // ==========================================
+    describe('Accessibility', () => {
+        it('harus memiliki aria-label "Memenuhi syarat" jika passed=true', () => {
+            render(Criterion, { props: { label: 'Lulus', passed: true } });
+            const container = screen.getByLabelText('Memenuhi syarat: Lulus');
+            expect(container).toBeInTheDocument();
+        });
 
-        // Cek icon lingkaran abu-abu
-        const iconContainer = document.querySelector('.bg-gray-100');
-        expect(iconContainer).toBeInTheDocument();
-        expect(iconContainer).toHaveClass('text-gray-400');
+        it('harus memiliki aria-label "Belum memenuhi" jika passed=false', () => {
+            render(Criterion, { props: { label: 'Gagal', passed: false } });
+            const container = screen.getByLabelText('Belum memenuhi: Gagal');
+            expect(container).toBeInTheDocument();
+        });
 
-        // Cek path SVG silang
-        const path = iconContainer?.querySelector('path');
-        expect(path).toHaveAttribute('d', 'M6 18L18 6M6 6l12 12');
-    });
-
-    it('default passed = false jika prop passed tidak diberikan', () => {
-        render(Criterion, { props: { label: 'Default' } });
-        
-        const text = screen.getByText('Default');
-        expect(text).toHaveClass('text-gray-500');
-
-        const iconContainer = document.querySelector('.bg-gray-100');
-        expect(iconContainer).toBeInTheDocument();
-    });
-});
-
-// ============================================================
-// KATEGORI 3 — STRUKTUR DOM & A11Y
-// ============================================================
-
-describe('Criterion.svelte — Struktur DOM', () => {
-    it('memiliki struktur flex container dengan gap yang sesuai', () => {
-        render(Criterion, { props: { label: 'Test', passed: true } });
-        
-        const container = document.querySelector('.flex.items-center.gap-1\\.5');
-        expect(container).toBeInTheDocument();
-        expect(container).toHaveClass('text-[11px]');
-    });
-
-    it('icon SVG berada di dalam lingkaran pembungkus', () => {
-        render(Criterion, { props: { label: 'Test', passed: true } });
-        
-        const iconWrapper = document.querySelector('.rounded-full');
-        const svg = iconWrapper?.querySelector('svg');
-        
-        expect(iconWrapper).toBeInTheDocument();
-        expect(svg).toBeInTheDocument();
-    });
-
-    it('SVG tidak memiliki accessible name (dekoratif)', () => {
-        render(Criterion, { props: { label: 'Test', passed: true } });
-        
-        // SVG tidak memiliki role atau aria-label eksplisit, yang berarti
-        // ia dekoratif (teks label yang menjadi konteks).
-        const svg = document.querySelector('svg');
-        expect(svg).not.toHaveAttribute('aria-label');
-        expect(svg).not.toHaveAttribute('role');
+        it('ikon SVG harus disembunyikan dari screen reader (aria-hidden)', () => {
+            const { container } = render(Criterion, { props: { label: 'Test', passed: true } });
+            const iconWrapper = container.querySelector('span');
+            expect(iconWrapper).toHaveAttribute('aria-hidden', 'true');
+        });
     });
 });

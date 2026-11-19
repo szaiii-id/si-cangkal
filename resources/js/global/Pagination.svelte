@@ -1,19 +1,10 @@
 <script lang="ts">
-    /**
-     * Pagination — navigasi halaman untuk list dengan meta dari Laravel.
-     *
-     * @example
-     *   <Pagination meta={bookings} label="booking" />
-     *   <Pagination meta={packages} label="paket" />
-     */
-
     import type { PaginationMeta } from '@/types';
     import { inertia } from '@inertiajs/svelte';
 
     // ==========================================
     // PROPS
     // ==========================================
-
     let {
         meta,
         label = 'item',
@@ -29,33 +20,52 @@
     // ==========================================
     // DERIVED
     // ==========================================
-
     let visible = $derived(showWhenEmpty || meta.last_page > 1);
+    
+    let containerClass = $derived(
+        [
+            'p-4 sm:p-6 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4',
+            className,
+        ]
+            .filter(Boolean)
+            .join(' ')
+    );
+
+    // ==========================================
+    // HELPERS
+    // ==========================================
+    function getAriaLabel(linkLabel: string, index: number): string {
+        if (linkLabel.includes('Previous') || linkLabel.includes('&laquo;')) return 'Halaman sebelumnya';
+        if (linkLabel.includes('Next') || linkLabel.includes('&raquo;')) return 'Halaman berikutnya';
+        if (linkLabel === '...') return 'Halaman lainnya';
+        return `Halaman ${linkLabel || index}`;
+    }
 </script>
 
 {#if visible}
-    <div
-        class={[
-            'p-4 sm:p-6 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4',
-            className,
-        ].join(' ')}
-    >
+    <div class={containerClass}>
         <p class="text-xs text-gray-500">
             Menampilkan
-            <span class="font-extrabold text-dark">{meta.from ?? 0}</span>–<span
-                class="font-extrabold text-dark">{meta.to ?? 0}</span
-            >
+            <span class="font-extrabold text-dark">{meta.from ?? 0}</span>–
+            <span class="font-extrabold text-dark">{meta.to ?? 0}</span>
             dari
             <span class="font-extrabold text-dark">{meta.total}</span>
             {label}
         </p>
 
-        <div class="flex items-center gap-1" role="navigation" aria-label="Pagination">
+        <div class="flex items-center gap-1" role="navigation" aria-label="Navigasi Halaman">
             {#each meta.links as link, i (i)}
                 {#if link.url === null}
+                    <!-- 
+                      PERBAIKAN:
+                      1. Tambahkan role="link" agar aria-disabled dibacakan.
+                      2. Tambahkan aria-label untuk konteks.
+                    -->
                     <span
-                        class="px-3.5 py-2.5 text-xs text-gray-300 font-bold select-none"
+                        class="px-3.5 py-2.5 text-xs text-gray-300 font-bold select-none cursor-not-allowed"
+                        role="link"
                         aria-disabled="true"
+                        aria-label={getAriaLabel(link.label, i)}
                     >
                         {@html link.label}
                     </span>
@@ -68,6 +78,7 @@
                             ? 'bg-pink-dark text-white shadow-md shadow-pink/30'
                             : 'text-gray-600 hover:bg-gray-100'}"
                         aria-current={link.active ? 'page' : undefined}
+                        aria-label={getAriaLabel(link.label, i)}
                     >
                         {@html link.label}
                     </a>

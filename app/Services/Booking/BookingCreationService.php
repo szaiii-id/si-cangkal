@@ -8,7 +8,7 @@ use App\Models\BookingParticipant;
 use App\Models\Package;
 use App\Models\User;
 use App\Repositories\Contracts\BookingRepositoryInterface;
-use App\Services\Notification\NotificationDispatcher;
+use App\Services\Notification\Contracts\NotificationDispatcherInterface;
 use App\Support\AuditLogger;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -18,23 +18,23 @@ use Throwable;
 /**
  * Service pembuatan Booking (client & pesanan manual mitra).
  *
- * Hasil pemecahan `BookingService` (PRD 5.7). Bertanggung jawab HANYA
+ * Hasil pemecahan BookingService (PRD 5.7). Bertanggung jawab HANYA
  * untuk membuat record Booking baru beserta peserta.
  *
  * FCM: Mengirim notifikasi "Pesanan Baru" ke Mitra saat Client
- * membuat pesanan (di method `create`).
+ * membuat pesanan (di method create).
  */
-final class BookingCreationService
+class BookingCreationService
 {
     public function __construct(
         private readonly BookingRepositoryInterface $bookingRepository,
-        private readonly NotificationDispatcher $notificationDispatcher,
+        private readonly NotificationDispatcherInterface $notificationDispatcher,
     ) {}
 
     /**
      * Buat booking baru dari client.
      *
-     * @param  array<string, mixed>  $data  Data yang sudah divalidasi oleh StoreBookingRequest.
+     * @param  array<string, mixed>  $data
      *
      * @throws ValidationException
      */
@@ -77,8 +77,6 @@ final class BookingCreationService
             return $booking;
         });
 
-        // ✅ Notifikasi "Pesanan Baru" ke Mitra (di luar transaksi)
-        // Dibungkus try/catch: kalau notifikasi gagal, BOOKING TETAP BERHASIL.
         try {
             $this->notifyMitraNewBooking($booking, $package, $client);
         } catch (Throwable $e) {
@@ -97,7 +95,7 @@ final class BookingCreationService
     /**
      * Buat pesanan manual oleh mitra (pelanggan offline / via WhatsApp).
      *
-     * @param  array<string, mixed>  $data  Data yang sudah divalidasi oleh StoreManualBookingRequest.
+     * @param  array<string, mixed>  $data
      *
      * @throws ValidationException
      */
@@ -145,13 +143,6 @@ final class BookingCreationService
         });
     }
 
-    // ==========================================
-    // NOTIFICATION HELPERS
-    // ==========================================
-
-    /**
-     * Kirim notifikasi ke Mitra bahwa ada pesanan baru dari Client.
-     */
     private function notifyMitraNewBooking(Booking $booking, Package $package, User $client): void
     {
         if ($package->mitra === null) {
@@ -171,7 +162,7 @@ final class BookingCreationService
     }
 
     /**
-     * Validasi bisnis yang tidak bisa ditegakkan oleh Form Request.
+     * @param  array<string, mixed>  $data
      */
     private function validateBooking(Package $package, array $data): void
     {
@@ -207,7 +198,7 @@ final class BookingCreationService
     }
 
     /**
-     * Simpan seluruh peserta booking.
+     * @param  array<int, array<string, mixed>>  $participants
      */
     private function insertParticipants(Booking $booking, array $participants): void
     {

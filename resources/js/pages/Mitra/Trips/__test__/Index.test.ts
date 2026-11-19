@@ -1,246 +1,258 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/svelte';
-import MitraTripsIndex from '../Index.svelte';
+/**
+ * ============================================================
+ * Mitra Trips — Index Page — Component Test
+ * ============================================================
+ */
+
+import { render, screen, fireEvent } from '@testing-library/svelte';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { tick } from 'svelte';
+import Index from '../Index.svelte';
 
 // ============================================================
-// MOCK INERTIA — lengkap dengan page.props
+// 1. HOISTED MOCK REGISTRY
 // ============================================================
-const mockRouterGet = vi.fn();
-
-vi.mock('@inertiajs/svelte', () => ({
-    router: {
-        get: (...args: any[]) => mockRouterGet(...args),
-    },
-    inertia: () => ({
-        update: vi.fn(),
-        destroy: vi.fn(),
-    }),
-    page: {
-        get props() {
-            return {
-                auth: {
-                    user: {
-                        id: 1,
-                        name: 'Mitra Test',
-                        username: 'mitra',
-                        email: 'mitra@example.com',
-                        role: 'mitra',
-                    },
-                },
-                unread_notifications: 0,
-                flash: {},
-            };
-        },
-        get url() {
-            return '/mitra/trips';
-        },
-        get component() {
-            return 'Mitra/Trips/Index';
-        },
-    },
+const mockUpdaters = vi.hoisted(() => new Set<() => void>());
+const mockApi = vi.hoisted(() => ({
+    getTrips: vi.fn(),
 }));
 
 // ============================================================
-// MOCK UTILS
+// 2. MOCK DEPENDENCIES
 // ============================================================
+vi.mock('@/api/mitra', () => mockApi);
+
 vi.mock('@/utils/enums', () => ({
-    tripStatusBadge: (s: string) => `badge-${s}`,
-    tripStatusLabel: (s: string) => `Label ${s}`,
-    tripStatusShort: (s: string) => `Short ${s}`,
+    tripStatusBadge: vi.fn((s: string) => `badge-${s}`),
+    tripStatusLabel: vi.fn((s: string) => s),
+    tripStatusShort: vi.fn((s: string) => s),
 }));
 
 vi.mock('@/utils/formatDate', () => ({
-    formatDate: (d: string) => `Tgl: ${d}`,
+    formatDate: vi.fn((d: string) => `Date: ${d}`),
 }));
 
 vi.mock('@/utils/duration', () => ({
-    formatDurasiFromRange: (start: string, end: string) =>
-        `Durasi: ${start} - ${end}`,
+    formatDurasiFromRange: vi.fn(() => '3H 2M'),
 }));
 
-// Mock timezone: kontrol isTripToday
 vi.mock('@/utils/timezone', () => ({
-    todayInTimezone: vi.fn().mockReturnValue('2026-05-01'),
-    isDateInRange: vi.fn(
-        (date: string, start: string, _end: string) => date === start
-    ),
+    isDateInRange: vi.fn(() => true), // default true untuk "Hari ini"
+    todayInTimezone: vi.fn(() => '2026-01-01'),
+}));
+
+vi.mock('@/utils/menus', () => ({
+    mitraMenu: [],
+}));
+
+vi.mock('@inertiajs/svelte', () => ({
+    inertia: vi.fn(),
 }));
 
 // ============================================================
-// HELPERS
+// 3. MOCK CHILD COMPONENTS
 // ============================================================
+vi.mock('@/components/layout/DashboardLayout.svelte', () => ({
+    default: (anchor: Node, props: any) => {
+        props.children?.(anchor);
+        return {};
+    },
+}));
 
-const createPaginator = (data: any[] = []): any => ({
-    data,
-    current_page: 1,
-    last_page: 1,
-    total: data.length,
-    from: data.length > 0 ? 1 : 0,
-    to: data.length,
-    links: [],
-    path: '',
-    per_page: 10,
-    first_page_url: '',
-    last_page_url: '',
-    next_page_url: null,
-    prev_page_url: null,
-});
+vi.mock('@/global/PageHeader.svelte', () => ({
+    default: (anchor: Node, props: any) => {
+        const el = document.createElement('div');
+        el.setAttribute('data-testid', 'page-header');
+        el.innerHTML = `<h1>${props.title}</h1>`;
+        anchor.parentNode?.insertBefore(el, anchor);
+        return {};
+    },
+}));
 
-const createTrip = (overrides: any = {}): any => ({
+vi.mock('@/global/StatusTabs.svelte', () => ({
+    default: (anchor: Node, props: any) => {
+        const el = document.createElement('div');
+        el.setAttribute('data-testid', 'status-tabs');
+        anchor.parentNode?.insertBefore(el, anchor);
+
+        const update = () => {
+            el.innerHTML = props.tabs
+                .map(
+                    (t: any) =>
+                        `<button type="button" data-tab="${t.value}">${t.label} (${t.count})</button>`,
+                )
+                .join('');
+
+            el.querySelectorAll('button').forEach((btn) => {
+                btn.onclick = () =>
+                    props.onchange?.(btn.getAttribute('data-tab')!);
+            });
+        };
+
+        update();
+        mockUpdaters.add(update);
+        return {};
+    },
+}));
+
+vi.mock('@/global/SearchInput.svelte', () => ({
+    default: (anchor: Node, props: any) => {
+        const el = document.createElement('div');
+        el.setAttribute('data-testid', 'search-input');
+        anchor.parentNode?.insertBefore(el, anchor);
+
+        const update = () => {
+            el.innerHTML = `
+                <input type="text" aria-label="Search" placeholder="${props.placeholder || ''}" value="${props.value || ''}" />
+            `;
+            (el.querySelector('input') as HTMLInputElement).oninput = (e) =>
+                props.oninput?.((e.target as HTMLInputElement).value);
+        };
+
+        update();
+        mockUpdaters.add(update);
+        return {};
+    },
+}));
+
+vi.mock('@/global/EmptyState.svelte', () => ({
+    default: (anchor: Node, props: any) => {
+        const el = document.createElement('div');
+        el.setAttribute('data-testid', 'empty-state');
+        el.textContent = props.title;
+        anchor.parentNode?.insertBefore(el, anchor);
+        return {};
+    },
+}));
+
+vi.mock('@/global/Pagination.svelte', () => ({
+    default: (anchor: Node) => {
+        const el = document.createElement('div');
+        el.setAttribute('data-testid', 'pagination');
+        anchor.parentNode?.insertBefore(el, anchor);
+        return {};
+    },
+}));
+
+// ============================================================
+// 4. HELPERS
+// ============================================================
+async function syncUI() {
+    await tick();
+    mockUpdaters.forEach((fn) => fn());
+}
+
+// ============================================================
+// 5. FIXTURES
+// ============================================================
+const makeTrip = (overrides = {}) => ({
     id: 1,
-    kode: 'TRIP-123',
-    status: 'scheduled',
-    jumlah_peserta: 5,
-    tanggal_mulai: '2026-05-01',
-    tanggal_selesai: '2026-05-03',
+    kode: 'TRIP-01',
+    status: 'active',
+    tanggal_mulai: '2026-01-01',
+    tanggal_selesai: '2026-01-03',
+    jumlah_peserta: 2,
     timezone: 'Asia/Jakarta',
-    mitras_count: 2,
-    package: {
-        id: 10,
-        nama: 'Paket Bali',
-        kode: 'PKT-BALI',
-        timezone: 'Asia/Jakarta',
-    },
-    booking: {
-        id: 100,
-        kode: 'BK-001',
-        client: { id: 50, name: 'Budi', email: 'budi@example.com' },
-    },
+    package: { id: 1, nama: 'Paket Bali', kode: 'PKT-01' },
     ...overrides,
 });
 
-const defaultFilters = {
-    search: '',
-    status: '',
-    sort: 'tanggal_mulai',
-    direction: 'desc',
-};
-
-const defaultCounts = { scheduled: 1, active: 0, completed: 0, cancelled: 0 };
-
-// ============================================================
-// SETUP
-// ============================================================
-
-beforeEach(() => {
-    vi.clearAllMocks();
+const makeProps = (overrides = {}) => ({
+    trips: {
+        data: [makeTrip()],
+        current_page: 1,
+        last_page: 1,
+        total: 1,
+        per_page: 15,
+        from: 1,
+        to: 1,
+        links: [],
+    },
+    filters: { search: '', status: '', sort: 'tanggal_mulai', direction: 'desc' },
+    statusCounts: { scheduled: 0, active: 1, completed: 0, cancelled: 0 },
+    ...overrides,
 });
 
 // ============================================================
-// KATEGORI 1 — RENDERING DATA TRIP
+// 6. TEST SUITE
 // ============================================================
-
-describe('Mitra Trips Index — Rendering', () => {
-    it('merender info trip (kode, nama paket, peserta, durasi)', () => {
-        render(MitraTripsIndex, {
-            props: {
-                trips: createPaginator([createTrip()]),
-                filters: defaultFilters,
-                statusCounts: defaultCounts,
-            },
-        });
-
-        expect(screen.getByText('TRIP-123')).toBeInTheDocument();
-        expect(screen.getByText('Paket Bali')).toBeInTheDocument();
-        expect(screen.getByText('5 peserta')).toBeInTheDocument();
-        expect(
-            screen.getByText('Durasi: 2026-05-01 - 2026-05-03')
-        ).toBeInTheDocument();
-        expect(screen.getByText('Label scheduled')).toBeInTheDocument();
+describe('Mitra Trips — Index Page', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockUpdaters.clear();
+        vi.useFakeTimers();
     });
 
-    it('merender tanggal mulai', () => {
-        render(MitraTripsIndex, {
-            props: {
-                trips: createPaginator([createTrip()]),
-                filters: defaultFilters,
-                statusCounts: defaultCounts,
-            },
-        });
-
-        expect(screen.getByText('Tgl: 2026-05-01')).toBeInTheDocument();
+    afterEach(() => {
+        vi.useRealTimers();
     });
 
-    it('merender tautan ke detail trip', () => {
-        render(MitraTripsIndex, {
-            props: {
-                trips: createPaginator([createTrip()]),
-                filters: defaultFilters,
-                statusCounts: defaultCounts,
-            },
+    describe('Rendering', () => {
+        it('merender PageHeader dan toolbar', () => {
+            render(Index, { props: makeProps() });
+            expect(screen.getByTestId('page-header')).toHaveTextContent('Jadwal Perjalanan');
+            expect(screen.getByTestId('status-tabs')).toBeInTheDocument();
+            expect(screen.getByTestId('search-input')).toBeInTheDocument();
         });
 
-        // Cari link card trip (bukan link di sidebar)
-        const link = document.querySelector('a[href="/mitra/trips/1"]');
-        expect(link).not.toBeNull();
-    });
-});
-
-// ============================================================
-// KATEGORI 2 — INDIKATOR "HARI INI"
-// ============================================================
-
-describe('Mitra Trips Index — Indikator "Hari Ini"', () => {
-    it('TIDAK menampilkan indikator "Hari ini" jika status bukan active', () => {
-        render(MitraTripsIndex, {
-            props: {
-                trips: createPaginator([
-                    createTrip({ status: 'scheduled', tanggal_mulai: '2026-05-01' }),
-                ]),
-                filters: defaultFilters,
-                statusCounts: defaultCounts,
-            },
+        it('merender EmptyState jika data kosong', () => {
+            render(Index, {
+                props: makeProps({
+                    trips: { data: [], current_page: 1, last_page: 1, total: 0, per_page: 15, from: 0, to: 0, links: [] },
+                }),
+            });
+            expect(screen.getByTestId('empty-state')).toBeInTheDocument();
         });
 
-        expect(screen.queryByText(/Hari ini/i)).not.toBeInTheDocument();
-    });
-
-    it('menampilkan indikator "Hari ini" jika status active dan tanggal cocok', () => {
-        render(MitraTripsIndex, {
-            props: {
-                trips: createPaginator([
-                    createTrip({ status: 'active', tanggal_mulai: '2026-05-01' }),
-                ]),
-                filters: defaultFilters,
-                statusCounts: { ...defaultCounts, scheduled: 0, active: 1 },
-            },
+        it('merender data trip dan Pagination jika ada', () => {
+            render(Index, { props: makeProps() });
+            expect(screen.getByText('TRIP-01')).toBeInTheDocument();
+            expect(screen.getByText('Paket Bali')).toBeInTheDocument();
+            expect(screen.getByText('2 peserta')).toBeInTheDocument();
+            expect(screen.getByTestId('pagination')).toBeInTheDocument();
         });
 
-        expect(screen.getByText(/Hari ini/i)).toBeInTheDocument();
-    });
-});
-
-// ============================================================
-// KATEGORI 3 — EMPTY STATE
-// ============================================================
-
-describe('Mitra Trips Index — Empty State', () => {
-    it('merender pesan awal jika data kosong tanpa filter', () => {
-        render(MitraTripsIndex, {
-            props: {
-                trips: createPaginator([]),
-                filters: defaultFilters,
-                statusCounts: { ...defaultCounts, scheduled: 0 },
-            },
+        it('merender link detail trip dengan href yang benar', () => {
+            render(Index, { props: makeProps() });
+            const link = screen.getByText('TRIP-01').closest('a');
+            expect(link).toHaveAttribute('href', '/mitra/trips/1');
         });
 
-        // EmptyState asli merender teks langsung
-        expect(screen.getByText('Belum ada trip')).toBeInTheDocument();
-        expect(
-            screen.getByText(/Trip yang Anda ikuti akan muncul/i)
-        ).toBeInTheDocument();
+        it('merender badge "Hari ini" jika trip active & today', () => {
+            render(Index, {
+                props: makeProps({ statusCounts: { scheduled: 0, active: 1, completed: 0, cancelled: 0 } }),
+            });
+            expect(screen.getByText('Hari ini')).toBeInTheDocument();
+        });
     });
 
-    it('merender pesan filter jika data kosong tapi ada filter', () => {
-        render(MitraTripsIndex, {
-            props: {
-                trips: createPaginator([]),
-                filters: { ...defaultFilters, search: 'xyz' },
-                statusCounts: { ...defaultCounts, scheduled: 0 },
-            },
+    describe('Interaction — Filter & Search', () => {
+        it('memanggil getTrips saat search debounce selesai', async () => {
+            render(Index, { props: makeProps() });
+            const input = screen.getByLabelText('Search');
+
+            await fireEvent.input(input, { target: { value: 'bali' } });
+            expect(mockApi.getTrips).not.toHaveBeenCalled();
+
+            await vi.advanceTimersByTimeAsync(300);
+            expect(mockApi.getTrips).toHaveBeenCalledWith(
+                expect.objectContaining({ search: 'bali' }),
+                expect.any(Object),
+            );
         });
 
-        expect(screen.getByText('Tidak ada trip ditemukan')).toBeInTheDocument();
-        expect(screen.getByText(/Coba ubah filter/i)).toBeInTheDocument();
+        it('memanggil getTrips saat status tab berubah', async () => {
+            render(Index, {
+                props: makeProps({
+                    statusCounts: { scheduled: 1, active: 1, completed: 0, cancelled: 0 },
+                }),
+            });
+            await fireEvent.click(screen.getByText(/scheduled/i));
+
+            expect(mockApi.getTrips).toHaveBeenCalledWith(
+                expect.objectContaining({ status: 'scheduled' }),
+                expect.any(Object),
+            );
+        });
     });
 });

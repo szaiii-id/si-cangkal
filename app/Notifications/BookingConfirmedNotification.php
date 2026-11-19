@@ -10,16 +10,16 @@ use Illuminate\Notifications\Notification;
 /**
  * Notifikasi: booking telah dikonfirmasi (pembayaran diverifikasi mitra).
  *
- * Dikirim ke client setelah event `BookingConfirmed` diproses.
+ * Dikirim ke client setelah event BookingConfirmed diproses.
  *
  * Channel:
- * - `mail` : email pemberitahuan ke client.
- * - `database` : catatan audit sekunder di tabel `notifications` Laravel
- *   standar. Tidak ditampilkan di UI Titiktemu (UI memakai `AppNotification`).
+ * - mail   : email pemberitahuan ke client.
+ * - database : catatan audit sekunder di tabel notifications Laravel
+ *   standar. Tidak ditampilkan di UI SI-CANGKAL (UI memakai AppNotification).
  *
  * Catatan penting:
  * - Notifikasi in-app yang tampil di UI TIDAK berasal dari sini. Itu dikirim
- *   lewat `NotificationService::create()` di `BookingPaymentService`.
+ *   lewat NotificationService::create() di BookingPaymentService.
  * - Pesan email sengaja menyebut "E-Ticket sedang diproses", bukan
  *   "E-Ticket siap diunduh", karena E-Ticket di-generate di queue terpisah
  *   dan bisa selesai beberapa detik setelah email terkirim.
@@ -48,11 +48,11 @@ final class BookingConfirmedNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         $booking = $this->booking;
-        $clientName = $booking->client?->name ?? 'Pelanggan';
-        $packageName = $booking->package?->nama ?? 'Paket Wisata';
-        $mitraName = $booking->mitra?->name ?? 'Mitra';
+        $clientName = $booking->client->name;
+        $packageName = $booking->package->nama;
+        $mitraName = $booking->mitra->name;
         $totalHarga = 'Rp '.number_format((float) $booking->total_harga, 0, ',', '.');
-        $tanggal = $booking->tanggal_keberangkatan?->format('d M Y') ?? '-';
+        $tanggal = $booking->tanggal_keberangkatan->format('d M Y');
 
         return (new MailMessage)
             ->subject("Booking {$booking->kode} Dikonfirmasi")
@@ -65,11 +65,11 @@ final class BookingConfirmedNotification extends Notification
             ->line("Total pembayaran: {$totalHarga}")
             ->line('E-Ticket Anda sedang diproses dan akan tersedia di halaman detail booking dalam beberapa saat.')
             ->action('Lihat Detail Booking', route('client.bookings.show', $booking->id))
-            ->line('Terima kasih telah menggunakan Titiktemu.');
+            ->line('Terima kasih telah menggunakan SI-CANGKAL.');
     }
 
     /**
-     * Representasi array untuk channel `database`.
+     * Representasi array untuk channel database.
      *
      * @return array<string, mixed>
      */

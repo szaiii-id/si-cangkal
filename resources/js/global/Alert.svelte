@@ -1,4 +1,6 @@
 <script lang="ts">
+    import type { Snippet } from 'svelte';
+
     type Variant = 'success' | 'error' | 'warning' | 'info';
 
     let {
@@ -6,13 +8,15 @@
         title = null,
         message = null,
         dismissible = false,
+        class: className = '',
         children,
     }: {
         variant?: Variant;
         title?: string | null;
         message?: string | null;
         dismissible?: boolean;
-        children?: any;
+        class?: string;
+        children?: Snippet;
     } = $props();
 
     let visible = $state(true);
@@ -48,8 +52,24 @@
 </script>
 
 {#if visible}
-    <div class="{c.bg} {c.border} border-l-4 p-4 rounded-r-2xl flex items-start gap-3">
-        <svg class="w-5 h-5 {c.text} flex-shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+    <!-- 
+      PERBAIKAN: 
+      1. Menambahkan role="alert" agar screen reader langsung membacanya.
+      2. Menambahkan aria-live="polite" agar tidak memotong ucapan user.
+      3. Menambahkan {className} agar parent bisa mengatur margin.
+      4. Mengubah rounded-r-2xl menjadi rounded-2xl agar serbaguna.
+    -->
+    <div 
+        class="{c.bg} {c.border} border-l-4 p-4 rounded-2xl flex items-start gap-3 {className}"
+        role="alert"
+        aria-live="polite"
+    >
+        <svg 
+            class="w-5 h-5 {c.text} flex-shrink-0 mt-0.5" 
+            viewBox="0 0 20 20" 
+            fill="currentColor"
+            aria-hidden="true"
+        >
             <path fill-rule="evenodd" d={c.icon} clip-rule="evenodd" />
         </svg>
 
@@ -68,9 +88,9 @@
                 type="button"
                 onclick={() => (visible = false)}
                 class="{c.text} hover:opacity-70 transition-opacity"
-                aria-label="Tutup"
+                aria-label="Tutup pesan"
             >
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>

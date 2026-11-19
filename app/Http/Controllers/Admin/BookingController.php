@@ -10,7 +10,7 @@ use App\Models\Booking;
 use App\Models\Trip;
 use App\Services\Booking\BookingPaymentService;
 use App\Services\Booking\BookingQueryService;
-use App\Services\ETicket\ETicketService;
+use App\Services\ETicket\Contracts\ETicketServiceInterface;
 use App\Services\Trip\TripService;
 use App\Support\Storage;
 use Illuminate\Http\RedirectResponse;
@@ -38,6 +38,8 @@ final class BookingController extends Controller
 {
     public function __construct(
         private readonly BookingQueryService $bookingQueryService,
+        private readonly ETicketServiceInterface $eticketService,
+        private readonly TripService $tripService,
     ) {}
 
     /**
@@ -55,6 +57,7 @@ final class BookingController extends Controller
             'package_id' => $validated['package_id'] ?? null,
             'tanggal_dari' => $validated['tanggal_dari'] ?? null,
             'tanggal_sampai' => $validated['tanggal_sampai'] ?? null,
+            'is_today' => $validated['is_today'] ?? false,
             'sort' => $validated['sort'] ?? 'created_at',
             'direction' => $validated['direction'] ?? 'desc',
         ];
@@ -155,10 +158,10 @@ final class BookingController extends Controller
             if ($trip === null) {
                 // Edge case: Trip belum dibuat (mis. listener gagal sebelumnya).
                 // Buat Trip terlebih dahulu, baru generate E-Ticket.
-                $trip = app(TripService::class)->createFromBooking($booking);
+                $trip = $this->tripService->createFromBooking($booking);
             }
 
-            app(ETicketService::class)->generateForTrip($trip);
+            $this->eticketService->generateForTrip($trip);
 
             Log::info('Admin regenerate E-Ticket berhasil', [
                 'admin_id' => auth()->id(),

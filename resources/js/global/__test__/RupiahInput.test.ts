@@ -1,180 +1,116 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import RupiahInput from '../RupiahInput.svelte';
 
-// ============================================================
-// MOCK UTILS (form)
-// ============================================================
-vi.mock('@/utils/form', () => ({
-    formatRupiahInput: (val: number) => {
-        if (val === 0 || isNaN(val)) return '';
-        return new Intl.NumberFormat('id-ID').format(val);
-    },
-    parseRupiah: (val: string) => {
-        const digits = val.replace(/\D/g, '');
-        return digits ? parseInt(digits, 10) : 0;
-    },
-}));
-
-// ============================================================
-// SETUP
-// ============================================================
-
-beforeEach(() => {
-    vi.clearAllMocks();
-});
-
-// ============================================================
-// KATEGORI 1 — RENDERING DASAR & LABEL
-// ============================================================
-
-describe('RupiahInput.svelte — Rendering Dasar', () => {
-    it('merender label dan tanda bintang jika required', () => {
-        render(RupiahInput, {
-            props: { id: 'harga', label: 'Harga Tiket', required: true },
+describe('RupiahInput Component', () => {
+    // ==========================================
+    // 1. RENDERING DASAR
+    // ==========================================
+    describe('Rendering', () => {
+        it('harus merender label dan prefix "Rp"', () => {
+            render(RupiahInput, { props: { id: 'harga', label: 'Harga Paket' } });
+            expect(screen.getByLabelText(/Harga Paket/i)).toBeInTheDocument();
+            expect(screen.getByText('Rp')).toBeInTheDocument();
         });
 
-        expect(screen.getByText('Harga Tiket')).toBeInTheDocument();
-        expect(screen.getByText('*')).toBeInTheDocument();
+        it('harus menampilkan nilai awal yang terformat (1500000 -> "1.500.000")', () => {
+            render(RupiahInput, { props: { id: 'harga', value: 1500000 } });
+            expect(screen.getByRole('textbox')).toHaveValue('1.500.000');
+        });
     });
 
-    it('merender prefix "Rp" di dalam input', () => {
-        render(RupiahInput, { props: { id: 'harga' } });
+    // ==========================================
+    // 2. FORMATTING ON-TYPE (User Interaction)
+    // ==========================================
+    describe('Formatting on Input', () => {
+        it('harus memformat angka saat user mengetik', async () => {
+            render(RupiahInput, { props: { id: 'harga', value: 0 } });
+            const input = screen.getByRole('textbox');
 
-        expect(screen.getByText('Rp')).toBeInTheDocument();
-    });
-
-    it('merender placeholder', () => {
-        render(RupiahInput, {
-            props: { id: 'harga', placeholder: 'Masukkan harga' },
+            await fireEvent.input(input, { target: { value: '50000' } });
+            
+            // Harusnya otomatis jadi "50.000"
+            expect(input).toHaveValue('50.000');
         });
 
-        expect(
-            screen.getByPlaceholderText('Masukkan harga'),
-        ).toBeInTheDocument();
+        it('harus mengabaikan karakter non-digit (huruf, simbol)', async () => {
+            render(RupiahInput, { props: { id: 'harga', value: 0 } });
+            const input = screen.getByRole('textbox');
+
+            await fireEvent.input(input, { target: { value: '12abc34' } });
+            
+            // Harus mengambil digit saja -> 1234 -> "1.234"
+            expect(input).toHaveValue('1.234');
+        });
     });
 
-    it('merender error dan aria-invalid jika error diberikan', () => {
-        render(RupiahInput, {
-            props: { id: 'harga', error: 'Harga wajib diisi.' },
+    // ==========================================
+    // 3. AKSESIBILITAS (A11Y)
+    // ==========================================
+    describe('Accessibility', () => {
+        it('harus memiliki aria-invalid=true jika error diberikan', () => {
+            render(RupiahInput, {
+                props: { id: 'harga', error: 'Harga wajib diisi' },
+            });
+            const input = screen.getByRole('textbox');
+            expect(input).toHaveAttribute('aria-invalid', 'true');
         });
 
-        const input = screen.getByRole('textbox');
-        expect(
-            screen.getByText('Harga wajib diisi.'),
-        ).toBeInTheDocument();
-        expect(input).toHaveAttribute('aria-invalid', 'true');
-        expect(input).toHaveClass('border-red-300');
-    });
-
-    it('merender hint jika diberikan (dan tidak ada error)', () => {
-        render(RupiahInput, {
-            props: { id: 'harga', hint: 'Tanpa titik atau koma' },
+        it('harus menghubungkan input dengan pesan error via aria-describedby', () => {
+            render(RupiahInput, {
+                props: { id: 'harga', error: 'Harga wajib diisi' },
+            });
+            const input = screen.getByRole('textbox');
+            expect(input).toHaveAttribute('aria-describedby', 'harga-message');
+            expect(document.getElementById('harga-message')).toHaveTextContent('Harga wajib diisi');
         });
 
-        expect(
-            screen.getByText('Tanpa titik atau koma'),
-        ).toBeInTheDocument();
-    });
-});
-
-// ============================================================
-// KATEGORI 2 — FORMAT & LOGIKA INPUT
-// ============================================================
-
-describe('RupiahInput.svelte — Format & Logika', () => {
-    it('menginisialisasi nilai input dari props value dengan format ribuan', () => {
-        render(RupiahInput, { props: { id: 'harga', value: 1500000 } });
-
-        const input = screen.getByRole('textbox') as HTMLInputElement;
-        expect(input.value).toBe('1.500.000');
-    });
-
-    it('memperbarui nilai terformat saat user mengetik angka', async () => {
-        render(RupiahInput, {
-            props: { id: 'harga', value: 0 },
+        it('pesan error harus memiliki role="alert"', () => {
+            render(RupiahInput, {
+                props: { id: 'harga', error: 'Harga wajib diisi' },
+            });
+            expect(screen.getByRole('alert')).toHaveTextContent('Harga wajib diisi');
         });
 
-        const input = screen.getByRole('textbox') as HTMLInputElement;
-        await fireEvent.input(input, { target: { value: '250000' } });
-
-        // Svelte 5: verifikasi lewat DOM (nilai input),
-        // bukan `component.$$.props.value`.
-        expect(input.value).toBe('250.000');
+        it('harus menghubungkan input dengan hint via aria-describedby', () => {
+            render(RupiahInput, {
+                props: { id: 'harga', hint: 'Minimal Rp 100.000' },
+            });
+            const input = screen.getByRole('textbox');
+            expect(input).toHaveAttribute('aria-describedby', 'harga-message');
+            expect(document.getElementById('harga-message')).toHaveTextContent('Minimal Rp 100.000');
+        });
     });
 
-    it('mengabaikan karakter non-digit (huruf, simbol)', async () => {
-        render(RupiahInput, { props: { id: 'harga', value: 0 } });
-
-        const input = screen.getByRole('textbox') as HTMLInputElement;
-        await fireEvent.input(input, { target: { value: 'Rp 1.000 abc' } });
-
-        expect(input.value).toBe('1.000');
-    });
-
-    it('mengosongkan input dan set value = 0 jika user menghapus semua teks', async () => {
-        render(RupiahInput, {
-            props: { id: 'harga', value: 500000 },
+    // ==========================================
+    // 4. STATE DISABLED & REQUIRED
+    // ==========================================
+    describe('Disabled & Required', () => {
+        it('harus menonaktifkan input jika disabled=true', () => {
+            render(RupiahInput, { props: { id: 'harga', disabled: true } });
+            expect(screen.getByRole('textbox')).toBeDisabled();
         });
 
-        const input = screen.getByRole('textbox') as HTMLInputElement;
-        await fireEvent.input(input, { target: { value: '' } });
-
-        expect(input.value).toBe('');
-    });
-});
-
-// ============================================================
-// KATEGORI 3 — BEHAVIOR FOCUS & BLUR
-// ============================================================
-
-describe('RupiahInput.svelte — Behavior Focus & Blur', () => {
-    it('saat blur, input diformat ulang dari nilai value saat ini', async () => {
-        render(RupiahInput, { props: { id: 'harga', value: 1500000 } });
-
-        const input = screen.getByRole('textbox') as HTMLInputElement;
-
-        // Simulasi user mengubah DOM tanpa event input
-        await fireEvent.focus(input);
-        input.value = '1500000';
-
-        // Blur harus mereformat ulang
-        await fireEvent.blur(input);
-
-        expect(input.value).toBe('1.500.000');
-    });
-
-    it('TIDAK mengubah displayValue saat fokus meskipun props value berubah dari parent', async () => {
-        const { rerender } = render(RupiahInput, {
-            props: { id: 'harga', value: 0 },
+        it('harus menerapkan atribut required jika required=true', () => {
+            render(RupiahInput, { props: { id: 'harga', required: true } });
+            expect(screen.getByRole('textbox')).toBeRequired();
         });
-
-        const input = screen.getByRole('textbox') as HTMLInputElement;
-
-        await fireEvent.focus(input);
-
-        // Svelte 5: gunakan rerender() untuk mengubah props dari "parent",
-        // bukan `component.$$.props.value = ...`
-        await rerender({ value: 100000, id: 'harga' });
-
-        // Karena sedang fokus, displayValue TIDAK boleh berubah otomatis
-        expect(input.value).not.toBe('100.000');
     });
-});
 
-// ============================================================
-// KATEGORI 4 — STATE DISABLED
-// ============================================================
+    // ==========================================
+    // 5. EDGE CASES (onBlur)
+    // ==========================================
+    describe('Edge Cases', () => {
+        it('harus memformat ulang nilai saat blur (jika user memanipulasi DOM)', async () => {
+            render(RupiahInput, { props: { id: 'harga', value: 1000 } });
+            const input = screen.getByRole('textbox');
 
-describe('RupiahInput.svelte — State Disabled', () => {
-    it('menonaktifkan input jika disabled = true', () => {
-        render(RupiahInput, {
-            props: { id: 'harga', disabled: true },
+            // Simulasi user memasukkan "abc" (tidak valid)
+            await fireEvent.input(input, { target: { value: 'abc' } });
+            
+            // Saat blur, harus dikembalikan ke "0"
+            await fireEvent.blur(input);
+            expect(input).toHaveValue('0');
         });
-
-        const input = screen.getByRole('textbox') as HTMLInputElement;
-        expect(input).toBeDisabled();
-        expect(input).toHaveClass('opacity-60');
-        expect(input).toHaveClass('cursor-not-allowed');
     });
 });

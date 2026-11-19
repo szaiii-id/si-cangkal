@@ -5,7 +5,7 @@
  * < 250 baris dan config mudah di-reuse di tempat lain
  * (misal: preview di dashboard, toast).
  *
- * ⚠️ File ini HANYA berisi pemetaan tipe → icon & warna.
+ *   File ini HANYA berisi pemetaan tipe → icon & warna.
  * Logika redirect (klik notifikasi → halaman tujuan) ada di
  * `pages/Notifications/Index.svelte` karena butuh akses ke
  * `router` dan `data.url` dari item notifikasi.

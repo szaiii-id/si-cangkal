@@ -14,7 +14,7 @@ return new class extends Migration
 
             $table->foreignId('booking_id')->unique()->constrained('bookings')->restrictOnDelete();
             $table->foreignId('package_id')->constrained('packages')->restrictOnDelete();
-            
+
             // Relasi Mitra (1 Trip = 1 Mitra)
             $table->foreignId('mitra_id')->constrained('users')->restrictOnDelete();
 

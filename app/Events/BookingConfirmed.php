@@ -33,7 +33,7 @@ final class BookingConfirmed
     use SerializesModels;
 
     /**
-     * @param  \App\Models\Booking  $booking  Booking yang baru diverifikasi.
+     * @param  Booking  $booking  Booking yang baru diverifikasi.
      * @param  int  $verifiedByMitraId  ID mitra yang memverifikasi pembayaran.
      *                                  Dipakai listener queue agar tidak
      *                                  bergantung pada sesi auth.

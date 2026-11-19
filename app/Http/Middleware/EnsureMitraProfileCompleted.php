@@ -15,7 +15,7 @@ class EnsureMitraProfileCompleted
         if ($user && $user->isMitra()) {
             // Cek apakah mitra sudah punya minimal 1 rekening
             if ($user->bankAccounts()->count() === 0) {
-                
+
                 // Izinkan akses ke route onboarding & logout
                 if ($request->routeIs('mitra.onboarding.*') || $request->routeIs('logout')) {
                     return $next($request);

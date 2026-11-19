@@ -36,7 +36,7 @@ export type Credentials = {
 /**
  * User yang di-share via `HandleInertiaRequests`.
  *
- * ⚠️ Ini BUKAN `User` model lengkap — hanya subset yang dikirim
+ *   Ini BUKAN `User` model lengkap — hanya subset yang dikirim
  * oleh `HandleInertiaRequests::share()['auth']['user']`.
  *
  * Field yang TIDAK ada di sini (mis. `email_verified_at`,

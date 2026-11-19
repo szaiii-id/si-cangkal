@@ -14,7 +14,8 @@ class MitraBankAccountSeeder extends Seeder
         $mitraAni = User::where('email', 'ani@gmail.com')->first();
 
         if (! $mitraPTABC || ! $mitraAni) {
-            $this->command->warn('⚠️ Mitra tidak ditemukan. Jalankan UserSeeder dulu.');
+            $this->command->warn('  Mitra tidak ditemukan. Jalankan UserSeeder dulu.');
+
             return;
         }
 
@@ -50,6 +51,6 @@ class MitraBankAccountSeeder extends Seeder
             ]
         );
 
-        $this->command->info('✅ MitraBankAccountSeeder selesai (3 rekening).');
+        $this->command->info(' MitraBankAccountSeeder selesai (3 rekening).');
     }
 }

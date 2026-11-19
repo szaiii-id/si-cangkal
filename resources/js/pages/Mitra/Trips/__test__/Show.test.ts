@@ -1,290 +1,213 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+/**
+ * ============================================================
+ * Mitra Trips — Show Page — Component Test
+ * ============================================================
+ */
+
 import { render, screen } from '@testing-library/svelte';
-import MitraTripShow from '../Show.svelte';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import Show from '../Show.svelte';
 
 // ============================================================
-// MOCK INERTIA — lengkap dengan page.props
+// 1. HOISTED MOCK REGISTRY
 // ============================================================
+const mockApi = vi.hoisted(() => ({
+    getTripManifestUrl: vi.fn((id: number) => `https://manifest.test/trip/${id}`),
+}));
+
+// ============================================================
+// 2. MOCK DEPENDENCIES
+// ============================================================
+vi.mock('@/api/mitra', () => mockApi);
+
+vi.mock('@/utils/enums', () => ({
+    tripStatusBadge: vi.fn((s: string) => `badge-${s}`),
+    tripStatusLabel: vi.fn((s: string) => s),
+}));
+
+vi.mock('@/utils/menus', () => ({
+    mitraMenu: [],
+}));
+
 vi.mock('@inertiajs/svelte', () => ({
-    inertia: () => ({
-        update: vi.fn(),
-        destroy: vi.fn(),
-    }),
-    page: {
-        get props() {
-            return {
-                auth: {
-                    user: {
-                        id: 1,
-                        name: 'Mitra Test',
-                        username: 'mitra',
-                        email: 'mitra@example.com',
-                        role: 'mitra',
-                    },
-                },
-                unread_notifications: 0,
-                flash: {},
-            };
-        },
-        get url() {
-            return '/mitra/trips/1';
-        },
-        get component() {
-            return 'Mitra/Trips/Show';
-        },
+    inertia: vi.fn(),
+}));
+
+// ============================================================
+// 3. MOCK CHILD COMPONENTS
+// ============================================================
+vi.mock('@/components/layout/DashboardLayout.svelte', () => ({
+    default: (anchor: Node, props: any) => {
+        props.children?.(anchor);
+        return {};
+    },
+}));
+
+vi.mock('@/global/BackButton.svelte', () => ({
+    default: (anchor: Node, props: any) => {
+        const el = document.createElement('div');
+        el.setAttribute('data-testid', 'back-button');
+        el.textContent = props.label;
+        anchor.parentNode?.insertBefore(el, anchor);
+        return {};
+    },
+}));
+
+vi.mock('@/components/mitra/trips/TripHeaderCard.svelte', () => ({
+    default: (anchor: Node, props: any) => {
+        const el = document.createElement('div');
+        el.setAttribute('data-testid', 'trip-header-card');
+        el.setAttribute('data-kode', props.kode);
+        el.setAttribute('data-status', props.status);
+        el.setAttribute('data-paket', props.namaPaket);
+        el.setAttribute('data-manifest', props.manifestUrl);
+        el.setAttribute('data-has-client', String(!!props.client));
+        anchor.parentNode?.insertBefore(el, anchor);
+        return {};
+    },
+}));
+
+vi.mock('@/components/mitra/trips/TripItineraryList.svelte', () => ({
+    default: (anchor: Node, props: any) => {
+        const el = document.createElement('div');
+        el.setAttribute('data-testid', 'trip-itinerary');
+        el.setAttribute('data-days-count', String(props.days?.length ?? 0));
+        anchor.parentNode?.insertBefore(el, anchor);
+        return {};
+    },
+}));
+
+vi.mock('@/components/mitra/trips/TripFacilitiesCard.svelte', () => ({
+    default: (anchor: Node, props: any) => {
+        const el = document.createElement('div');
+        el.setAttribute('data-testid', 'trip-facilities');
+        el.setAttribute('data-include-count', String(props.include?.length ?? 0));
+        el.setAttribute('data-exclude-count', String(props.exclude?.length ?? 0));
+        anchor.parentNode?.insertBefore(el, anchor);
+        return {};
     },
 }));
 
 // ============================================================
-// MOCK UTILS
+// 4. FIXTURES
 // ============================================================
-vi.mock('@/utils/enums', () => ({
-    dailyReportStatusBadge: (s: string) => `badge-report-${s}`,
-    dailyReportStatusLabel: (s: string) => `Label Report ${s}`,
-    tripMitraRoleBadge: (s: string) => `badge-role-${s}`,
-    tripMitraRoleLabel: (s: string) => `Label Role ${s}`,
-    tripStatusBadge: (s: string) => `badge-trip-${s}`,
-    tripStatusLabel: (s: string) => `Label Trip ${s}`,
-}));
-
-vi.mock('@/utils/formatCurrency', () => ({
-    formatCurrency: (n: number | string) => `Rp ${n}`,
-}));
-
-vi.mock('@/utils/formatDate', () => ({
-    formatDate: (d: string) => `Tgl: ${d}`,
-    formatDateTime: (d: string) => `TglWaktu: ${d}`,
-}));
-
-vi.mock('@/utils/duration', () => ({
-    hitungDurasiHari: () => 3,
-}));
-
-vi.mock('@/utils/form', () => ({
-    parseRupiah: (val: string) => parseInt(String(val).replace(/\D/g, ''), 10) || 0,
-}));
-
-// Mock timezone: hanya 2026-05-01 yang dianggap "hari ini"
-vi.mock('@/utils/timezone', () => ({
-    isTodayInTimezone: vi.fn((date: string) => date === '2026-05-01'),
-    timezoneLabelLong: (tz: string) => `TZ: ${tz}`,
-}));
-
-// ============================================================
-// HELPERS
-// ============================================================
-
-const createMockTrip = (overrides: any = {}): any => ({
-    id: 1,
-    kode: 'TRIP-123',
-    status: 'active',
-    tanggal_mulai: '2026-05-01',
-    tanggal_selesai: '2026-05-03',
-    jumlah_peserta: 5,
+const makeTrip = (overrides = {}) => ({
+    id: 42,
+    kode: 'TRIP-001',
+    status: 'scheduled',
+    tanggal_mulai: '2026-02-01',
+    tanggal_selesai: '2026-02-03',
+    jumlah_peserta: 2,
     timezone: 'Asia/Jakarta',
     snapshot_package: {
-        nama: 'Paket Bali',
+        nama: 'Paket Bali (Snapshot)',
         facilities: {
-            include: ['Hotel', 'Makan'],
+            include: ['Hotel', 'Transport'],
             exclude: ['Tiket Pesawat'],
         },
     },
     package: {
-        id: 10,
+        id: 1,
         nama: 'Paket Bali',
-        kode: 'PKT-BALI',
+        kode: 'PKT-001',
         slug: 'paket-bali',
         timezone: 'Asia/Jakarta',
         cover_image: null,
     },
     booking: {
-        id: 100,
+        id: 10,
         kode: 'BK-001',
-        client: { id: 50, name: 'Budi', email: 'budi@example.com' },
+        client: { id: 100, name: 'Budi', email: 'budi@test.com' },
     },
-    mitras: [
-        {
-            id: 1,
-            role: 'lead',
-            honor: '1000000',
-            honor_tipe: 'flat',
-            instruksi: 'Jaga kebersihan',
-            mitra: {
-                id: 51,
-                name: 'Mitra B',
-                email: 'mitraB@example.com',
-                username: 'mitraB',
-            },
-        },
-    ],
+    mitra: { id: 1, name: 'PT Mitra Jaya', email: 'mitra@test.com', username: 'mitrajaya' },
     days: [
-        {
-            id: 10,
-            hari_ke: 1,
-            tanggal: '2026-05-01',
-            judul: 'Hari Pertama',
-            deskripsi: 'Kegiatan hari 1',
-            status: 'in_progress',
-            daily_reports: [],
-        },
-        {
-            id: 11,
-            hari_ke: 2,
-            tanggal: '2026-05-02',
-            judul: 'Hari Kedua',
-            deskripsi: 'Kegiatan hari 2',
-            status: 'pending',
-            daily_reports: [],
-        },
+        { id: 1, hari_ke: 1, judul: 'Hari 1', deskripsi: 'Hari pertama', tanggal: '2026-02-01', status: 'pending' },
+        { id: 2, hari_ke: 2, judul: 'Hari 2', deskripsi: 'Hari kedua', tanggal: '2026-02-02', status: 'pending' },
     ],
     ...overrides,
 });
 
-const createMockTripMitra = (overrides: any = {}): any => ({
-    id: 1,
-    role: 'lead',
-    honor: '1000000',
-    honor_tipe: 'flat',
-    instruksi: 'Jaga kebersihan dan koordinasi dengan tim',
-    ...overrides,
-});
+const renderPage = (trip = makeTrip()) => render(Show, { props: { trip } });
 
 // ============================================================
-// SETUP
+// 5. TEST SUITE
 // ============================================================
-
-beforeEach(() => {
-    vi.clearAllMocks();
-});
-
-// ============================================================
-// KATEGORI 1 — HEADER & INFO TRIP
-// ============================================================
-
-describe('Mitra Trip Show — Header & Info', () => {
-    it('merender header trip (nama paket, kode, status, role)', () => {
-        render(MitraTripShow, {
-            props: {
-                trip: createMockTrip(),
-                tripMitra: createMockTripMitra(),
-            },
-        });
-
-        expect(
-            screen.getByRole('heading', { level: 1, name: 'Paket Bali' })
-        ).toBeInTheDocument();
-        // TRIP-123 muncul di header + mungkin di tempat lain — pakai getAllByText
-        expect(screen.getAllByText('TRIP-123').length).toBeGreaterThanOrEqual(1);
-        expect(screen.getAllByText('Label Trip active').length).toBeGreaterThanOrEqual(1);
-        expect(screen.getByText(/Anda: Label Role lead/i)).toBeInTheDocument();
+describe('Mitra Trips — Show Page', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
     });
 
-    it('merender info tanggal, peserta, timezone', () => {
-        render(MitraTripShow, {
-            props: {
-                trip: createMockTrip(),
-                tripMitra: createMockTripMitra(),
-            },
+    describe('Rendering', () => {
+        it('menampilkan BackButton', () => {
+            renderPage();
+            expect(screen.getByTestId('back-button')).toHaveTextContent('Kembali ke Jadwal Perjalanan');
         });
 
-        // Tgl: 2026-05-01 muncul di header + hari 1
-        expect(screen.getAllByText('Tgl: 2026-05-01').length).toBeGreaterThanOrEqual(1);
-        // Tgl: 2026-05-03 hanya di header (tanggal selesai)
-        expect(screen.getAllByText('Tgl: 2026-05-03').length).toBeGreaterThanOrEqual(1);
-        expect(screen.getByText('5 orang')).toBeInTheDocument();
-        expect(screen.getByText('TZ: Asia/Jakarta')).toBeInTheDocument();
+        it('merender TripHeaderCard dengan data yang benar', () => {
+            renderPage();
+            const header = screen.getByTestId('trip-header-card');
+            expect(header).toHaveAttribute('data-kode', 'TRIP-001');
+            expect(header).toHaveAttribute('data-status', 'scheduled');
+            expect(header).toHaveAttribute('data-paket', 'Paket Bali (Snapshot)');
+            expect(header).toHaveAttribute('data-has-client', 'true');
+        });
+
+        it('memanggil getTripManifestUrl dengan trip.id', () => {
+            renderPage();
+            expect(mockApi.getTripManifestUrl).toHaveBeenCalledWith(42);
+        });
+
+        it('merender TripItineraryList dengan days', () => {
+            renderPage();
+            expect(screen.getByTestId('trip-itinerary')).toHaveAttribute('data-days-count', '2');
+        });
+
+        it('merender TripFacilitiesCard dengan include & exclude dari snapshot', () => {
+            renderPage();
+            const facilities = screen.getByTestId('trip-facilities');
+            expect(facilities).toHaveAttribute('data-include-count', '2');
+            expect(facilities).toHaveAttribute('data-exclude-count', '1');
+        });
+
+        it('menampilkan mitra (Penyedia Perjalanan) jika ada', () => {
+            renderPage();
+            expect(screen.getByText('Penyedia Perjalanan')).toBeInTheDocument();
+            expect(screen.getByText('PT Mitra Jaya')).toBeInTheDocument();
+            expect(screen.getByText('mitra@test.com')).toBeInTheDocument();
+        });
     });
 
-    it('merender info client', () => {
-        render(MitraTripShow, {
-            props: {
-                trip: createMockTrip(),
-                tripMitra: createMockTripMitra(),
-            },
+    describe('Edge Cases', () => {
+        it('handle snapshot_package null (fallback ke trip.package)', () => {
+            renderPage(makeTrip({ snapshot_package: null }));
+            const header = screen.getByTestId('trip-header-card');
+            expect(header).toHaveAttribute('data-paket', 'Paket Bali');
         });
 
-        expect(screen.getByText('Budi')).toBeInTheDocument();
-        expect(screen.getByText('budi@example.com')).toBeInTheDocument();
-    });
-});
-
-// ============================================================
-// KATEGORI 2 — ITINERARY & TOMBOL LAPOR
-// ============================================================
-
-describe('Mitra Trip Show — Itinerary & Lapor', () => {
-    it('merender itinerary per hari', () => {
-        render(MitraTripShow, {
-            props: {
-                trip: createMockTrip(),
-                tripMitra: createMockTripMitra(),
-            },
+        it('handle facilities snapshot kosong', () => {
+            renderPage(makeTrip({
+                snapshot_package: { nama: 'Test', facilities: null },
+            }));
+            const facilities = screen.getByTestId('trip-facilities');
+            expect(facilities).toHaveAttribute('data-include-count', '0');
+            expect(facilities).toHaveAttribute('data-exclude-count', '0');
         });
 
-        expect(screen.getByText('Hari Pertama')).toBeInTheDocument();
-        expect(screen.getByText('Hari Kedua')).toBeInTheDocument();
-    });
-
-    it('menampilkan tombol "Lapor Hari Ini" hanya di hari yang cocok', () => {
-        // isTodayInTimezone mock: true untuk 2026-05-01, false untuk lainnya
-        render(MitraTripShow, {
-            props: {
-                trip: createMockTrip(),
-                tripMitra: createMockTripMitra(),
-            },
+        it('handle client null di booking', () => {
+            renderPage(makeTrip({
+                booking: { id: 10, kode: 'BK-001', client: null },
+            }));
+            expect(screen.getByTestId('trip-header-card')).toHaveAttribute('data-has-client', 'false');
         });
 
-        const laporButtons = screen.getAllByRole('link', {
-            name: /Lapor Hari Ini/i,
-        });
-        // Hanya hari 1 (2026-05-01) yang dapat tombol
-        expect(laporButtons.length).toBe(1);
-    });
-
-    it('TIDAK menampilkan tombol "Lapor Hari Ini" jika trip tidak aktif', () => {
-        render(MitraTripShow, {
-            props: {
-                trip: createMockTrip({ status: 'scheduled' }),
-                tripMitra: createMockTripMitra(),
-            },
+        it('TIDAK menampilkan mitra jika trip.mitra null', () => {
+            renderPage(makeTrip({ mitra: null }));
+            expect(screen.queryByText('Penyedia Perjalanan')).not.toBeInTheDocument();
         });
 
-        expect(
-            screen.queryByRole('link', { name: /Lapor Hari Ini/i })
-        ).not.toBeInTheDocument();
-    });
-});
-
-// ============================================================
-// KATEGORI 3 — TUGAS SAYA
-// ============================================================
-
-describe('Mitra Trip Show — Tugas Saya', () => {
-    it('merender role, honor, dan instruksi mitra', () => {
-        render(MitraTripShow, {
-            props: {
-                trip: createMockTrip(),
-                tripMitra: createMockTripMitra(),
-            },
+        it('handle days kosong', () => {
+            renderPage(makeTrip({ days: [] }));
+            expect(screen.getByTestId('trip-itinerary')).toHaveAttribute('data-days-count', '0');
         });
-
-        expect(screen.getByText('Tugas Saya')).toBeInTheDocument();
-        // Honor 1000000 muncul 2x (honor + total), pakai getAllByText
-        expect(screen.getAllByText('Rp 1000000').length).toBeGreaterThanOrEqual(1);
-        expect(screen.getByText('Flat')).toBeInTheDocument();
-        expect(
-            screen.getByText('Jaga kebersihan dan koordinasi dengan tim')
-        ).toBeInTheDocument();
-    });
-
-    it('TIDAK merender card Tugas Saya jika tripMitra null', () => {
-        render(MitraTripShow, {
-            props: {
-                trip: createMockTrip(),
-                tripMitra: null,
-            },
-        });
-
-        expect(screen.queryByText('Tugas Saya')).not.toBeInTheDocument();
     });
 });

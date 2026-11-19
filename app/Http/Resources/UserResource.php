@@ -6,11 +6,23 @@ use App\Models\Profile;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Carbon;
 
 /**
  * Representasi user (admin, mitra, client).
  *
  * @mixin User
+ *
+ * @property-read int $id
+ * @property-read string $name
+ * @property-read string|null $username
+ * @property-read string $email
+ * @property-read string $role
+ * @property-read string|null $timezone
+ * @property-read bool $must_change_password
+ * @property-read Carbon|null $email_verified_at
+ * @property-read Carbon|null $created_at
+ * @property-read Profile|null $profile
  */
 final class UserResource extends JsonResource
 {
@@ -18,12 +30,12 @@ final class UserResource extends JsonResource
      * Bentuk data user yang dikirim ke frontend.
      *
      * Keamanan:
-     * - `password`, `remember_token`, `google_id` TIDAK pernah
+     * - `password`, `remember_token`, `google_id`, `fcm_token` TIDAK pernah
      *   dikirim, meskipun model sudah punya `$hidden`. Ini adalah
-     *   defense in depth: kontrak Resource eksplisit, tidak
-     *   bergantung pada `$hidden` model.
+     *   defense in depth: kontrak Resource eksplisit, tidak bergantung pada
+     *   `$hidden` model.
      *
-     * Relasi `profile` hanya disertakan bila di-eager-load,
+     * Relasi `profile` & `bankAccounts` hanya disertakan bila di-eager-load,
      * menghindari N+1 di daftar user admin.
      *
      * @return array<string, mixed>
@@ -63,6 +75,19 @@ final class UserResource extends JsonResource
                     'deskripsi' => $profile->deskripsi,
                 ];
             }),
+
+            // FIX: gunakan 3-arg whenLoaded (value, callback, default).
+            // Versi lama `MitraBankAccountResource::collection($this->whenLoaded(...))`
+            // menyebabkan "Call to a member function first() on null" karena
+            // MissingValue diteruskan ke ResourceCollection constructor.
+            //
+            // Default `[]` memastikan client (yang tidak punya bank_accounts)
+            // tidak crash dan mendapat array kosong.
+            'bank_accounts' => $this->whenLoaded(
+                'bankAccounts',
+                fn (): array => MitraBankAccountResource::collection($this->bankAccounts)->resolve(),
+                fn (): array => [],
+            ),
         ];
     }
 }

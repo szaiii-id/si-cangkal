@@ -17,13 +17,13 @@ final class RefundResource extends JsonResource
     /**
      * Bentuk data refund yang dikirim ke frontend.
      *
-     * Field database tetap snake_case (`amount`, `failure_code`,
-     * `created_at`, `catatan`) mengikuti kontrak `BookingResource`
+     * Field database tetap snake_case (amount, failure_code,
+     * created_at, catatan) mengikuti kontrak BookingResource
      * yang sudah berjalan. Field turunan memakai camelCase
-     * (`amountRupiah`, `reasonLabel`, `statusLabel`, `isFinal`).
+     * (amountRupiah, reasonLabel, statusLabel, isFinal).
      *
-     * Relasi `mitra` dan `mitraInitiator` hanya disertakan bila
-     * di-eager-load — menghindari N+1 di daftar refund admin.
+     * Relasi mitra dan mitraInitiator hanya disertakan bila
+     * di-eager-load - menghindari N+1 di daftar refund admin.
      *
      * @return array<string, mixed>
      */
@@ -47,7 +47,7 @@ final class RefundResource extends JsonResource
                 : null,
             'refundFeeRupiah' => $this->refundFeeRupiah(),
             'catatan' => $this->catatan,
-            'created_at' => $this->created_at?->toIso8601String(),
+            'created_at' => $this->created_at->toIso8601String(),
             'mitra' => $this->whenLoaded('mitra', function (): ?array {
                 /** @var User|null $mitra */
                 $mitra = $this->mitra;

@@ -44,4 +44,16 @@ return [
         'decay_seconds' => (int) env('AUTH_THROTTLE_CONTACT_DECAY', 60),
         'test_override' => env('AUTH_THROTTLE_CONTACT_TEST_OVERRIDE'),
     ],
+
+    'upload-proof' => [
+        'max_attempts' => (int) env('AUTH_THROTTLE_UPLOAD_PROOF_MAX', 5),
+        'decay_seconds' => (int) env('AUTH_THROTTLE_UPLOAD_PROOF_DECAY', 60),
+        'test_override' => env('AUTH_THROTTLE_UPLOAD_PROOF_TEST_OVERRIDE'),
+    ],
+
+    'e-ticket-download' => [
+        'max_attempts' => (int) env('AUTH_THROTTLE_ETICKET_DOWNLOAD_MAX', 10),
+        'decay_seconds' => (int) env('AUTH_THROTTLE_ETICKET_DOWNLOAD_DECAY', 60),
+        'test_override' => env('AUTH_THROTTLE_ETICKET_DOWNLOAD_TEST_OVERRIDE'),
+    ],
 ];

@@ -1,8 +1,10 @@
 <script lang="ts">
     import { router } from '@inertiajs/svelte';
+    import type { Snippet } from 'svelte';
 
     type Variant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'success';
     type Size = 'sm' | 'md' | 'lg';
+    type Method = 'get' | 'post' | 'put' | 'patch' | 'delete';
 
     let {
         variant = 'primary',
@@ -21,12 +23,12 @@
         size?: Size;
         type?: 'button' | 'submit' | 'reset';
         href?: string | null;
-        method?: 'get' | 'post' | 'put' | 'patch' | 'delete';
+        method?: Method;
         disabled?: boolean;
         loading?: boolean;
         fullWidth?: boolean;
         onclick?: ((e: MouseEvent) => void) | undefined;
-        children: any;
+        children: Snippet;
         [key: string]: any;
     } = $props();
 
@@ -44,6 +46,7 @@
         lg: 'px-8 py-4 text-base',
     };
 
+    // PERBAIKAN: Gunakan filter(Boolean) agar tidak ada spasi ganda
     let classes = $derived(
         [
             'inline-flex items-center justify-center gap-2 rounded-full font-bold',
@@ -54,15 +57,20 @@
             sizeClasses[size],
             fullWidth ? 'w-full' : '',
             !disabled && !loading ? 'hover:-translate-y-0.5' : '',
-        ].join(' ')
+            (disabled || loading) ? 'pointer-events-none opacity-50' : '',
+        ].filter(Boolean).join(' ')
     );
 
     function handleClick(e: MouseEvent) {
-        if (disabled || loading) return;
+        if (disabled || loading) {
+            e.preventDefault(); // Mencegah klik jika disabled/loading
+            return;
+        }
 
         if (href && method !== 'get') {
             e.preventDefault();
-            router[method](href);
+            // Menggunakan router.visit atau method spesifik
+            router[method](href); 
             return;
         }
 
@@ -71,9 +79,23 @@
 </script>
 
 {#if href && method === 'get'}
-    <a {href} class={classes} {...rest}>
+    <!-- 
+      PERBAIKAN:
+      1. Tambahkan role="button" agar screen reader tahu ini tombol.
+      2. Tambahkan aria-disabled & tabindex="-1" jika loading/disabled.
+      3. Tambahkan onclick handler untuk mencegah klik saat loading.
+    -->
+    <a 
+        {href} 
+        class={classes} 
+        role="button"
+        aria-disabled={disabled || loading}
+        tabindex={disabled || loading ? -1 : 0}
+        onclick={handleClick}
+        {...rest}
+    >
         {#if loading}
-            <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+            <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
             </svg>
@@ -89,7 +111,7 @@
         {...rest}
     >
         {#if loading}
-            <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+            <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
             </svg>

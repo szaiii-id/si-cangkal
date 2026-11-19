@@ -136,17 +136,40 @@ class AuthService
             ];
         }
 
-        // ✅ FIX PHPStan: kolom `role` adalah ENUM('admin','mitra','client').
-        // Semua nilai sudah di-handle oleh 3 arm di bawah — `default` arm
-        // TIDAK diperlukan dan akan dianggap "always true" oleh PHPStan.
         return [
-            'url' => match ($user->role) {
-                'admin' => route('admin.dashboard'),
-                'mitra' => route('mitra.dashboard'),
-                'client' => route('client.dashboard'),
-            },
+            'url' => $this->resolveDashboardUrl($user),
             'must_change_password' => false,
         ];
+    }
+
+    /**
+     * Resolve URL dashboard berdasarkan role user.
+     *
+     * Menggunakan guard `in_array` sebelum `match` untuk dua alasan:
+     * 1. **Keamanan data** — jika `role` berisi nilai tak terduga
+     *    (data legacy, corrupt, atau role baru yang lupa di-handle),
+     *    user akan di-redirect ke login alih-alih mengalami
+     *    `UnhandledMatchError` (500 error).
+     * 2. **PHPStan** — guard `in_array` mempersempit tipe `role` ke
+     *    union literal `'admin'|'mitra'|'client'`, sehingga `match`
+     *    tanpa `default` tidak dianggap "always true" oleh PHPStan.
+     */
+    private function resolveDashboardUrl(User $user): string
+    {
+        if (! in_array($user->role, ['admin', 'mitra', 'client'], true)) {
+            Log::warning('=== AUTH: UNKNOWN ROLE ===', [
+                'user_id' => $user->id,
+                'role' => $user->role,
+            ]);
+
+            return route('login');
+        }
+
+        return match ($user->role) {
+            'admin' => route('admin.dashboard'),
+            'mitra' => route('mitra.dashboard'),
+            'client' => route('client.dashboard'),
+        };
     }
 
     /**

@@ -4,7 +4,8 @@
     import FilterBar from '@/global/FilterBar.svelte';
     import Pagination from '@/global/Pagination.svelte';
     import PageHeader from '@/global/PageHeader.svelte';
-    import { inertia, router } from '@inertiajs/svelte';
+    import { inertia } from '@inertiajs/svelte';
+    import { getPackages } from '@/api/mitra';
     import type {
         Package,
         PackageStatus,
@@ -12,7 +13,6 @@
         StatusTab,
     } from '@/types';
     import {
-        packageKategoriBadge,
         packageKategoriLabel,
         packageStatusBadge,
         packageStatusLabel,
@@ -21,10 +21,6 @@
     import { formatCurrency } from '@/utils/formatCurrency';
     import { formatDurasi } from '@/utils/duration';
     import { mitraMenu } from '@/utils/menus';
-
-    // ==========================================
-    // PROPS
-    // ==========================================
 
     type PackageItem = Pick<
         Package,
@@ -46,7 +42,13 @@
 
     let {
         packages,
-        filters = { search: '', status: '', kategori: '', sort: 'created_at', direction: 'desc' },
+        filters = {
+            search: '',
+            status: '',
+            kategori: '',
+            sort: 'created_at',
+            direction: 'desc',
+        },
         statusCounts = { draft: 0, aktif: 0, arsip: 0 },
     }: {
         packages: PaginationMeta & { data: PackageItem[] };
@@ -60,10 +62,6 @@
         statusCounts: Record<string, number>;
     } = $props();
 
-    // ==========================================
-    // STATE
-    // ==========================================
-
     // svelte-ignore state_referenced_locally
     let search = $state(filters.search ?? '');
     // svelte-ignore state_referenced_locally
@@ -71,10 +69,6 @@
     // svelte-ignore state_referenced_locally
     let selectedKategori = $state(filters.kategori ?? '');
     let searchTimeout: ReturnType<typeof setTimeout>;
-
-    // ==========================================
-    // FILTER HANDLERS
-    // ==========================================
 
     function buildQuery() {
         return {
@@ -87,7 +81,7 @@
     }
 
     function navigate(): void {
-        router.get('/mitra/packages', buildQuery(), {
+        getPackages(buildQuery(), {
             preserveState: true,
             preserveScroll: true,
             replace: true,
@@ -110,19 +104,25 @@
         selectedStatus = '';
         selectedKategori = '';
         clearTimeout(searchTimeout);
-        router.get('/mitra/packages', {}, { preserveState: true, preserveScroll: true, replace: true });
+        getPackages({}, {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+        });
     }
 
-    let hasActiveFilters = $derived(search !== '' || selectedStatus !== '' || selectedKategori !== '');
-
-    // ==========================================
-    // STATUS TABS
-    // ==========================================
+    let hasActiveFilters = $derived(
+        search !== '' || selectedStatus !== '' || selectedKategori !== '',
+    );
 
     const statusKeys: PackageStatus[] = ['draft', 'aktif', 'arsip'];
 
     let statusTabs: StatusTab[] = $derived([
-        { value: '', label: 'Semua', count: Object.values(statusCounts).reduce((a, b) => a + b, 0) },
+        {
+            value: '',
+            label: 'Semua',
+            count: Object.values(statusCounts).reduce((a, b) => a + b, 0),
+        },
         ...statusKeys
             .filter((s) => statusCounts[s] > 0 || selectedStatus === s)
             .map((s) => ({
@@ -131,10 +131,6 @@
                 count: statusCounts[s] ?? 0,
             })),
     ]);
-
-    // ==========================================
-    // KATEGORI OPTIONS
-    // ==========================================
 
     const kategoriOptions = [
         { value: '', label: 'Semua Kategori' },
@@ -147,7 +143,7 @@
 </script>
 
 <svelte:head>
-    <title>Katalog Paket Wisata | Titiktemu</title>
+    <title>Katalog Paket Wisata | SI-CANGKAL</title>
 </svelte:head>
 
 <DashboardLayout title="Katalog Paket Wisata" menuItems={mitraMenu}>
@@ -169,17 +165,15 @@
         {/snippet}
     </PageHeader>
 
-    <!-- Card -->
     <div class="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
-        <!-- FilterBar -->
         <FilterBar
             bind:search
             onSearch={handleSearch}
             searchPlaceholder="Cari nama atau kode paket..."
-            statusTabs={statusTabs}
+            {statusTabs}
             bind:selectedStatus
             onStatusChange={changeStatus}
-            kategoriOptions={kategoriOptions}
+            {kategoriOptions}
             bind:selectedKategori
             onKategoriChange={(value) => {
                 selectedKategori = value;
@@ -189,7 +183,6 @@
             {hasActiveFilters}
         />
 
-        <!-- List / Empty -->
         {#if packages.data.length === 0}
             <EmptyState
                 icon="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
@@ -208,7 +201,6 @@
                         use:inertia
                         class="group bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-200 flex flex-col"
                     >
-                        <!-- Cover -->
                         <div class="relative h-40 bg-linear-to-br from-pink-dark to-purple flex items-center justify-center text-white font-extrabold text-4xl overflow-hidden">
                             {#if pkg.cover_image}
                                 <img
@@ -222,14 +214,12 @@
                                 </span>
                             {/if}
 
-                            <!-- Status -->
                             <div class="absolute top-3 right-3">
                                 <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-white/95 backdrop-blur {packageStatusBadge(pkg.status)}">
                                     {packageStatusLabel(pkg.status)}
                                 </span>
                             </div>
 
-                            <!-- Kategori -->
                             <div class="absolute top-3 left-3">
                                 <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-dark/80 backdrop-blur text-white">
                                     {packageKategoriLabel(pkg.kategori)}
@@ -237,7 +227,6 @@
                             </div>
                         </div>
 
-                        <!-- Body -->
                         <div class="p-4 flex-1 flex flex-col">
                             <div class="flex items-center justify-between gap-2 mb-1">
                                 <p class="text-[10px] font-mono text-gray-500">{pkg.kode}</p>
@@ -256,25 +245,32 @@
                                 </p>
                             {/if}
 
-                            <div class="pt-3 border-t border-gray-100 flex items-end justify-between mt-auto">
-                                <div>
-                                    <p class="text-[10px] text-gray-500 uppercase tracking-widest">Mulai</p>
-                                    <p class="text-base font-extrabold text-pink-text">
-                                        {formatCurrency(pkg.harga_per_orang)}
+                            <div class="pt-3 border-t border-gray-100 flex items-end justify-between gap-2 mt-auto">
+                                <div class="min-w-0">
+                                    <p class="text-[10px] text-gray-500 uppercase tracking-widest">
+                                        {pkg.harga_per_rombongan ? 'Harga Rombongan' : 'Mulai'}
+                                    </p>
+                                    <p class="text-base font-extrabold text-pink-text truncate">
+                                        {pkg.harga_per_rombongan 
+                                            ? formatCurrency(pkg.harga_per_rombongan) 
+                                            : formatCurrency(pkg.harga_per_orang)}
+                                    </p>
+                                    <p class="text-[10px] text-gray-600 mt-0.5">
+                                        {pkg.harga_per_rombongan ? '/ grup (Flat)' : '/ orang'}
                                     </p>
                                 </div>
-                                <div class="w-8 h-8 rounded-full bg-pink-dark text-white flex items-center justify-center shadow-md group-hover:bg-sun-dark group-hover:scale-110 transition-all">
-                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                <span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-pink-dark text-white text-xs font-bold shadow-sm group-hover:bg-sun-dark transition-all whitespace-nowrap flex-shrink-0">
+                                    Detail
+                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
                                     </svg>
-                                </div>
+                                </span>
                             </div>
                         </div>
                     </a>
                 {/each}
             </div>
 
-            <!-- Pagination -->
             <Pagination meta={packages} label="paket" />
         {/if}
     </div>

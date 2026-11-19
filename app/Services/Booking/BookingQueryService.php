@@ -9,22 +9,7 @@ use App\Repositories\Contracts\BookingRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Validation\ValidationException;
 
-/**
- * Service read-only untuk Booking.
- *
- * Hasil pemecahan `BookingService` (PRD 5.7) — hanya berisi operasi
- * yang tidak mengubah state. Dipisahkan agar:
- * - Controller yang hanya membaca data tidak perlu men-depend pada
- *   service yang bisa menulis (prinsip Interface Segregation).
- * - Test read-only tidak perlu menyentuh DB transaction.
- *
- * Tidak ada method yang memodifikasi data di sini. Bila butuh
- * verifikasi/upload/cancel, gunakan:
- * - {@see BookingPaymentService}
- * - {@see BookingCancellationService}
- * - {@see BookingCreationService}
- */
-final class BookingQueryService
+class BookingQueryService
 {
     public function __construct(
         private readonly BookingRepositoryInterface $bookingRepository,
@@ -32,10 +17,6 @@ final class BookingQueryService
 
     /**
      * Daftar booking dengan pagination, search, dan filter.
-     *
-     * Dipakai di:
-     * - {@see \App\Http\Controllers\Admin\BookingController::index}
-     * - {@see \App\Http\Controllers\Mitra\BookingController::index}
      *
      * @param  array<string, mixed>  $filters
      * @return LengthAwarePaginator<int, Booking>
@@ -95,6 +76,16 @@ final class BookingQueryService
     public function countByStatusForClient(User $client): array
     {
         return $this->bookingRepository->countByStatusForClient($client);
+    }
+
+    /**
+     * Jumlah booking per status untuk mitra tertentu.
+     *
+     * @return array<string, int>
+     */
+    public function countByStatusForMitra(User $mitra): array
+    {
+        return $this->bookingRepository->countByStatusForMitra($mitra);
     }
 
     /**

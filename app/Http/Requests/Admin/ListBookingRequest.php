@@ -6,12 +6,6 @@ use App\Enums\BookingStatus;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-/**
- * Validasi filter daftar booking di panel admin.
- *
- * Menggantikan pembacaan `$request->input(...)` tanpa validasi
- * (NF-03, S-02). `per_page` dibatasi untuk mencegah pagination abuse.
- */
 final class ListBookingRequest extends FormRequest
 {
     public function authorize(): bool
@@ -30,6 +24,7 @@ final class ListBookingRequest extends FormRequest
             'package_id' => ['nullable', 'integer', 'min:1'],
             'tanggal_dari' => ['nullable', 'date_format:Y-m-d'],
             'tanggal_sampai' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:tanggal_dari'],
+            'is_today' => ['nullable', 'in:0,1'],
             'sort' => [
                 'nullable',
                 'string',
@@ -51,6 +46,7 @@ final class ListBookingRequest extends FormRequest
             'tanggal_dari.date_format' => 'Format tanggal harus YYYY-MM-DD.',
             'tanggal_sampai.date_format' => 'Format tanggal harus YYYY-MM-DD.',
             'tanggal_sampai.after_or_equal' => 'Tanggal sampai harus setelah atau sama dengan tanggal dari.',
+            'is_today.in' => 'Filter hari ini tidak valid.',
             'per_page.min' => 'Jumlah per halaman minimal 5.',
             'per_page.max' => 'Jumlah per halaman maksimal 100.',
             'direction.in' => 'Arah sortir harus asc atau desc.',

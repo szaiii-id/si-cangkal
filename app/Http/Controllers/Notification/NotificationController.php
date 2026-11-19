@@ -10,9 +10,6 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
-/**
- * Controller untuk halaman Notifikasi In-App (ikon lonceng).
- */
 final class NotificationController extends Controller
 {
     public function __construct(
@@ -20,7 +17,7 @@ final class NotificationController extends Controller
     ) {}
 
     /**
-     * Tampilkan daftar notifikasi milik user yang login.
+     * Tampilkan daftar notifikasi milik user yang login (Admin & Mitra).
      */
     public function index(Request $request): InertiaResponse
     {
@@ -33,11 +30,23 @@ final class NotificationController extends Controller
     }
 
     /**
+     * Tampilkan daftar notifikasi khusus Client.
+     */
+    public function clientIndex(Request $request): InertiaResponse
+    {
+        $notifs = $this->notificationService->paginateForUser($request->user(), 20);
+
+        return Inertia::render('Client/Notifications/Index', [
+            'notifications' => $notifs,
+            'unreadCount' => $this->notificationService->unreadCount($request->user()),
+        ]);
+    }
+
+    /**
      * Tandai satu notifikasi sebagai sudah dibaca.
      */
     public function markAsRead(Request $request, AppNotification $notification): RedirectResponse
     {
-        // Best Practice: Gunakan Policy (jika ada) atau cek kepemilikan
         abort_unless($notification->user_id === $request->user()->id, 403);
 
         $this->notificationService->markAsRead($notification);

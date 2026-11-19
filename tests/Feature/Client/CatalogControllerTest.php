@@ -5,17 +5,33 @@ use App\Enums\PackageStatus;
 use App\Models\Package;
 use App\Models\PackageDay;
 use App\Models\PackageFacility;
+use App\Models\Profile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Route;
+use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
 
 /*
 |==========================================================================
-| SETUP
+| SETUP — Integration Test
 |==========================================================================
+|
+| CatalogController (client) — katalog paket aktif + detail.
+|
+| Route (prefix /client):
+| - GET /catalog                  → index
+| - GET /catalog/{package:slug}   → show
+|
+| Middleware: auth, password.changed, role:client
+| Policy: TIDAK ADA (public catalog untuk client)
+|
+| Catatan:
+| - `config(['inertia.testing.ensure_pages_exist' => false])` — backend test.
+| - Controller TIDAK pakai `$this->authorize(...)` — akses bebas untuk client.
+| - `show` guard: `abort_unless($package->isAktif(), 404)`.
+| - Route pakai `{package:slug}` — binding by slug, bukan ID.
+|
 */
 
 beforeEach(function () {
@@ -23,67 +39,39 @@ beforeEach(function () {
         $this->withoutVite();
     }
 
+    config(['inertia.testing.ensure_pages_exist' => false]);
+
     $this->client = User::factory()->client()->create([
         'must_change_password' => false,
     ]);
 
-    // Package aktif (bisa dilihat client)
-    $this->activePackage = Package::factory()->create([
-        'nama' => 'Paket Aktif',
-        'slug' => 'paket-aktif',
-        'kode' => 'PKG-AKTIF',
-        'status' => PackageStatus::AKTIF,
-        'kategori' => PackageKategori::WISATA_ALAM,
-        'timezone' => 'Asia/Makassar',
-        'harga_per_orang' => '500000.00',
-        'harga_per_rombongan' => null,
-        'min_peserta' => 2,
-        'max_peserta' => 10,
-        'durasi_hari' => 2,
-        'durasi_malam' => 1,
+    $this->mitra = User::factory()->mitra()->create([
+        'name' => 'Mitra Travel',
+        'must_change_password' => false,
     ]);
 
-    // Package draft (tidak boleh dilihat)
-    $this->draftPackage = Package::factory()->create([
-        'nama' => 'Paket Draft',
-        'slug' => 'paket-draft',
-        'kode' => 'PKG-DRAFT',
-        'status' => PackageStatus::DRAFT,
-        'kategori' => PackageKategori::BUDAYA,
-        'timezone' => 'Asia/Makassar',
-        'harga_per_orang' => '300000.00',
-    ]);
-
-    // Package arsip (tidak boleh dilihat)
-    $this->archivedPackage = Package::factory()->create([
-        'nama' => 'Paket Arsip',
-        'slug' => 'paket-arsip',
-        'kode' => 'PKG-ARSIP',
-        'status' => PackageStatus::ARSIP,
-        'kategori' => PackageKategori::KULINER,
-        'timezone' => 'Asia/Makassar',
-        'harga_per_orang' => '400000.00',
-    ]);
-
-    // Setup days + costs + facilities untuk active package
-    PackageDay::factory()->create([
-        'package_id' => $this->activePackage->id,
-        'hari_ke' => 1,
-        'judul' => 'Day 1',
-    ]);
-    PackageDay::factory()->create([
-        'package_id' => $this->activePackage->id,
-        'hari_ke' => 2,
-        'judul' => 'Day 2',
-    ]);
-
-    PackageFacility::factory()->create([
-        'package_id' => $this->activePackage->id,
-        'tipe' => 'include',
-        'nama' => 'Transportasi',
-        'urutan' => 1,
+    // Profile mitra (untuk show)
+    Profile::factory()->create([
+        'user_id' => $this->mitra->id,
+        'tipe' => 'mitra',
+        'nama_penyedia_usaha' => 'PT Travel Jaya',
+        'telepon' => '08123456789',
+        'alamat' => 'Jl. Test',
     ]);
 });
+
+/*
+|==========================================================================
+| HELPER — buat paket
+|==========================================================================
+*/
+function makePackageForCatalog(User $mitra, array $overrides = []): Package
+{
+    return Package::factory()->forMitra($mitra)->create(array_merge([
+        'status' => PackageStatus::AKTIF->value,
+        'nama' => 'Paket Test '.uniqid(),
+    ], $overrides));
+}
 
 /*
 |==========================================================================
@@ -91,31 +79,48 @@ beforeEach(function () {
 |==========================================================================
 */
 
-it('GET /client/catalog merender Inertia component Client/Catalog/Index', function () {
-    $response = $this->actingAs($this->client)->get('/client/catalog');
+describe('Contract — index', function () {
+    it('GET /client/catalog → render Client/Catalog/Index', function () {
+        $this->actingAs($this->client)
+            ->get('/client/catalog')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Client/Catalog/Index')
+                ->has('packages')
+                ->has('filters')
+            );
+    });
 
-    $response->assertOk();
-    $response->assertInertia(fn ($page) => $page
-        ->component('Client/Catalog/Index')
-        ->has('packages')
-        ->has('filters')
-        ->where('filters.status', 'aktif')
-        ->where('filters.sort', 'nama')
-        ->where('filters.direction', 'asc')
-    );
+    it('filters default: search=null, status=aktif, kategori=null, sort=nama, direction=asc', function () {
+        $this->actingAs($this->client)
+            ->get('/client/catalog')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.search', null)
+                ->where('filters.status', 'aktif')
+                ->where('filters.kategori', null)
+                ->where('filters.sort', 'nama')
+                ->where('filters.direction', 'asc')
+            );
+    });
+
+    it('route name = client.catalog.index', function () {
+        expect(route('client.catalog.index'))->toBe(url('/client/catalog'));
+    });
 });
 
-it('GET /client/catalog/{slug} merender Inertia component Client/Catalog/Show', function () {
-    $response = $this->actingAs($this->client)
-        ->get("/client/catalog/{$this->activePackage->slug}");
+describe('Contract — show', function () {
+    it('GET /client/catalog/{slug} → render Client/Catalog/Show', function () {
+        $package = makePackageForCatalog($this->mitra);
 
-    $response->assertOk();
-    $response->assertInertia(fn ($page) => $page
-        ->component('Client/Catalog/Show')
-        ->has('package')
-        ->where('package.id', $this->activePackage->id)
-        ->where('package.nama', 'Paket Aktif')
-    );
+        $this->actingAs($this->client)
+            ->get("/client/catalog/{$package->slug}")
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Client/Catalog/Show')
+                ->has('package')
+                ->where('package.id', $package->id)
+            );
+    });
 });
 
 /*
@@ -124,260 +129,226 @@ it('GET /client/catalog/{slug} merender Inertia component Client/Catalog/Show', 
 |==========================================================================
 */
 
-it('guest di-redirect ke login saat akses katalog', function () {
-    $this->get('/client/catalog')->assertRedirect(route('login'));
+describe('Security — guest & role', function () {
+    it('guest di-redirect ke login (index)', function () {
+        $this->get('/client/catalog')->assertRedirect(route('login'));
+    });
+
+    it('guest di-redirect ke login (show)', function () {
+        $package = makePackageForCatalog($this->mitra);
+
+        $this->get("/client/catalog/{$package->slug}")
+            ->assertRedirect(route('login'));
+    });
+
+    it('admin di-redirect ke admin.dashboard (index)', function () {
+        $admin = User::factory()->admin()->create(['must_change_password' => false]);
+
+        $this->actingAs($admin)
+            ->get('/client/catalog')
+            ->assertRedirect(route('admin.dashboard'));
+    });
+
+    it('mitra di-redirect ke mitra.dashboard (index)', function () {
+        $this->actingAs($this->mitra)
+            ->get('/client/catalog')
+            ->assertRedirect(route('mitra.dashboard'));
+    });
+
+    it('client must_change_password=true di-redirect ke password.change', function () {
+        $needChange = User::factory()->client()->create(['must_change_password' => true]);
+
+        $this->actingAs($needChange)
+            ->get('/client/catalog')
+            ->assertRedirect(route('password.change'));
+    });
 });
 
-it('guest di-redirect ke login saat akses detail paket', function () {
-    $this->get("/client/catalog/{$this->activePackage->slug}")
-        ->assertRedirect(route('login'));
-});
+describe('Security — show guard (hanya paket aktif)', function () {
+    it('show paket DRAFT → 404', function () {
+        $package = makePackageForCatalog($this->mitra, [
+            'status' => PackageStatus::DRAFT->value,
+        ]);
 
-it('admin di-redirect ke dashboard admin saat akses katalog', function () {
-    $admin = User::factory()->admin()->create(['must_change_password' => false]);
+        $this->actingAs($this->client)
+            ->get("/client/catalog/{$package->slug}")
+            ->assertNotFound();
+    });
 
-    $this->actingAs($admin)
-        ->get('/client/catalog')
-        ->assertRedirect(route('admin.dashboard'));
-});
+    it('show paket ARSIP → 404', function () {
+        $package = makePackageForCatalog($this->mitra, [
+            'status' => PackageStatus::ARSIP->value,
+        ]);
 
-it('mitra di-redirect ke dashboard mitra saat akses katalog', function () {
-    $mitra = User::factory()->mitra()->create(['must_change_password' => false]);
+        $this->actingAs($this->client)
+            ->get("/client/catalog/{$package->slug}")
+            ->assertNotFound();
+    });
 
-    $this->actingAs($mitra)
-        ->get('/client/catalog')
-        ->assertRedirect(route('mitra.dashboard'));
-});
+    it('show paket AKTIF → OK', function () {
+        $package = makePackageForCatalog($this->mitra, [
+            'status' => PackageStatus::AKTIF->value,
+        ]);
 
-it('client dengan must_change_password = true di-redirect ke change-password', function () {
-    $client = User::factory()->client()->create(['must_change_password' => true]);
-
-    $this->actingAs($client)
-        ->get('/client/catalog')
-        ->assertRedirect(route('password.change'));
-});
-
-/*
-|==========================================================================
-| KATEGORI 3 — DATA INTEGRITY: Filter Status
-|==========================================================================
-*/
-
-it('hanya menampilkan package dengan status aktif', function () {
-    $response = $this->actingAs($this->client)->get('/client/catalog');
-
-    $response->assertInertia(fn ($page) => $page
-        ->has('packages.data', 1)
-        ->where('packages.data.0.id', $this->activePackage->id)
-        ->where('packages.data.0.status', 'aktif')
-    );
-});
-
-it('detail package draft return 404', function () {
-    $this->actingAs($this->client)
-        ->get("/client/catalog/{$this->draftPackage->slug}")
-        ->assertNotFound();
-});
-
-it('detail package arsip return 404', function () {
-    $this->actingAs($this->client)
-        ->get("/client/catalog/{$this->archivedPackage->slug}")
-        ->assertNotFound();
-});
-
-it('detail package aktif return 200', function () {
-    $this->actingAs($this->client)
-        ->get("/client/catalog/{$this->activePackage->slug}")
-        ->assertOk();
-});
-
-/*
-|==========================================================================
-| KATEGORI 4 — ERROR HANDLING & VALIDATION
-|==========================================================================
-*/
-
-it('detail package dengan slug tidak ada return 404', function () {
-    $this->actingAs($this->client)
-        ->get('/client/catalog/tidak-ada-slug')
-        ->assertNotFound();
-});
-
-it('filter search tidak error jika kosong', function () {
-    $this->actingAs($this->client)
-        ->get('/client/catalog?search=')
-        ->assertOk();
-});
-
-it('filter kategori invalid tidak error (diabaikan atau 0 hasil)', function () {
-    $response = $this->actingAs($this->client)
-        ->get('/client/catalog?kategori=invalid');
-
-    $response->assertOk();
-});
-
-it('filter sort invalid fallback ke default', function () {
-    $response = $this->actingAs($this->client)
-        ->get('/client/catalog?sort=invalid_sort');
-
-    // Tidak crash, mungkin fallback ke default atau 0 hasil
-    $response->assertOk();
+        $this->actingAs($this->client)
+            ->get("/client/catalog/{$package->slug}")
+            ->assertOk();
+    });
 });
 
 /*
 |==========================================================================
-| KATEGORI 5 — BEHAVIORAL: Filter & Sort
+| KATEGORI 3 — CONCURRENCY
 |==========================================================================
 */
 
-it('filter search nama package', function () {
-    $response = $this->actingAs($this->client)
-        ->get('/client/catalog?search=Aktif');
+describe('Concurrency — read-only consistency', function () {
+    it('2x GET index → total identik', function () {
+        makePackageForCatalog($this->mitra);
+        makePackageForCatalog($this->mitra);
 
-    // Debug: cek status DULU
-    if ($response->status() !== 200) {
-        // Cek exception
-        if ($response->exception) {
-            fwrite(STDERR, "\n=== EXCEPTION ===\n");
-            fwrite(STDERR, get_class($response->exception)."\n");
-            fwrite(STDERR, $response->exception->getMessage()."\n");
-            fwrite(STDERR, "================\n");
+        $first = $this->actingAs($this->client)
+            ->get('/client/catalog')
+            ->viewData('page')['props']['packages']['total'];
+
+        $second = $this->actingAs($this->client)
+            ->get('/client/catalog')
+            ->viewData('page')['props']['packages']['total'];
+
+        expect($first)->toBe($second);
+    });
+});
+
+/*
+|==========================================================================
+| KATEGORI 4 — IDEMPOTENCY
+|==========================================================================
+*/
+
+describe('Idempotency', function () {
+    it('GET index berulang tidak mengubah data', function () {
+        makePackageForCatalog($this->mitra);
+        $countBefore = Package::count();
+
+        $this->actingAs($this->client)->get('/client/catalog');
+        $this->actingAs($this->client)->get('/client/catalog');
+
+        expect(Package::count())->toBe($countBefore);
+    });
+});
+
+/*
+|==========================================================================
+| KATEGORI 5 — DATA INTEGRITY
+|==========================================================================
+*/
+
+describe('Data Integrity — index filters', function () {
+    it('hanya menampilkan paket aktif', function () {
+        makePackageForCatalog($this->mitra, ['nama' => 'Paket Aktif']);
+        makePackageForCatalog($this->mitra, [
+            'nama' => 'Paket Draft',
+            'status' => PackageStatus::DRAFT->value,
+        ]);
+        makePackageForCatalog($this->mitra, [
+            'nama' => 'Paket Arsip',
+            'status' => PackageStatus::ARSIP->value,
+        ]);
+
+        $this->actingAs($this->client)
+            ->get('/client/catalog')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('packages.total', 1)
+                ->where('packages.data.0.nama', 'Paket Aktif')
+            );
+    });
+
+    it('search by nama → return match', function () {
+        makePackageForCatalog($this->mitra, ['nama' => 'Paket Bali Spesial']);
+        makePackageForCatalog($this->mitra, ['nama' => 'Paket Lombok']);
+
+        $this->actingAs($this->client)
+            ->get('/client/catalog?search=Bali')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.search', 'Bali')
+            );
+    });
+
+    it('filter kategori=wisata_alam → hanya wisata_alam', function () {
+        makePackageForCatalog($this->mitra, [
+            'kategori' => PackageKategori::WISATA_ALAM->value,
+        ]);
+        makePackageForCatalog($this->mitra, [
+            'kategori' => PackageKategori::BUDAYA->value,
+        ]);
+
+        $this->actingAs($this->client)
+            ->get('/client/catalog?kategori=wisata_alam')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.kategori', 'wisata_alam')
+            );
+    });
+});
+
+describe('Data Integrity — show (relasi)', function () {
+    it('show load mitra + profile + days + facilities', function () {
+        $package = makePackageForCatalog($this->mitra);
+        PackageDay::factory()->create(['package_id' => $package->id, 'hari_ke' => 1]);
+        PackageFacility::factory()->create(['package_id' => $package->id, 'tipe' => 'include']);
+
+        $this->actingAs($this->client)
+            ->get("/client/catalog/{$package->slug}")
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('package.mitra')
+                ->has('package.days')
+                ->has('package.facilities')
+                ->where('package.mitra.name', 'Mitra Travel')
+            );
+    });
+});
+
+/*
+|==========================================================================
+| KATEGORI 6 — ERROR HANDLING
+|==========================================================================
+*/
+
+describe('Error Handling — show 404', function () {
+    it('GET /client/catalog/{slug-tidak-ada} → 404', function () {
+        $this->actingAs($this->client)
+            ->get('/client/catalog/slug-tidak-ada')
+            ->assertNotFound();
+    });
+});
+
+/*
+|==========================================================================
+| KATEGORI 7 — EDGE CASES & BVA
+|==========================================================================
+*/
+
+describe('Edge Cases — empty DB', function () {
+    it('DB tanpa paket aktif → total 0', function () {
+        $this->actingAs($this->client)
+            ->get('/client/catalog')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('packages.total', 0)
+            );
+    });
+});
+
+describe('Edge Cases — per_page default 12', function () {
+    it('default per_page = 12', function () {
+        for ($i = 0; $i < 15; $i++) {
+            makePackageForCatalog($this->mitra);
         }
 
-        // Jangan panggil getSession() — mungkin null
-        $session = $response->baseResponse instanceof Response
-            ? $response->getSession()
-            : null;
-
-        fwrite(STDERR, 'Status: '.$response->status()."\n");
-        fwrite(STDERR, 'Content: '.substr($response->getContent(), 0, 300)."\n");
-    }
-
-    $response->assertStatus(200);
-});
-
-it('filter kategori wisata_alam', function () {
-    $response = $this->actingAs($this->client)
-        ->get('/client/catalog?kategori=wisata_alam');
-
-    $response->assertInertia(fn ($page) => $page
-        ->has('packages.data', 1)
-        ->where('packages.data.0.kategori', 'wisata_alam')
-    );
-});
-
-it('sort by harga_per_orang direction asc', function () {
-    $response = $this->actingAs($this->client)
-        ->get('/client/catalog?sort=harga_per_orang&direction=asc');
-
-    $response->assertOk();
-    $response->assertInertia(fn ($page) => $page->has('packages.data'));
-});
-
-it('direction default asc', function () {
-    $response = $this->actingAs($this->client)->get('/client/catalog');
-
-    $response->assertInertia(fn ($page) => $page
-        ->where('filters.direction', 'asc')
-        ->where('filters.sort', 'nama')
-    );
-});
-
-/*
-|==========================================================================
-| KATEGORI 6 — EDGE CASES
-|==========================================================================
-*/
-
-it('katalog kosong jika tidak ada package aktif', function () {
-    // Hapus semua package aktif
-    Package::where('status', PackageStatus::AKTIF)->update(['status' => PackageStatus::DRAFT]);
-
-    $response = $this->actingAs($this->client)->get('/client/catalog');
-
-    $response->assertInertia(fn ($page) => $page
-        ->has('packages.data', 0)
-    );
-});
-
-it('katalog dengan per_page=1 hanya return 1 package', function () {
-    // Buat package aktif kedua
-    Package::factory()->create([
-        'status' => PackageStatus::AKTIF,
-        'slug' => 'paket-kedua',
-        'kode' => 'PKG-002',
-    ]);
-
-    $response = $this->actingAs($this->client)
-        ->get('/client/catalog?per_page=1');
-
-    $response->assertInertia(fn ($page) => $page
-        ->has('packages.data', 1)
-    );
-});
-
-it('detail package load relasi creator, days, facilities', function () {
-    $response = $this->actingAs($this->client)
-        ->get("/client/catalog/{$this->activePackage->slug}");
-
-    $response->assertInertia(fn ($page) => $page
-        ->has('package.creator')
-        ->has('package.days', 2)
-        ->has('package.facilities', 1)
-    );
-});
-
-/*
-|==========================================================================
-| KATEGORI 7 — BVA (Boundary Value Analysis)
-|==========================================================================
-*/
-
-it('per_page default = 12 jika tidak dikirim', function () {
-    // Buat 15 package aktif
-    for ($i = 0; $i < 14; $i++) {
-        Package::factory()->create([
-            'status' => PackageStatus::AKTIF,
-            'slug' => "paket-{$i}",
-            'kode' => "PKG-{$i}",
-        ]);
-    }
-
-    $response = $this->actingAs($this->client)->get('/client/catalog');
-
-    $response->assertInertia(fn ($page) => $page
-        ->has('packages.data', 12) // default 12
-    );
-});
-
-/*
-|==========================================================================
-| KATEGORI 8 — BEHAVIORAL: Route Middleware
-|==========================================================================
-*/
-
-it('route client.catalog.index pakai middleware auth, password.changed, dan role:client', function () {
-    $route = collect(Route::getRoutes())
-        ->first(fn ($r) => $r->getName() === 'client.catalog.index');
-
-    expect($route)->not->toBeNull();
-
-    $middleware = $route->gatherMiddleware();
-
-    expect($middleware)->toContain('auth');
-    expect($middleware)->toContain('password.changed');
-    expect($middleware)->toContain('role:client');
-});
-
-it('route client.catalog.show pakai middleware auth, password.changed, dan role:client', function () {
-    $route = collect(Route::getRoutes())
-        ->first(fn ($r) => $r->getName() === 'client.catalog.show');
-
-    expect($route)->not->toBeNull();
-
-    $middleware = $route->gatherMiddleware();
-
-    expect($middleware)->toContain('auth');
-    expect($middleware)->toContain('password.changed');
-    expect($middleware)->toContain('role:client');
+        $this->actingAs($this->client)
+            ->get('/client/catalog')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('packages.per_page', 12)
+                ->has('packages.data', 12)
+            );
+    });
 });

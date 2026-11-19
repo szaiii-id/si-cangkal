@@ -6,12 +6,17 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
-beforeEach(function () {
-    $this->userRepository = Mockery::mock(UserRepositoryInterface::class);
-    $this->service = new PasswordService($this->userRepository);
+/*
+|==========================================================================
+| SETUP — Unit Test (NO DB)
+|==========================================================================
+*/
 
-    // Log facade → no-op
-    Log::shouldReceive('info')->andReturnNull();
+beforeEach(function () {
+    $this->userRepo = Mockery::mock(UserRepositoryInterface::class);
+    $this->service = new PasswordService($this->userRepo);
+
+    Log::shouldReceive('info')->byDefault()->andReturnNull();
 });
 
 afterEach(function () {
@@ -20,489 +25,295 @@ afterEach(function () {
 
 /*
 |==========================================================================
-| changePassword() — Verifikasi Password Lama
+| KATEGORI 1 — BOUNDARY VALUE ANALYSIS (BVA)
 |==========================================================================
 */
 
-it('changePassword berhasil saat password lama cocok', function () {
-    // ARRANGE
-    $hashedOld = Hash::make('OldPass123!');
-    $user = makeUser(['id' => 1, 'email' => 'budi@example.com', 'password' => $hashedOld]);
+describe('BVA — newPassword empty', function () {
+    it('changePassword dengan newPassword = "" → tetap diteruskan ke repository', function () {
+        // Service TIDAK validasi panjang password — itu tugas FormRequest.
+        $hashedOld = Hash::make('OldPass123!');
+        $user = makeUser(['id' => 1, 'password' => $hashedOld]);
 
-    // Repository harus dipanggil 1x dengan password baru
-    $this->userRepository
-        ->shouldReceive('updatePassword')
-        ->once()
-        ->with($user, 'NewPass456!')
-        ->andReturn($user);
+        $this->userRepo->shouldReceive('updatePassword')
+            ->once()
+            ->with($user, '')
+            ->andReturn($user);
 
-    // ACT
-    $this->service->changePassword($user, 'OldPass123!', 'NewPass456!');
+        $this->service->changePassword($user, 'OldPass123!', '');
+    });
 
-    // ASSERT (via mock expectation)
-    expect(true)->toBeTrue();
+    it('forceChangePassword dengan newPassword = "" → tetap diteruskan', function () {
+        $user = makeUser(['id' => 1, 'must_change_password' => true]);
+
+        $this->userRepo->shouldReceive('updatePassword')
+            ->once()
+            ->with($user, '')
+            ->andReturn($user);
+
+        $this->service->forceChangePassword($user, '');
+    });
 });
 
-it('changePassword melempar ValidationException saat password lama salah', function () {
-    // ARRANGE
-    $user = makeUser([
-        'id' => 1,
-        'password' => Hash::make('OldPass123!'),
-    ]);
+describe('BVA — must_change_password cast', function () {
+    it('must_change_password = 1 (integer) → was_forced = true', function () {
+        $user = makeUser(['id' => 1, 'must_change_password' => 1]);
 
-    // Repository TIDAK boleh dipanggil
-    $this->userRepository->shouldReceive('updatePassword')->never();
+        $this->userRepo->shouldReceive('updatePassword')->once()->andReturn($user);
 
-    // ACT + ASSERT
-    expect(fn () => $this->service->changePassword($user, 'WrongPass!', 'NewPass456!'))
-        ->toThrow(ValidationException::class);
-});
+        $result = $this->service->handleChangePassword($user, null, 'NewPass!');
 
-it('changePassword melempar ValidationException saat password lama kosong', function () {
-    // BVA: password = '' (boundary empty)
-    $user = makeUser([
-        'id' => 1,
-        'password' => Hash::make('OldPass123!'),
-    ]);
+        expect($result['was_forced'])->toBeTrue()
+            ->and($result['should_logout'])->toBeTrue();
+    });
 
-    $this->userRepository->shouldReceive('updatePassword')->never();
+    it('must_change_password = 0 (integer) → was_forced = false', function () {
+        $user = makeUser([
+            'id' => 1,
+            'password' => Hash::make('OldPass123!'),
+            'must_change_password' => 0,
+        ]);
 
-    expect(fn () => $this->service->changePassword($user, '', 'NewPass456!'))
-        ->toThrow(ValidationException::class);
-});
+        $this->userRepo->shouldReceive('updatePassword')->once()->andReturn($user);
 
-it('changePassword TIDAK memanggil forceChangePassword', function () {
-    // Behavioral: memastikan method force TIDAK dipanggil dari changePassword
-    $user = makeUser([
-        'id' => 1,
-        'password' => Hash::make('OldPass123!'),
-    ]);
+        $result = $this->service->handleChangePassword($user, 'OldPass123!', 'NewPass!');
 
-    $this->userRepository->shouldReceive('updatePassword')->once()->andReturn($user);
+        expect($result['was_forced'])->toBeFalse();
+    });
 
-    // Spy pada service — pastikan forceChangePassword tidak dipanggil
-    $spy = Mockery::spy($this->service);
-    $spy->shouldNotReceive('forceChangePassword');
+    it('must_change_password = "1" (string) → was_forced = true', function () {
+        $user = makeUser(['id' => 1, 'must_change_password' => '1']);
 
-    $this->service->changePassword($user, 'OldPass123!', 'NewPass456!');
-});
+        $this->userRepo->shouldReceive('updatePassword')->once()->andReturn($user);
 
-it('changePassword dipanggil dengan password lama yang tepat (case-sensitive)', function () {
-    // Equivalence: password case-sensitive
-    $user = makeUser([
-        'id' => 1,
-        'password' => Hash::make('OldPass123!'),
-    ]);
+        $result = $this->service->handleChangePassword($user, null, 'NewPass!');
 
-    // Password lama beda case → harus throw
-    $this->userRepository->shouldReceive('updatePassword')->never();
+        expect($result['was_forced'])->toBeTrue();
+    });
 
-    expect(fn () => $this->service->changePassword($user, 'oldpass123!', 'NewPass456!'))
-        ->toThrow(ValidationException::class);
+    it('must_change_password = "0" (string) → was_forced = false', function () {
+        $user = makeUser([
+            'id' => 1,
+            'password' => Hash::make('OldPass123!'),
+            'must_change_password' => '0',
+        ]);
+
+        $this->userRepo->shouldReceive('updatePassword')->once()->andReturn($user);
+
+        $result = $this->service->handleChangePassword($user, 'OldPass123!', 'NewPass!');
+
+        expect($result['was_forced'])->toBeFalse();
+    });
 });
 
 /*
 |==========================================================================
-| forceChangePassword() — Tanpa Verifikasi Password Lama
+| KATEGORI 2 — EQUIVALENCE PARTITIONING
 |==========================================================================
 */
 
-it('forceChangePassword berhasil saat must_change_password = true', function () {
-    // ARRANGE
-    $user = makeUser([
-        'id' => 2,
-        'email' => 'mitra@example.com',
-        'must_change_password' => true,
-    ]);
+describe('Equivalence — changePassword', function () {
+    it('password lama cocok → updatePassword dipanggil + log info', function () {
+        $user = makeUser(['id' => 1, 'password' => Hash::make('OldPass123!')]);
 
-    $this->userRepository
-        ->shouldReceive('updatePassword')
-        ->once()
-        ->with($user, 'NewPass456!')
-        ->andReturn($user);
+        $this->userRepo->shouldReceive('updatePassword')
+            ->once()
+            ->with($user, 'NewPass456!')
+            ->andReturn($user);
 
-    // ACT
-    $this->service->forceChangePassword($user, 'NewPass456!');
+        Log::shouldReceive('info')->once()->with('User ganti password', Mockery::any());
 
-    // ASSERT
-    expect(true)->toBeTrue();
+        $this->service->changePassword($user, 'OldPass123!', 'NewPass456!');
+    });
+
+    it('password lama salah → ValidationException, updatePassword tidak dipanggil', function () {
+        $user = makeUser(['id' => 1, 'password' => Hash::make('OldPass123!')]);
+
+        $this->userRepo->shouldReceive('updatePassword')->never();
+
+        expect(fn () => $this->service->changePassword($user, 'WrongOld!', 'NewPass456!'))
+            ->toThrow(ValidationException::class);
+    });
 });
 
-it('forceChangePassword melempar ValidationException saat must_change_password = false', function () {
-    // ARRANGE
-    $user = makeUser([
-        'id' => 2,
-        'must_change_password' => false,
-    ]);
+describe('Equivalence — forceChangePassword', function () {
+    it('must_change_password = true → updatePassword dipanggil tanpa cek password lama', function () {
+        $user = makeUser(['id' => 1, 'must_change_password' => true]);
 
-    // Repository TIDAK boleh dipanggil
-    $this->userRepository->shouldReceive('updatePassword')->never();
+        $this->userRepo->shouldReceive('updatePassword')
+            ->once()
+            ->with($user, 'NewPass456!')
+            ->andReturn($user);
 
-    // ACT + ASSERT
-    expect(fn () => $this->service->forceChangePassword($user, 'NewPass456!'))
-        ->toThrow(ValidationException::class);
-});
+        Log::shouldReceive('info')->once()->with('User wajib ganti password', Mockery::any());
 
-it('forceChangePassword TIDAK memverifikasi password lama', function () {
-    // Behavioral: forceChangePassword tidak menyentuh Hash::check
-    $user = makeUser([
-        'id' => 2,
-        'must_change_password' => true,
-        // Password lama tidak penting — bahkan tidak di-set
-    ]);
+        $this->service->forceChangePassword($user, 'NewPass456!');
+    });
 
-    $this->userRepository->shouldReceive('updatePassword')->once()->andReturn($user);
+    it('must_change_password = false → ValidationException', function () {
+        $user = makeUser(['id' => 1, 'must_change_password' => false]);
 
-    // Tidak ada exception meski "password lama" tidak dikirim
-    $this->service->forceChangePassword($user, 'NewPass456!');
+        $this->userRepo->shouldReceive('updatePassword')->never();
 
-    expect(true)->toBeTrue();
+        expect(fn () => $this->service->forceChangePassword($user, 'NewPass456!'))
+            ->toThrow(ValidationException::class);
+    });
 });
 
 /*
 |==========================================================================
-| handleChangePassword() — Routing Logic
+| KATEGORI 3 — EDGE CASES
 |==========================================================================
 */
 
-it('handleChangePassword → routing ke forceChangePassword saat must_change_password = true', function () {
-    // ARRANGE
-    $user = makeUser([
-        'id' => 3,
-        'must_change_password' => true,
-    ]);
+describe('Edge Cases — handleChangePassword (forced)', function () {
+    it('must_change_password = true + oldPassword = null → sukses (tidak diverifikasi)', function () {
+        $user = makeUser(['id' => 1, 'must_change_password' => true]);
 
-    $this->userRepository
-        ->shouldReceive('updatePassword')
-        ->once()
-        ->with($user, 'NewPass456!')
-        ->andReturn($user);
+        $this->userRepo->shouldReceive('updatePassword')->once()->andReturn($user);
 
-    // ACT
-    $result = $this->service->handleChangePassword($user, null, 'NewPass456!');
+        $result = $this->service->handleChangePassword($user, null, 'NewPass456!');
 
-    // ASSERT
-    expect($result['was_forced'])->toBeTrue();
-    expect($result['should_logout'])->toBeTrue();
-    expect($result['message'])->toContain('login ulang');
+        expect($result['was_forced'])->toBeTrue()
+            ->and($result['should_logout'])->toBeTrue()
+            ->and($result['message'])->toContain('login ulang');
+    });
+
+    it('must_change_password = true + oldPassword salah → tetap sukses (diabaikan)', function () {
+        $user = makeUser(['id' => 1, 'must_change_password' => true]);
+
+        $this->userRepo->shouldReceive('updatePassword')->once()->andReturn($user);
+
+        $result = $this->service->handleChangePassword($user, 'WrongOld!', 'NewPass456!');
+
+        expect($result['was_forced'])->toBeTrue();
+    });
 });
 
-it('handleChangePassword → routing ke changePassword saat must_change_password = false', function () {
-    // ARRANGE
-    $user = makeUser([
-        'id' => 3,
-        'password' => Hash::make('OldPass123!'),
-        'must_change_password' => false,
-    ]);
+describe('Edge Cases — handleChangePassword (normal)', function () {
+    it('must_change_password = false + oldPassword cocok → sukses', function () {
+        $user = makeUser([
+            'id' => 1,
+            'password' => Hash::make('OldPass123!'),
+            'must_change_password' => false,
+        ]);
 
-    $this->userRepository
-        ->shouldReceive('updatePassword')
-        ->once()
-        ->with($user, 'NewPass456!')
-        ->andReturn($user);
+        $this->userRepo->shouldReceive('updatePassword')->once()->andReturn($user);
 
-    // ACT
-    $result = $this->service->handleChangePassword($user, 'OldPass123!', 'NewPass456!');
+        $result = $this->service->handleChangePassword($user, 'OldPass123!', 'NewPass456!');
 
-    // ASSERT
-    expect($result['was_forced'])->toBeFalse();
-    expect($result['should_logout'])->toBeFalse();
-    expect($result['message'])->toBe('Password berhasil diubah.');
-});
+        expect($result['was_forced'])->toBeFalse()
+            ->and($result['should_logout'])->toBeFalse()
+            ->and($result['message'])->toBe('Password berhasil diubah.');
+    });
 
-it('handleChangePassword melempar ValidationException saat password lama salah dan tidak wajib ganti', function () {
-    // ARRANGE
-    $user = makeUser([
-        'id' => 3,
-        'password' => Hash::make('OldPass123!'),
-        'must_change_password' => false,
-    ]);
+    it('must_change_password = false + oldPassword = null → ValidationException', function () {
+        // `(string) null = ''` → Hash::check('', ...) → false
+        $user = makeUser([
+            'id' => 1,
+            'password' => Hash::make('OldPass123!'),
+            'must_change_password' => false,
+        ]);
 
-    $this->userRepository->shouldReceive('updatePassword')->never();
+        $this->userRepo->shouldReceive('updatePassword')->never();
 
-    // ACT + ASSERT
-    expect(fn () => $this->service->handleChangePassword($user, 'WrongPass!', 'NewPass456!'))
-        ->toThrow(ValidationException::class);
-});
+        expect(fn () => $this->service->handleChangePassword($user, null, 'NewPass456!'))
+            ->toThrow(ValidationException::class);
+    });
 
-it('handleChangePassword TIDAK memerlukan password lama saat was_forced = true', function () {
-    // Edge: oldPassword = null saat wajib ganti
-    $user = makeUser([
-        'id' => 3,
-        'must_change_password' => true,
-    ]);
+    it('must_change_password = false + oldPassword = "" → ValidationException', function () {
+        $user = makeUser([
+            'id' => 1,
+            'password' => Hash::make('OldPass123!'),
+            'must_change_password' => false,
+        ]);
 
-    $this->userRepository->shouldReceive('updatePassword')->once()->andReturn($user);
+        $this->userRepo->shouldReceive('updatePassword')->never();
 
-    $result = $this->service->handleChangePassword($user, null, 'NewPass456!');
-
-    expect($result['was_forced'])->toBeTrue();
-});
-
-it('handleChangePassword mengabaikan oldPassword saat was_forced = true', function () {
-    // Edge: oldPassword dikirim tapi tidak akan diverifikasi
-    $user = makeUser([
-        'id' => 3,
-        'must_change_password' => true,
-    ]);
-
-    $this->userRepository->shouldReceive('updatePassword')->once()->andReturn($user);
-
-    // Meski oldPassword salah, tetap sukses karena forced
-    $result = $this->service->handleChangePassword($user, 'WrongPass!', 'NewPass456!');
-
-    expect($result['was_forced'])->toBeTrue();
-});
-
-it('handleChangePassword mengembalikan struktur array yang benar saat forced', function () {
-    // Structural: verifikasi keys & tipe data
-    $user = makeUser(['id' => 3, 'must_change_password' => true]);
-    $this->userRepository->shouldReceive('updatePassword')->once()->andReturn($user);
-
-    $result = $this->service->handleChangePassword($user, null, 'NewPass456!');
-
-    expect($result)->toBeArray();
-    expect(array_keys($result))->toBe(['was_forced', 'should_logout', 'message']);
-    expect($result['was_forced'])->toBeBool();
-    expect($result['should_logout'])->toBeBool();
-    expect($result['message'])->toBeString();
-});
-
-it('handleChangePassword mengembalikan struktur array yang benar saat tidak forced', function () {
-    // Structural: verifikasi keys & tipe data
-    $user = makeUser([
-        'id' => 3,
-        'password' => Hash::make('OldPass123!'),
-        'must_change_password' => false,
-    ]);
-    $this->userRepository->shouldReceive('updatePassword')->once()->andReturn($user);
-
-    $result = $this->service->handleChangePassword($user, 'OldPass123!', 'NewPass456!');
-
-    expect($result)->toBeArray();
-    expect(array_keys($result))->toBe(['was_forced', 'should_logout', 'message']);
-    expect($result['was_forced'])->toBeBool();
-    expect($result['should_logout'])->toBeBool();
-    expect($result['message'])->toBeString();
+        expect(fn () => $this->service->handleChangePassword($user, '', 'NewPass456!'))
+            ->toThrow(ValidationException::class);
+    });
 });
 
 /*
 |==========================================================================
-| Equivalence Partitioning — must_change_password
+| KATEGORI 4 — HAPPY PATH
 |==========================================================================
 */
 
-it('handleChangePassword dengan must_change_password = true → forced', function () {
-    // Partisi: true
-    $user = makeUser(['id' => 1, 'must_change_password' => true]);
-    $this->userRepository->shouldReceive('updatePassword')->once()->andReturn($user);
+describe('Happy Path — handleChangePassword', function () {
+    it('forced → return was_forced=true, should_logout=true, message login ulang', function () {
+        $user = makeUser(['id' => 1, 'must_change_password' => true]);
 
-    $result = $this->service->handleChangePassword($user, 'apapun', 'NewPass456!');
+        $this->userRepo->shouldReceive('updatePassword')->once()->andReturn($user);
 
-    expect($result['was_forced'])->toBeTrue();
-});
+        $result = $this->service->handleChangePassword($user, null, 'NewPass456!');
 
-it('handleChangePassword dengan must_change_password = false → normal', function () {
-    // Partisi: false
-    $user = makeUser([
-        'id' => 1,
-        'password' => Hash::make('OldPass123!'),
-        'must_change_password' => false,
-    ]);
-    $this->userRepository->shouldReceive('updatePassword')->once()->andReturn($user);
+        expect($result['was_forced'])->toBeTrue()
+            ->and($result['should_logout'])->toBeTrue()
+            ->and($result['message'])->toContain('login ulang');
+    });
 
-    $result = $this->service->handleChangePassword($user, 'OldPass123!', 'NewPass456!');
+    it('normal → return was_forced=false, should_logout=false, message standar', function () {
+        $user = makeUser([
+            'id' => 1,
+            'password' => Hash::make('OldPass123!'),
+            'must_change_password' => false,
+        ]);
 
-    expect($result['was_forced'])->toBeFalse();
+        $this->userRepo->shouldReceive('updatePassword')->once()->andReturn($user);
+
+        $result = $this->service->handleChangePassword($user, 'OldPass123!', 'NewPass456!');
+
+        expect($result['was_forced'])->toBeFalse()
+            ->and($result['should_logout'])->toBeFalse()
+            ->and($result['message'])->toBe('Password berhasil diubah.');
+    });
+
+    it('return structure selalu punya keys was_forced, should_logout, message', function () {
+        $user = makeUser(['id' => 1, 'must_change_password' => true]);
+
+        $this->userRepo->shouldReceive('updatePassword')->once()->andReturn($user);
+
+        $result = $this->service->handleChangePassword($user, null, 'NewPass456!');
+
+        expect($result)->toHaveKeys(['was_forced', 'should_logout', 'message']);
+    });
 });
 
 /*
 |==========================================================================
-| Behavioral — Interaction with Repository
+| KATEGORI 5 — NEGATIVE PATH
 |==========================================================================
 */
 
-it('changePassword hanya memanggil updatePassword 1x', function () {
-    // Behavioral: verifikasi jumlah panggilan
-    $user = makeUser([
-        'id' => 1,
-        'password' => Hash::make('OldPass123!'),
-    ]);
+describe('Negative Path — changePassword', function () {
+    it('password lama salah → ValidationException', function () {
+        $user = makeUser(['id' => 1, 'password' => Hash::make('OldPass123!')]);
 
-    $this->userRepository->shouldReceive('updatePassword')->once()->andReturn($user);
+        $this->userRepo->shouldReceive('updatePassword')->never();
 
-    // Method lain tidak boleh dipanggil
-    $this->userRepository->shouldNotReceive('createUser');
-    $this->userRepository->shouldNotReceive('createClient');
-    $this->userRepository->shouldNotReceive('deleteUser');
+        expect(fn () => $this->service->changePassword($user, 'WrongOld!', 'NewPass456!'))
+            ->toThrow(ValidationException::class);
+    });
 
-    $this->service->changePassword($user, 'OldPass123!', 'NewPass456!');
+    it('password lama kosong string → ValidationException', function () {
+        $user = makeUser(['id' => 1, 'password' => Hash::make('OldPass123!')]);
+
+        $this->userRepo->shouldReceive('updatePassword')->never();
+
+        expect(fn () => $this->service->changePassword($user, '', 'NewPass456!'))
+            ->toThrow(ValidationException::class);
+    });
 });
 
-it('forceChangePassword hanya memanggil updatePassword 1x', function () {
-    $user = makeUser(['id' => 2, 'must_change_password' => true]);
+describe('Negative Path — forceChangePassword', function () {
+    it('must_change_password = false → ValidationException', function () {
+        $user = makeUser(['id' => 1, 'must_change_password' => false]);
 
-    $this->userRepository->shouldReceive('updatePassword')->once()->andReturn($user);
-    $this->userRepository->shouldNotReceive('createUser');
-    $this->userRepository->shouldNotReceive('deleteUser');
+        $this->userRepo->shouldReceive('updatePassword')->never();
 
-    $this->service->forceChangePassword($user, 'NewPass456!');
-});
-
-it('handleChangePassword memanggil updatePassword tepat 1x (forced)', function () {
-    $user = makeUser(['id' => 3, 'must_change_password' => true]);
-    $this->userRepository->shouldReceive('updatePassword')->once()->andReturn($user);
-
-    $this->service->handleChangePassword($user, null, 'NewPass456!');
-});
-
-it('handleChangePassword memanggil updatePassword tepat 1x (normal)', function () {
-    $user = makeUser([
-        'id' => 3,
-        'password' => Hash::make('OldPass123!'),
-        'must_change_password' => false,
-    ]);
-    $this->userRepository->shouldReceive('updatePassword')->once()->andReturn($user);
-
-    $this->service->handleChangePassword($user, 'OldPass123!', 'NewPass456!');
-});
-
-/*
-|==========================================================================
-| Edge Cases
-|==========================================================================
-*/
-
-it('changePassword dengan password baru sama dengan password lama tetap sukses', function () {
-    // Edge: password baru identik dengan lama (tidak ada validasi khusus)
-    $user = makeUser([
-        'id' => 1,
-        'password' => Hash::make('SamePass123!'),
-    ]);
-
-    $this->userRepository->shouldReceive('updatePassword')
-        ->once()
-        ->with($user, 'SamePass123!')
-        ->andReturn($user);
-
-    $this->service->changePassword($user, 'SamePass123!', 'SamePass123!');
-
-    expect(true)->toBeTrue();
-});
-
-it('changePassword dengan password baru sangat panjang (boundary atas)', function () {
-    // BVA: panjang ekstrem
-    $longPassword = str_repeat('a', 1000);
-    $user = makeUser([
-        'id' => 1,
-        'password' => Hash::make('OldPass123!'),
-    ]);
-
-    $this->userRepository->shouldReceive('updatePassword')
-        ->once()
-        ->with($user, $longPassword)
-        ->andReturn($user);
-
-    $this->service->changePassword($user, 'OldPass123!', $longPassword);
-
-    expect(true)->toBeTrue();
-});
-
-it('changePassword dengan password baru 1 karakter (boundary bawah)', function () {
-    // BVA: panjang minimum
-    $user = makeUser([
-        'id' => 1,
-        'password' => Hash::make('OldPass123!'),
-    ]);
-
-    $this->userRepository->shouldReceive('updatePassword')
-        ->once()
-        ->with($user, 'a')
-        ->andReturn($user);
-
-    $this->service->changePassword($user, 'OldPass123!', 'a');
-
-    expect(true)->toBeTrue();
-});
-
-it('changePassword dengan password baru kosong tetap diteruskan ke repository', function () {
-    // Edge: validasi panjang TIDAK dilakukan di service
-    $user = makeUser([
-        'id' => 1,
-        'password' => Hash::make('OldPass123!'),
-    ]);
-
-    $this->userRepository->shouldReceive('updatePassword')
-        ->once()
-        ->with($user, '')
-        ->andReturn($user);
-
-    $this->service->changePassword($user, 'OldPass123!', '');
-
-    expect(true)->toBeTrue();
-});
-
-it('forceChangePassword dengan password baru kosong tetap diteruskan', function () {
-    // Edge: tidak ada validasi panjang di service
-    $user = makeUser(['id' => 2, 'must_change_password' => true]);
-
-    $this->userRepository->shouldReceive('updatePassword')
-        ->once()
-        ->with($user, '')
-        ->andReturn($user);
-
-    $this->service->forceChangePassword($user, '');
-
-    expect(true)->toBeTrue();
-});
-
-/*
-|==========================================================================
-| Boundary — must_change_password = null / 0 / '1' (cast behaviour)
-|==========================================================================
-*/
-
-it('handleChangePassword dengan must_change_password = 1 (integer) → di-cast ke true', function () {
-    // BVA: integer 1 → cast boolean true
-    $user = makeUser(['id' => 1, 'must_change_password' => 1]);
-    $this->userRepository->shouldReceive('updatePassword')->once()->andReturn($user);
-
-    $result = $this->service->handleChangePassword($user, null, 'NewPass456!');
-
-    expect($result['was_forced'])->toBeTrue();
-});
-
-it('handleChangePassword dengan must_change_password = 0 (integer) → di-cast ke false', function () {
-    // BVA: integer 0 → cast boolean false
-    $user = makeUser([
-        'id' => 1,
-        'password' => Hash::make('OldPass123!'),
-        'must_change_password' => 0,
-    ]);
-    $this->userRepository->shouldReceive('updatePassword')->once()->andReturn($user);
-
-    $result = $this->service->handleChangePassword($user, 'OldPass123!', 'NewPass456!');
-
-    expect($result['was_forced'])->toBeFalse();
-});
-
-/*
-|==========================================================================
-| Behavioral — Ordered Call
-|==========================================================================
-*/
-
-it('handleChangePassword memanggil updatePassword SETELAH routing', function () {
-    // Behavioral: urutan — routing dulu, baru update
-    $user = makeUser(['id' => 1, 'must_change_password' => true]);
-
-    $this->userRepository
-        ->shouldReceive('updatePassword')
-        ->once()
-        ->andReturn($user)
-        ->ordered();
-
-    $this->service->handleChangePassword($user, null, 'NewPass456!');
-
-    expect(true)->toBeTrue();
+        expect(fn () => $this->service->forceChangePassword($user, 'NewPass456!'))
+            ->toThrow(ValidationException::class);
+    });
 });

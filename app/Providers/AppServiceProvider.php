@@ -14,6 +14,14 @@ use App\Repositories\Eloquent\ProfileRepository;
 use App\Repositories\Eloquent\RefundRepository;
 use App\Repositories\Eloquent\TripRepository;
 use App\Repositories\Eloquent\UserRepository;
+use App\Services\ETicket\Contracts\ETicketServiceInterface;
+use App\Services\ETicket\ETicketService;
+use App\Services\Notification\Contracts\FirebaseNotificationServiceInterface;
+use App\Services\Notification\Contracts\NotificationDispatcherInterface;
+use App\Services\Notification\Contracts\NotificationServiceInterface;
+use App\Services\Notification\FirebaseNotificationService;
+use App\Services\Notification\NotificationDispatcher;
+use App\Services\Notification\NotificationService;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -36,6 +44,28 @@ final class AppServiceProvider extends ServiceProvider
         $this->app->bind(BookingRepositoryInterface::class, BookingRepository::class);
         $this->app->bind(TripRepositoryInterface::class, TripRepository::class);
         $this->app->bind(RefundRepositoryInterface::class, RefundRepository::class);
+
+        // ==========================================
+        // NOTIFICATION BINDINGS
+        // ==========================================
+        $this->app->bind(
+            NotificationServiceInterface::class,
+            NotificationService::class,
+        );
+
+        $this->app->bind(
+            FirebaseNotificationServiceInterface::class,
+            FirebaseNotificationService::class,
+        );
+
+        $this->app->bind(
+            NotificationDispatcherInterface::class,
+            NotificationDispatcher::class,
+        );
+        $this->app->bind(
+            ETicketServiceInterface::class,
+            ETicketService::class,
+        );
     }
 
     public function boot(): void
@@ -65,6 +95,7 @@ final class AppServiceProvider extends ServiceProvider
             if ($override !== null && $override !== '') {
                 return Limit::perMinute((int) $override)->by($request->ip());
             }
+
             return Limit::perMinute(3)->by($request->ip());
         });
 

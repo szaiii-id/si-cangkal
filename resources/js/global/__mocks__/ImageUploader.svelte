@@ -1,0 +1,1 @@
+<div data-testid="image-uploader">Image Uploader Mock</div>

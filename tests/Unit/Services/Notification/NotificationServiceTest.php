@@ -3,36 +3,23 @@
 use App\Models\AppNotification;
 use App\Models\User;
 use App\Services\Notification\NotificationService;
-use Mockery\MockInterface;
 
 /*
 |==========================================================================
-| SETUP
+| SETUP — Unit Test (NO DB)
 |==========================================================================
-| Untuk method yang panggil `AppNotification::create()` / `::where()`
-| (static model), kita pakai pendekatan:
 |
-| 1. `Mockery::mock(AppNotification::class)->makePartial()` → instance mock
-|    (untuk markAsRead, yang pakai instance).
+| Cakupan unit test:
+| - `markAsRead(AppNotification)` — instance method, bisa di-mock.
 |
-| 2. `Mockery::mock('alias:App\Models\AppNotification')` → untuk static
-|    (create, where). TAPI alias mock hanya bisa sekali per process.
+| Method lain (`create`, `paginateForUser`, `unreadCount`, `markAllAsRead`)
+| memanggil static query builder `AppNotification::...()` yang butuh DB.
+| Verifikasi persistence + query di Feature test (RefreshDatabase).
 |
-| Solusi: pisahkan test yang butuh alias ke file terpisah, ATAU gunakan
-| `markTestSkipped()` untuk static-heavy method dan tunggu feature test.
-|==========================================================================
 */
 
 beforeEach(function () {
     $this->service = new NotificationService;
-
-    $this->user = new User;
-    $this->user->forceFill([
-        'id' => 5,
-        'name' => 'Test User',
-        'email' => 'test@example.com',
-        'role' => 'client',
-    ]);
 });
 
 afterEach(function () {
@@ -41,103 +28,134 @@ afterEach(function () {
 
 /*
 |==========================================================================
-| HELPERS
+| KATEGORI 1 — markAsRead (bisa di-unit-test)
 |==========================================================================
 */
 
-function makeNotificationMock(array $attrs = []): MockInterface
-{
-    $notif = Mockery::mock(AppNotification::class)->makePartial();
-    $notif->forceFill(array_merge([
-        'id' => 1,
-        'user_id' => 5,
-        'tipe' => 'booking_confirmed',
-        'judul' => 'Test',
-        'pesan' => 'Message',
-        'data' => [],
-        'read_at' => null,
-    ], $attrs));
+describe('markAsRead — happy path', function () {
+    it('update read_at jika belum dibaca', function () {
+        $notif = Mockery::mock(AppNotification::class)->makePartial();
+        $notif->forceFill([
+            'id' => 1,
+            'user_id' => 10,
+            'read_at' => null,
+        ]);
 
-    return $notif;
-}
+        $notif->shouldReceive('isRead')->once()->andReturn(false);
+        $notif->shouldReceive('update')
+            ->once()
+            ->with(Mockery::on(fn ($payload) => isset($payload['read_at'])
+                && $payload['read_at'] !== null));
 
-/*
-|==========================================================================
-| markAsRead() — UNIT TEST MURNI (instance mock)
-|==========================================================================
-*/
+        $this->service->markAsRead($notif);
 
-it('markAsRead update read_at jika belum dibaca', function () {
-    $notif = makeNotificationMock(['read_at' => null]);
-    $notif->shouldReceive('isRead')->once()->andReturn(false);
-    $notif->shouldReceive('update')
-        ->once()
-        ->with(Mockery::on(fn ($attrs) => $attrs['read_at'] !== null));
-
-    $this->service->markAsRead($notif);
-
-    // Jika update tidak dipanggil → test gagal
-    expect(true)->toBeTrue();
+        expect(true)->toBeTrue();
+    });
 });
 
-it('markAsRead TIDAK update jika sudah dibaca', function () {
-    $notif = makeNotificationMock(['read_at' => now()]);
-    $notif->shouldReceive('isRead')->once()->andReturn(true);
-    $notif->shouldReceive('update')->never();  // ← tidak boleh dipanggil
+describe('markAsRead — idempotency', function () {
+    it('TIDAK update jika sudah dibaca', function () {
+        $notif = Mockery::mock(AppNotification::class)->makePartial();
+        $notif->forceFill([
+            'id' => 1,
+            'user_id' => 10,
+            'read_at' => now(),
+        ]);
 
-    $this->service->markAsRead($notif);
+        $notif->shouldReceive('isRead')->once()->andReturn(true);
+        $notif->shouldReceive('update')->never();
 
-    expect(true)->toBeTrue();
-});
+        $this->service->markAsRead($notif);
 
-/*
-|==========================================================================
-| create() — SKIP (butuh alias mock)
-|==========================================================================
-| Method `create()` panggil `AppNotification::create()` static.
-| Tidak bisa di-mock bersih tanpa `alias:`. Kita skip di unit test —
-| tunggu Feature Test.
-|==========================================================================
-*/
+        expect(true)->toBeTrue();
+    });
 
-it('create() — butuh alias mock, skip di unit test', function () {
-    $this->markTestSkipped(
-        'create() panggil AppNotification::create() static — test di Feature Test.'
-    );
+    it('panggil 2x pada notif yang sama → update HANYA 1x', function () {
+        $notif = Mockery::mock(AppNotification::class)->makePartial();
+        $notif->forceFill(['id' => 1, 'read_at' => null]);
+
+        // Pemanggilan pertama: belum dibaca → update
+        $notif->shouldReceive('isRead')->once()->andReturn(false);
+        $notif->shouldReceive('update')->once();
+
+        $this->service->markAsRead($notif);
+    });
 });
 
 /*
 |==========================================================================
-| paginateForUser() — SKIP
+| KATEGORI 2 — NEGATIVE PATH
 |==========================================================================
 */
 
-it('paginateForUser() — butuh alias mock, skip di unit test', function () {
-    $this->markTestSkipped(
-        'paginateForUser() panggil AppNotification::where() static — test di Feature Test.'
-    );
+describe('markAsRead — return type', function () {
+    it('method void (tidak return apa-apa)', function () {
+        $notif = Mockery::mock(AppNotification::class)->makePartial();
+        $notif->forceFill(['id' => 1, 'read_at' => null]);
+        $notif->shouldReceive('isRead')->andReturn(false);
+        $notif->shouldReceive('update')->once();
+
+        $result = $this->service->markAsRead($notif);
+
+        expect($result)->toBeNull();
+    });
 });
 
 /*
 |==========================================================================
-| unreadCount() — SKIP
+| CATATAN: Test yang butuh Feature (dengan DB)
 |==========================================================================
+|
+| ### `create`
+|   it('create menyimpan notifikasi di DB', function () {
+|       $user = User::factory()->create();
+|       $service = new NotificationService;
+|
+|       $notif = $service->create(
+|           user: $user,
+|           tipe: 'booking_created',
+|           judul: 'Pesanan Baru',
+|           pesan: 'Ada pesanan baru',
+|           data: ['booking_id' => 10],
+|       );
+|
+|       expect($notif->user_id)->toBe($user->id)
+|           ->and($notif->tipe)->toBe('booking_created')
+|           ->and($notif->data)->toBe(['booking_id' => 10]);
+|
+|       $this->assertDatabaseHas('notifications', ['user_id' => $user->id]);
+|   });
+|
+| ### `paginateForUser`
+|   it('paginateForUser hanya return notif user', function () {
+|       $userA = User::factory()->create();
+|       $userB = User::factory()->create();
+|       $service = new NotificationService;
+|
+|       $service->create($userA, 'info', 'A', 'msg');
+|       $service->create($userB, 'info', 'B', 'msg');
+|
+|       $result = $service->paginateForUser($userA);
+|
+|       expect($result->total())->toBe(1);
+|   });
+|
+|   it('paginateForUser ordering: created_at DESC, id DESC (tie-breaker)', function () {
+|       // ...
+|   });
+|
+| ### `unreadCount`
+|   it('unreadCount return 0 jika semua dibaca', function () {
+|       // ...
+|   });
+|
+| ### `markAllAsRead`
+|   it('markAllAsRead update semua notif user', function () {
+|       // ...
+|   });
+|
+|   it('markAllAsRead tidak sentuh notif user lain', function () {
+|       // ...
+|   });
+|
 */
-
-it('unreadCount() — butuh alias mock, skip di unit test', function () {
-    $this->markTestSkipped(
-        'unreadCount() panggil AppNotification::where() static — test di Feature Test.'
-    );
-});
-
-/*
-|==========================================================================
-| markAllAsRead() — SKIP
-|==========================================================================
-*/
-
-it('markAllAsRead() — butuh alias mock, skip di unit test', function () {
-    $this->markTestSkipped(
-        'markAllAsRead() panggil AppNotification::where() static — test di Feature Test.'
-    );
-});

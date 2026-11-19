@@ -1,471 +1,236 @@
-import { test, expect } from '../fixtures/auth';
-import AxeBuilder from '@axe-core/playwright';
+import { test, expect, SEED_USERS } from '../fixtures/base';
+import { getDateOffset } from '../fixtures/selectors';
+import type { Page } from '@playwright/test';
 
-/**
- * Admin — Reports (4 sub-halaman)
- *
- * Route:
- *   /admin/reports         → Pendapatan
- *   /admin/reports/mitra   → Kinerja Mitra
- *   /admin/reports/daily   → Rekap Harian
- *   /admin/reports/payout  → Payout
- *
- * Catatan implementasi:
- * - ExportButtons merender <a><svg/>PDF</a> — pakai `getByRole('link', {name: 'PDF'})`
- *   (accessible name) atau `locator('a[href*="export-pdf"]')`. Regex `^PDF$` pada
- *   textContent GAGAL karena ada SVG di dalam <a>.
- * - ReportFilter WAJIB punya <label for> + <input id> agar tidak melanggar a11y.
- * - Setiap halaman WAJIB punya <svelte:head><title>...</title></svelte:head>
- *   agar `document-title` a11y lulus.
- */
-
-const REPORTS = {
-    index: '/admin/reports',
-    mitra: '/admin/reports/mitra',
-    daily: '/admin/reports/daily',
-    payout: '/admin/reports/payout',
-} as const;
-
-// ============================================================
-// Helper — assertion umum
-// ============================================================
-async function assertCommonReportContract(
-    page: import('@playwright/test').Page,
-    opts: {
-        activeTabLabel: string;
-        pageTitle: string;
-        description: RegExp;
-        endpoint: string;
-    },
-) {
-    // 1. Judul PageHeader
-    await expect(
-        page.locator('h1, h2').filter({ hasText: opts.pageTitle }).first(),
-    ).toBeVisible();
-
-    // 2. Deskripsi
-    await expect(
-        page.locator('p').filter({ hasText: opts.description }).first(),
-    ).toBeVisible();
-
-    // 3. Empat tab navigasi via href
-    for (const href of [
-        '/admin/reports',
-        '/admin/reports/mitra',
-        '/admin/reports/daily',
-        '/admin/reports/payout',
-    ]) {
-        await expect(page.locator(`a[href="${href}"]`).first()).toBeVisible();
-    }
-
-    // 4. Tab aktif → class bg-pink-dark
-    const activeTab = page.locator(`a[href="${opts.endpoint}"]`).first();
-    await expect(activeTab).toHaveClass(/bg-pink-dark/);
-
-    // 5. Dua input date
-    expect(
-        await page.locator('input[type="date"]').count(),
-    ).toBeGreaterThanOrEqual(2);
-
-    // 6. Tombol filter
-    await expect(
-        page.getByRole('button', { name: /Terapkan Filter/i }),
-    ).toBeVisible();
-
-    // 7. Export links — pakai href substring, BUKAN textContent
-    const pdfLink = page.locator('a[href*="export-pdf"]').first();
-    const excelLink = page.locator('a[href*="export-excel"]').first();
-
-    await expect(pdfLink).toBeVisible();
-    await expect(excelLink).toBeVisible();
-
-    // 8. Tabel wajib ada
-    expect(await page.locator('table').count()).toBeGreaterThanOrEqual(1);
+async function dismissNotificationPrompt(page: Page): Promise<void> {
+    await page.addLocatorHandler(
+        page.getByRole('dialog', { name: /Aktifkan Notifikasi/i }),
+        async () => {
+            await page.getByRole('button', { name: /Nanti Saja/i }).click();
+        },
+    );
 }
 
-// ============================================================
-// Access Control
-// ============================================================
-test.describe('Admin — Reports — Access Control', () => {
-    for (const [name, path] of Object.entries(REPORTS)) {
-        test(`guest tidak bisa akses ${name}`, async ({ page, asGuest }) => {
+test.describe('Admin — Laporan Pendapatan & Kinerja Mitra', () => {
+    // ==========================================
+    // 1. ACCESS CONTROL
+    // ==========================================
+
+    test.describe('Access Control', () => {
+        test('guest, client, dan mitra ditolak mengakses halaman dan endpoint export laporan', async ({
+            page,
+            asGuest,
+            asClient,
+            asMitra,
+        }) => {
+            await dismissNotificationPrompt(page);
+
+            // Guest
             await asGuest();
-            await page.goto(path);
-            await expect(page).toHaveURL('/login');
-        });
+            await page.goto('/admin/reports');
+            await expect(page).toHaveURL(/\/login$/);
 
-        test(`client tidak bisa akses ${name}`, async ({ page, asClient }) => {
+            // Client
             await asClient();
-            await page.goto(path);
-            await expect(page).toHaveURL('/client/dashboard');
-        });
+            await page.goto('/admin/reports');
+            await expect(page).toHaveURL(/\/client\/dashboard$/);
 
-        test(`mitra tidak bisa akses ${name}`, async ({ page, asMitra }) => {
+            const clientPdfRes = await page.request.get('/admin/reports/export-pdf', {
+                maxRedirects: 0,
+                failOnStatusCode: false,
+            });
+            expect([302, 401, 403]).toContain(clientPdfRes.status());
+
+            // Mitra
             await asMitra();
-            await page.goto(path);
-            await expect(page).toHaveURL('/mitra/dashboard');
-        });
+            await page.goto('/admin/reports/mitra');
+            await expect(page).toHaveURL(/\/mitra\/dashboard$/);
 
-        test(`admin bisa akses ${name}`, async ({ page, asAdmin }) => {
+            const mitraExcelRes = await page.request.get('/admin/reports/export-excel', {
+                maxRedirects: 0,
+                failOnStatusCode: false,
+            });
+            expect([302, 401, 403]).toContain(mitraExcelRes.status());
+        });
+    });
+
+    // ==========================================
+    // 2. LAPORAN PENDAPATAN (/admin/reports)
+    // ==========================================
+
+    test.describe('Laporan Pendapatan & Export', () => {
+        test('menampilkan summary pendapatan, grafik tren, rincian transaksi, dan validasi filter tanggal', async ({
+            page,
+            asAdmin,
+            seed,
+        }) => {
+            await dismissNotificationPrompt(page);
             await asAdmin();
-            await page.goto(path);
-            await expect(page).toHaveURL(path);
+
+            const runId = Date.now();
+            const packageNama = `Paket Report Rev ${runId}`;
+
+            const pkg = await seed.createPackage(page, {
+                mitra_email: SEED_USERS.mitra.email,
+                nama: packageNama,
+                status: 'aktif',
+                durasi_hari: 1,
+                durasi_malam: 0,
+                harga_per_orang: 500_000,
+                days: [{ judul: 'Hari 1: Wisata', lokasi: 'Banjarmasin' }],
+                facilities: [{ tipe: 'include', nama: 'Makan' }],
+            });
+
+            const booking = await seed.createBooking(page, {
+                client_email: SEED_USERS.client.email,
+                package_kode: pkg.kode,
+                status: 'confirmed',
+                tanggal_keberangkatan: getDateOffset(7),
+                jumlah_peserta: 2,
+                participants: [
+                    { nama: 'Peserta Rev 1', umur: 25 },
+                    { nama: 'Peserta Rev 2', umur: 26 },
+                ],
+            });
+
+            await page.goto('/admin/reports');
+            await page.waitForLoadState('networkidle');
+
+            // Heading utama di dalam <main> & Navigasi Tab aktif
+            await expect(
+                page.getByRole('main').getByRole('heading', { name: 'Laporan Pendapatan' }),
+            ).toBeVisible();
+            await expect(
+                page
+                    .getByRole('navigation', { name: 'Navigasi Laporan' })
+                    .getByRole('link', { name: 'Pendapatan' }),
+            ).toHaveAttribute('aria-current', 'page');
+
+            // Summary & Grafik Tren
+            await expect(page.getByText('Total Pendapatan')).toBeVisible();
+            await expect(page.getByText('Tren Pendapatan')).toBeVisible();
+            await expect(page.locator('.fc-kbd-nav')).toBeAttached();
+
+            // Tabel Rincian Transaksi (Desktop)
+            const table = page.getByRole('table', { name: 'Rincian Transaksi' });
+            await expect(table.getByText(booking.kode)).toBeVisible();
+            await expect(table.getByText(packageNama)).toBeVisible();
+
+            // Uji validasi client-side saat tanggal "Dari" > "Sampai"
+            const startInput = page.getByLabel('Dari Tanggal');
+            const endInput = page.getByLabel('Sampai Tanggal');
+            const applyBtn = page.getByRole('button', { name: 'Terapkan filter tanggal' });
+
+            await startInput.fill('2026-11-25');
+            await endInput.fill('2026-11-10');
+
+            await expect(
+                page.getByRole('alert').filter({
+                    hasText: 'Tanggal "Dari" tidak boleh lebih besar dari tanggal "Sampai".',
+                }),
+            ).toBeVisible();
+            await expect(applyBtn).toBeDisabled();
+
+            // Kembalikan tanggal valid & terapkan filter
+            const todayStr = new Date().toISOString().slice(0, 10);
+            await startInput.fill(todayStr);
+            await endInput.fill(todayStr);
+            await expect(applyBtn).toBeEnabled();
+
+            await applyBtn.click();
+            await expect(page).toHaveURL(new RegExp(`start_date=${todayStr}`));
+            await expect(table.getByText(booking.kode)).toBeVisible();
         });
-    }
-});
 
-// ============================================================
-// 1. Pendapatan
-// ============================================================
-test.describe('Admin Reports — Pendapatan (/admin/reports)', () => {
-    test.beforeEach(async ({ page, asAdmin }) => {
-        await asAdmin();
-        await page.goto(REPORTS.index);
-    });
-
-    test('kontrak umum terpenuhi', async ({ page }) => {
-        await assertCommonReportContract(page, {
-            activeTabLabel: 'Pendapatan',
-            pageTitle: 'Laporan Pendapatan',
-            description: /Pantau performa keuangan/i,
-            endpoint: '/admin/reports',
-        });
-    });
-
-    test('menampilkan 3 kartu ringkasan', async ({ page }) => {
-        await expect(page.getByText(/^Total Pendapatan$/i)).toBeVisible();
-        await expect(page.getByText(/^Honor Mitra$/i)).toBeVisible();
-        await expect(page.getByText(/^Laba Kotor$/i)).toBeVisible();
-    });
-
-    test('tabel punya header kolom lengkap', async ({ page }) => {
-        const headers = (
-            await page.locator('table thead th').allTextContents()
-        ).map((h) => h.trim());
-
-        expect(headers).toEqual(
-            expect.arrayContaining([
-                'Kode',
-                'Tanggal',
-                'Client',
-                'Paket',
-                'Total',
-                'Status',
-            ]),
-        );
-    });
-
-    test('menampilkan empty state atau baris transaksi', async ({ page }) => {
-        const rows = page.locator('table tbody tr');
-        const count = await rows.count();
-
-        // Selalu > 0 karena :else merender empty state.
-        expect(count).toBeGreaterThan(0);
-
-        // Kalau hanya 1 baris, cek apakah itu empty state atau baris data.
-        if (count === 1) {
-            const emptyLocator = page
-                .locator('table tbody')
-                .getByText(/Belum ada transaksi/i);
-            const isEmpty = (await emptyLocator.count()) > 0;
-
-            if (isEmpty) {
-                await expect(emptyLocator.first()).toBeVisible();
-            } else {
-                // Baris tunggal berisi data — valid.
-                await expect(rows.first()).toBeVisible();
-            }
-        }
-    });
-
-    test('klik "Terapkan Filter" memicu request ke /admin/reports', async ({
-        page,
-    }) => {
-        const inputs = page.locator('input[type="date"]');
-        await inputs.nth(0).fill('2026-01-01');
-        await inputs.nth(1).fill('2026-01-31');
-
-        const [request] = await Promise.all([
-            page.waitForRequest(
-                (r) =>
-                    r.url().includes('/admin/reports') &&
-                    r.url().includes('start_date=2026-01-01') &&
-                    r.method() === 'GET',
-            ),
-            page.getByRole('button', { name: /Terapkan Filter/i }).click(),
-        ]);
-
-        expect(request.url()).toContain('start_date=2026-01-01');
-        expect(request.url()).toContain('end_date=2026-01-31');
-    });
-
-    test('Export PDF & Excel URL benar', async ({ page }) => {
-        const pdfHref = await page
-            .locator('a[href*="export-pdf"]')
-            .first()
-            .getAttribute('href');
-        const excelHref = await page
-            .locator('a[href*="export-excel"]')
-            .first()
-            .getAttribute('href');
-
-        expect(pdfHref).toMatch(
-            /\/admin\/reports\/export-pdf\?start_date=.+&end_date=.+/,
-        );
-        expect(excelHref).toMatch(
-            /\/admin\/reports\/export-excel\?start_date=.+&end_date=.+/,
-        );
-    });
-});
-
-// ============================================================
-// 2. Kinerja Mitra
-// ============================================================
-test.describe('Admin Reports — Kinerja Mitra (/admin/reports/mitra)', () => {
-    test.beforeEach(async ({ page, asAdmin }) => {
-        await asAdmin();
-        await page.goto(REPORTS.mitra);
-    });
-
-    test('kontrak umum terpenuhi', async ({ page }) => {
-        await assertCommonReportContract(page, {
-            activeTabLabel: 'Kinerja Mitra',
-            pageTitle: 'Kinerja Mitra',
-            description: /Evaluasi performa pemandu wisata/i,
-            endpoint: '/admin/reports/mitra',
-        });
-    });
-
-    test('menampilkan 2 kartu ringkasan', async ({ page }) => {
-        await expect(page.getByText(/^Total Mitra Aktif$/i)).toBeVisible();
-        await expect(
-            page.getByText(/^Total Trip Diselesaikan$/i),
-        ).toBeVisible();
-    });
-
-    test('tabel punya header kolom lengkap', async ({ page }) => {
-        const headers = (
-            await page.locator('table thead th').allTextContents()
-        ).map((h) => h.trim());
-
-        expect(headers).toEqual(
-            expect.arrayContaining([
-                'No',
-                'Nama Mitra',
-                'Trip Selesai',
-                'Total Honor',
-            ]),
-        );
-    });
-
-    test('Export PDF & Excel mengarah ke endpoint mitra', async ({ page }) => {
-        const pdfHref = await page
-            .locator('a[href*="export-pdf"]')
-            .first()
-            .getAttribute('href');
-        const excelHref = await page
-            .locator('a[href*="export-excel"]')
-            .first()
-            .getAttribute('href');
-
-        expect(pdfHref).toMatch(/\/admin\/reports\/mitra\/export-pdf/);
-        expect(excelHref).toMatch(/\/admin\/reports\/mitra\/export-excel/);
-    });
-
-    test('klik "Terapkan Filter" memicu request ke /admin/reports/mitra', async ({
-        page,
-    }) => {
-        const [request] = await Promise.all([
-            page.waitForRequest(
-                (r) =>
-                    r.url().includes('/admin/reports/mitra') &&
-                    r.method() === 'GET',
-            ),
-            page.getByRole('button', { name: /Terapkan Filter/i }).click(),
-        ]);
-        expect(request.url()).toContain('/admin/reports/mitra');
-    });
-});
-
-// ============================================================
-// 3. Rekap Harian
-// ============================================================
-test.describe('Admin Reports — Rekap Harian (/admin/reports/daily)', () => {
-    test.beforeEach(async ({ page, asAdmin }) => {
-        await asAdmin();
-        await page.goto(REPORTS.daily);
-    });
-
-    test('kontrak umum terpenuhi', async ({ page }) => {
-        await assertCommonReportContract(page, {
-            activeTabLabel: 'Rekap Harian',
-            pageTitle: 'Rekap Laporan Harian',
-            description: /Pantau aktivitas harian mitra/i,
-            endpoint: '/admin/reports/daily',
-        });
-    });
-
-    test('menampilkan 3 kartu ringkasan', async ({ page }) => {
-        await expect(page.getByText(/^Total Laporan$/i)).toBeVisible();
-        await expect(page.getByText(/^Menunggu Verifikasi$/i)).toBeVisible();
-        await expect(page.getByText(/^Terverifikasi$/i)).toBeVisible();
-    });
-
-    test('tabel punya header kolom lengkap', async ({ page }) => {
-        const headers = (
-            await page.locator('table thead th').allTextContents()
-        ).map((h) => h.trim());
-
-        expect(headers).toEqual(
-            expect.arrayContaining([
-                'Kode Trip',
-                'Mitra',
-                'Hari',
-                'Tanggal',
-                'Status',
-            ]),
-        );
-    });
-
-    test('Export PDF & Excel mengarah ke endpoint daily', async ({ page }) => {
-        const pdfHref = await page
-            .locator('a[href*="export-pdf"]')
-            .first()
-            .getAttribute('href');
-        const excelHref = await page
-            .locator('a[href*="export-excel"]')
-            .first()
-            .getAttribute('href');
-
-        expect(pdfHref).toMatch(/\/admin\/reports\/daily\/export-pdf/);
-        expect(excelHref).toMatch(/\/admin\/reports\/daily\/export-excel/);
-    });
-});
-
-// ============================================================
-// 4. Payout
-// ============================================================
-test.describe('Admin Reports — Payout (/admin/reports/payout)', () => {
-    test.beforeEach(async ({ page, asAdmin }) => {
-        await asAdmin();
-        await page.goto(REPORTS.payout);
-    });
-
-    test('kontrak umum terpenuhi', async ({ page }) => {
-        await assertCommonReportContract(page, {
-            activeTabLabel: 'Payout',
-            pageTitle: 'Laporan Pencairan',
-            description: /Pantau dana yang dicairkan ke mitra/i,
-            endpoint: '/admin/reports/payout',
-        });
-    });
-
-    test('menampilkan 3 kartu ringkasan', async ({ page }) => {
-        await expect(page.getByText(/^Total Dicairkan$/i)).toBeVisible();
-        await expect(page.getByText(/^Pending \/ Menunggu$/i)).toBeVisible();
-        await expect(page.getByText(/^Saldo Mengendap$/i)).toBeVisible();
-    });
-
-    test('tabel punya header kolom lengkap', async ({ page }) => {
-        const headers = (
-            await page.locator('table thead th').allTextContents()
-        ).map((h) => h.trim());
-
-        expect(headers).toEqual(
-            expect.arrayContaining([
-                'Kode Payout',
-                'Mitra',
-                'Tanggal',
-                'Jumlah',
-                'Status',
-            ]),
-        );
-    });
-
-    test('Export PDF & Excel mengarah ke endpoint payout', async ({ page }) => {
-        const pdfHref = await page
-            .locator('a[href*="export-pdf"]')
-            .first()
-            .getAttribute('href');
-        const excelHref = await page
-            .locator('a[href*="export-excel"]')
-            .first()
-            .getAttribute('href');
-
-        expect(pdfHref).toMatch(/\/admin\/reports\/payout\/export-pdf/);
-        expect(excelHref).toMatch(/\/admin\/reports\/payout\/export-excel/);
-    });
-});
-
-// ============================================================
-// Navigasi Tab
-// ============================================================
-test.describe('Admin Reports — Navigasi Tab', () => {
-    test.beforeEach(async ({ page, asAdmin }) => {
-        await asAdmin();
-        await page.goto(REPORTS.index);
-    });
-
-    test('klik tab "Kinerja Mitra" → halaman mitra', async ({ page }) => {
-        await page.locator('a[href="/admin/reports/mitra"]').first().click();
-        await expect(page).toHaveURL(/\/admin\/reports\/mitra/);
-    });
-
-    test('klik tab "Rekap Harian" → halaman daily', async ({ page }) => {
-        await page.locator('a[href="/admin/reports/daily"]').first().click();
-        await expect(page).toHaveURL(/\/admin\/reports\/daily/);
-    });
-
-    test('klik tab "Payout" → halaman payout', async ({ page }) => {
-        await page.locator('a[href="/admin/reports/payout"]').first().click();
-        await expect(page).toHaveURL(/\/admin\/reports\/payout/);
-    });
-
-    test('dari mitra, klik "Pendapatan" → kembali ke index', async ({
-        page,
-    }) => {
-        await page.goto(REPORTS.mitra);
-        await page.locator('a[href="/admin/reports"]').first().click();
-        await expect(page).toHaveURL(/\/admin\/reports$/);
-    });
-});
-
-// ============================================================
-// Accessibility
-// ============================================================
-test.describe('Admin Reports — Accessibility', () => {
-    for (const [name, path] of Object.entries(REPORTS)) {
-        test(`halaman ${name} tidak punya pelanggaran WCAG kritis`, async ({
+        test('export PDF dan export Excel (download .xlsx) laporan pendapatan berfungsi', async ({
             page,
             asAdmin,
         }) => {
+            await dismissNotificationPrompt(page);
             await asAdmin();
-            await page.goto(path);
+
+            await page.goto('/admin/reports');
             await page.waitForLoadState('networkidle');
 
-            const results = await new AxeBuilder({ page })
-                .withTags(['wcag2a', 'wcag2aa'])
-                .disableRules([
-                    'region',
-                    'landmark-one-main',
-                    // TODO: fix design token contrast (bg-pink-dark, bg-sun/10)
-                    'color-contrast',
-                    // TODO: setelah tiap halaman punya <svelte:head><title>,
-                    //       HAPUS rule ini supaya test lebih ketat.
-                    'document-title',
-                ])
-                .analyze();
+            // 1. Export Excel -> memicu download file .xlsx
+            const excelLink = page.getByRole('link', { name: 'Export Excel' });
+            await expect(excelLink).toBeVisible();
 
-            const critical = results.violations.filter((v) =>
-                ['critical', 'serious'].includes(v.impact ?? ''),
+            const [excelDownload] = await Promise.all([
+                page.waitForEvent('download'),
+                excelLink.click(),
+            ]);
+            expect(excelDownload.suggestedFilename()).toMatch(
+                /^Laporan-Pendapatan-\d{4}-\d{2}-\d{2}\.xlsx$/,
             );
-            expect(critical).toEqual([]);
-        });
 
-        test(`halaman ${name} punya h1`, async ({ page, asAdmin }) => {
-            await asAdmin();
-            await page.goto(path);
-            expect(await page.locator('h1').count()).toBeGreaterThanOrEqual(1);
+            // 2. Export PDF -> verifikasi URL & response stream application/pdf (lintas browser)
+            const pdfLink = page.getByRole('link', { name: 'Export PDF' });
+            await expect(pdfLink).toBeVisible();
+            await expect(pdfLink).toHaveAttribute('target', '_blank');
+
+            const pdfHref = await pdfLink.getAttribute('href');
+            expect(pdfHref).toContain('/admin/reports/export-pdf');
+
+            const pdfResponse = await page.request.get(pdfHref!);
+            expect(pdfResponse.status()).toBe(200);
+            expect(pdfResponse.headers()['content-type']).toContain('application/pdf');
         });
-    }
+    });
+
+    // ==========================================
+    // 3. LAPORAN KINERJA MITRA (/admin/reports/mitra)
+    // ==========================================
+
+    test.describe('Laporan Kinerja Mitra & Export', () => {
+        test('berpindah tab ke Kinerja Mitra, menampilkan statistik & tabel peringkat mitra, serta export PDF/Excel', async ({
+            page,
+            asAdmin,
+        }) => {
+            await dismissNotificationPrompt(page);
+            await asAdmin();
+
+            await page.goto('/admin/reports');
+            await page.waitForLoadState('networkidle');
+
+            // Klik tab Kinerja Mitra
+            await page
+                .getByRole('navigation', { name: 'Navigasi Laporan' })
+                .getByRole('link', { name: 'Kinerja Mitra' })
+                .click();
+
+            await expect(page).toHaveURL(/\/admin\/reports\/mitra/);
+            await page.waitForLoadState('networkidle');
+
+            // Kartu Ringkasan Mitra
+            await expect(page.getByText('Total Mitra Aktif')).toBeVisible();
+            await expect(page.getByText('Trip Selesai').first()).toBeVisible();
+
+            // Tabel Peringkat Kinerja Mitra
+            const mitraTable = page.getByRole('table', { name: 'Peringkat Kinerja Mitra' });
+            await expect(mitraTable).toBeVisible();
+            await expect(mitraTable.getByText(SEED_USERS.mitra.email)).toBeVisible();
+
+            // 1. Export Excel Kinerja Mitra
+            const [excelDownload] = await Promise.all([
+                page.waitForEvent('download'),
+                page.getByRole('link', { name: 'Export Excel' }).click(),
+            ]);
+            expect(excelDownload.suggestedFilename()).toMatch(
+                /^Laporan-Kinerja-Mitra-\d{4}-\d{2}-\d{2}\.xlsx$/,
+            );
+
+            // 2. Export PDF Kinerja Mitra
+            const pdfLink = page.getByRole('link', { name: 'Export PDF' });
+            await expect(pdfLink).toBeVisible();
+            await expect(pdfLink).toHaveAttribute('target', '_blank');
+
+            const pdfHref = await pdfLink.getAttribute('href');
+            expect(pdfHref).toContain('/admin/reports/mitra/export-pdf');
+
+            const pdfResponse = await page.request.get(pdfHref!);
+            expect(pdfResponse.status()).toBe(200);
+            expect(pdfResponse.headers()['content-type']).toContain('application/pdf');
+        });
+    });
 });

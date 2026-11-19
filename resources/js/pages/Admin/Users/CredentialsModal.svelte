@@ -1,4 +1,7 @@
 <script lang="ts">
+    // ============================================================
+    // TYPES
+    // ============================================================
     type Credentials = {
         role: string;
         name: string;
@@ -7,6 +10,9 @@
         password: string;
     };
 
+    // ============================================================
+    // PROPS
+    // ============================================================
     let {
         open = $bindable(false),
         credentials = null,
@@ -15,17 +21,70 @@
         credentials: Credentials | null;
     } = $props();
 
+    // ============================================================
+    // STATE
+    // ============================================================
     let copied = $state<string | null>(null);
+    let resetTimer: ReturnType<typeof setTimeout> | undefined;
 
-    function copy(text: string, key: string) {
-        navigator.clipboard.writeText(text).then(() => {
-            copied = key;
-            setTimeout(() => (copied = null), 2000);
-        });
+    // ============================================================
+    // HELPERS — CLIPBOARD
+    // ============================================================
+
+    /**
+     * Cek apakah Clipboard API tersedia di environment saat ini.
+     * - SSR: `navigator` undefined → false
+     * - Browser lama / HTTP (bukan HTTPS): `navigator.clipboard` undefined → false
+     */
+    function isClipboardAvailable(): boolean {
+        return (
+            typeof navigator !== 'undefined' &&
+            typeof navigator.clipboard !== 'undefined' &&
+            typeof navigator.clipboard.writeText === 'function'
+        );
     }
 
-    function copyAll() {
+    /**
+     * Salin teks ke clipboard dengan error handling proper.
+     *
+     * Anti-pattern yang dihindari:
+     *   navigator.clipboard.writeText(text).then(...)  // ← unhandled rejection
+     *
+     * Best practice:
+     *   - Guard SSR + API availability
+     *   - try/catch untuk tangkap rejection
+     *   - Log error untuk debugging (bukan silent swallow total)
+     *   - Reset `copied` via timer yang di-track
+     */
+    async function copy(text: string, key: string): Promise<void> {
+        if (!isClipboardAvailable()) {
+            console.warn('[CredentialsModal] Clipboard API tidak tersedia.');
+            return;
+        }
+
+        try {
+            await navigator.clipboard.writeText(text);
+
+            // Clear timer sebelumnya (jika user klik berkali-kali)
+            if (resetTimer) clearTimeout(resetTimer);
+
+            copied = key;
+            resetTimer = setTimeout(() => {
+                copied = null;
+                resetTimer = undefined;
+            }, 2000);
+        } catch (err) {
+            // Jangan crash UI. Log untuk debugging.
+            console.error('[CredentialsModal] Gagal menyalin ke clipboard:', err);
+        }
+    }
+
+    /**
+     * Salin semua kredensial dalam format multi-line.
+     */
+    function copyAll(): void {
         if (!credentials) return;
+
         const text = [
             `Role: ${credentials.role}`,
             `Nama: ${credentials.name}`,
@@ -33,17 +92,30 @@
             `Username: ${credentials.username ?? '-'}`,
             `Password: ${credentials.password}`,
         ].join('\n');
-        copy(text, 'all');
+
+        void copy(text, 'all');
     }
 
-    function close() {
+    /**
+     * Tutup modal.
+     */
+    function close(): void {
         open = false;
     }
+
+    // ============================================================
+    // CLEANUP — Reset timer saat komponen unmount
+    // ============================================================
+    $effect(() => {
+        return () => {
+            if (resetTimer) clearTimeout(resetTimer);
+        };
+    });
 </script>
 
 {#if open && credentials}
     <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <!-- Backdrop — ✅ FIX A11Y: <div> → <button> -->
+        <!-- Backdrop -->
         <button
             type="button"
             class="absolute inset-0 bg-black/50 backdrop-blur-sm cursor-default"
@@ -51,7 +123,7 @@
             aria-label="Tutup modal"
         ></button>
 
-        <!-- Modal -->
+        <!-- Dialog -->
         <div
             role="dialog"
             aria-modal="true"
@@ -60,8 +132,8 @@
         >
             <!-- Header -->
             <div class="text-center mb-6">
-                <div class="w-16 h-16 mx-auto rounded-full bg-green-100 flex items-center justify-center mb-4">
-                    <svg class="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <div class="w-16 h-16 mx-auto rounded-full bg-green/10 flex items-center justify-center mb-4">
+                    <svg class="w-8 h-8 text-green-text" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                 </div>
@@ -72,13 +144,13 @@
             </div>
 
             <!-- Warning -->
-            <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-r-2xl flex items-start gap-3 mb-6">
-                <svg class="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+            <div class="bg-sun/10 border-l-4 border-sun p-4 rounded-r-2xl flex items-start gap-3 mb-6">
+                <svg class="w-5 h-5 text-sun-text flex-shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                     <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
                 </svg>
                 <div>
-                    <p class="text-sm text-yellow-700 font-bold">Password hanya muncul 1x</p>
-                    <p class="text-xs text-yellow-700 mt-1">
+                    <p class="text-sm text-sun-text font-bold">Password hanya muncul 1x</p>
+                    <p class="text-xs text-sun-text/80 mt-1">
                         Salin sekarang. Jika hilang, Anda harus reset password lagi.
                     </p>
                 </div>
@@ -115,18 +187,18 @@
                         aria-label="Salin email"
                     >
                         {#if copied === 'email'}
-                            <svg class="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <svg class="w-4 h-4 text-green-text" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                             </svg>
                         {:else}
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                             </svg>
                         {/if}
                     </button>
                 </div>
 
-                <!-- Username -->
+                <!-- Username (opsional) -->
                 {#if credentials.username}
                     <div class="flex items-center justify-between gap-3 p-4 bg-gray-50 rounded-2xl">
                         <div class="min-w-0 flex-1">
@@ -140,11 +212,11 @@
                             aria-label="Salin username"
                         >
                             {#if copied === 'username'}
-                                <svg class="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <svg class="w-4 h-4 text-green-text" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                                 </svg>
                             {:else}
-                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                                 </svg>
                             {/if}
@@ -165,11 +237,11 @@
                         aria-label="Salin password"
                     >
                         {#if copied === 'password'}
-                            <svg class="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <svg class="w-4 h-4 text-green-text" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                             </svg>
                         {:else}
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                             </svg>
                         {/if}
@@ -185,12 +257,12 @@
                     class="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-pink-dark text-white font-bold text-sm hover:bg-sun-dark transition-all shadow-md"
                 >
                     {#if copied === 'all'}
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                         </svg>
                         Tersalin!
                     {:else}
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
                         </svg>
                         Salin Semua

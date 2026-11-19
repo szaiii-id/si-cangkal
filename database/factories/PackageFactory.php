@@ -23,7 +23,7 @@ class PackageFactory extends Factory
         $durasiMalam = max(0, $durasiHari - 1);
 
         return [
-            'mitra_id' => User::factory()->mitraLive(), // ✅ Mitra wajib live
+            'mitra_id' => User::factory()->mitra(),
             'kode' => 'PKG-'.now()->year.'-'.str_pad(
                 (string) fake()->unique()->numberBetween(1, 999),
                 3,

@@ -1,329 +1,209 @@
+/**
+ * ============================================================
+ * Mitra Dashboard — Component Test
+ * ============================================================
+ *
+ * Fokus pengujian:
+ *   1. Isolation & Mocking  → Inertia, menu, & child components
+ *                             (DashboardLayout, StatsCards,
+ *                             RecentBookingsList) di-mock.
+ *   2. Props & Rendering    → Welcome header, passing stats & bookings.
+ *   3. Edge Cases           → Fallback user name, default stats kosong.
+ * ============================================================
+ */
+
+import { render, screen } from '@testing-library/svelte';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, within } from '@testing-library/svelte';
-import MitraDashboard from '../Dashboard.svelte';
+import Dashboard from '../Dashboard.svelte';
 
 // ============================================================
-// MOCK INERTIA
+// 1. HOISTED MOCK REGISTRY
 // ============================================================
-vi.mock('@inertiajs/svelte', () => ({
-    inertia: () => ({
-        update: vi.fn(),
-        destroy: vi.fn(),
-    }),
-    router: {
-        visit: vi.fn(),
-        post: vi.fn(),
-        get: vi.fn(),
-        reload: vi.fn(),
-        on: vi.fn(),
-        off: vi.fn(),
-    },
-    page: {
-        get props() {
-            return {
-                auth: {
-                    user: {
-                        id: 2,
-                        name: 'Mitra Test',
-                        role: 'mitra',
-                    },
-                },
-            };
-        },
-        get url() {
-            return '/mitra/dashboard';
-        },
-        get component() {
-            return 'Mitra/Dashboard';
+const mockPage = vi.hoisted(() => ({
+    props: {
+        auth: {
+            user: { id: 1, name: 'Mitra Jaya', role: 'mitra' },
         },
     },
 }));
 
 // ============================================================
-// HELPERS
+// 2. MOCK — INERTIA
 // ============================================================
+vi.mock('@inertiajs/svelte', () => ({
+    page: mockPage,
+    inertia: vi.fn(),
+}));
 
-const createStats = (overrides: any = {}) => ({
-    trips: { scheduled: 2, active: 1, completed: 3, total: 6 },
-    daily_reports: {
-        submitted: 2,
-        verified: 5,
-        rejected: 1,
-        total: 8,
+// ============================================================
+// 3. MOCK — MENUS
+// ============================================================
+vi.mock('@/utils/menus', () => ({
+    mitraMenu: [],
+}));
+
+// ============================================================
+// 4. MOCK — LAYOUT & PAGE HEADER (jika ada)
+// ============================================================
+vi.mock('@/components/layout/DashboardLayout.svelte', () => ({
+    default: (anchor: Node, props: { children?: (anchor: Node) => void }) => {
+        props.children?.(anchor);
+        return {};
     },
-    wallet: {
-        saldo: 1_500_000,
-        total_pendapatan: 5_000_000,
-        total_dicairkan: 3_500_000,
+}));
+
+// ============================================================
+// 5. MOCK — CHILD COMPONENTS
+// ============================================================
+vi.mock('@/components/mitra/dashboard/StatsCards.svelte', () => ({
+    default: (anchor: Node, props: any) => {
+        const el = document.createElement('div');
+        el.setAttribute('data-testid', 'stats-cards');
+        el.setAttribute('data-revenue', String(props.totalRevenue));
+        el.setAttribute('data-packages', String(props.totalPackages));
+        el.setAttribute('data-trips', String(props.totalTrips));
+        el.setAttribute('data-bookings', String(props.totalBookings));
+        anchor.parentNode?.insertBefore(el, anchor);
+        return {};
     },
+}));
+
+vi.mock('@/components/mitra/dashboard/RecentBookingsList.svelte', () => ({
+    default: (anchor: Node, props: any) => {
+        const el = document.createElement('div');
+        el.setAttribute('data-testid', 'recent-bookings');
+        el.setAttribute('data-bookings-count', String(props.bookings?.length ?? 0));
+        anchor.parentNode?.insertBefore(el, anchor);
+        return {};
+    },
+}));
+
+// ============================================================
+// 6. FIXTURES
+// ============================================================
+const makeStats = (overrides = {}) => ({
+    packages: { draft: 2, aktif: 5, arsip: 1, total: 8 },
+    trips: { scheduled: 3, active: 1, completed: 10, total: 14 },
+    bookings: { pending: 2, confirmed: 5, total: 7 },
+    total_revenue: 12500000,
     ...overrides,
 });
 
-const createTrip = (overrides: any = {}) => ({
-    id: 1,
-    kode: 'TRP-001',
-    status: 'active',
-    package: { id: 10, nama: 'Bali Adventure', kode: 'PKG-BALI' },
-    trip_mitra: { role: 'leader', honor: '500000', honor_tipe: 'per_day' },
-    today_day: {
-        id: 100,
-        hari_ke: 2,
-        tanggal: '2026-04-01',
-        judul: 'Snorkeling',
-        status: 'active',
-        has_report: false,
-        report_status: null,
-    },
-    ...overrides,
-});
+const makeBookings = (count = 3) =>
+    Array.from({ length: count }, (_, i) => ({
+        id: i + 1,
+        kode: `BK-${i + 1}`,
+        client: `Client ${i + 1}`,
+        paket: `Paket ${i + 1}`,
+        total: 1000000 * (i + 1),
+        status: 'pending',
+        tanggal: '2026-01-01',
+    }));
 
-const createPendingReport = (overrides: any = {}) => ({
-    id: 500,
-    status: 'submitted',
-    submitted_at: '2026-04-01T10:00:00Z',
-    trip_day: {
-        hari_ke: 2,
-        tanggal: '2026-04-01',
-        judul: 'Snorkeling',
-        trip: {
-            id: 1,
-            kode: 'TRP-001',
-            package: { nama: 'Bali Adventure' },
-        },
-    },
-    ...overrides,
-});
-
-/**
- * Ambil kartu wallet (link dengan teks "Saldo Wallet").
- */
-const getWalletCard = (): HTMLElement => {
-    const link = screen
-        .getAllByRole('link')
-        .find(
-            (a) =>
-                a.getAttribute('href') === '/mitra/wallet' &&
-                a.textContent?.includes('Saldo Wallet'),
-        );
-    if (!link) throw new Error('Wallet card tidak ditemukan');
-    return link as HTMLElement;
-};
-
-beforeEach(() => {
-    vi.clearAllMocks();
-});
-
-// ============================================================
-// KATEGORI 1 — WELCOME & WALLET
-// ============================================================
-
-describe('Mitra Dashboard — Welcome & Wallet', () => {
-    it('menampilkan nama user di welcome banner', () => {
-        render(MitraDashboard, {
-            props: {
-                stats: createStats(),
-                todayTrips: [],
-                pendingReports: [],
-            },
-        });
-
-        expect(
-            screen.getByRole('heading', {
-                name: /Halo, Mitra Test/i,
-            }),
-        ).toBeInTheDocument();
-    });
-
-    it('menampilkan saldo wallet terformat', () => {
-        render(MitraDashboard, {
-            props: {
-                stats: createStats(),
-                todayTrips: [],
-                pendingReports: [],
-            },
-        });
-
-        const walletEl = getWalletCard();
-
-        expect(
-            within(walletEl).getByText(/1\.500\.000|1,500,000/),
-        ).toBeInTheDocument();
-        expect(
-            within(walletEl).getByText(/5\.000\.000|5,000,000/),
-        ).toBeInTheDocument();
-        expect(
-            within(walletEl).getByText(/3\.500\.000|3,500,000/),
-        ).toBeInTheDocument();
-    });
-});
-
-// ============================================================
-// KATEGORI 2 — PERLU TINDAKAN (Warning Laporan)
-// ============================================================
-
-describe('Mitra Dashboard — Perlu Tindakan', () => {
-    it('menampilkan warning jika ada trip yang belum lapor hari ini', () => {
-        render(MitraDashboard, {
-            props: {
-                stats: createStats(),
-                todayTrips: [createTrip()],
-                pendingReports: [],
-            },
-        });
-
-        expect(
-            screen.getByRole('heading', { name: 'Perlu Tindakan Anda' }),
-        ).toBeInTheDocument();
-        expect(
-            screen.getByText(/1 trip perlu laporan hari ini/i),
-        ).toBeInTheDocument();
-    });
-
-    it('TIDAK menampilkan warning jika semua trip sudah lapor', () => {
-        render(MitraDashboard, {
-            props: {
-                stats: createStats(),
-                todayTrips: [
-                    createTrip({
-                        today_day: {
-                            id: 100,
-                            hari_ke: 2,
-                            tanggal: '2026-04-01',
-                            judul: 'Snorkeling',
-                            status: 'active',
-                            has_report: true,
-                            report_status: 'verified',
-                        },
-                    }),
-                ],
-                pendingReports: [],
-            },
-        });
-
-        expect(
-            screen.queryByRole('heading', { name: 'Perlu Tindakan Anda' }),
-        ).not.toBeInTheDocument();
-    });
-
-    it('TIDAK menampilkan warning jika tidak ada trip hari ini', () => {
-        render(MitraDashboard, {
-            props: {
-                stats: createStats(),
-                todayTrips: [],
-                pendingReports: [],
-            },
-        });
-
-        expect(
-            screen.queryByRole('heading', { name: 'Perlu Tindakan Anda' }),
-        ).not.toBeInTheDocument();
-    });
-});
-
-// ============================================================
-// KATEGORI 3 — TRIP HARI INI
-// ============================================================
-
-describe('Mitra Dashboard — Trip Hari Ini', () => {
-it('merender trip hari ini jika ada', () => {
-    render(MitraDashboard, {
+const renderPage = (props: any = {}) =>
+    render(Dashboard, {
         props: {
-            stats: createStats(),
-            todayTrips: [createTrip()],
-            pendingReports: [],
+            stats: makeStats(),
+            recent_bookings: makeBookings(3),
+            ...props,
         },
     });
 
-    expect(
-        screen.getByRole('heading', { name: 'Trip Hari Ini' }),
-    ).toBeInTheDocument();
-
-    const tripSection = screen
-        .getByRole('heading', { name: 'Trip Hari Ini' })
-        .closest('div.mb-8') as HTMLElement;
-
-    expect(
-        within(tripSection).getByText('Bali Adventure'),
-    ).toBeInTheDocument();
-    expect(
-        within(tripSection).getByText('TRP-001'),
-    ).toBeInTheDocument();
-});
-
-    it('TIDAK merender section Trip Hari Ini jika kosong', () => {
-        render(MitraDashboard, {
-            props: {
-                stats: createStats(),
-                todayTrips: [],
-                pendingReports: [],
-            },
-        });
-
-        expect(
-            screen.queryByRole('heading', {
-                level: 2,
-                name: 'Trip Hari Ini',
-            }),
-        ).not.toBeInTheDocument();
-    });
-});
-
 // ============================================================
-// KATEGORI 4 — LAPORAN PENDING
+// 7. TEST SUITE
 // ============================================================
-
-describe('Mitra Dashboard — Laporan Pending', () => {
-    it('merender laporan pending jika ada', () => {
-        render(MitraDashboard, {
-            props: {
-                stats: createStats(),
-                todayTrips: [],
-                pendingReports: [createPendingReport()],
-            },
-        });
-
-        expect(
-            screen.getByRole('heading', {
-                name: 'Laporan Menunggu Verifikasi',
-            }),
-        ).toBeInTheDocument();
-        expect(screen.getByText('Bali Adventure')).toBeInTheDocument();
+describe('Mitra Dashboard', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockPage.props.auth = {
+            user: { id: 1, name: 'Mitra Jaya', role: 'mitra' },
+        };
     });
 
-    it('TIDAK merender section jika pendingReports kosong', () => {
-        render(MitraDashboard, {
-            props: {
-                stats: createStats(),
-                todayTrips: [],
-                pendingReports: [],
-            },
+    // ----------------------------------------------------------
+    // 7.1 RENDERING — Header
+    // ----------------------------------------------------------
+    describe('Rendering — Header', () => {
+        it('menampilkan nama user dari page.auth', () => {
+            renderPage();
+            expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+                'Halo, Mitra Jaya',
+            );
         });
 
-        expect(
-            screen.queryByRole('heading', {
-                level: 2,
-                name: 'Laporan Menunggu Verifikasi',
-            }),
-        ).not.toBeInTheDocument();
+        it('menampilkan fallback "Mitra" jika user null', () => {
+            mockPage.props.auth = { user: null } as any;
+            renderPage();
+            expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+                'Halo, Mitra',
+            );
+        });
+
+        it('menampilkan deskripsi halaman', () => {
+            renderPage();
+            expect(
+                screen.getByText('Ini ringkasan performa bisnis wisata Anda.'),
+            ).toBeInTheDocument();
+        });
     });
-});
 
-// ============================================================
-// KATEGORI 5 — PANEL INFO
-// ============================================================
-
-describe('Mitra Dashboard — Panel Info', () => {
-    it('menampilkan panel "Panel Mitra"', () => {
-        render(MitraDashboard, {
-            props: {
-                stats: createStats(),
-                todayTrips: [],
-                pendingReports: [],
-            },
+    // ----------------------------------------------------------
+    // 7.2 RENDERING — Child Components
+    // ----------------------------------------------------------
+    describe('Rendering — Child Components', () => {
+        it('merender StatsCards', () => {
+            renderPage();
+            expect(screen.getByTestId('stats-cards')).toBeInTheDocument();
         });
 
-        expect(
-            screen.getByRole('heading', { name: 'Panel Mitra' }),
-        ).toBeInTheDocument();
+        it('meneruskan stats ke StatsCards dengan benar', () => {
+            renderPage();
+            const cards = screen.getByTestId('stats-cards');
+
+            expect(cards).toHaveAttribute('data-revenue', '12500000');
+            expect(cards).toHaveAttribute('data-packages', '8');   // stats.packages.total
+            expect(cards).toHaveAttribute('data-trips', '14');     // stats.trips.total
+            expect(cards).toHaveAttribute('data-bookings', '7');   // stats.bookings.total
+        });
+
+        it('merender RecentBookingsList', () => {
+            renderPage();
+            expect(screen.getByTestId('recent-bookings')).toBeInTheDocument();
+        });
+
+        it('meneruskan recent_bookings ke RecentBookingsList', () => {
+            renderPage({ recent_bookings: makeBookings(5) });
+            expect(screen.getByTestId('recent-bookings')).toHaveAttribute(
+                'data-bookings-count',
+                '5',
+            );
+        });
+    });
+
+    // ----------------------------------------------------------
+    // 7.3 EDGE CASES
+    // ----------------------------------------------------------
+    describe('Edge Cases', () => {
+        it('menggunakan default stats jika props kosong', () => {
+            render(Dashboard, { props: {} }); // tanpa stats & recent_bookings
+
+            const cards = screen.getByTestId('stats-cards');
+            expect(cards).toHaveAttribute('data-revenue', '0');
+            expect(cards).toHaveAttribute('data-packages', '0');
+            expect(cards).toHaveAttribute('data-trips', '0');
+            expect(cards).toHaveAttribute('data-bookings', '0');
+
+            const bookings = screen.getByTestId('recent-bookings');
+            expect(bookings).toHaveAttribute('data-bookings-count', '0');
+        });
+
+        it('handle recent_bookings kosong', () => {
+            renderPage({ recent_bookings: [] });
+
+            expect(screen.getByTestId('recent-bookings')).toHaveAttribute(
+                'data-bookings-count',
+                '0',
+            );
+        });
     });
 });

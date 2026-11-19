@@ -1,32 +1,17 @@
 <script lang="ts">
-    import DashboardLayout from '@/components/layout/DashboardLayout.svelte';
-    import EmptyState from '@/global/EmptyState.svelte';
-    import PageHeader from '@/global/PageHeader.svelte';
+    import ClientLayout from '@/components/layout/ClientLayout.svelte';
     import Pagination from '@/global/Pagination.svelte';
-    import SearchInput from '@/global/SearchInput.svelte';
-    import StatusTabs from '@/global/StatusTabs.svelte';
-
-    import { router } from '@inertiajs/svelte';
-
-    import type {
-        Booking,
-        PaginationMeta,
-        StatusTab,
-    } from '@/types';
-
+    import { router, inertia } from '@inertiajs/svelte';
+    import type { Booking, PaginationMeta, StatusTab } from '@/types';
     import {
         bookingStatusBadge,
         bookingStatusLabel,
         bookingStatusShort,
     } from '@/utils/enums';
-    import {
-        BOOKING_STATUS_ORDER,
-        isPendingPayment,
-    } from '@/utils/bookingRules';
+    import { BOOKING_STATUS_ORDER, isPendingPayment } from '@/utils/bookingRules';
     import { formatBookingCountdown } from '@/utils/countdown';
     import { formatCurrency } from '@/utils/formatCurrency';
     import { formatDate } from '@/utils/formatDate';
-    import { clientMenu } from '@/utils/menus';
 
     // ==========================================
     // PROPS
@@ -49,11 +34,7 @@
             kode: string;
             timezone: string;
         } | null;
-        client: {
-            id: number;
-            name: string;
-            email: string;
-        } | null;
+        client: { id: number; name: string; email: string } | null;
     };
 
     let {
@@ -106,11 +87,7 @@
                 sort: filters.sort,
                 direction: filters.direction,
             },
-            {
-                preserveState: true,
-                preserveScroll: true,
-                replace: true,
-            },
+            { preserveState: true, preserveScroll: true, replace: true },
         );
     }
 
@@ -129,30 +106,21 @@
         search = '';
         selectedStatus = '';
         clearTimeout(searchTimeout);
-        router.get(
-            '/client/bookings',
-            {},
-            {
-                preserveState: true,
-                preserveScroll: true,
-                replace: true,
-            },
-        );
+        router.get('/client/bookings', {}, {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+        });
     }
 
-    let hasActiveFilters = $derived(
-        search !== '' || selectedStatus !== '',
-    );
+    let hasActiveFilters = $derived(search !== '' || selectedStatus !== '');
 
     // ==========================================
     // STATUS TABS
     // ==========================================
 
     let totalAll = $derived(
-        Object.values(statusCounts).reduce(
-            (sum: number, n: number) => sum + n,
-            0,
-        ),
+        Object.values(statusCounts).reduce((sum: number, n: number) => sum + n, 0),
     );
 
     let statusTabs: StatusTab[] = $derived([
@@ -170,26 +138,68 @@
 </script>
 
 <svelte:head>
-    <title>Pesanan Saya | Titiktemu</title>
+    <title>Pesanan Saya | SI-CANGKAL</title>
 </svelte:head>
 
-<DashboardLayout title="Pesanan Saya" menuItems={clientMenu}>
-    <PageHeader
-        title="Pesanan Saya"
-        description="Lihat dan pantau semua pesanan perjalanan Anda."
-    >
-        {#snippet actions()}
-            <a
-                href="/client/catalog"
-                class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-pink-dark text-white font-bold text-sm hover:bg-sun-dark transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
+<ClientLayout title="Pesanan Saya">
+    <div class="max-w-3xl mx-auto pb-12">
+        <!-- HEADER -->
+        <div class="mb-6 sm:mb-8">
+            <h1 class="text-2xl sm:text-3xl font-extrabold text-dark">
+                Pesanan Saya
+            </h1>
+            <p class="text-sm text-gray-500 mt-1">
+                Pantau status perjalanan dan unduh e-ticket Anda di sini.
+            </p>
+        </div>
+
+        <!-- FILTER & SEARCH -->
+        <div
+            class="bg-white rounded-[2rem] border border-gray-100 shadow-sm p-5 sm:p-6 mb-6 space-y-4"
+        >
+            <!-- Status Tabs -->
+            <div
+                class="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide -mx-1 px-1"
             >
+                {#each statusTabs as tab}
+                    <button
+                        type="button"
+                        onclick={() => changeStatus(tab.value)}
+                        class="px-4 py-2 rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all border
+                            {selectedStatus === tab.value
+                                ? 'bg-dark text-white border-dark shadow-md'
+                                : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:text-dark'}"
+                    >
+                        {tab.label}
+                        {#if tab.count !== undefined}
+                            <span
+                                class="ml-1 {selectedStatus === tab.value
+                                    ? 'text-white/70'
+                                    : 'text-gray-400'}"
+                            >
+                                {tab.count}
+                            </span>
+                        {/if}
+                    </button>
+                {/each}
+            </div>
+
+            <!-- Search Input (pill) -->
+            <div class="relative">
+                <input
+                    type="text"
+                    bind:value={search}
+                    oninput={(e) =>
+                        handleSearch((e.target as HTMLInputElement).value)}
+                    placeholder="Cari kode pesanan atau nama paket..."
+                    class="w-full pl-11 pr-10 py-3 border border-gray-200 rounded-full bg-gray-50 text-sm font-medium placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue focus:bg-white transition-all"
+                />
                 <svg
-                    class="w-4 h-4"
+                    class="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
                     stroke-width="2.5"
-                    aria-hidden="true"
                 >
                     <path
                         stroke-linecap="round"
@@ -197,114 +207,156 @@
                         d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                     />
                 </svg>
-                Cari Paket Wisata
-            </a>
-        {/snippet}
-    </PageHeader>
-
-    <!-- Status Tabs -->
-    <div class="mb-6">
-        <StatusTabs
-            tabs={statusTabs}
-            bind:active={selectedStatus}
-            onchange={changeStatus}
-        />
-    </div>
-
-    <!-- Search Bar -->
-    <div
-        class="bg-white rounded-3xl border border-gray-200 shadow-sm p-4 sm:p-5 mb-6"
-    >
-        <SearchInput
-            bind:value={search}
-            oninput={handleSearch}
-            placeholder="Cari kode pesanan atau nama paket..."
-        />
-    </div>
-
-    <!-- List / Empty -->
-    {#if bookings.data.length === 0}
-        <div
-            class="bg-white rounded-3xl border border-gray-200 shadow-sm"
-        >
-            <EmptyState
-                icon="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                title={hasActiveFilters
-                    ? 'Tidak ada pesanan ditemukan'
-                    : 'Belum ada pesanan'}
-                description={hasActiveFilters
-                    ? 'Coba ubah filter atau kata kunci pencarian Anda.'
-                    : 'Mulai jelajahi paket wisata dan buat pesanan pertama Anda.'}
-                hasFilters={hasActiveFilters}
-                onClear={clearFilters}
-            />
+                {#if search}
+                    <button
+                        type="button"
+                        onclick={() => {
+                            search = '';
+                            handleSearch('');
+                        }}
+                        class="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-gray-200 hover:bg-dark hover:text-white text-gray-500 flex items-center justify-center transition-all"
+                        aria-label="Hapus pencarian"
+                    >
+                        <svg
+                            class="w-3.5 h-3.5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            stroke-width="3"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                d="M6 18L18 6M6 6l12 12"
+                            />
+                        </svg>
+                    </button>
+                {/if}
+            </div>
         </div>
-    {:else}
-        <div class="space-y-4">
-            {#each bookings.data as booking (booking.id)}
-                {@const countdown = isPendingPayment(
-                    booking.status,
-                )
-                    ? formatBookingCountdown(booking.expired_at)
-                    : null}
 
-                <a
-                    href={`/client/bookings/${booking.id}`}
-                    class="group block bg-white rounded-3xl border border-gray-200 shadow-sm hover:shadow-md hover:border-pink/30 transition-all overflow-hidden"
+        <!-- LIST -->
+        {#if bookings.data.length === 0}
+            <!-- EMPTY STATE -->
+            <div
+                class="text-center py-16 sm:py-20 bg-white rounded-[2rem] border border-gray-100 shadow-sm px-6"
+            >
+                <div
+                    class="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center text-gray-400 mb-4"
                 >
-                    <div class="p-5 sm:p-6">
+                    <svg
+                        class="w-8 h-8"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        stroke-width="2"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                        />
+                    </svg>
+                </div>
+                <h3 class="text-lg font-extrabold text-dark mb-1">
+                    {hasActiveFilters
+                        ? 'Tidak ada pesanan ditemukan'
+                        : 'Belum ada pesanan'}
+                </h3>
+                <p class="text-sm text-gray-500 mb-6 max-w-sm mx-auto">
+                    {hasActiveFilters
+                        ? 'Coba ubah filter atau kata kunci pencarian Anda.'
+                        : 'Mulai jelajahi paket wisata dan buat pesanan pertama Anda.'}
+                </p>
+                {#if hasActiveFilters}
+                    <button
+                        type="button"
+                        onclick={clearFilters}
+                        class="inline-flex items-center justify-center px-6 py-2.5 rounded-full bg-dark text-white font-bold text-sm hover:bg-dark/90 transition-all"
+                    >
+                        Hapus Filter
+                    </button>
+                {:else}
+                    <a
+                        href="/client/catalog"
+                        use:inertia
+                        class="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-full bg-dark text-white font-bold text-sm hover:bg-dark/90 transition-all"
+                    >
+                        Cari Paket Wisata
+                        <svg
+                            class="w-4 h-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            stroke-width="2.5"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                d="M14 5l7 7m0 0l-7 7m7-7H3"
+                            />
+                        </svg>
+                    </a>
+                {/if}
+            </div>
+        {:else}
+            <!-- BOOKING CARDS -->
+            <div class="space-y-3 sm:space-y-4 mb-6 sm:mb-8">
+                {#each bookings.data as booking (booking.id)}
+                    {@const countdown = isPendingPayment(booking.status)
+                        ? formatBookingCountdown(booking.expired_at)
+                        : null}
+
+                    <a
+                        href={`/client/bookings/${booking.id}`}
+                        use:inertia
+                        class="group block bg-white rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-lg hover:border-blue/30 transition-all overflow-hidden"
+                    >
                         <div
-                            class="flex flex-col sm:flex-row sm:items-center gap-4"
+                            class="p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-4"
                         >
                             <!-- Icon -->
                             <div
-                                class="w-14 h-14 rounded-2xl bg-linear-to-br from-pink-dark to-purple flex items-center justify-center text-white font-extrabold text-lg shadow-md shrink-0"
+                                class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-blue-dark to-blue text-white flex items-center justify-center font-extrabold text-lg sm:text-xl shadow-md shrink-0"
                             >
                                 {booking.package?.nama
                                     ?.charAt(0)
-                                    .toUpperCase() ?? '?'}
+                                    ?.toUpperCase() ?? '?'}
                             </div>
 
                             <!-- Info -->
                             <div class="flex-1 min-w-0">
-                                <div
-                                    class="flex flex-wrap items-center gap-2 mb-1"
-                                >
+                                <div class="flex flex-wrap items-center gap-2 mb-1.5">
                                     <span
                                         class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-extrabold {bookingStatusBadge(
                                             booking.status,
                                         )}"
                                     >
-                                        {bookingStatusLabel(
-                                            booking.status,
-                                        )}
+                                        {bookingStatusLabel(booking.status)}
                                     </span>
                                     <span
                                         class="text-[11px] text-gray-500 font-mono"
-                                        >{booking.kode}</span
                                     >
+                                        {booking.kode}
+                                    </span>
                                 </div>
 
                                 <h3
-                                    class="text-base font-extrabold text-dark truncate group-hover:text-pink-text transition-colors"
+                                    class="text-sm sm:text-base font-extrabold text-dark truncate group-hover:text-blue-text transition-colors"
                                 >
-                                    {booking.package?.nama ??
-                                        'Paket dihapus'}
+                                    {booking.package?.nama ?? 'Paket dihapus'}
                                 </h3>
 
                                 <div
-                                    class="flex flex-wrap items-center gap-3 text-xs text-gray-500 mt-1"
+                                    class="flex flex-wrap items-center gap-3 text-[11px] sm:text-xs text-gray-500 mt-1.5"
                                 >
-                                    <span
-                                        class="inline-flex items-center gap-1"
-                                    >
+                                    <span class="inline-flex items-center gap-1">
                                         <svg
                                             class="w-3 h-3"
                                             fill="none"
                                             viewBox="0 0 24 24"
                                             stroke="currentColor"
                                             stroke-width="2.5"
-                                            aria-hidden="true"
                                         >
                                             <path
                                                 stroke-linecap="round"
@@ -312,20 +364,15 @@
                                                 d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
                                             />
                                         </svg>
-                                        {formatDate(
-                                            booking.tanggal_keberangkatan,
-                                        )}
+                                        {formatDate(booking.tanggal_keberangkatan)}
                                     </span>
-                                    <span
-                                        class="inline-flex items-center gap-1"
-                                    >
+                                    <span class="inline-flex items-center gap-1">
                                         <svg
                                             class="w-3 h-3"
                                             fill="none"
                                             viewBox="0 0 24 24"
                                             stroke="currentColor"
                                             stroke-width="2.5"
-                                            aria-hidden="true"
                                         >
                                             <path
                                                 stroke-linecap="round"
@@ -337,7 +384,6 @@
                                     </span>
                                 </div>
 
-                                <!-- Countdown -->
                                 {#if countdown}
                                     <div
                                         class="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold
@@ -351,7 +397,6 @@
                                             viewBox="0 0 24 24"
                                             stroke="currentColor"
                                             stroke-width="2.5"
-                                            aria-hidden="true"
                                         >
                                             <path
                                                 stroke-linecap="round"
@@ -364,25 +409,24 @@
                                 {/if}
                             </div>
 
-                            <!-- Harga + Arrow -->
+                            <!-- Total & Arrow -->
                             <div
-                                class="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 sm:gap-1 shrink-0 sm:border-l sm:border-gray-100 sm:pl-4"
+                                class="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 sm:gap-1 shrink-0 sm:border-l sm:border-gray-100 sm:pl-5 mt-2 sm:mt-0 pt-3 sm:pt-0 border-t sm:border-t-0"
                             >
-                                <p
-                                    class="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest sm:text-right"
-                                >
-                                    Total
-                                </p>
-                                <p
-                                    class="text-lg font-extrabold text-pink-text"
-                                >
-                                    {formatCurrency(
-                                        booking.total_harga,
-                                    )}
-                                </p>
+                                <div class="text-right sm:text-right">
+                                    <p
+                                        class="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest"
+                                    >
+                                        Total
+                                    </p>
+                                    <p
+                                        class="text-lg sm:text-xl font-extrabold text-blue-text leading-tight"
+                                    >
+                                        {formatCurrency(booking.total_harga)}
+                                    </p>
+                                </div>
                                 <div
-                                    class="w-8 h-8 rounded-full bg-pink-dark text-white flex items-center justify-center shadow-md group-hover:bg-sun-dark group-hover:scale-110 transition-all sm:mt-2"
-                                    aria-hidden="true"
+                                    class="w-9 h-9 rounded-full bg-blue/10 text-blue-text flex items-center justify-center group-hover:bg-blue-dark group-hover:text-white transition-all shrink-0"
                                 >
                                     <svg
                                         class="w-4 h-4"
@@ -400,16 +444,16 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </a>
-            {/each}
-        </div>
+                    </a>
+                {/each}
+            </div>
 
-        <!-- Pagination -->
-        <div
-            class="mt-6 bg-white rounded-3xl border border-gray-200 shadow-sm"
-        >
-            <Pagination meta={bookings} label="pesanan" />
-        </div>
-    {/if}
-</DashboardLayout>
+            <!-- Pagination -->
+            <div
+                class="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden"
+            >
+                <Pagination meta={bookings} label="pesanan" />
+            </div>
+        {/if}
+    </div>
+</ClientLayout>

@@ -15,16 +15,16 @@ use Illuminate\Notifications\Notification;
  * - Mitra mengunggah bukti transfer atas nama client (pesanan manual).
  *
  * Channel:
- * - `mail` : email pemberitahuan ke mitra.
- * - `database` : catatan audit sekunder di tabel `notifications` Laravel
- *   standar. Tidak ditampilkan di UI Titiktemu (UI memakai `AppNotification`).
+ * - mail   : email pemberitahuan ke mitra.
+ * - database : catatan audit sekunder di tabel notifications Laravel
+ *   standar. Tidak ditampilkan di UI SI-CANGKAL (UI memakai AppNotification).
  *
  * Catatan penting:
  * - Notifikasi in-app yang tampil di UI mitra TETAP dikirim lewat
- *   `NotificationService::create()` di `BookingPaymentService::uploadProof`.
+ *   NotificationService::create() di BookingPaymentService::uploadProof.
  *   Notifikasi ini HANYA untuk channel mail + audit sekunder.
  * - Notifikasi TIDAK menyertakan tautan langsung ke file bukti transfer,
- *   karena file disimpan di disk `local` (S-09) dan hanya bisa diakses
+ *   karena file disimpan di disk local (S-09) dan hanya bisa diakses
  *   lewat route privat ber-otorisasi. Mitra harus login dulu.
  */
 final class PaymentUploadedNotification extends Notification
@@ -52,9 +52,9 @@ final class PaymentUploadedNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         $booking = $this->booking;
-        $mitraName = $booking->mitra?->name ?? 'Mitra';
-        $clientName = $booking->client?->name ?? 'Client';
-        $packageName = $booking->package?->nama ?? 'Paket Wisata';
+        $mitraName = $booking->mitra->name;
+        $clientName = $booking->client->name;
+        $packageName = $booking->package->nama;
         $totalHarga = 'Rp '.number_format((float) $booking->total_harga, 0, ',', '.');
 
         $uploader = $this->uploadedByRole === 'mitra' ? 'Mitra' : 'Client';
@@ -74,7 +74,7 @@ final class PaymentUploadedNotification extends Notification
     }
 
     /**
-     * Representasi array untuk channel `database`.
+     * Representasi array untuk channel database.
      *
      * @return array<string, mixed>
      */

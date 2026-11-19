@@ -14,10 +14,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /**
- * Model Trip — instance dari package yang benar-benar jalan.
+ * Model Trip - instance dari package yang benar-benar jalan.
  *
- * Satu trip = satu mitra (`mitra_id`). Relasi mitra di-set sekali
- * saat trip dibuat via `TripService::createFromBooking()`.
+ * Satu trip = satu mitra (mitra_id). Relasi mitra di-set sekali
+ * saat trip dibuat via TripService::createFromBooking().
  *
  * @property int $id
  * @property string $kode
@@ -74,10 +74,6 @@ class Trip extends Model
         ];
     }
 
-    // ==========================================
-    // RELASI
-    // ==========================================
-
     /**
      * @return BelongsTo<Booking, $this>
      */
@@ -95,8 +91,6 @@ class Trip extends Model
     }
 
     /**
-     * Mitra pemilik trip ini (1 trip = 1 mitra).
-     *
      * @return BelongsTo<User, $this>
      */
     public function mitra(): BelongsTo
@@ -111,10 +105,6 @@ class Trip extends Model
     {
         return $this->hasMany(TripDay::class)->orderBy('hari_ke');
     }
-
-    // ==========================================
-    // SCOPE
-    // ==========================================
 
     /**
      * @param  Builder<Trip>  $query
@@ -165,13 +155,6 @@ class Trip extends Model
     }
 
     /**
-     * Pre-filter kasar: trip scheduled yang tanggal_mulai <= hari ini.
-     *
-     * Catatan: perbandingan `tanggal_mulai` (DATE) dengan `today`
-     * menggunakan timezone aplikasi (UTC). Untuk akurasi timezone
-     * trip, verifikasi tambahan dilakukan di `TripService::activateDueTrips()`
-     * via `Timezone::today($trip->timezoneOrDefault())`.
-     *
      * @param  Builder<Trip>  $query
      * @return Builder<Trip>
      */
@@ -181,10 +164,6 @@ class Trip extends Model
             ->where('status', TripStatus::SCHEDULED->value)
             ->where('tanggal_mulai', '<=', now()->format('Y-m-d'));
     }
-
-    // ==========================================
-    // HELPER — STATUS
-    // ==========================================
 
     public function isAktif(): bool
     {
@@ -201,44 +180,21 @@ class Trip extends Model
         return $this->status->canBeCancelled();
     }
 
-    /**
-     * Apakah trip sudah punya mitra.
-     *
-     * Wajib true sebelum trip bisa diaktifkan (lihat `TripService::activate()`).
-     */
     public function hasMitra(): bool
     {
-        return $this->mitra_id !== null;
+        return $this->mitra_id > 0;
     }
 
-    // ==========================================
-    // HELPER — DURASI
-    // ==========================================
-
-    /**
-     * Durasi hari trip (inklusif).
-     */
     public function durasiHari(): int
     {
         return (int) $this->tanggal_mulai->diffInDays($this->tanggal_selesai) + 1;
     }
-
-    // ==========================================
-    // HELPER — TIMEZONE
-    // ==========================================
 
     public function timezoneOrDefault(): string
     {
         return $this->timezone ?: Timezone::DEFAULT;
     }
 
-    /**
-     * Apakah trip sedang berjalan hari ini (berdasarkan timezone trip)?
-     *
-     * Cek: `tanggal_mulai <= today <= tanggal_selesai`.
-     * Kondisi ini sudah mencakup edge case "hari pertama" dan
-     * "hari terakhir" trip.
-     */
     public function isToday(): bool
     {
         $today = Timezone::today($this->timezoneOrDefault());
@@ -247,13 +203,7 @@ class Trip extends Model
             && $this->tanggal_selesai->greaterThanOrEqualTo($today);
     }
 
-    // ==========================================
-    // HELPER — SNAPSHOT
-    // ==========================================
-
     /**
-     * Snapshot package sebagai array dengan fallback aman.
-     *
      * @return array<string, mixed>
      */
     public function snapshot(): array
@@ -261,19 +211,13 @@ class Trip extends Model
         return $this->snapshot_package ?? [];
     }
 
-    /**
-     * Ambil nama package dari snapshot (dengan fallback ke relasi package).
-     */
     public function snapshotNama(): string
     {
         return $this->snapshot()['nama']
-            ?? $this->package?->nama
+            ?? $this->package->nama
             ?? 'Paket tidak diketahui';
     }
 
-    /**
-     * Ambil durasi hari dari snapshot (dengan fallback ke `durasiHari()`).
-     */
     public function snapshotDurasiHari(): int
     {
         $dariSnapshot = $this->snapshot()['durasi_hari'] ?? null;
@@ -286,8 +230,6 @@ class Trip extends Model
     }
 
     /**
-     * Ambil days dari snapshot (array).
-     *
      * @return array<int, array<string, mixed>>
      */
     public function snapshotDays(): array
@@ -298,8 +240,6 @@ class Trip extends Model
     }
 
     /**
-     * Ambil facilities dari snapshot (grouped).
-     *
      * @return array{include: array<int, string>, exclude: array<int, string>}
      */
     public function snapshotFacilities(): array

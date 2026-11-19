@@ -47,7 +47,7 @@ final class UserSeeder extends Seeder
     private function seedAdmin(): void
     {
         $this->createUserIfMissing(
-            email: 'admin@titiktemu.test',
+            email: 'admin@sicangkal.test',
             attributes: [
                 'name' => 'Administrator Utama',
                 'username' => 'admin',
@@ -118,7 +118,7 @@ final class UserSeeder extends Seeder
     private function seedClient(): void
     {
         $user = $this->createUserIfMissing(
-            email: 'client@titiktemu.test',
+            email: 'client@sicangkal.test',
             attributes: [
                 'name' => 'Budi Client',
                 'username' => 'budiclient',

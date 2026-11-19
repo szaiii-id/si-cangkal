@@ -1,809 +1,546 @@
+/**
+ * ============================================================
+ * Admin Clients — Index Page — Component Test
+ * ============================================================
+ *
+ * Fokus pengujian (sesuai ketentuan):
+ *   1. Isolation & Mocking  → Inertia, API getClients, menu, formatDate,
+ *                             & child components di-mock (anchor-aware).
+ *   2. Props & Rendering    → header + total count, tabel row per client,
+ *                             kolom username, kolom tanggal, mode read-only.
+ *   3. Interaction          → search debounce, clear search, EmptyState.
+ *   4. Reactivity           → search state → EmptyState context berubah.
+ *
+ * Strategi:
+ *   - Anchor-aware mock untuk DashboardLayout, PageHeader, SearchInput,
+ *     EmptyState, Pagination (insertBefore anchor.parentNode).
+ *   - `mockUpdaters` + `syncUI()` memastikan DOM mencerminkan state.
+ *   - A11y-first query: `getByRole('table')`, `getByRole('columnheader')`,
+ *     `getByRole('link')`, `getByPlaceholderText`.
+ *   - Tabel dirender langsung oleh komponen (tidak di-mock) sehingga
+ *     query row/cell natural — tidak perlu data-testid.
+ * ============================================================
+ */
+
+import { render, screen, fireEvent, within } from '@testing-library/svelte';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
-import ClientIndex from '../Index.svelte';
+import { tick } from 'svelte';
+import Index from '../Index.svelte';
 
 // ============================================================
-// MOCK INERTIA
+// 1. HOISTED MOCK REGISTRY
 // ============================================================
+const mockUpdaters = vi.hoisted(() => new Set<() => void>());
 
-const mockGet = vi.fn();
-
-let mockPageProps: {
-    flash?: {
-        status?: string | null;
-        error?: string | null;
-    };
-    auth?: {
-        user?: {
-            id: number;
-            name: string;
-            username: string | null;
-            email: string;
-            role: string;
-        } | null;
-    };
-} = {
-    flash: {},
-    auth: {
-        user: {
-            id: 1,
-            name: 'Admin User',
-            username: 'admin',
-            email: 'admin@example.com',
-            role: 'admin',
-        },
-    },
-};
-
-let mockPageUrl = '/admin/clients';
-
+// ============================================================
+// 2. MOCK — INERTIA
+// ============================================================
 vi.mock('@inertiajs/svelte', () => ({
-    router: {
-        get: (...args: unknown[]) => mockGet(...args),
-        post: vi.fn(),
-        put: vi.fn(),
-        delete: vi.fn(),
-    },
-    page: {
-        get props() {
-            return mockPageProps;
-        },
-        get url() {
-            return mockPageUrl;
-        },
-        get component() {
-            return 'Admin/Client/Index';
-        },
-    },
-    inertia: () => ({
-        update: () => {},
-        destroy: () => {},
+    inertia: vi.fn(),
+}));
+
+// ============================================================
+// 3. MOCK — API ADMIN
+// ============================================================
+vi.mock('@/api/admin', () => ({
+    getClients: vi.fn(),
+}));
+
+// ============================================================
+// 4. MOCK — MENUS
+// ============================================================
+vi.mock('@/utils/menus', () => ({
+    adminMenu: [],
+}));
+
+// ============================================================
+// 5. MOCK — FORMAT DATE (deterministik)
+// ============================================================
+vi.mock('@/utils/formatDate', () => ({
+    formatDate: vi.fn((iso: string) => {
+        const d = new Date(iso);
+        return d.toLocaleDateString('id-ID', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+        });
     }),
 }));
 
 // ============================================================
-// HELPERS — Build Props
+// 6. MOCK — DASHBOARD LAYOUT (anchor-aware, pass-through children)
 // ============================================================
+vi.mock('@/components/layout/DashboardLayout.svelte', () => ({
+    default: (anchor: Node, props: { children?: (anchor: Node) => void }) => {
+        props.children?.(anchor);
+        return {};
+    },
+}));
 
-interface ClientData {
-    id: number;
-    name: string;
-    username: string | null;
-    email: string;
-    created_at: string;
+// ============================================================
+// 7. MOCK — PAGE HEADER (render title/desc/actions snippet)
+// ============================================================
+vi.mock('@/global/PageHeader.svelte', () => ({
+    default: (
+        anchor: Node,
+        props: { title: string; description?: string; actions?: (anchor: Node) => void },
+    ) => {
+        const el = document.createElement('div');
+        el.setAttribute('data-testid', 'page-header');
+        el.innerHTML = `<h1>${props.title}</h1><p>${props.description ?? ''}</p>`;
+        anchor.parentNode?.insertBefore(el, anchor);
+        props.actions?.(anchor);
+        return {};
+    },
+}));
+
+// ============================================================
+// 8. MOCK — SEARCH INPUT (reactive via mockUpdaters)
+// ============================================================
+vi.mock('@/global/SearchInput.svelte', () => ({
+    default: (
+        anchor: Node,
+        props: {
+            value: string;
+            placeholder?: string;
+            oninput?: (val: string) => void;
+            onclear?: () => void;
+        },
+    ) => {
+        const wrapper = document.createElement('div');
+        const input = document.createElement('input');
+        input.type = 'search';
+        input.placeholder = props.placeholder ?? '';
+        input.value = props.value ?? '';
+        input.oninput = (e) => {
+            const val = (e.target as HTMLInputElement).value;
+            props.value = val;
+            props.oninput?.(val);
+        };
+
+        const clearBtn = document.createElement('button');
+        clearBtn.type = 'button';
+        clearBtn.textContent = 'Hapus Pencarian';
+        clearBtn.onclick = () => {
+            props.value = '';
+            props.onclear?.();
+        };
+
+        wrapper.append(input, clearBtn);
+        anchor.parentNode?.insertBefore(wrapper, anchor);
+
+        const update = () => {
+            input.value = props.value ?? '';
+        };
+        mockUpdaters.add(update);
+        return {};
+    },
+}));
+
+// ============================================================
+// 9. MOCK — EMPTY STATE (reactive, conditional clear button)
+// ============================================================
+vi.mock('@/global/EmptyState.svelte', () => ({
+    default: (
+        anchor: Node,
+        props: {
+            title: string;
+            description: string;
+            hasFilters?: boolean;
+            onClear?: () => void;
+        },
+    ) => {
+        const el = document.createElement('div');
+        el.setAttribute('data-testid', 'empty-state');
+        anchor.parentNode?.insertBefore(el, anchor);
+
+        const update = () => {
+            el.innerHTML = `<h3>${props.title}</h3><p>${props.description}</p>`;
+            if (props.hasFilters) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.textContent = 'Reset Filter';
+                btn.onclick = () => props.onClear?.();
+                el.appendChild(btn);
+            }
+        };
+
+        update();
+        mockUpdaters.add(update);
+        return {};
+    },
+}));
+
+// ============================================================
+// 10. MOCK — PAGINATION (statis)
+// ============================================================
+vi.mock('@/global/Pagination.svelte', () => ({
+    default: (anchor: Node, props: { meta: { total: number }; label: string }) => {
+        const el = document.createElement('div');
+        el.setAttribute('data-testid', 'pagination');
+        el.textContent = `Total ${props.meta.total} ${props.label}`;
+        anchor.parentNode?.insertBefore(el, anchor);
+        return {};
+    },
+}));
+
+// ============================================================
+// 11. STATIC IMPORT (setelah vi.mock)
+// ============================================================
+import { getClients } from '@/api/admin';
+import { formatDate } from '@/utils/formatDate';
+
+// ============================================================
+// 12. HELPERS
+// ============================================================
+async function syncUI(): Promise<void> {
+    await tick();
+    mockUpdaters.forEach((fn) => fn());
 }
 
-interface ClientsPaginator {
-    data: ClientData[];
-    current_page: number;
-    last_page: number;
-    from: number;
-    to: number;
-    total: number;
-    links: Array<{ url: string | null; label: string; active: boolean }>;
-}
-
-const makeClientsPaginator = (
-    overrides: Partial<ClientsPaginator> = {},
-): ClientsPaginator => ({
-    data: [
-        {
-            id: 1,
-            name: 'Budi Santoso',
-            username: 'budisantoso',
-            email: 'budi@example.com',
-            created_at: '2026-01-15T10:00:00Z',
-        },
-        {
-            id: 2,
-            name: 'Ani Wijaya',
-            username: 'aniwijaya',
-            email: 'ani@example.com',
-            created_at: '2026-02-20T10:00:00Z',
-        },
-    ],
-    current_page: 1,
-    last_page: 1,
-    from: 1,
-    to: 2,
-    total: 2,
-    links: [
-        { url: null, label: '&laquo; Previous', active: false },
-        { url: '/admin/clients?page=1', label: '1', active: true },
-        { url: null, label: 'Next &raquo;', active: false },
-    ],
+// ============================================================
+// 13. FIXTURES
+// ============================================================
+const makeClient = (overrides = {}) => ({
+    id: 1,
+    name: 'Client Satu',
+    username: 'clientsatu',
+    email: 'client1@test.com',
+    created_at: '2026-01-15T00:00:00Z',
     ...overrides,
 });
 
-const defaultFilters = { search: '', per_page: 15 };
-
-const getSearchInput = () =>
-    screen.getByPlaceholderText(/Cari nama, email, atau username/i);
-
-const getTable = () => document.querySelector('table');
-
-// ============================================================
-// SETUP & TEARDOWN
-// ============================================================
-
-beforeEach(() => {
-    mockGet.mockClear();
-    mockPageUrl = '/admin/clients';
-    mockPageProps = {
-        flash: {},
-        auth: {
-            user: {
-                id: 1,
-                name: 'Admin User',
-                username: 'admin',
-                email: 'admin@example.com',
-                role: 'admin',
-            },
-        },
-    };
-    vi.useFakeTimers();
+const makePagination = (data: any[], overrides = {}) => ({
+    current_page: 1,
+    last_page: 1,
+    per_page: 15,
+    total: data.length,
+    from: data.length ? 1 : null,
+    to: data.length ? data.length : null,
+    links: [],
+    data,
+    ...overrides,
 });
 
-afterEach(() => {
-    vi.useRealTimers();
-    vi.clearAllMocks();
-});
+const SAMPLE_CLIENTS = [
+    makeClient({ id: 1, name: 'Budi Santoso', username: 'budisan', email: 'budi@test.com' }),
+    makeClient({ id: 2, name: 'Siti Aminah', username: 'sitin', email: 'siti@test.com' }),
+    makeClient({ id: 3, name: 'Andi Wijaya', username: null, email: 'andi@test.com' }),
+];
 
 // ============================================================
-// KATEGORI 1 — UI CONTRACT
+// 14. TEST SUITE
 // ============================================================
-
-describe('Admin/Client/Index.svelte — UI Contract', () => {
-    it('menampilkan heading "Daftar Client"', () => {
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator(),
-                filters: defaultFilters,
-            },
-        });
-        const headings = screen.getAllByRole('heading', { name: /Daftar Client/i });
-        expect(headings.length).toBeGreaterThan(0);
+describe('Admin Clients — Index Page', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockUpdaters.clear();
+        vi.useFakeTimers();
     });
 
-    it('menampilkan subtitle "Read-only"', () => {
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator(),
-                filters: defaultFilters,
-            },
-        });
-        expect(
-            screen.getByText(/Read-only — tidak bisa diedit atau dihapus/i)
-        ).toBeInTheDocument();
+    afterEach(() => {
+        vi.useRealTimers();
     });
 
-    it('menampilkan info badge total client', () => {
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator({ total: 2 }),
-                filters: defaultFilters,
-            },
+    // ----------------------------------------------------------
+    // 14.1 RENDERING — Header
+    // ----------------------------------------------------------
+    describe('Rendering — Header', () => {
+        it('menampilkan judul & deskripsi halaman', () => {
+            render(Index, {
+                clients: makePagination(SAMPLE_CLIENTS),
+                filters: { search: '', per_page: 15 },
+            });
+
+            expect(screen.getByRole('heading', { level: 1, name: 'Daftar Client' })).toBeInTheDocument();
+            expect(
+                screen.getByText(/Client yang mendaftar mandiri\. Read-only/i),
+            ).toBeInTheDocument();
         });
-        expect(screen.getByText(/Client Terdaftar/i)).toBeInTheDocument();
+
+        it('menampilkan total client terdaftar di actions snippet', () => {
+            render(Index, {
+                clients: makePagination(SAMPLE_CLIENTS),
+                filters: { search: '', per_page: 15 },
+            });
+
+            expect(screen.getByText('3')).toBeInTheDocument();
+            expect(screen.getByText('Client Terdaftar')).toBeInTheDocument();
+        });
     });
 
-    it('menampilkan search input', () => {
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator(),
-                filters: defaultFilters,
-            },
+    // ----------------------------------------------------------
+    // 14.2 RENDERING — Read-only Banner
+    // ----------------------------------------------------------
+    describe('Rendering — Read-only Banner', () => {
+        it('menampilkan banner "Mode Read-only"', () => {
+            render(Index, {
+                clients: makePagination(SAMPLE_CLIENTS),
+                filters: { search: '', per_page: 15 },
+            });
+            expect(screen.getByText('Mode Read-only')).toBeInTheDocument();
         });
-        expect(getSearchInput()).toBeInTheDocument();
     });
 
-    it('menampilkan badge "Mode Read-only"', () => {
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator(),
-                filters: defaultFilters,
-            },
+    // ----------------------------------------------------------
+    // 14.3 RENDERING — Table
+    // ----------------------------------------------------------
+    describe('Rendering — Table', () => {
+        it('merender kolom Client, Username, Terdaftar', () => {
+            render(Index, {
+                clients: makePagination(SAMPLE_CLIENTS),
+                filters: { search: '', per_page: 15 },
+            });
+
+            expect(screen.getByRole('columnheader', { name: 'Client' })).toBeInTheDocument();
+            expect(screen.getByRole('columnheader', { name: 'Username' })).toBeInTheDocument();
+            expect(screen.getByRole('columnheader', { name: 'Terdaftar' })).toBeInTheDocument();
         });
-        expect(screen.getByText(/Mode Read-only/i)).toBeInTheDocument();
+
+        it('merender satu row per client', () => {
+            render(Index, {
+                clients: makePagination(SAMPLE_CLIENTS),
+                filters: { search: '', per_page: 15 },
+            });
+
+            // Header row + 3 body row = 4 total <tr>
+            expect(screen.getAllByRole('row')).toHaveLength(4);
+        });
+
+        it('menampilkan nama, email, username client dengan benar', () => {
+            render(Index, {
+                clients: makePagination(SAMPLE_CLIENTS),
+                filters: { search: '', per_page: 15 },
+            });
+
+            const rows = screen.getAllByRole('row').slice(1); // skip header
+
+            expect(within(rows[0]).getByText('Budi Santoso')).toBeInTheDocument();
+            expect(within(rows[0]).getByText('budi@test.com')).toBeInTheDocument();
+            expect(within(rows[0]).getByText('budisan')).toBeInTheDocument();
+
+            expect(within(rows[1]).getByText('Siti Aminah')).toBeInTheDocument();
+            expect(within(rows[1]).getByText('siti@test.com')).toBeInTheDocument();
+            expect(within(rows[1]).getByText('sitin')).toBeInTheDocument();
+        });
+
+        it('menampilkan "-" italic untuk username null', () => {
+            render(Index, {
+                clients: makePagination(SAMPLE_CLIENTS),
+                filters: { search: '', per_page: 15 },
+            });
+
+            const andiRow = screen.getByText('Andi Wijaya').closest('tr')!;
+            const dash = within(andiRow).getByText('-');
+            expect(dash).toHaveClass('italic');
+        });
+
+        it('menampilkan inisial pertama nama di avatar', () => {
+            render(Index, {
+                clients: makePagination(SAMPLE_CLIENTS),
+                filters: { search: '', per_page: 15 },
+            });
+
+            expect(screen.getByText('B')).toBeInTheDocument();
+            expect(screen.getByText('S')).toBeInTheDocument();
+            expect(screen.getByText('A')).toBeInTheDocument();
+        });
+
+        it('memanggil formatDate untuk setiap client', () => {
+            render(Index, {
+                clients: makePagination(SAMPLE_CLIENTS),
+                filters: { search: '', per_page: 15 },
+            });
+
+            expect(formatDate).toHaveBeenCalledTimes(3);
+            expect(formatDate).toHaveBeenCalledWith('2026-01-15T00:00:00Z');
+        });
     });
 
-    it('menampilkan kolom tabel: Client, Username, Terdaftar', () => {
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator(),
-                filters: defaultFilters,
-            },
-        });
-        expect(screen.getByText(/^Client$/i)).toBeInTheDocument();
-        expect(screen.getByText(/^Username$/i)).toBeInTheDocument();
-        expect(screen.getByText(/^Terdaftar$/i)).toBeInTheDocument();
-    });
-});
+    // ----------------------------------------------------------
+    // 14.4 RENDERING — Empty State
+    // ----------------------------------------------------------
+    describe('Rendering — EmptyState', () => {
+        it('menampilkan EmptyState default tanpa filter', () => {
+            render(Index, {
+                clients: makePagination([]),
+                filters: { search: '', per_page: 15 },
+            });
 
-// ============================================================
-// KATEGORI 2 — DATA RENDERING
-// ============================================================
-
-describe('Admin/Client/Index.svelte — Data Rendering', () => {
-    it('menampilkan nama client dari data', () => {
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator(),
-                filters: defaultFilters,
-            },
+            const emptyState = screen.getByTestId('empty-state');
+            expect(emptyState).toHaveTextContent('Belum ada client');
+            expect(emptyState).toHaveTextContent(
+                'Client yang mendaftar mandiri akan muncul di sini.',
+            );
+            expect(screen.queryByRole('button', { name: 'Reset Filter' })).not.toBeInTheDocument();
         });
-        expect(screen.getByText('Budi Santoso')).toBeInTheDocument();
-        expect(screen.getByText('Ani Wijaya')).toBeInTheDocument();
-    });
 
-    it('menampilkan email client dari data', () => {
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator(),
-                filters: defaultFilters,
-            },
-        });
-        expect(screen.getByText('budi@example.com')).toBeInTheDocument();
-        expect(screen.getByText('ani@example.com')).toBeInTheDocument();
-    });
+        it('menampilkan EmptyState pencarian saat ada filter aktif', () => {
+            render(Index, {
+                clients: makePagination([]),
+                filters: { search: 'tidakada', per_page: 15 },
+            });
 
-    it('menampilkan username client dari data', () => {
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator(),
-                filters: defaultFilters,
-            },
+            const emptyState = screen.getByTestId('empty-state');
+            expect(emptyState).toHaveTextContent('Tidak ada hasil ditemukan');
+            expect(emptyState).toHaveTextContent(
+                'Tidak ditemukan client dengan kata kunci "tidakada".',
+            );
+            expect(screen.getByRole('button', { name: 'Reset Filter' })).toBeInTheDocument();
         });
-        expect(screen.getByText(/budisantoso/i)).toBeInTheDocument();
-        expect(screen.getByText(/aniwijaya/i)).toBeInTheDocument();
+
+        it('TIDAK merender table & pagination saat empty', () => {
+            render(Index, {
+                clients: makePagination([]),
+                filters: { search: '', per_page: 15 },
+            });
+
+            expect(screen.queryByRole('table')).not.toBeInTheDocument();
+            expect(screen.queryByTestId('pagination')).not.toBeInTheDocument();
+        });
     });
 
-    it('menampilkan avatar inisial (huruf pertama nama)', () => {
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator(),
-                filters: defaultFilters,
-            },
+    // ----------------------------------------------------------
+    // 14.5 INTERACTION — Search Debounce
+    // ----------------------------------------------------------
+    describe('Interaction — Search Debounce', () => {
+        it('tidak memanggil getClients sebelum 300ms', async () => {
+            render(Index, {
+                clients: makePagination(SAMPLE_CLIENTS),
+                filters: { search: '', per_page: 15 },
+            });
+
+            const input = screen.getByPlaceholderText(/Cari nama, email, atau username/i);
+            await fireEvent.input(input, { target: { value: 'budi' } });
+
+            expect(getClients).not.toHaveBeenCalled();
         });
 
-        const table = document.querySelector('table');
-        const avatarsInTable = table?.querySelectorAll(
-            'div[class*="bg-gradient-to-br"]'
-        );
-        expect(avatarsInTable?.length).toBeGreaterThan(0);
+        it('memanggil getClients setelah 300ms dengan payload benar', async () => {
+            render(Index, {
+                clients: makePagination(SAMPLE_CLIENTS),
+                filters: { search: '', per_page: 15 },
+            });
 
-        expect(table?.textContent).toContain('B');
-        expect(table?.textContent).toContain('A');
-    });
+            const input = screen.getByPlaceholderText(/Cari nama, email, atau username/i);
+            await fireEvent.input(input, { target: { value: 'budi' } });
 
-    it('menampilkan total client di info badge', () => {
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator({ total: 42 }),
-                filters: defaultFilters,
-            },
-        });
-        expect(screen.getByText('42')).toBeInTheDocument();
-    });
+            await vi.advanceTimersByTimeAsync(299);
+            expect(getClients).not.toHaveBeenCalled();
 
-    it('menampilkan "-" untuk username null', () => {
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator({
-                    data: [
-                        {
-                            id: 1,
-                            name: 'Google User',
-                            username: null,
-                            email: 'google@example.com',
-                            created_at: '2026-01-15T10:00:00Z',
-                        },
-                    ],
-                }),
-                filters: defaultFilters,
-            },
-        });
-        expect(screen.getByText('-')).toBeInTheDocument();
-    });
-
-    it('menampilkan tanggal terdaftar dalam format Indonesia', () => {
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator({
-                    data: [
-                        {
-                            id: 1,
-                            name: 'Budi',
-                            username: 'budi',
-                            email: 'budi@example.com',
-                            created_at: '2026-01-15T10:00:00Z',
-                        },
-                    ],
-                }),
-                filters: defaultFilters,
-            },
-        });
-        expect(screen.getByText(/Jan/i)).toBeInTheDocument();
-    });
-});
-
-// ============================================================
-// KATEGORI 3 — EMPTY STATE
-// ============================================================
-
-describe('Admin/Client/Index.svelte — Empty State', () => {
-    it('menampilkan empty state saat data kosong', () => {
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator({ data: [], total: 0, from: 0, to: 0 }),
-                filters: defaultFilters,
-            },
-        });
-        expect(screen.getByText(/Belum ada client/i)).toBeInTheDocument();
-    });
-
-    it('menampilkan pesan "Tidak ada hasil" saat search aktif', () => {
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator({ data: [], total: 0 }),
-                filters: { search: 'xyz', per_page: 15 },
-            },
-        });
-        expect(screen.getByText(/Tidak ada hasil ditemukan/i)).toBeInTheDocument();
-    });
-
-    it('menampilkan kata kunci search di empty message', () => {
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator({ data: [], total: 0 }),
-                filters: { search: 'budi', per_page: 15 },
-            },
-        });
-        expect(screen.getByText(/budi/i)).toBeInTheDocument();
-    });
-
-    it('tombol "Hapus Filter" tampil saat search aktif', () => {
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator({ data: [], total: 0 }),
-                filters: { search: 'xyz', per_page: 15 },
-            },
-        });
-
-        // EmptyState global merender tombol dengan text "Hapus Filter"
-        // (bukan "Hapus Pencarian"). Sesuaikan assertion.
-        const button = document.querySelector('button.mt-5') as HTMLButtonElement;
-        expect(button).toBeInTheDocument();
-        expect(button.textContent).toMatch(/Hapus (Filter|Pencarian)/i);
-    });
-
-    it('TIDAK menampilkan tabel saat data kosong', () => {
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator({ data: [], total: 0 }),
-                filters: defaultFilters,
-            },
-        });
-        expect(getTable()).not.toBeInTheDocument();
-    });
-});
-
-// ============================================================
-// KATEGORI 4 — SEARCH BEHAVIOR (debounce)
-// ============================================================
-
-describe('Admin/Client/Index.svelte — Search Behavior', () => {
-    it('mengetik di search input memanggil router.get setelah debounce 300ms', async () => {
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator(),
-                filters: defaultFilters,
-            },
-        });
-
-        await fireEvent.input(getSearchInput(), { target: { value: 'budi' } });
-
-        expect(mockGet).not.toHaveBeenCalled();
-
-        vi.advanceTimersByTime(300);
-
-        await waitFor(() => {
-            expect(mockGet).toHaveBeenCalledTimes(1);
-            expect(mockGet).toHaveBeenCalledWith(
-                '/admin/clients',
+            await vi.advanceTimersByTimeAsync(1);
+            expect(getClients).toHaveBeenCalledOnce();
+            expect(getClients).toHaveBeenCalledWith(
                 { search: 'budi', per_page: 15 },
-                expect.objectContaining({
-                    preserveState: true,
-                    preserveScroll: true,
-                    replace: true,
-                }),
+                { preserveState: true, preserveScroll: true, replace: true },
+            );
+        });
+
+        it('debounce meringkas panggilan saat user mengetik cepat', async () => {
+            render(Index, {
+                clients: makePagination(SAMPLE_CLIENTS),
+                filters: { search: '', per_page: 15 },
+            });
+
+            const input = screen.getByPlaceholderText(/Cari nama, email, atau username/i);
+            await fireEvent.input(input, { target: { value: 'b' } });
+            await fireEvent.input(input, { target: { value: 'bu' } });
+            await fireEvent.input(input, { target: { value: 'bud' } });
+            await fireEvent.input(input, { target: { value: 'budi' } });
+
+            await vi.advanceTimersByTimeAsync(300);
+
+            expect(getClients).toHaveBeenCalledOnce();
+            expect(getClients).toHaveBeenCalledWith(
+                expect.objectContaining({ search: 'budi' }),
+                expect.any(Object),
             );
         });
     });
 
-    it('mengetik cepat berulang hanya memicu 1x router.get', async () => {
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator(),
-                filters: defaultFilters,
-            },
+    // ----------------------------------------------------------
+    // 14.6 INTERACTION — Clear Search
+    // ----------------------------------------------------------
+    describe('Interaction — Clear Search', () => {
+        it('klik clear langsung memanggil getClients tanpa debounce', async () => {
+            render(Index, {
+                clients: makePagination(SAMPLE_CLIENTS),
+                filters: { search: 'admin', per_page: 15 },
+            });
+
+            await fireEvent.click(screen.getByRole('button', { name: 'Hapus Pencarian' }));
+
+            expect(getClients).toHaveBeenCalledOnce();
+            expect(getClients).toHaveBeenCalledWith(
+                { search: '', per_page: 15 },
+                { preserveState: true, preserveScroll: true, replace: true },
+            );
         });
 
-        await fireEvent.input(getSearchInput(), { target: { value: 'b' } });
-        vi.advanceTimersByTime(100);
+        it('klik "Reset Filter" di EmptyState memanggil clearSearch', async () => {
+            render(Index, {
+                clients: makePagination([]),
+                filters: { search: 'tidakada', per_page: 15 },
+            });
 
-        await fireEvent.input(getSearchInput(), { target: { value: 'bu' } });
-        vi.advanceTimersByTime(100);
+            await fireEvent.click(screen.getByRole('button', { name: 'Reset Filter' }));
 
-        await fireEvent.input(getSearchInput(), { target: { value: 'bud' } });
-        vi.advanceTimersByTime(300);
-
-        await waitFor(() => {
-            expect(mockGet).toHaveBeenCalledTimes(1);
+            expect(getClients).toHaveBeenCalledWith(
+                { search: '', per_page: 15 },
+                { preserveState: true, preserveScroll: true, replace: true },
+            );
         });
     });
 
-    it('tombol clear tampil saat search ada nilainya', async () => {
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator(),
-                filters: defaultFilters,
-            },
+    // ----------------------------------------------------------
+    // 14.7 REACTIVITY — Search state → EmptyState context
+    // ----------------------------------------------------------
+    describe('Reactivity — Search Context', () => {
+        it('EmptyState berubah dari "Belum ada client" → "Tidak ada hasil" saat search diisi', async () => {
+            render(Index, {
+                clients: makePagination([]),
+                filters: { search: '', per_page: 15 },
+            });
+
+            // Awal: default
+            expect(screen.getByTestId('empty-state')).toHaveTextContent('Belum ada client');
+
+            // Ketik search
+            const input = screen.getByPlaceholderText(/Cari nama, email, atau username/i);
+            await fireEvent.input(input, { target: { value: 'xyz' } });
+            await syncUI();
+
+            // Context berubah
+            expect(screen.getByTestId('empty-state')).toHaveTextContent('Tidak ada hasil ditemukan');
+            expect(screen.getByTestId('empty-state')).toHaveTextContent(
+                'Tidak ditemukan client dengan kata kunci "xyz".',
+            );
+        });
+    });
+
+    // ----------------------------------------------------------
+    // 14.8 A11Y
+    // ----------------------------------------------------------
+    describe('Accessibility', () => {
+        it('table punya semantic columnheader', () => {
+            render(Index, {
+                clients: makePagination(SAMPLE_CLIENTS),
+                filters: { search: '', per_page: 15 },
+            });
+
+            const headers = screen.getAllByRole('columnheader');
+            expect(headers).toHaveLength(3);
         });
 
-        await fireEvent.input(getSearchInput(), { target: { value: 'budi' } });
+        it('search input punya placeholder deskriptif', () => {
+            render(Index, {
+                clients: makePagination(SAMPLE_CLIENTS),
+                filters: { search: '', per_page: 15 },
+            });
 
-        await waitFor(() => {
             expect(
-                screen.getByRole('button', { name: /Hapus pencarian/i })
+                screen.getByPlaceholderText(/Cari nama, email, atau username/i),
             ).toBeInTheDocument();
         });
-    });
-
-    it('tombol clear TIDAK tampil saat search kosong', () => {
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator(),
-                filters: defaultFilters,
-            },
-        });
-
-        expect(
-            screen.queryByRole('button', { name: /Hapus pencarian/i })
-        ).not.toBeInTheDocument();
-    });
-
-    it('klik tombol clear mengosongkan search dan panggil router.get', async () => {
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator(),
-                filters: { search: 'budi', per_page: 15 },
-            },
-        });
-
-        const input = getSearchInput();
-        expect((input as HTMLInputElement).value).toBe('budi');
-
-        // Ketik dulu agar SearchInput render tombol clear (butuh `value` truthy)
-        await fireEvent.input(input, { target: { value: 'budi' } });
-
-        // findByRole pakai MutationObserver (bukan timer) — aman dengan fake timers
-        const clearBtn = await screen.findByRole('button', {
-            name: /Hapus pencarian/i,
-        });
-
-        await fireEvent.click(clearBtn);
-
-        // clearSearch() dipanggil SINKRON via prop `onclear`,
-        // jadi router.get langsung terpanggil tanpa debounce.
-        expect(mockGet).toHaveBeenCalledWith(
-            '/admin/clients',
-            { search: '', per_page: 15 },
-            expect.objectContaining({
-                preserveState: true,
-                preserveScroll: true,
-                replace: true,
-            }),
-        );
-    });
-
-    it('search input terisi dari props filters.search', () => {
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator(),
-                filters: { search: 'existing', per_page: 15 },
-            },
-        });
-
-        expect((getSearchInput() as HTMLInputElement).value).toBe('existing');
-    });
-});
-
-// ============================================================
-// KATEGORI 5 — PAGINATION
-// ============================================================
-
-describe('Admin/Client/Index.svelte — Pagination', () => {
-    it('menampilkan info "Menampilkan X–Y dari Z client"', () => {
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator({
-                    from: 1,
-                    to: 15,
-                    total: 42,
-                    last_page: 3,
-                    links: [
-                        { url: null, label: '&laquo; Previous', active: false },
-                        { url: '/admin/clients?page=1', label: '1', active: true },
-                        { url: '/admin/clients?page=2', label: '2', active: false },
-                        { url: '/admin/clients?page=3', label: '3', active: false },
-                        { url: '/admin/clients?page=2', label: 'Next &raquo;', active: false },
-                    ],
-                }),
-                filters: defaultFilters,
-            },
-        });
-
-        const paragraphs = Array.from(document.querySelectorAll('p'));
-        const menampilkanP = paragraphs.find((p) =>
-            p.textContent?.includes('Menampilkan')
-        );
-
-        expect(menampilkanP).toBeInTheDocument();
-        expect(menampilkanP?.textContent).toContain('42');
-    });
-
-    it('TIDAK menampilkan pagination kalau last_page = 1', () => {
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator({ last_page: 1 }),
-                filters: defaultFilters,
-            },
-        });
-        expect(screen.queryByText(/Menampilkan/i)).not.toBeInTheDocument();
-    });
-
-    it('menampilkan pagination kalau last_page > 1', () => {
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator({
-                    last_page: 3,
-                    links: [
-                        { url: null, label: '&laquo; Previous', active: false },
-                        { url: '/admin/clients?page=1', label: '1', active: true },
-                        { url: '/admin/clients?page=2', label: '2', active: false },
-                        { url: '/admin/clients?page=3', label: '3', active: false },
-                        { url: '/admin/clients?page=2', label: 'Next &raquo;', active: false },
-                    ],
-                }),
-                filters: defaultFilters,
-            },
-        });
-        expect(screen.getByText(/Menampilkan/i)).toBeInTheDocument();
-    });
-
-    it('link pagination punya href yang benar', () => {
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator({
-                    last_page: 3,
-                    links: [
-                        { url: null, label: '&laquo; Previous', active: false },
-                        { url: '/admin/clients?page=1', label: '1', active: true },
-                        { url: '/admin/clients?page=2', label: '2', active: false },
-                        { url: '/admin/clients?page=3', label: '3', active: false },
-                        { url: '/admin/clients?page=2', label: 'Next &raquo;', active: false },
-                    ],
-                }),
-                filters: defaultFilters,
-            },
-        });
-
-        const page2Link = document.querySelector('a[href="/admin/clients?page=2"]');
-        expect(page2Link).toBeInTheDocument();
-        expect(page2Link).toHaveAttribute('href', '/admin/clients?page=2');
-    });
-
-    it('tombol "Previous" tidak jadi link kalau url null', () => {
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator({
-                    last_page: 3,
-                    links: [
-                        { url: null, label: '&laquo; Previous', active: false },
-                        { url: '/admin/clients?page=1', label: '1', active: true },
-                        { url: '/admin/clients?page=2', label: '2', active: false },
-                    ],
-                }),
-                filters: defaultFilters,
-            },
-        });
-
-        const prevText = screen.getByText(/Previous/i);
-        expect(prevText.tagName).toBe('SPAN');
-    });
-});
-
-// ============================================================
-// KATEGORI 6 — FLASH MESSAGE
-// ============================================================
-
-describe('Admin/Client/Index.svelte — Flash Message', () => {
-    it('menampilkan flash status jika ada', () => {
-        mockPageProps.flash = { status: 'Berhasil.' };
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator(),
-                filters: defaultFilters,
-            },
-        });
-        expect(mockPageProps.flash.status).toBe('Berhasil.');
-    });
-});
-
-// ============================================================
-// KATEGORI 7 — EDGE CASE
-// ============================================================
-
-describe('Admin/Client/Index.svelte — Edge Cases', () => {
-    it('handle data client dengan username null', () => {
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator({
-                    data: [
-                        {
-                            id: 1,
-                            name: 'No Username User',
-                            username: null,
-                            email: 'no-username@example.com',
-                            created_at: '2026-01-15T10:00:00Z',
-                        },
-                    ],
-                }),
-                filters: defaultFilters,
-            },
-        });
-        expect(screen.getByText('No Username User')).toBeInTheDocument();
-        expect(screen.getByText('-')).toBeInTheDocument();
-    });
-
-    it('handle data client dengan nama panjang', () => {
-        const longName = 'a'.repeat(100);
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator({
-                    data: [
-                        {
-                            id: 1,
-                            name: longName,
-                            username: 'user',
-                            email: 'user@example.com',
-                            created_at: '2026-01-15T10:00:00Z',
-                        },
-                    ],
-                }),
-                filters: defaultFilters,
-            },
-        });
-        expect(screen.getByText(longName)).toBeInTheDocument();
-    });
-
-    it('handle filter dengan per_page kustom', () => {
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator(),
-                filters: { search: '', per_page: 25 },
-            },
-        });
-        expect(getSearchInput()).toBeInTheDocument();
-    });
-
-    it('handle data dengan 1 client', () => {
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator({
-                    data: [
-                        {
-                            id: 1,
-                            name: 'Solo Client',
-                            username: 'solo',
-                            email: 'solo@example.com',
-                            created_at: '2026-01-15T10:00:00Z',
-                        },
-                    ],
-                    total: 1,
-                    from: 1,
-                    to: 1,
-                }),
-                filters: defaultFilters,
-            },
-        });
-        expect(screen.getByText('Solo Client')).toBeInTheDocument();
-        expect(screen.getByText('1')).toBeInTheDocument();
-    });
-});
-
-// ============================================================
-// KATEGORI 8 — UI CONTRACT: Route & Menu
-// ============================================================
-
-describe('Admin/Client/Index.svelte — Route & Menu', () => {
-    it('menu item "Daftar Client" ada di sidebar', () => {
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator(),
-                filters: defaultFilters,
-            },
-        });
-        const menuLink = screen.getByRole('link', { name: /^Daftar Client$/i });
-        expect(menuLink).toHaveAttribute('href', '/admin/clients');
-    });
-
-    it('menu item "Dashboard" ada di sidebar', () => {
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator(),
-                filters: defaultFilters,
-            },
-        });
-        const menuLink = screen.getByRole('link', { name: /^Dashboard$/i });
-        expect(menuLink).toHaveAttribute('href', '/admin/dashboard');
-    });
-
-    it('menu item "Manajemen User" ada di sidebar', () => {
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator(),
-                filters: defaultFilters,
-            },
-        });
-        const menuLink = screen.getByRole('link', { name: /^Manajemen User$/i });
-        expect(menuLink).toHaveAttribute('href', '/admin/users');
-    });
-});
-
-// ============================================================
-// KATEGORI 9 — BEHAVIORAL: formatDate
-// ============================================================
-
-describe('Admin/Client/Index.svelte — formatDate', () => {
-    it('menampilkan tanggal dalam format Indonesia (day)', () => {
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator({
-                    data: [
-                        {
-                            id: 1,
-                            name: 'Budi',
-                            username: 'budi',
-                            email: 'budi@example.com',
-                            created_at: '2026-03-15T10:00:00Z',
-                        },
-                    ],
-                }),
-                filters: defaultFilters,
-            },
-        });
-        expect(screen.getByText(/15/)).toBeInTheDocument();
-    });
-
-    it('menampilkan tanggal dalam format Indonesia (month)', () => {
-        render(ClientIndex, {
-            props: {
-                clients: makeClientsPaginator({
-                    data: [
-                        {
-                            id: 1,
-                            name: 'Budi',
-                            username: 'budi',
-                            email: 'budi@example.com',
-                            created_at: '2026-03-15T10:00:00Z',
-                        },
-                    ],
-                }),
-                filters: defaultFilters,
-            },
-        });
-        expect(screen.getByText(/Mar/i)).toBeInTheDocument();
     });
 });

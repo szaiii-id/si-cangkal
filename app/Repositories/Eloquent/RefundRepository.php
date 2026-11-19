@@ -14,13 +14,20 @@ use Illuminate\Support\Facades\DB;
 /**
  * Repository refund.
  *
- * Memakai `LikeEscaper` untuk mencegah wildcard injection pada
- * pencarian `search` (S-06).
+ * Memakai LikeEscaper untuk mencegah wildcard injection pada
+ * pencarian search (S-06).
+ *
+ * FIX: query pencarian memakai whereRaw(... ESCAPE '\') untuk
+ * kolom utama dan relasi nested (booking, mitra, booking.client)
+ * agar karakter %, _, \ benar-benar di-escape - bukan dianggap
+ * wildcard oleh database.
  */
 final class RefundRepository implements RefundRepositoryInterface
 {
     /**
      * {@inheritDoc}
+     *
+     * @param  array<string, mixed>  $filters
      */
     public function paginateForAdmin(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
@@ -31,6 +38,8 @@ final class RefundRepository implements RefundRepositoryInterface
 
     /**
      * {@inheritDoc}
+     *
+     * @param  array<string, mixed>  $filters
      */
     public function paginateForMitra(
         User $mitra,
@@ -57,6 +66,8 @@ final class RefundRepository implements RefundRepositoryInterface
 
     /**
      * {@inheritDoc}
+     *
+     * @return array<string, int>
      */
     public function countByStatus(): array
     {
@@ -71,6 +82,8 @@ final class RefundRepository implements RefundRepositoryInterface
 
     /**
      * {@inheritDoc}
+     *
+     * @return array<string, int>
      */
     public function countByStatusForMitra(User $mitra): array
     {
@@ -101,6 +114,16 @@ final class RefundRepository implements RefundRepositoryInterface
         $status = $filters['status'] ?? null;
 
         $operator = LikeEscaper::operator(DB::connection());
+        $escape = LikeEscaper::ESCAPE_CHAR;
+
+        /** @var literal-string $sqlBookingKode */
+        $sqlBookingKode = "kode {$operator} ? ESCAPE '{$escape}'";
+
+        /** @var literal-string $sqlMitraName */
+        $sqlMitraName = "name {$operator} ? ESCAPE '{$escape}'";
+
+        /** @var literal-string $sqlClientName */
+        $sqlClientName = "name {$operator} ? ESCAPE '{$escape}'";
 
         return Refund::query()
             ->with([
@@ -112,13 +135,19 @@ final class RefundRepository implements RefundRepositoryInterface
             ->when($mitraId !== null, fn (Builder $q) => $q->where('mitra_id', $mitraId))
             ->when(
                 $search !== null && $search !== '',
-                function (Builder $query) use ($search, $operator): void {
+                function (Builder $query) use ($search, $sqlBookingKode, $sqlMitraName, $sqlClientName): void {
                     $escaped = LikeEscaper::contains($search);
 
-                    $query->where(function (Builder $q) use ($escaped, $operator): void {
-                        $q->whereHas('booking', fn (Builder $b) => $b->where('kode', $operator, $escaped))
-                            ->orWhereHas('mitra', fn (Builder $m) => $m->where('name', $operator, $escaped))
-                            ->orWhereHas('booking.client', fn (Builder $c) => $c->where('name', $operator, $escaped));
+                    $query->where(function (Builder $q) use ($escaped, $sqlBookingKode, $sqlMitraName, $sqlClientName): void {
+                        $q->whereHas('booking', function (Builder $b) use ($escaped, $sqlBookingKode): void {
+                            $b->whereRaw($sqlBookingKode, [$escaped]);
+                        })
+                            ->orWhereHas('mitra', function (Builder $m) use ($escaped, $sqlMitraName): void {
+                                $m->whereRaw($sqlMitraName, [$escaped]);
+                            })
+                            ->orWhereHas('booking.client', function (Builder $c) use ($escaped, $sqlClientName): void {
+                                $c->whereRaw($sqlClientName, [$escaped]);
+                            });
                     });
                 },
             )

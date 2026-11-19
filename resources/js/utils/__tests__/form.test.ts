@@ -8,178 +8,147 @@ import {
     isEmpty,
 } from '../form';
 
-// ============================================================
-// KATEGORI 1 — parseRupiah
-// ============================================================
-
-describe('parseRupiah', () => {
-    it('mengembalikan 0 untuk input kosong/null/undefined', () => {
-        expect(parseRupiah(null)).toBe(0);
-        expect(parseRupiah(undefined)).toBe(0);
-        expect(parseRupiah('')).toBe(0);
+describe('Form Utilities', () => {
+    // ==========================================
+    // 1. parseRupiah & formatRupiahInput
+    // ==========================================
+    describe('parseRupiah()', () => {
+        it('harus meneruskan ke parseCurrency dan mengembalikan 0 jika kosong', () => {
+            // Karena parseRupiah adalah alias dari parseCurrency
+            expect(parseRupiah('')).toBe(0);
+            expect(parseRupiah('1.500')).toBe(1500);
+        });
     });
 
-    it('mengembalikan number as-is jika input sudah number', () => {
-        expect(parseRupiah(850000)).toBe(850000);
-        expect(parseRupiah(NaN)).toBe(0);
+    describe('formatRupiahInput()', () => {
+        it('harus memformat angka dengan titik ribuan', () => {
+            expect(formatRupiahInput(850000)).toBe('850.000');
+            expect(formatRupiahInput(1500000)).toBe('1.500.000');
+        });
+
+        it('harus mengembalikan string kosong untuk input invalid/null', () => {
+            expect(formatRupiahInput(null)).toBe('');
+            expect(formatRupiahInput(undefined)).toBe('');
+            expect(formatRupiahInput(NaN)).toBe('');
+        });
+
+        it('harus menangani angka 0 dengan benar (Edge Case)', () => {
+            // 0 adalah angka valid, bukan kosong
+            expect(formatRupiahInput(0)).toBe('0');
+        });
     });
 
-    it('parse format ribuan dengan titik', () => {
-        expect(parseRupiah('850.000')).toBe(850000);
-        expect(parseRupiah('1.500.000')).toBe(1500000);
+    // ==========================================
+    // 2. parseIntInput
+    // ==========================================
+    describe('parseIntInput()', () => {
+        it('harus mem-parse string angka murni', () => {
+            expect(parseIntInput('12')).toBe(12);
+            expect(parseIntInput('0')).toBe(0);
+        });
+
+        it('harus membuang non-digit (titik, koma, spasi, huruf)', () => {
+            expect(parseIntInput('1.500')).toBe(1500);
+            expect(parseIntInput('Rp 20.000')).toBe(20000);
+            expect(parseIntInput('12abc')).toBe(12);
+            expect(parseIntInput('abc123')).toBe(123); // angka di belakang
+        });
+
+        it('harus mengembalikan 0 untuk input tidak valid/kosong', () => {
+            expect(parseIntInput(null)).toBe(0);
+            expect(parseIntInput(undefined)).toBe(0);
+            expect(parseIntInput('')).toBe(0);
+            expect(parseIntInput('abc')).toBe(0);
+            expect(parseIntInput(NaN)).toBe(0);
+        });
+
+        it('harus memotong desimal (Math.trunc) jika input berupa number', () => {
+            expect(parseIntInput(12.9)).toBe(12);
+            expect(parseIntInput(-5.5)).toBe(-5);
+        });
     });
 
-    it('parse format desimal dengan koma', () => {
-        expect(parseRupiah('1,5')).toBe(1.5);
+    // ==========================================
+    // 3. hasFormChanges
+    // ==========================================
+    describe('hasFormChanges()', () => {
+        it('harus mendeteksi tidak ada perubahan (false)', () => {
+            const initial = { name: 'Budi', age: 25 };
+            const current = { name: 'Budi', age: 25 };
+            expect(hasFormChanges(current, initial)).toBe(false);
+        });
+
+        it('harus mendeteksi perubahan nilai (true)', () => {
+            const initial = { name: 'Budi', age: 25 };
+            const current = { name: 'Budi Santoso', age: 25 };
+            expect(hasFormChanges(current, initial)).toBe(true);
+        });
+
+        it('harus mendeteksi perubahan tipe data (number string vs number)', () => {
+            const initial = { age: 25 };
+            const current = { age: '25' }; // String vs Number
+            // Karena normalizeForCompare mengubah '25' jadi 25, ini dianggap SAMA
+            expect(hasFormChanges(current, initial)).toBe(false);
+        });
+
+        it('harus mendeteksi perbedaan spasi di ujung string (Edge Case)', () => {
+            const initial = { name: 'Budi' };
+            const current = { name: ' Budi ' };
+            // Karena fungsi normalizeForCompare melakukan trim, ini dianggap SAMA
+            expect(hasFormChanges(current, initial)).toBe(false);
+        });
+
+        it('harus mendeteksi perbedaan null vs string kosong', () => {
+            const initial = { note: null };
+            const current = { note: '' };
+            // Di normalizeForCompare, null dan '' dianggap sama ('')
+            expect(hasFormChanges(current, initial)).toBe(false);
+        });
+
+        it('harus mendeteksi perubahan pada array/object (JSON stringify)', () => {
+            const initial = { tags: ['a', 'b'] };
+            const current = { tags: ['a', 'b', 'c'] };
+            expect(hasFormChanges(current, initial)).toBe(true);
+        });
     });
 
-    it('parse format ribuan + desimal', () => {
-        expect(parseRupiah('1.500,5')).toBe(1500.5);
+    // ==========================================
+    // 4. trimObject
+    // ==========================================
+    describe('trimObject()', () => {
+        it('harus memangkas spasi pada semua string value', () => {
+            const input = {
+                name: '  Budi  ',
+                email: ' a@b.c ',
+                age: 25, // bukan string, tidak boleh berubah
+            };
+            const expected = {
+                name: 'Budi',
+                email: 'a@b.c',
+                age: 25,
+            };
+            expect(trimObject(input)).toEqual(expected);
+        });
     });
 
-    it('parse string tanpa pemisah', () => {
-        expect(parseRupiah('850000')).toBe(850000);
-    });
+    // ==========================================
+    // 5. isEmpty
+    // ==========================================
+    describe('isEmpty()', () => {
+        it('harus mengembalikan true untuk nilai kosong', () => {
+            expect(isEmpty(null)).toBe(true);
+            expect(isEmpty(undefined)).toBe(true);
+            expect(isEmpty('')).toBe(true);
+            expect(isEmpty('   ')).toBe(true); // Spasi saja dianggap kosong
+            expect(isEmpty([])).toBe(true);
+        });
 
-    it('parse format desimal Laravel ("850000.00")', () => {
-        expect(parseRupiah('850000.00')).toBe(850000);
-    });
-
-    it('menghapus prefix "Rp" (case-insensitive)', () => {
-        expect(parseRupiah('Rp 850.000')).toBe(850000);
-        expect(parseRupiah('rp 1.500.000')).toBe(1500000);
-    });
-
-    it('mengasumsikan "1.500" sebagai ribuan (1500)', () => {
-        expect(parseRupiah('1.500')).toBe(1500);
-    });
-
-    it('mengembalikan 0 untuk string non-numerik', () => {
-        expect(parseRupiah('abc')).toBe(0);
-    });
-});
-
-// ============================================================
-// KATEGORI 2 — formatRupiahInput
-// ============================================================
-
-describe('formatRupiahInput', () => {
-    it('mengembalikan string kosong untuk input tidak valid', () => {
-        expect(formatRupiahInput(null)).toBe('');
-        expect(formatRupiahInput(undefined)).toBe('');
-        expect(formatRupiahInput(NaN)).toBe('');
-    });
-
-    it('format angka dengan pemisah ribuan', () => {
-        expect(formatRupiahInput(850000)).toBe('850.000');
-        expect(formatRupiahInput(1500000)).toBe('1.500.000');
-    });
-
-    it('tidak menampilkan desimal', () => {
-        expect(formatRupiahInput(1500.5)).toBe('1.501'); // dibulatkan
-    });
-});
-
-// ============================================================
-// KATEGORI 3 — parseIntInput
-// ============================================================
-
-describe('parseIntInput', () => {
-    it('mengembalikan 0 untuk input kosong/null/undefined', () => {
-        expect(parseIntInput(null)).toBe(0);
-        expect(parseIntInput(undefined)).toBe(0);
-        expect(parseIntInput('')).toBe(0);
-    });
-
-    it('mengembalikan integer as-is untuk input number', () => {
-        expect(parseIntInput(12)).toBe(12);
-        expect(parseIntInput(12.9)).toBe(12); // truncate
-        expect(parseIntInput(NaN)).toBe(0);
-        expect(parseIntInput(Infinity)).toBe(0);
-    });
-
-    it('mengambil digit saja dari string', () => {
-        expect(parseIntInput('12')).toBe(12);
-        expect(parseIntInput('1.500')).toBe(1500);
-        expect(parseIntInput('abc')).toBe(0);
-        expect(parseIntInput('12 peserta')).toBe(12);
-    });
-});
-
-// ============================================================
-// KATEGORI 4 — hasFormChanges
-// ============================================================
-
-describe('hasFormChanges', () => {
-    it('mengembalikan false untuk object identik', () => {
-        expect(hasFormChanges({ name: 'A' }, { name: 'A' })).toBe(false);
-    });
-
-    it('mengembalikan true jika ada perbedaan nilai', () => {
-        expect(hasFormChanges({ name: 'A' }, { name: 'B' })).toBe(true);
-    });
-
-    it('mengembalikan false jika string "5" dianggap sama dengan number 5', () => {
-        expect(hasFormChanges({ jumlah: '5' }, { jumlah: 5 })).toBe(false);
-    });
-
-    it('mengembalikan false jika hanya beda spasi', () => {
-        expect(hasFormChanges({ name: '  A  ' }, { name: 'A' })).toBe(false);
-    });
-
-    it('mengembalikan true jika ada key tambahan', () => {
-        expect(hasFormChanges({ a: '1', b: '2' }, { a: '1' })).toBe(true);
-    });
-
-    it('menganggap null dan undefined sama dengan string kosong', () => {
-        expect(hasFormChanges({ a: null }, { a: '' })).toBe(false);
-        expect(hasFormChanges({ a: undefined }, { a: '' })).toBe(false);
-    });
-});
-
-// ============================================================
-// KATEGORI 5 — trimObject
-// ============================================================
-
-describe('trimObject', () => {
-    it('memangkas semua string value', () => {
-        expect(
-            trimObject({ nama: '  Budi  ', email: ' a@b.c ' })
-        ).toEqual({ nama: 'Budi', email: 'a@b.c' });
-    });
-
-    it('tidak mengubah non-string value', () => {
-        expect(
-            trimObject({ nama: '  Budi  ', umur: 30, aktif: true })
-        ).toEqual({ nama: 'Budi', umur: 30, aktif: true });
-    });
-
-    it('tidak error untuk object kosong', () => {
-        expect(trimObject({})).toEqual({});
-    });
-});
-
-// ============================================================
-// KATEGORI 6 — isEmpty
-// ============================================================
-
-describe('isEmpty', () => {
-    it('mengembalikan true untuk null/undefined/string kosong/array kosong', () => {
-        expect(isEmpty(null)).toBe(true);
-        expect(isEmpty(undefined)).toBe(true);
-        expect(isEmpty('')).toBe(true);
-        expect(isEmpty('   ')).toBe(true);
-        expect(isEmpty([])).toBe(true);
-    });
-
-    it('mengembalikan false untuk value yang terisi', () => {
-        expect(isEmpty('hello')).toBe(false);
-        expect(isEmpty(0)).toBe(false);
-        expect(isEmpty(false)).toBe(false);
-        expect(isEmpty([1, 2])).toBe(false);
-    });
-
-    it('mengembalikan false untuk object (meskipun kosong)', () => {
-        expect(isEmpty({})).toBe(false);
+        it('harus mengembalikan false untuk nilai yang terisi', () => {
+            expect(isEmpty('Budi')).toBe(false);
+            expect(isEmpty(0)).toBe(false); // Angka 0 bukan kosong
+            expect(isEmpty(false)).toBe(false);
+            expect(isEmpty([1])).toBe(false);
+            expect(isEmpty({})).toBe(false); // Object kosong bukan 'empty' di sini
+        });
     });
 });

@@ -17,12 +17,12 @@ final class PackageResource extends JsonResource
     /**
      * Bentuk data paket yang dikirim ke frontend.
      *
-     * Field database tetap snake_case (`harga_per_orang`,
-     * `durasi_hari`, `cover_image`) sesuai kontrak frontend.
-     * Field turunan memakai camelCase (`isRombongan`,
-     * `hargaPerOrangRupiah`, `days`, `facilities`).
+     * Field database tetap snake_case (harga_per_orang,
+     * durasi_hari, cover_image) sesuai kontrak frontend.
+     * Field turunan memakai camelCase (isRombongan,
+     * hargaPerOrangRupiah, days, facilities).
      *
-     * Semua relasi memakai `whenLoaded` agar endpoint yang tidak
+     * Semua relasi memakai whenLoaded agar endpoint yang tidak
      * membutuhkan relasi tertentu (mis. daftar booking) tidak
      * memicu query N+1.
      *
@@ -49,7 +49,7 @@ final class PackageResource extends JsonResource
             'timezone' => $this->timezone,
             'cover_image' => $this->cover_image,
             'status' => $this->status->value,
-            'created_at' => $this->created_at?->toIso8601String(),
+            'created_at' => $this->created_at->toIso8601String(),
             'mitra' => $this->whenLoaded('mitra', function (): ?array {
                 /** @var User|null $mitra */
                 $mitra = $this->mitra;

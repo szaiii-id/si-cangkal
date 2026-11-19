@@ -16,13 +16,6 @@ final class MitraBankAccountResource extends JsonResource
     /**
      * Bentuk data rekening yang dikirim ke frontend.
      *
-     * Format camelCase dipertahankan sesuai kontrak yang sudah
-     * dikonsumsi frontend Svelte (lihat `BookingResource` sebelum refactor):
-     * - `namaPenyedia`   <- `nama_penyedia`
-     * - `nomorRekening`  <- `nomor_rekening`
-     * - `namaPemilik`    <- `nama_pemilik`
-     * - `isPrimary`      <- `is_primary`
-     *
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array
@@ -30,10 +23,10 @@ final class MitraBankAccountResource extends JsonResource
         return [
             'id' => $this->id,
             'tipe' => $this->tipe,
-            'namaPenyedia' => $this->nama_penyedia,
-            'nomorRekening' => $this->nomor_rekening,
-            'namaPemilik' => $this->nama_pemilik,
-            'isPrimary' => (bool) $this->is_primary,
+            'nama_penyedia' => $this->nama_penyedia,
+            'nomor_rekening' => $this->nomor_rekening,
+            'nama_pemilik' => $this->nama_pemilik,
+            'is_primary' => (bool) $this->is_primary,
         ];
     }
 }

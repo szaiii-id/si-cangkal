@@ -18,16 +18,13 @@ class PackageSeeder extends Seeder
         $mitraAni = User::where('email', 'ani@gmail.com')->first();
 
         if (! $mitraABC || ! $mitraAni) {
-            $this->command->warn('⚠️ Mitra tidak ditemukan. Jalankan UserSeeder dulu.');
+            $this->command->warn('Mitra tidak ditemukan. Jalankan UserSeeder dulu.');
+
             return;
         }
 
-        // ========================================
-        // PT ABC TRAVEL (Banjarmasin) — 4 paket
-        // ========================================
-
         $this->seedPaket($mitraABC, [
-            'kode' => 'PKG-' . now()->year . '-001',
+            'kode' => 'PKG-'.now()->year.'-001',
             'nama' => 'Wisata Pasar Terapung 2D1N',
             'slug' => 'wisata-pasar-terapung-2d1n',
             'deskripsi' => 'Nikmati pengalaman unik menyusuri Sungai Martapura di pagi hari, melihat aktivitas jual beli di atas perahu tradisional khas Banjarmasin.',
@@ -54,7 +51,7 @@ class PackageSeeder extends Seeder
         ]);
 
         $this->seedPaket($mitraABC, [
-            'kode' => 'PKG-' . now()->year . '-002',
+            'kode' => 'PKG-'.now()->year.'-002',
             'nama' => 'Petualangan Hutan Kalimantan 3D2N',
             'slug' => 'petualangan-hutan-kalimantan-3d2n',
             'deskripsi' => 'Jelajahi keindahan hutan tropis Kalimantan, temui orangutan di habitat aslinya, dan rasakan sensasi menginap di tengah hutan.',
@@ -81,7 +78,7 @@ class PackageSeeder extends Seeder
         ]);
 
         $this->seedPaket($mitraABC, [
-            'kode' => 'PKG-' . now()->year . '-003',
+            'kode' => 'PKG-'.now()->year.'-003',
             'nama' => 'Explore Banjarmasin City Tour 1D',
             'slug' => 'explore-banjarmasin-city-tour-1d',
             'deskripsi' => 'Menjelajahi ikon kota Banjarmasin: Masjid Sultan Suriansyah, Menara Pandang, dan kuliner legendaris.',
@@ -104,7 +101,7 @@ class PackageSeeder extends Seeder
         ]);
 
         $this->seedPaket($mitraABC, [
-            'kode' => 'PKG-' . now()->year . '-004',
+            'kode' => 'PKG-'.now()->year.'-004',
             'nama' => 'Open Trip Bromo Midnight 2D1N',
             'slug' => 'open-trip-bromo-midnight-2d1n',
             'deskripsi' => 'Berangkat tengah malam dari Malang, mengejar sunrise di Penanjakan, lalu turun ke kawah Bromo dan Pasir Berbisik.',
@@ -129,12 +126,8 @@ class PackageSeeder extends Seeder
             ],
         ]);
 
-        // ========================================
-        // ANI TOUR & TRAVEL (Denpasar) — 2 paket
-        // ========================================
-
         $this->seedPaket($mitraAni, [
-            'kode' => 'PKG-' . now()->year . '-005',
+            'kode' => 'PKG-'.now()->year.'-005',
             'nama' => 'Wisata Kuliner Banjarmasin 1D',
             'slug' => 'wisata-kuliner-banjarmasin-1d',
             'deskripsi' => 'Jelajahi kuliner legendaris Banjarmasin: Soto Banjar, Ketupat Kandangan, apam, dan banyak lagi.',
@@ -156,7 +149,7 @@ class PackageSeeder extends Seeder
         ]);
 
         $this->seedPaket($mitraAni, [
-            'kode' => 'PKG-' . now()->year . '-006',
+            'kode' => 'PKG-'.now()->year.'-006',
             'nama' => 'Bali Sunrise & Ubud Tour 3D2N',
             'slug' => 'bali-sunrise-ubud-tour-3d2n',
             'deskripsi' => 'Nikmati sunrise di Kintamani, jelajahi Ubud Monkey Forest, dan santai di Pantai Sanur.',
@@ -183,11 +176,33 @@ class PackageSeeder extends Seeder
             ],
         ]);
 
-        $this->command->info('✅ PackageSeeder selesai (6 paket lengkap).');
+        $this->command->info('PackageSeeder selesai (6 paket lengkap).');
     }
 
     /**
-     * Helper: Seed satu paket + days + facilities.
+     * Seed satu paket + days + facilities.
+     *
+     * @param  array{
+     *     kode: string,
+     *     nama: string,
+     *     slug: string,
+     *     deskripsi: string,
+     *     kategori: PackageKategori,
+     *     durasi_hari: int,
+     *     durasi_malam: int,
+     *     harga_per_orang: int,
+     *     harga_per_rombongan: int|null,
+     *     max_peserta: int|null,
+     *     days: array<int, array{
+     *         hari_ke: int,
+     *         judul: string,
+     *         deskripsi: string,
+     *         jam_mulai: string,
+     *         jam_selesai: string,
+     *         lokasi: string
+     *     }>,
+     *     facilities: array<int, array{tipe: string, nama: string}>
+     * }  $data
      */
     protected function seedPaket(User $mitra, array $data): void
     {
@@ -209,7 +224,6 @@ class PackageSeeder extends Seeder
             ]
         );
 
-        // Days
         PackageDay::where('package_id', $package->id)->delete();
         foreach ($data['days'] as $day) {
             PackageDay::create([
@@ -223,7 +237,6 @@ class PackageSeeder extends Seeder
             ]);
         }
 
-        // Facilities
         PackageFacility::where('package_id', $package->id)->delete();
         $urutan = ['include' => 0, 'exclude' => 0];
         foreach ($data['facilities'] as $facility) {

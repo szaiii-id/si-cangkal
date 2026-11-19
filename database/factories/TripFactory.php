@@ -52,7 +52,7 @@ class TripFactory extends Factory
             ),
             'booking_id' => Booking::factory()->confirmed(),
             'package_id' => Package::factory()->aktif(),
-            'mitra_id' => User::factory()->mitraLive(), // ✅ TAMBAHAN
+            'mitra_id' => User::factory()->mitra(),
             'snapshot_package' => $snapshot,
             'tanggal_mulai' => $tanggalMulai->format('Y-m-d'),
             'tanggal_selesai' => $tanggalSelesai->format('Y-m-d'),
@@ -144,7 +144,7 @@ class TripFactory extends Factory
 
         return $this->state(fn (array $attributes) => [
             'package_id' => $package->id,
-            'mitra_id' => $package->mitra_id, // ✅ Warisi mitra dari paket
+            'mitra_id' => $package->mitra_id,
             'snapshot_package' => $snapshot,
             'tanggal_mulai' => $tanggalMulai->format('Y-m-d'),
             'tanggal_selesai' => $tanggalSelesai->format('Y-m-d'),
@@ -152,12 +152,17 @@ class TripFactory extends Factory
         ]);
     }
 
+    /**
+     * Set relasi dari Booking — override booking_id, package_id, mitra_id,
+     * jumlah_peserta. Wajib dipakai jika test ingin `Trip::where('booking_id',
+     * $booking->id)` match.
+     */
     public function forBooking(Booking $booking): static
     {
         return $this->state(fn (array $attributes) => [
             'booking_id' => $booking->id,
             'package_id' => $booking->package_id,
-            'mitra_id' => $booking->mitra_id, // ✅ Warisi mitra dari booking
+            'mitra_id' => $booking->mitra_id,
             'jumlah_peserta' => $booking->jumlah_peserta,
         ]);
     }

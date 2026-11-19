@@ -37,13 +37,17 @@ class ClientProfileService
     /**
      * Update profile client.
      *
+     * Partial update: field yang tidak dikirim tidak diubah (fallback ke
+     * nilai lama). Konsisten dengan `UserService::updateUser()` dan
+     * `ProfileService::updateProfile()` (mitra).
+     *
      * @param  array<string, mixed>  $data
      */
     public function updateProfile(User $user, array $data): User
     {
         $user = $this->userRepository->updateUser($user, [
             'name' => $data['name'],
-            'username' => $data['username'] ?? null,
+            'username' => $data['username'] ?? $user->username,
         ]);
 
         Log::info('Client update profile', [

@@ -96,4 +96,11 @@ interface BookingRepositoryInterface
      * @return array<string, int>
      */
     public function countByStatusForClient(User $client): array;
+
+    /**
+     * Hitung jumlah booking untuk mitra tertentu (per status).
+     *
+     * @return array<string, int>
+     */
+    public function countByStatusForMitra(User $mitra): array;
 }

@@ -8,7 +8,7 @@ final class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        $this->command->info('Memulai seeding database Titiktemu.');
+        $this->command->info('Memulai seeding database SI-CANGKAL.');
         $this->command->newLine();
 
         $this->call([

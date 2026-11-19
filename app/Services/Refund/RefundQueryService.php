@@ -2,6 +2,7 @@
 
 namespace App\Services\Refund;
 
+use App\Http\Controllers\Admin\RefundController;
 use App\Models\Refund;
 use App\Models\User;
 use App\Repositories\Contracts\RefundRepositoryInterface;
@@ -20,7 +21,7 @@ use Illuminate\Validation\ValidationException;
  * "siapa yang bisa mengubah state" vs "siapa yang bisa membaca".
  *
  * Dipakai oleh:
- * - {@see \App\Http\Controllers\Admin\RefundController}
+ * - {@see RefundController}
  * - {@see \App\Http\Controllers\Mitra\RefundController}
  */
 final class RefundQueryService

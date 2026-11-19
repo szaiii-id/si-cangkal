@@ -22,7 +22,7 @@
 
 {#if open}
     <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <!-- Backdrop — ✅ FIX A11Y: <div> → <button> -->
+        <!-- Backdrop -->
         <button
             type="button"
             class="absolute inset-0 bg-black/50 backdrop-blur-sm cursor-default"
@@ -38,8 +38,9 @@
             class="relative bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 sm:p-8"
         >
             <div class="text-center">
-                <div class="w-16 h-16 mx-auto rounded-full bg-yellow-100 flex items-center justify-center mb-4">
-                    <svg class="w-8 h-8 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <!--  Warna disesuaikan ke palet sun -->
+                <div class="w-16 h-16 mx-auto rounded-full bg-sun/10 flex items-center justify-center mb-4">
+                    <svg class="w-8 h-8 text-sun-text" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
                     </svg>
                 </div>
@@ -63,10 +64,11 @@
                     >
                         Batal
                     </button>
+                    <!--  Warna disesuaikan ke sun-dark -->
                     <button
                         type="button"
                         onclick={confirm}
-                        class="flex-1 px-6 py-3 rounded-full bg-yellow-500 text-white font-bold text-sm hover:bg-yellow-600 transition-all shadow-md"
+                        class="flex-1 px-6 py-3 rounded-full bg-sun-dark text-white font-bold text-sm hover:bg-sun transition-all shadow-md"
                     >
                         Ya, Reset Password
                     </button>

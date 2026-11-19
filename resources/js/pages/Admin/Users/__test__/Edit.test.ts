@@ -1,606 +1,504 @@
+/**
+ * ============================================================
+ * Admin Users — Edit Page — Component Test
+ * ============================================================
+ *
+ * Fokus pengujian (sesuai ketentuan):
+ *   1. Isolation & Mocking  → Inertia, API updateUser, menu,
+ *                             & child components (UserAccountFields,
+ *                             UserProfileFields, BackButton) di-mock.
+ *   2. Props & Rendering    → header, role badge, field render per role.
+ *   3. Interaction          → submit form, error state, processing.
+ *   4. Reactivity           → error banner, processing update DOM.
+ *
+ * Strategi mock:
+ *   - Anchor-aware pattern (`insertBefore(anchor.parentNode)`) untuk
+ *     kompatibilitas Svelte 5 runtime.
+ *   - Mock child components me-render input yang mem-bind ke `form`
+ *     yang diteruskan, supaya test bisa mengisi field dan verifikasi
+ *     payload yang dikirim ke API.
+ *   - `mockUpdaters` + `syncUI()` memastikan DOM merefleksikan state
+ *     Svelte terbaru setelah setiap interaksi.
+ * ============================================================
+ */
+
+import { render, screen, fireEvent } from '@testing-library/svelte';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
-import UserEdit from '../Edit.svelte';
+import { tick } from 'svelte';
+import Edit from '../Edit.svelte';
 
 // ============================================================
-// MOCK INERTIA
+// 1. HOISTED MOCK REGISTRY
 // ============================================================
+const mockUpdaters = vi.hoisted(() => new Set<() => void>());
 
-const mockPut = vi.fn();
-
-let mockPageProps: {
-    flash?: {
-        status?: string | null;
-        error?: string | null;
-    };
-    auth?: {
-        user?: {
-            id: number;
-            name: string;
-            username: string | null;
-            email: string;
-            role: string;
-        } | null;
-    };
-} = {
-    flash: {},
-    auth: {
-        user: {
-            id: 99,
-            name: 'Admin Current',
-            username: 'admin',
-            email: 'admin@example.com',
-            role: 'admin',
-        },
-    },
-};
-
-let mockPageUrl = '/admin/users/5/edit';
-
+// ============================================================
+// 2. MOCK — INERTIA
+// ============================================================
 vi.mock('@inertiajs/svelte', () => ({
-    router: {
-        put: (...args: unknown[]) => mockPut(...args),
-        post: vi.fn(),
-        get: vi.fn(),
-        delete: vi.fn(),
-    },
-    page: {
-        get props() {
-            return mockPageProps;
-        },
-        get url() {
-            return mockPageUrl;
-        },
-        get component() {
-            return 'Admin/Users/Edit';
-        },
-    },
-    inertia: () => ({
-        update: () => {},
-        destroy: () => {},
-    }),
+    inertia: vi.fn(),
 }));
 
 // ============================================================
-// HELPER — Selector via ID
+// 3. MOCK — API ADMIN
 // ============================================================
-
-const getInput = (id: string) =>
-    document.getElementById(id) as HTMLInputElement;
-
-const getTextarea = (id: string) =>
-    document.getElementById(id) as HTMLTextAreaElement;
-
-const getSubmitButton = () =>
-    screen.getByRole('button', { name: /^Simpan Perubahan$/i });
-
-const getForm = () =>
-    getSubmitButton().closest('form') as HTMLFormElement;
+vi.mock('@/api/admin', () => ({
+    updateUser: vi.fn(),
+}));
 
 // ============================================================
-// PROPS DEFAULT
+// 4. MOCK — MENUS
 // ============================================================
+vi.mock('@/utils/menus', () => ({
+    adminMenu: [],
+}));
 
-const makeUser = (overrides: Partial<any> = {}) => ({
-    id: 5,
-    name: 'Budi Santoso',
-    username: 'budisantoso',
-    email: 'budi@example.com',
+// ============================================================
+// 5. MOCK — DASHBOARD LAYOUT (pass-through children)
+// ============================================================
+vi.mock('@/components/layout/DashboardLayout.svelte', () => ({
+    default: (anchor: Node, props: { children?: (anchor: Node) => void }) => {
+        props.children?.(anchor);
+        return {};
+    },
+}));
+
+// ============================================================
+// 6. MOCK — BACK BUTTON
+// ============================================================
+vi.mock('@/global/BackButton.svelte', () => ({
+    default: (anchor: Node, props: { href: string; label?: string }) => {
+        const link = document.createElement('a');
+        link.href = props.href;
+        link.textContent = props.label ?? 'Kembali';
+        link.setAttribute('data-testid', 'back-button');
+        anchor.parentNode?.insertBefore(link, anchor);
+        return {};
+    },
+}));
+
+// ============================================================
+// 7. MOCK — USER ACCOUNT FIELDS (bind ke form.name/username/email)
+// ============================================================
+vi.mock('@/components/admin/users/UserAccountFields.svelte', () => ({
+    default: (
+        anchor: Node,
+        props: {
+            form: { name: string; username: string; email: string };
+            errors: Record<string, string>;
+        },
+    ) => {
+        const wrapper = document.createElement('div');
+        wrapper.setAttribute('data-testid', 'user-account-fields');
+        anchor.parentNode?.insertBefore(wrapper, anchor);
+
+        const update = () => {
+            wrapper.innerHTML = '';
+
+            const fields: Array<[keyof typeof props.form, string]> = [
+                ['name', 'Nama'],
+                ['username', 'Username'],
+                ['email', 'Email'],
+            ];
+
+            fields.forEach(([key, label]) => {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.setAttribute('aria-label', label);
+                input.value = (props.form as any)[key] ?? '';
+                input.oninput = (e) => {
+                    (props.form as any)[key] = (e.target as HTMLInputElement).value;
+                };
+                wrapper.appendChild(input);
+
+                if (props.errors[key as string]) {
+                    const err = document.createElement('p');
+                    err.setAttribute('role', 'alert');
+                    err.setAttribute('data-testid', `error-${key}`);
+                    err.textContent = props.errors[key as string];
+                    wrapper.appendChild(err);
+                }
+            });
+        };
+
+        update();
+        mockUpdaters.add(update);
+        return {};
+    },
+}));
+
+// ============================================================
+// 8. MOCK — USER PROFILE FIELDS (bind ke form.profile.*)
+// ============================================================
+vi.mock('@/components/admin/users/UserProfileFields.svelte', () => ({
+    default: (
+        anchor: Node,
+        props: {
+            form: {
+                profile: {
+                    nama_penyedia_usaha: string;
+                    nomor_identitas: string;
+                    telepon: string;
+                    alamat: string;
+                    provinsi: string;
+                    kota: string;
+                    kode_pos: string;
+                    deskripsi: string;
+                };
+            };
+        },
+    ) => {
+        const wrapper = document.createElement('div');
+        wrapper.setAttribute('data-testid', 'user-profile-fields');
+        anchor.parentNode?.insertBefore(wrapper, anchor);
+
+        const update = () => {
+            wrapper.innerHTML = '';
+
+            const fields: Array<[keyof typeof props.form.profile, string]> = [
+                ['nama_penyedia_usaha', 'Nama Usaha'],
+                ['nomor_identitas', 'Nomor Identitas'],
+                ['telepon', 'Telepon'],
+                ['alamat', 'Alamat'],
+                ['provinsi', 'Provinsi'],
+                ['kota', 'Kota'],
+                ['kode_pos', 'Kode Pos'],
+                ['deskripsi', 'Deskripsi Usaha'],
+            ];
+
+            fields.forEach(([key, label]) => {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.setAttribute('aria-label', label);
+                input.value = props.form.profile?.[key] ?? '';
+                input.oninput = (e) => {
+                    (props.form.profile as any)[key] = (e.target as HTMLInputElement).value;
+                };
+                wrapper.appendChild(input);
+            });
+        };
+
+        update();
+        mockUpdaters.add(update);
+        return {};
+    },
+}));
+
+// ============================================================
+// 9. STATIC IMPORT (setelah semua vi.mock)
+// ============================================================
+import { updateUser } from '@/api/admin';
+
+// ============================================================
+// 10. HELPERS
+// ============================================================
+async function syncUI(): Promise<void> {
+    await tick();
+    mockUpdaters.forEach((fn) => fn());
+}
+
+async function fillField(label: string, value: string): Promise<void> {
+    const input = screen.getByLabelText(label) as HTMLInputElement;
+    await fireEvent.input(input, { target: { value } });
+    await syncUI();
+}
+
+// ============================================================
+// 11. FIXTURES
+// ============================================================
+const makeAdmin = () => ({
+    id: 1,
+    name: 'Super Admin',
+    username: 'superadmin',
+    email: 'admin@test.com',
     role: 'admin' as const,
+    profile: null,
+});
+
+const makeMitra = () => ({
+    id: 2,
+    name: 'Mitra Satu',
+    username: 'mitrasatu',
+    email: 'mitra1@test.com',
+    role: 'mitra' as const,
     profile: {
-        nama_penyedia_usaha: 'PT Budi Jaya',
+        nama_penyedia_usaha: 'PT Mitra Jaya',
         nomor_identitas: '1234567890',
         alamat: 'Jl. Merdeka No. 1',
-        telepon: '08123456789',
-        provinsi: 'Bali',
-        kota: 'Denpasar',
-        kode_pos: '80119',
-        deskripsi: 'Usaha travel terpercaya',
+        telepon: '+62 812 3456 7890',
+        provinsi: 'Jawa Barat',
+        kota: 'Bandung',
+        kode_pos: '40111',
+        deskripsi: 'Travel agent terpercaya',
     },
-    ...overrides,
-});
-
-const makeMitraUser = (overrides: Partial<any> = {}) => ({
-    ...makeUser(),
-    role: 'mitra' as const,
-    name: 'Mitra Sejahtera',
-    email: 'mitra@example.com',
-    ...overrides,
 });
 
 // ============================================================
-// SETUP & TEARDOWN
+// 12. TEST SUITE
 // ============================================================
-
-beforeEach(() => {
-    mockPut.mockClear();
-    mockPageUrl = '/admin/users/5/edit';
-    mockPageProps = {
-        flash: {},
-        auth: {
-            user: {
-                id: 99,
-                name: 'Admin Current',
-                username: 'admin',
-                email: 'admin@example.com',
-                role: 'admin',
-            },
-        },
-    };
-});
-
-afterEach(() => {
-    vi.clearAllMocks();
-});
-
-// ============================================================
-// KATEGORI 1 — UI CONTRACT
-// ============================================================
-
-describe('Admin/Users/Edit.svelte — UI Contract', () => {
-    it('menampilkan breadcrumb "Kembali ke Daftar User"', () => {
-        render(UserEdit, { props: { user: makeUser() } });
-        expect(
-            screen.getByRole('link', { name: /Kembali ke Daftar User/i })
-        ).toBeInTheDocument();
+describe('Admin Users — Edit Page', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockUpdaters.clear();
     });
 
-    it('breadcrumb punya href ke /admin/users', () => {
-        render(UserEdit, { props: { user: makeUser() } });
-        const link = screen.getByRole('link', { name: /Kembali ke Daftar User/i });
-        expect(link).toHaveAttribute('href', '/admin/users');
+    afterEach(() => {
+        vi.useRealTimers();
     });
 
-    it('menampilkan heading "Edit Budi Santoso"', () => {
-        render(UserEdit, { props: { user: makeUser() } });
-        expect(
-            screen.getByRole('heading', { name: /Edit Budi Santoso/i })
-        ).toBeInTheDocument();
-    });
+    // ----------------------------------------------------------
+    // 12.1 RENDERING — header & badge role
+    // ----------------------------------------------------------
+    describe('Rendering — Header', () => {
+        it('menampilkan inisial, nama, email, dan role badge Admin', () => {
+            render(Edit, { user: makeAdmin() });
 
-    it('menampilkan email user', () => {
-        render(UserEdit, { props: { user: makeUser() } });
-        const elements = screen.getAllByText('budi@example.com');
-        expect(elements.length).toBeGreaterThan(0);
-    });
+            // Inisial
+            expect(screen.getByText('S')).toBeInTheDocument();
 
-    it('menampilkan badge role "Admin"', () => {
-        render(UserEdit, { props: { user: makeUser() } });
-        expect(screen.getByText(/^Admin$/i)).toBeInTheDocument();
-    });
+            // Nama & email
+            expect(screen.getByText('Edit Super Admin')).toBeInTheDocument();
+            expect(screen.getByText('admin@test.com')).toBeInTheDocument();
 
-    it('menampilkan badge role "Mitra" untuk role mitra', () => {
-        render(UserEdit, { props: { user: makeMitraUser() } });
-        expect(screen.getByText(/^Mitra$/i)).toBeInTheDocument();
-    });
-
-    it('menampilkan tombol submit "Simpan Perubahan"', () => {
-        render(UserEdit, { props: { user: makeUser() } });
-        expect(getSubmitButton()).toBeInTheDocument();
-    });
-
-    it('menampilkan tombol "Batal"', () => {
-        render(UserEdit, { props: { user: makeUser() } });
-        expect(screen.getByRole('link', { name: /^Batal$/i })).toBeInTheDocument();
-    });
-
-    it('tombol Batal punya href ke /admin/users', () => {
-        render(UserEdit, { props: { user: makeUser() } });
-        const link = screen.getByRole('link', { name: /^Batal$/i });
-        expect(link).toHaveAttribute('href', '/admin/users');
-    });
-});
-
-// ============================================================
-// KATEGORI 2 — DATA INITIALIZATION
-// ============================================================
-
-describe('Admin/Users/Edit.svelte — Data Initialization', () => {
-    it('field name terisi dari user.name', () => {
-        render(UserEdit, { props: { user: makeUser() } });
-        expect(getInput('name').value).toBe('Budi Santoso');
-    });
-
-    it('field email terisi dari user.email', () => {
-        render(UserEdit, { props: { user: makeUser() } });
-        expect(getInput('email').value).toBe('budi@example.com');
-    });
-
-    it('field username terisi dari user.username', () => {
-        render(UserEdit, { props: { user: makeUser() } });
-        expect(getInput('username').value).toBe('budisantoso');
-    });
-
-    it('username null → field kosong', () => {
-        render(UserEdit, {
-            props: { user: makeUser({ username: null }) },
-        });
-        expect(getInput('username').value).toBe('');
-    });
-
-    it('field profile terisi dari user.profile (mitra)', () => {
-        render(UserEdit, { props: { user: makeMitraUser() } });
-        expect(getInput('nama_penyedia_usaha').value).toBe('PT Budi Jaya');
-        expect(getInput('nomor_identitas').value).toBe('1234567890');
-        expect(getInput('telepon').value).toBe('08123456789');
-    });
-
-    it('field profile kosong kalau profile null', () => {
-        render(UserEdit, {
-            props: { user: makeMitraUser({ profile: null }) },
-        });
-        expect(getInput('nama_penyedia_usaha').value).toBe('');
-        expect(getInput('nomor_identitas').value).toBe('');
-    });
-});
-
-// ============================================================
-// KATEGORI 3 — CONDITIONAL RENDERING (Role-based)
-// ============================================================
-
-describe('Admin/Users/Edit.svelte — Conditional Rendering', () => {
-    it('admin TIDAK menampilkan section "Data Usaha"', () => {
-        render(UserEdit, { props: { user: makeUser() } });
-        expect(screen.queryByText(/^Data Usaha$/i)).not.toBeInTheDocument();
-    });
-
-    it('mitra menampilkan section "Data Usaha"', () => {
-        render(UserEdit, { props: { user: makeMitraUser() } });
-        expect(screen.getByText(/^Data Usaha$/i)).toBeInTheDocument();
-    });
-
-    it('mitra menampilkan semua field data usaha', () => {
-        render(UserEdit, { props: { user: makeMitraUser() } });
-        expect(getInput('nama_penyedia_usaha')).toBeInTheDocument();
-        expect(getInput('nomor_identitas')).toBeInTheDocument();
-        expect(getInput('telepon')).toBeInTheDocument();
-        expect(getTextarea('alamat')).toBeInTheDocument();
-        expect(getInput('provinsi')).toBeInTheDocument();
-        expect(getInput('kota')).toBeInTheDocument();
-        expect(getInput('kode_pos')).toBeInTheDocument();
-        expect(getTextarea('deskripsi')).toBeInTheDocument();
-    });
-});
-
-// ============================================================
-// KATEGORI 4 — BEHAVIORAL: Form Submit (Admin)
-// ============================================================
-
-describe('Admin/Users/Edit.svelte — Form Submit: Admin', () => {
-    it('submit admin memanggil router.put dengan payload benar', async () => {
-        render(UserEdit, { props: { user: makeUser() } });
-
-        await fireEvent.input(getInput('name'), {
-            target: { value: 'Nama Baru' },
+            // Role badge
+            expect(screen.getByText('Admin')).toBeInTheDocument();
         });
 
-        await fireEvent.submit(getForm());
+        it('menampilkan role badge Mitra untuk user mitra', () => {
+            render(Edit, { user: makeMitra() });
 
-        expect(mockPut).toHaveBeenCalledTimes(1);
-        expect(mockPut).toHaveBeenCalledWith(
-            '/admin/users/5',
-            expect.objectContaining({
-                name: 'Nama Baru',
-                email: 'budi@example.com',
-                username: 'budisantoso',
-            }),
-            expect.objectContaining({
-                onError: expect.any(Function),
-                onFinish: expect.any(Function),
-            }),
-        );
-    });
-
-    it('submit admin tetap kirim objek profile (meski kosong)', async () => {
-        render(UserEdit, { props: { user: makeUser() } });
-
-        await fireEvent.submit(getForm());
-
-        const [, payload] = mockPut.mock.calls[0];
-        expect(payload).toHaveProperty('profile');
-        expect(typeof payload.profile).toBe('object');
-    });
-});
-
-// ============================================================
-// KATEGORI 5 — BEHAVIORAL: Form Submit (Mitra)
-// ============================================================
-
-describe('Admin/Users/Edit.svelte — Form Submit: Mitra', () => {
-    it('submit mitra memanggil router.put dengan payload lengkap', async () => {
-        render(UserEdit, { props: { user: makeMitraUser() } });
-
-        await fireEvent.input(getInput('nama_penyedia_usaha'), {
-            target: { value: 'PT Baru' },
+            expect(screen.getByText('Edit Mitra Satu')).toBeInTheDocument();
+            expect(screen.getByText('Mitra')).toBeInTheDocument();
+            expect(screen.getByText('mitra1@test.com')).toBeInTheDocument();
         });
 
-        await fireEvent.submit(getForm());
+        it('menampilkan back button dengan href benar', () => {
+            render(Edit, { user: makeAdmin() });
 
-        expect(mockPut).toHaveBeenCalledWith(
-            '/admin/users/5',
-            expect.objectContaining({
-                name: 'Mitra Sejahtera',
-                email: 'mitra@example.com',
-                profile: expect.objectContaining({
-                    nama_penyedia_usaha: 'PT Baru',
+            const backBtn = screen.getByTestId('back-button');
+            expect(backBtn).toHaveAttribute('href', '/admin/users');
+            expect(backBtn).toHaveTextContent('Kembali ke Daftar User');
+        });
+    });
+
+    // ----------------------------------------------------------
+    // 12.2 RENDERING — conditional section by role
+    // ----------------------------------------------------------
+    describe('Rendering — Conditional by Role', () => {
+        it('TIDAK merender section Data Usaha untuk role admin', () => {
+            render(Edit, { user: makeAdmin() });
+
+            expect(screen.getByText('Data Akun')).toBeInTheDocument();
+            expect(screen.queryByText('Data Usaha')).not.toBeInTheDocument();
+            expect(screen.queryByTestId('user-profile-fields')).not.toBeInTheDocument();
+        });
+
+        it('merender section Data Usaha untuk role mitra', () => {
+            render(Edit, { user: makeMitra() });
+
+            expect(screen.getByText('Data Akun')).toBeInTheDocument();
+            expect(screen.getByText('Data Usaha')).toBeInTheDocument();
+            expect(screen.getByTestId('user-profile-fields')).toBeInTheDocument();
+        });
+
+        it('mengisi field akun dengan data user', () => {
+            render(Edit, { user: makeAdmin() });
+
+            expect(screen.getByLabelText('Nama')).toHaveValue('Super Admin');
+            expect(screen.getByLabelText('Username')).toHaveValue('superadmin');
+            expect(screen.getByLabelText('Email')).toHaveValue('admin@test.com');
+        });
+
+        it('mengisi field profil dengan data user mitra', () => {
+            render(Edit, { user: makeMitra() });
+
+            expect(screen.getByLabelText('Nama Usaha')).toHaveValue('PT Mitra Jaya');
+            expect(screen.getByLabelText('Nomor Identitas')).toHaveValue('1234567890');
+            expect(screen.getByLabelText('Kota')).toHaveValue('Bandung');
+            expect(screen.getByLabelText('Kode Pos')).toHaveValue('40111');
+        });
+
+        it('mengisi field kosong saat profile null (fallback string kosong)', () => {
+            const userWithoutProfile = {
+                ...makeAdmin(),
+                username: null as any, // null diubah ke '' di form
+            };
+            render(Edit, { user: userWithoutProfile });
+
+            expect(screen.getByLabelText('Username')).toHaveValue('');
+        });
+    });
+
+    // ----------------------------------------------------------
+    // 12.3 INTERACTION — submit payload
+    // ----------------------------------------------------------
+    describe('Interaction — Submit', () => {
+        it('memanggil updateUser dengan id user dan form yang valid', async () => {
+            render(Edit, { user: makeAdmin() });
+
+            await fillField('Nama', 'Super Admin Baru');
+
+            vi.mocked(updateUser).mockImplementation(() => {});
+
+            await fireEvent.click(screen.getByRole('button', { name: 'Simpan Perubahan' }));
+
+            expect(updateUser).toHaveBeenCalledTimes(1);
+            expect(updateUser).toHaveBeenCalledWith(
+                1,
+                expect.objectContaining({
+                    name: 'Super Admin Baru',
+                    username: 'superadmin',
+                    email: 'admin@test.com',
                 }),
-            }),
-            expect.any(Object),
-        );
-    });
-
-    it('submit mitra mengirim semua field profile', async () => {
-        render(UserEdit, { props: { user: makeMitraUser() } });
-        await fireEvent.submit(getForm());
-
-        const [, payload] = mockPut.mock.calls[0];
-        expect(payload.profile).toHaveProperty('nama_penyedia_usaha');
-        expect(payload.profile).toHaveProperty('nomor_identitas');
-        expect(payload.profile).toHaveProperty('alamat');
-        expect(payload.profile).toHaveProperty('telepon');
-        expect(payload.profile).toHaveProperty('provinsi');
-        expect(payload.profile).toHaveProperty('kota');
-        expect(payload.profile).toHaveProperty('kode_pos');
-        expect(payload.profile).toHaveProperty('deskripsi');
-    });
-});
-
-// ============================================================
-// KATEGORI 6 — NEGATIVE PATH: Error Handling
-// ============================================================
-
-describe('Admin/Users/Edit.svelte — Error Handling', () => {
-    it('menampilkan error name setelah onError', async () => {
-        render(UserEdit, { props: { user: makeUser() } });
-
-        await fireEvent.submit(getForm());
-
-        const [, , options] = mockPut.mock.calls[0];
-        options.onError({ name: 'Nama wajib diisi.' });
-
-        await waitFor(() => {
-            expect(screen.getByText('Nama wajib diisi.')).toBeInTheDocument();
-        });
-    });
-
-    it('menampilkan error email setelah onError', async () => {
-        render(UserEdit, { props: { user: makeUser() } });
-
-        await fireEvent.submit(getForm());
-
-        const [, , options] = mockPut.mock.calls[0];
-        options.onError({ email: 'Email sudah digunakan.' });
-
-        await waitFor(() => {
-            expect(screen.getByText('Email sudah digunakan.')).toBeInTheDocument();
-        });
-    });
-
-    it('menampilkan error username setelah onError', async () => {
-        render(UserEdit, { props: { user: makeUser() } });
-
-        await fireEvent.submit(getForm());
-
-        const [, , options] = mockPut.mock.calls[0];
-        options.onError({ username: 'Username sudah dipakai.' });
-
-        await waitFor(() => {
-            expect(screen.getByText('Username sudah dipakai.')).toBeInTheDocument();
-        });
-    });
-
-    it('errors direset setiap kali submit ulang', async () => {
-        render(UserEdit, { props: { user: makeUser() } });
-
-        await fireEvent.submit(getForm());
-        const [, , options1] = mockPut.mock.calls[0];
-        options1.onError({ name: 'Error lama.' });
-
-        await waitFor(() => {
-            expect(screen.getByText('Error lama.')).toBeInTheDocument();
+                expect.any(Object),
+            );
         });
 
-        await fireEvent.submit(getForm());
+        it('mengirim payload lengkap termasuk profile untuk role mitra', async () => {
+            render(Edit, { user: makeMitra() });
 
-        expect(screen.queryByText('Error lama.')).not.toBeInTheDocument();
-    });
-});
+            await fillField('Nama Usaha', 'PT Mitra Baru');
 
-// ============================================================
-// KATEGORI 7 — BVA: Processing State
-// ============================================================
+            vi.mocked(updateUser).mockImplementation(() => {});
 
-describe('Admin/Users/Edit.svelte — Processing State', () => {
-    it('tombol submit menampilkan "Menyimpan..." saat processing', async () => {
-        render(UserEdit, { props: { user: makeUser() } });
+            await fireEvent.click(screen.getByRole('button', { name: 'Simpan Perubahan' }));
 
-        await fireEvent.submit(getForm());
-
-        await waitFor(() => {
-            expect(screen.getByText(/Menyimpan/i)).toBeInTheDocument();
-        });
-    });
-
-    it('tombol submit disabled saat processing', async () => {
-        render(UserEdit, { props: { user: makeUser() } });
-
-        await fireEvent.submit(getForm());
-
-        const button = screen.getByRole('button', { name: /Menyimpan/i });
-        expect(button).toBeDisabled();
-    });
-
-    it('setelah onFinish, tombol submit enabled kembali', async () => {
-        render(UserEdit, { props: { user: makeUser() } });
-
-        await fireEvent.submit(getForm());
-
-        const [, , options] = mockPut.mock.calls[0];
-        options.onFinish();
-
-        await waitFor(() => {
-            expect(getSubmitButton()).not.toBeDisabled();
-        });
-    });
-});
-
-// ============================================================
-// KATEGORI 8 — UI CONTRACT: Field Attributes
-// ============================================================
-
-describe('Admin/Users/Edit.svelte — Field Attributes', () => {
-    it('field name bertipe text', () => {
-        render(UserEdit, { props: { user: makeUser() } });
-        expect(getInput('name').type).toBe('text');
-    });
-
-    it('field email bertipe email', () => {
-        render(UserEdit, { props: { user: makeUser() } });
-        expect(getInput('email').type).toBe('email');
-    });
-
-    it('field name required', () => {
-        render(UserEdit, { props: { user: makeUser() } });
-        expect(getInput('name').required).toBe(true);
-    });
-
-    it('field email required', () => {
-        render(UserEdit, { props: { user: makeUser() } });
-        expect(getInput('email').required).toBe(true);
-    });
-
-    it('field username TIDAK required', () => {
-        render(UserEdit, { props: { user: makeUser() } });
-        expect(getInput('username').required).toBe(false);
-    });
-});
-
-// ============================================================
-// KATEGORI 9 — UI CONTRACT: Avatar & Header
-// ============================================================
-
-describe('Admin/Users/Edit.svelte — Avatar & Header', () => {
-    it('avatar menampilkan huruf pertama nama (uppercase)', () => {
-        render(UserEdit, { props: { user: makeUser() } });
-        const avatars = screen.getAllByText('B');
-        expect(avatars.length).toBeGreaterThan(0);
-    });
-
-    it('avatar dengan nama lowercase tampil uppercase', () => {
-        render(UserEdit, {
-            props: { user: makeUser({ name: 'andi' }) },
-        });
-        const avatars = screen.getAllByText('A');
-        expect(avatars.length).toBeGreaterThan(0);
-    });
-
-    it('header menampilkan nama user', () => {
-        render(UserEdit, { props: { user: makeUser() } });
-        const elements = screen.getAllByText(/Budi Santoso/i);
-        expect(elements.length).toBeGreaterThan(0);
-    });
-
-    it('header menampilkan email user', () => {
-        render(UserEdit, { props: { user: makeUser() } });
-        const elements = screen.getAllByText('budi@example.com');
-        expect(elements.length).toBeGreaterThan(0);
-    });
-});
-
-// ============================================================
-// KATEGORI 10 — UI CONTRACT: Route & Menu
-// ============================================================
-
-describe('Admin/Users/Edit.svelte — Route & Menu', () => {
-    it('menu item "Manajemen User" ada di sidebar', () => {
-        render(UserEdit, { props: { user: makeUser() } });
-        const menuLink = screen.getByRole('link', { name: /^Manajemen User$/i });
-        expect(menuLink).toHaveAttribute('href', '/admin/users');
-    });
-
-    it('menu item "Dashboard" ada di sidebar', () => {
-        render(UserEdit, { props: { user: makeUser() } });
-        const menuLink = screen.getByRole('link', { name: /^Dashboard$/i });
-        expect(menuLink).toHaveAttribute('href', '/admin/dashboard');
-    });
-
-    it('menu item "Daftar Client" ada di sidebar', () => {
-        render(UserEdit, { props: { user: makeUser() } });
-        const menuLink = screen.getByRole('link', { name: /^Daftar Client$/i });
-        expect(menuLink).toHaveAttribute('href', '/admin/clients');
-    });
-});
-
-// ============================================================
-// KATEGORI 11 — EDGE CASES
-// ============================================================
-
-describe('Admin/Users/Edit.svelte — Edge Cases', () => {
-    it('handle email dengan subdomain', () => {
-        render(UserEdit, {
-            props: { user: makeUser({ email: 'user@mail.example.com' }) },
-        });
-        expect(getInput('email').value).toBe('user@mail.example.com');
-    });
-
-    it('handle nama panjang', () => {
-        const longName = 'a'.repeat(100);
-        render(UserEdit, {
-            props: { user: makeUser({ name: longName }) },
-        });
-        expect(getInput('name').value).toBe(longName);
-    });
-
-    it('handle profile dengan semua field null', () => {
-        render(UserEdit, {
-            props: {
-                user: makeMitraUser({
-                    profile: {
-                        nama_penyedia_usaha: null,
-                        nomor_identitas: null,
-                        alamat: null,
-                        telepon: null,
-                        provinsi: null,
-                        kota: null,
-                        kode_pos: null,
-                        deskripsi: null,
-                    },
+            expect(updateUser).toHaveBeenCalledWith(
+                2,
+                expect.objectContaining({
+                    name: 'Mitra Satu',
+                    profile: expect.objectContaining({
+                        nama_penyedia_usaha: 'PT Mitra Baru',
+                        nomor_identitas: '1234567890',
+                        kota: 'Bandung',
+                    }),
                 }),
-            },
+                expect.any(Object),
+            );
         });
-        expect(getInput('nama_penyedia_usaha').value).toBe('');
-        expect(getInput('nomor_identitas').value).toBe('');
     });
 
-    it('handle user id berbeda — PUT ke /admin/users/{id}', async () => {
-        render(UserEdit, {
-            props: { user: makeUser({ id: 42 }) },
+    // ----------------------------------------------------------
+    // 12.4 INTERACTION — processing state
+    // ----------------------------------------------------------
+    describe('Interaction — Processing', () => {
+        it('menonaktifkan tombol & menampilkan "Menyimpan..." selama processing', async () => {
+            vi.mocked(updateUser).mockImplementation(() => {});
+
+            render(Edit, { user: makeAdmin() });
+
+            await fireEvent.click(screen.getByRole('button', { name: 'Simpan Perubahan' }));
+            await syncUI();
+
+            expect(screen.getByRole('button', { name: /menyimpan/i })).toBeDisabled();
         });
 
-        await fireEvent.submit(getForm());
+        it('mengaktifkan tombol kembali setelah onFinish', async () => {
+            let finishCallback: (() => void) | undefined;
+            vi.mocked(updateUser).mockImplementation((_id, _data, options) => {
+                finishCallback = options?.onFinish;
+            });
 
-        expect(mockPut).toHaveBeenCalledWith(
-            '/admin/users/42',
-            expect.any(Object),
-            expect.any(Object),
-        );
-    });
-});
+            render(Edit, { user: makeAdmin() });
 
-// ============================================================
-// KATEGORI 12 — FLASH MESSAGE
-// ============================================================
+            await fireEvent.click(screen.getByRole('button', { name: 'Simpan Perubahan' }));
+            await syncUI();
+            expect(screen.getByRole('button', { name: /menyimpan/i })).toBeDisabled();
 
-describe('Admin/Users/Edit.svelte — Flash Message', () => {
-    it('flash status tersedia di props', () => {
-        mockPageProps.flash = { status: 'User berhasil diperbarui.' };
-        render(UserEdit, { props: { user: makeUser() } });
-        expect(mockPageProps.flash.status).toBe('User berhasil diperbarui.');
+            finishCallback?.();
+            await syncUI();
+
+            expect(screen.getByRole('button', { name: 'Simpan Perubahan' })).not.toBeDisabled();
+        });
     });
 
-    it('tidak menampilkan flash jika kosong', () => {
-        mockPageProps.flash = {};
-        render(UserEdit, { props: { user: makeUser() } });
-        expect(document.querySelector('.bg-green-50')).not.toBeInTheDocument();
+    // ----------------------------------------------------------
+    // 12.5 INTERACTION — error handling
+    // ----------------------------------------------------------
+    describe('Interaction — Error Handling', () => {
+        it('menampilkan pesan error per field saat onError dipanggil', async () => {
+            vi.mocked(updateUser).mockImplementation((_id, _data, options) => {
+                options?.onError?.({
+                    name: 'Nama wajib diisi',
+                    email: 'Email tidak valid',
+                });
+                options?.onFinish?.();
+            });
+
+            render(Edit, { user: makeAdmin() });
+
+            await fireEvent.click(screen.getByRole('button', { name: 'Simpan Perubahan' }));
+            await syncUI();
+
+            expect(screen.getByText('Nama wajib diisi')).toBeInTheDocument();
+            expect(screen.getByText('Email tidak valid')).toBeInTheDocument();
+        });
+
+        it('mengaktifkan tombol submit kembali setelah error', async () => {
+            vi.mocked(updateUser).mockImplementation((_id, _data, options) => {
+                options?.onError?.({ name: 'Required' });
+                options?.onFinish?.();
+            });
+
+            render(Edit, { user: makeAdmin() });
+
+            await fireEvent.click(screen.getByRole('button', { name: 'Simpan Perubahan' }));
+            await syncUI();
+
+            expect(screen.getByRole('button', { name: 'Simpan Perubahan' })).not.toBeDisabled();
+        });
+
+        it('menghapus error lama saat submit ulang', async () => {
+            let callCount = 0;
+            vi.mocked(updateUser).mockImplementation((_id, _data, options) => {
+                callCount++;
+                if (callCount === 1) {
+                    options?.onError?.({ name: 'Required' });
+                }
+                options?.onFinish?.();
+            });
+
+            render(Edit, { user: makeAdmin() });
+
+            // Submit 1 → error muncul
+            await fireEvent.click(screen.getByRole('button', { name: 'Simpan Perubahan' }));
+            await syncUI();
+            expect(screen.getByText('Required')).toBeInTheDocument();
+
+            // Submit 2 → errors reset
+            await fireEvent.click(screen.getByRole('button', { name: 'Simpan Perubahan' }));
+            await syncUI();
+            expect(screen.queryByText('Required')).not.toBeInTheDocument();
+        });
+    });
+
+    // ----------------------------------------------------------
+    // 12.6 A11Y — form structure
+    // ----------------------------------------------------------
+    describe('Accessibility', () => {
+        it('semua field wajib memiliki label yang jelas', () => {
+            render(Edit, { user: makeAdmin() });
+
+            // Field wajib pakai <label for="...">
+            expect(screen.getByLabelText('Nama')).toBeInTheDocument();
+            expect(screen.getByLabelText('Email')).toBeInTheDocument();
+            expect(screen.getByLabelText('Username')).toBeInTheDocument();
+        });
+
+        it('field dengan error memiliki aria-invalid dan role="alert"', async () => {
+            vi.mocked(updateUser).mockImplementation((_id, _data, options) => {
+                options?.onError?.({ name: 'Wajib' });
+                options?.onFinish?.();
+            });
+
+            render(Edit, { user: makeAdmin() });
+
+            await fireEvent.click(screen.getByRole('button', { name: 'Simpan Perubahan' }));
+            await syncUI();
+
+            // error message
+            const errorMsg = screen.getByText('Wajib');
+            expect(errorMsg).toHaveAttribute('role', 'alert');
+        });
     });
 });

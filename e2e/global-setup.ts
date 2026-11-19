@@ -1,246 +1,196 @@
 // e2e/global-setup.ts
+/**
+ * Global setup untuk Playwright E2E.
+ *
+ * Dijalankan SEKALI sebelum semua test (per shard).
+ *
+ * Urutan:
+ * 1. Cleanup artifact lama (test-results, playwright-report)
+ * 2. Setup storage shard (storage/shard-N/)
+ * 3. Buat database shard jika belum ada
+ * 4. migrate:fresh
+ * 5. db:seed --class=TestSeeder (deterministik, cepat)
+ * 6. Verifikasi seeder (via `php artisan e2e:verify-seeder`)
+ * 7. Health-check `/_test/health`
+ *
+ * ⚠️ Semua step WAJIB sukses. Kalau gagal, throw Error dengan
+ * pesan jelas — Playwright akan abort semua test.
+ *
+ * Kenapa per shard?
+ * - Setiap shard punya proses Playwright sendiri (tidak share state).
+ * - Setiap shard punya DB sendiri (isolasi penuh).
+ * - Setiap shard punya storage sendiri (hindari race compiled view).
+ *
+ * Kenapa `TestSeeder` (bukan `DatabaseSeeder`)?
+ * - `TestSeeder` deterministik (password `"password"`, email `@test.com`).
+ * - `DatabaseSeeder` pakai password acak (`Str::password(16)`) — sulit
+ *   di-test karena harus baca audit log untuk login.
+ * - `TestSeeder` cepat (4 user) vs `DatabaseSeeder` (12 user + relasi).
+ * - `TestSeeder` sesuai `SEED_USERS` di `e2e/fixtures/auth.ts`.
+ *
+ * Kenapa `e2e:verify-seeder` (bukan `tinker`)?
+ * - `tinker --execute="..."` rapuh: escaping shell rumit, output
+ *   ke STDERR, dll.
+ * - Artisan command: type-safe (PHP native), exit code jelas,
+ *   bisa di-test dengan Pest.
+ */
+
 import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { setTimeout as sleep } from 'node:timers/promises';
 import {
-    APP_URL,
-    APP_PORT,
-    SHARD_INDEX,
+    APP,
     ARTISAN_ENV,
-    E2E_DB_DATABASE,
-    E2E_DB_HOST,
-    E2E_DB_PORT,
-    E2E_DB_USERNAME,
-    E2E_DB_PASSWORD,
-    SHARD_STORAGE_PATH,
+    DB,
+    HEALTHCHECK,
+    PATHS,
+    PROJECT_ROOT,
+    SHARD,
 } from './config';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const PROJECT_ROOT = path.resolve(__dirname, '..');
-
 // ==========================================
-// KONFIGURASI HEALTH-CHECK
+// KONSTANTA SEEDER
 // ==========================================
-const TEST_ROUTE_HEALTHCHECK = {
-    path: '/_test/find-package',
-    // Kode yang pasti tidak ada — kita hanya peduli status BUKAN 404
-    // (200/422/419 semua OK — yang penting route terdaftar)
-    body: { kode: '__healthcheck__' },
-    maxAttempts: 10,
-    intervalMs: 500,
-    timeoutMs: 3_000, // per request
-} as const;
+/**
+ * FQCN `TestSeeder` — dipakai untuk `db:seed --class=...`.
+ *
+ * ⚠️ Harus pakai double backslash di string JS, karena `\` adalah
+ * escape character. `Database\\Seeders\\TestSeeder` →
+ * `Database\Seeders\TestSeeder` saat dieksekusi.
+ */
+const TEST_SEEDER_CLASS = 'Database\\\\Seeders\\\\TestSeeder';
 
 /**
- * Global setup untuk Playwright.
+ * Email user yang di-seed `TestSeeder` (untuk log verifikasi).
  *
- * Dijalankan sekali PER SHARD (karena setiap shard punya proses Playwright sendiri).
- *
- * Urutan:
- * 1. ✅ Setup storage shard (`storage/shard-N/`) — isolasi dari shard lain.
- * 2. Pastikan database shard ada (buat jika belum).
- * 3. migrate:fresh
- * 4. db:seed
- * 5. ✅ Health-check `/_test/*` — gagal cepat jika route tidak terdaftar
- *    (APP_ENV salah, port zombie, dll).
- *
- * ⚠️ FIX RACE: Tidak ada `cache:clear` / `config:clear` — itu menulis
- * ke `bootstrap/cache/` yang SHARED antar shard → race.
- * `SESSION_DRIVER=database` → session per-shard DB, tidak perlu
- * clear file session.
+ * Harus SINKRON dengan:
+ * - `app/Console/Commands/VerifySeeder.php`
+ * - `e2e/fixtures/auth.ts` (`SEED_USERS`)
  */
-export default async function globalSetup() {
-    const shardLabel = `shard-${SHARD_INDEX} (port ${APP_PORT})`;
+const SEEDED_USERS: Array<{ email: string; role: string }> = [
+    { email: 'admin@test.com', role: 'admin' },
+    { email: 'mitra@test.com', role: 'mitra' },
+    { email: 'client@test.com', role: 'client' },
+];
 
+// ==========================================
+// SECTION LOGGER
+// ==========================================
+/**
+ * Log section header — memudahkan baca log panjang.
+ */
+function logSection(title: string): void {
     console.log(`\n[E2E] ═══════════════════════════════════════════════`);
-    console.log(`[E2E] Menyiapkan ${shardLabel}`);
-    console.log(`[E2E] Storage: ${SHARD_STORAGE_PATH}`);
-    console.log(`[E2E] Database: ${E2E_DB_DATABASE}`);
-    console.log(`[E2E] ═══════════════════════════════════════════════\n`);
+    console.log(`[E2E] ${title}`);
+    console.log(`[E2E] ═══════════════════════════════════════════════`);
+}
 
-    // ✅ FIX RACE: Setup storage shard DULU sebelum apapun
-    ensureShardStorage();
+function logInfo(message: string): void {
+    console.log(`[E2E] ${message}`);
+}
 
-    // 1. Buat database jika belum ada
-    createDatabaseIfNotExists();
+function logSuccess(message: string): void {
+    console.log(`[E2E] ✅ ${message}`);
+}
 
-    const envString = Object.entries(ARTISAN_ENV)
-        .map(([key, value]) => `${key}=${shellEscape(value)}`)
-        .join(' ');
-
-    // 2. Migrate fresh + seed
-    runArtisan('migrate:fresh', envString, 'Migrasi database...', {
-        force: true,
-    });
-    runArtisan('db:seed', envString, 'Mengisi seed data...', { force: true });
-
-    // 3. ✅ Health-check `/_test/*` — gagal cepat jika route tidak terdaftar.
-    //
-    // Kenapa: `e2e-shard.ts` sudah cek `/up` (server hidup), tapi `/up`
-    // SELALU ada — tidak membuktikan `/_test/*` terdaftar. Jika `APP_ENV`
-    // bukan `testing`, `bootstrap/app.php` tidak daftarkan `web-testing.php`
-    // → `/_test/*` 404 → test gagal acak di tengah.
-    //
-    // Health-check ini memastikan route `/_test/*` benar-benar siap
-    // SEBELUM test jalan. Jika 404 setelah retry → gagal cepat dengan
-    // pesan jelas.
-    await waitForTestRoutes(shardLabel);
-
-    console.log(
-        `\n[E2E] ✅ ${shardLabel} siap ` +
-        `(DB + storage + route /_test/*).\n`,
-    );
+function logWarning(message: string): void {
+    console.warn(`[E2E] ⚠️  ${message}`);
 }
 
 // ==========================================
-// HEALTH-CHECK: PASTIKAN /_test/* TERDAFTAR
+// GLOBAL SETUP
 // ==========================================
+export default async function globalSetup(): Promise<void> {
+    const shardLabel = SHARD.isSharded
+        ? `shard-${SHARD.index}/${SHARD.total}`
+        : 'single';
 
+    logSection(`GLOBAL SETUP — ${shardLabel}`);
+    logInfo(`APP:     ${APP.url}`);
+    logInfo(`DB:      ${DB.database}`);
+    logInfo(`Storage: ${PATHS.storage}`);
+    logInfo(`Output:  ${PATHS.outputDir}`);
+    logInfo(`Report:  ${PATHS.reportDir}`);
+
+    // 1. Cleanup artifact lama
+    cleanupArtifacts();
+
+    // 2. Setup storage shard
+    ensureShardStorage();
+
+    // 3. Buat database shard
+    createDatabaseIfNotExists();
+
+    // 4. migrate:fresh
+    runArtisan('migrate:fresh', 'Migrasi database...', { force: true });
+
+    // 5. db:seed — pakai TestSeeder (deterministik, cepat)
+    runArtisan('db:seed', 'Mengisi seed data...', {
+        force: true,
+        args: `--class=${TEST_SEEDER_CLASS}`,
+    });
+
+    // 6. Verifikasi seeder (via artisan command)
+    verifySeeder();
+
+    // 7. Health-check `/_test/health`
+    await waitForTestRoutes(shardLabel);
+
+    logSection(`GLOBAL SETUP SELESAI — ${shardLabel}`);
+    logSuccess('Database, storage, dan route /_test/* siap.');
+    console.log('');
+}
+
+// ==========================================
+// 1. CLEANUP ARTIFACT
+// ==========================================
 /**
- * Poll `POST /_test/find-package` sampai status BUKAN 404.
+ * Hapus artifact lama (test-results, playwright-report) untuk shard ini.
  *
- * Status yang dianggap "route terdaftar":
- * - 200: package ditemukan (tidak mungkin untuk kode healthcheck)
- * - 422: validasi gagal (route terdaftar, tapi body tidak valid)
- * - 419: CSRF token invalid (route terdaftar, tapi CSRF)
- * - 500: error server (route terdaftar, tapi ada bug)
+ * Tujuan: hindari artifact basi dari run sebelumnya.
  *
- * Status yang dianggap "route TIDAK terdaftar":
- * - 404 dengan HTML <!DOCTYPE html> — route tidak ada
- *
- * Jika setelah `maxAttempts` masih 404 → throw Error dengan
- * diagnosis lengkap.
+ * ⚠️ Hanya hapus folder shard ini (tidak sentuh shard lain).
  */
-async function waitForTestRoutes(shardLabel: string): Promise<void> {
-    const url = `${APP_URL}${TEST_ROUTE_HEALTHCHECK.path}`;
-    const { maxAttempts, intervalMs, timeoutMs } = TEST_ROUTE_HEALTHCHECK;
+function cleanupArtifacts(): void {
+    logInfo('Cleanup artifact lama...');
 
-    console.log(`[E2E] Health-check route /_test/*...`);
-    console.log(`[E2E]   URL: POST ${url}`);
+    const dirsToClean = [PATHS.outputDir, PATHS.reportDir];
 
-    let lastStatus: number | null = null;
-    let lastBody: string = '';
+    for (const dir of dirsToClean) {
+        const fullPath = path.resolve(PROJECT_ROOT, dir);
 
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-        try {
-            const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                },
-                body: JSON.stringify(TEST_ROUTE_HEALTHCHECK.body),
-                signal: controller.signal,
-            });
-
-            clearTimeout(timer);
-
-            lastStatus = response.status;
-
-            // ✅ Route terdaftar jika status BUKAN 404.
-            //   404 = route tidak ada (APP_ENV salah, web-testing.php
-            //   tidak di-load, atau port zombie).
-            if (response.status !== 404) {
-                console.log(
-                    `[E2E]   ✅ Route /_test/* terdaftar ` +
-                    `(HTTP ${response.status}, attempt ${attempt}/${maxAttempts})`,
-                );
-                return;
-            }
-
-            // 404 — cek body: HTML generik = route tidak ada
-            lastBody = await response.text().catch(() => '');
-
-            if (attempt < maxAttempts) {
-                console.log(
-                    `[E2E]   ⏳ 404 (attempt ${attempt}/${maxAttempts}), ` +
-                    `retry dalam ${intervalMs}ms...`,
-                );
-                await sleep(intervalMs);
-            }
-        } catch (error) {
-            // Network error (server belum siap / port belum bind)
-            const err = error as Error;
-            lastStatus = null;
-
-            if (err.name === 'AbortError') {
-                console.log(
-                    `[E2E]   ⏳ Timeout ${timeoutMs}ms ` +
-                    `(attempt ${attempt}/${maxAttempts}), retry...`,
-                );
-            } else {
-                console.log(
-                    `[E2E]   ⏳ Network error: ${err.message} ` +
-                    `(attempt ${attempt}/${maxAttempts}), retry...`,
-                );
-            }
-
-            if (attempt < maxAttempts) {
-                await sleep(intervalMs);
-            }
+        if (fs.existsSync(fullPath)) {
+            fs.rmSync(fullPath, { recursive: true, force: true });
+            logInfo(`  Hapus: ${dir}`);
         }
     }
 
-    // ❌ Gagal setelah semua retry — diagnosis lengkap
-    const isHtml404 = lastBody.includes('<!DOCTYPE html>') || lastBody.includes('<html');
+    // Buat ulang folder output (Playwright butuh)
+    fs.mkdirSync(path.resolve(PROJECT_ROOT, PATHS.outputDir), {
+        recursive: true,
+    });
 
-    throw new Error(
-        `\n` +
-        `═══════════════════════════════════════════════════════════\n` +
-        `❌ HEALTH-CHECK GAGAL: /_test/* tidak terdaftar di ${shardLabel}\n` +
-        `═══════════════════════════════════════════════════════════\n` +
-        `\n` +
-        `URL: POST ${url}\n` +
-        `Status terakhir: ${lastStatus ?? 'network error'}\n` +
-        `Body: ${isHtml404 ? 'HTML 404 generik (route tidak terdaftar)' : lastBody.slice(0, 200)}\n` +
-        `\n` +
-        `Kemungkinan penyebab:\n` +
-        `  1. APP_ENV bukan 'testing' di server shard ini\n` +
-        `     → bootstrap/app.php tidak load routes/web-testing.php\n` +
-        `     → cek webServer.env di playwright.config.ts\n` +
-        `\n` +
-        `  2. Port ${APP_PORT} dipakai proses lain (zombie php -S)\n` +
-        `     → cek: lsof -i:${APP_PORT}\n` +
-        `     → kill: kill -9 <pid>\n` +
-        `\n` +
-        `  3. Storage shard tidak writable\n` +
-        `     → cek: ls -la ${SHARD_STORAGE_PATH}\n` +
-        `\n` +
-        `  4. Route cache basi (jarang — sudah di-clear di global-setup)\n` +
-        `     → cek: ls bootstrap/cache/routes-*.php\n` +
-        `\n` +
-        `Debug manual:\n` +
-        `  curl -i -X POST ${url} \\\n` +
-        `    -H "Content-Type: application/json" \\\n` +
-        `    -d '${JSON.stringify(TEST_ROUTE_HEALTHCHECK.body)}'\n` +
-        `═══════════════════════════════════════════════════════════\n`,
-    );
+    logSuccess('Artifact lama dibersihkan.');
 }
 
 // ==========================================
-// STORAGE SHARD
+// 2. STORAGE SHARD
 // ==========================================
-
 /**
- * ✅ FIX RACE: Buat struktur folder `storage/shard-N/`.
+ * Buat struktur folder storage shard.
  *
- * Ini penting supaya Laravel 13 (via `LARAVEL_STORAGE_PATH`) bisa
- * menulis:
- * - storage/shard-N/framework/views/    → compiled Blade
- * - storage/shard-N/framework/cache/    → file cache
- * - storage/shard-N/framework/sessions/ → session file (kalau pakai file)
- * - storage/shard-N/logs/               → laravel.log
+ * Diperlukan karena Laravel (via `LARAVEL_STORAGE_PATH`) menulis ke:
+ * - `framework/views/`   → compiled Blade/Svelte
+ * - `framework/cache/`   → file cache
+ * - `framework/sessions/`→ session file (kalau pakai file driver)
+ * - `logs/`              → laravel.log
  *
- * Tanpa ini, `storage_path()` di Laravel akan return path yang belum
- * ada → error "file_put_contents(): failed to open stream".
+ * ⚠️ Tanpa ini, Laravel error "failed to open stream" saat menulis.
  */
 function ensureShardStorage(): void {
+    logInfo('Setup storage shard...');
+
     const dirs = [
         'app',
         'framework/cache',
@@ -251,94 +201,285 @@ function ensureShardStorage(): void {
     ];
 
     for (const dir of dirs) {
-        const fullPath = path.join(SHARD_STORAGE_PATH, dir);
+        const fullPath = path.join(PATHS.storage, dir);
         fs.mkdirSync(fullPath, { recursive: true });
     }
 
-    console.log(`[E2E] Storage shard dibuat: ${SHARD_STORAGE_PATH}`);
+    logSuccess(`Storage dibuat: ${PATHS.storage}`);
 }
 
 // ==========================================
-// DATABASE
+// 3. DATABASE
 // ==========================================
-
 /**
- * Buat database jika belum ada (idempotent).
+ * Buat database shard jika belum ada.
  *
- * ✅ Best practice: throw error jika gagal, jangan silent skip.
- * Silent skip → migrate:fresh jalan di DB yang tidak ada → error
- * membingungkan jauh di bawah.
+ * Menggunakan `psql` (PostgreSQL client).
+ *
+ * ⚠️ Kalau gagal, throw Error (jangan silent skip).
+ * Silent skip → migrate:fresh gagal dengan pesan membingungkan.
  */
 function createDatabaseIfNotExists(): void {
-    const checkSql = `SELECT 1 FROM pg_database WHERE datname = '${E2E_DB_DATABASE}'`;
-    const createSql = `CREATE DATABASE "${E2E_DB_DATABASE}" OWNER "${E2E_DB_USERNAME}"`;
+    logInfo(`Cek database: ${DB.database}`);
+
+    const checkSql = `SELECT 1 FROM pg_database WHERE datname = '${DB.database}'`;
+    const createSql = `CREATE DATABASE "${DB.database}" OWNER "${DB.username}"`;
+
+    const basePsql = `PGPASSWORD="${shellEscape(DB.password)}" psql -h ${DB.host} -p ${DB.port} -U ${DB.username} -d postgres`;
+
+    let exists = false;
 
     try {
-        const result = execSync(
-            `PGPASSWORD="${E2E_DB_PASSWORD}" psql -h ${E2E_DB_HOST} -p ${E2E_DB_PORT} -U ${E2E_DB_USERNAME} -d postgres -tAc "${checkSql}"`,
-            { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'pipe'] },
-        ).trim();
+        const result = execSync(`${basePsql} -tAc "${checkSql}"`, {
+            encoding: 'utf-8',
+            stdio: ['ignore', 'pipe', 'pipe'],
+        }).trim();
 
-        if (result !== '1') {
-            console.log(`[E2E] Membuat database ${E2E_DB_DATABASE}...`);
-            execSync(
-                `PGPASSWORD="${E2E_DB_PASSWORD}" psql -h ${E2E_DB_HOST} -p ${E2E_DB_PORT} -U ${E2E_DB_USERNAME} -d postgres -c "${createSql}"`,
-                { stdio: 'inherit' },
-            );
-        } else {
-            console.log(`[E2E] Database ${E2E_DB_DATABASE} sudah ada.`);
-        }
+        exists = result === '1';
     } catch (error) {
-        // ✅ FIX: throw, bukan warn — agar gagal cepat dengan pesan jelas
         throw new Error(
-            `[E2E] Gagal cek/buat database ${E2E_DB_DATABASE}: ` +
-            `${(error as Error).message}\n` +
-            `Pastikan PostgreSQL berjalan di ${E2E_DB_HOST}:${E2E_DB_PORT} ` +
-            `dan user "${E2E_DB_USERNAME}" punya izin CREATEDB.`,
+            `[E2E] Gagal cek database ${DB.database}: ${(error as Error).message}\n` +
+                `Pastikan PostgreSQL berjalan di ${DB.host}:${DB.port} ` +
+                `dan user "${DB.username}" punya izin.`,
         );
     }
+
+    if (exists) {
+        logInfo(`  Database sudah ada.`);
+        return;
+    }
+
+    logInfo(`  Database belum ada, membuat...`);
+
+    try {
+        execSync(`${basePsql} -c "${createSql}"`, {
+            stdio: 'inherit',
+        });
+    } catch (error) {
+        throw new Error(
+            `[E2E] Gagal membuat database ${DB.database}: ${(error as Error).message}\n` +
+                `Pastikan user "${DB.username}" punya izin CREATEDB.`,
+        );
+    }
+
+    logSuccess(`Database dibuat: ${DB.database}`);
 }
 
 // ==========================================
-// ARTISAN
+// 4. ARTISAN
 // ==========================================
-
 /**
- * Menjalankan perintah artisan dengan environment testing.
+ * Jalankan `php artisan {command}` dengan env testing.
  *
- * ✅ Best practice: throw error (bukan process.exit) — agar Playwright
- * bisa cleanup dan menampilkan error yang rapi.
+ * @param command - Nama command (mis. `migrate:fresh`)
+ * @param message - Pesan log
+ * @param options - Opsi:
+ *   - `force`: tambah `--force` flag
+ *   - `args`: argumen tambahan (mis. `--class=...`)
+ *
+ * ⚠️ Throw Error (bukan `process.exit`) — biarkan Playwright
+ * cleanup dan tampilkan error yang rapi.
  */
 function runArtisan(
     command: string,
-    envString: string,
     message: string,
-    options: { force?: boolean } = {},
+    options: { force?: boolean; args?: string } = {},
 ): void {
-    const { force = false } = options;
+    const { force = false, args = '' } = options;
     const forceFlag = force ? ' --force' : '';
+    const argsFlag = args ? ` ${args}` : '';
+
+    logInfo(`${message}`);
+
+    const envString = Object.entries(ARTISAN_ENV)
+        .map(([key, value]) => `${key}=${shellEscape(value)}`)
+        .join(' ');
 
     try {
-        console.log(`[E2E] ${message}`);
-        execSync(`${envString} php artisan ${command}${forceFlag}`, {
+        execSync(`${envString} php artisan ${command}${forceFlag}${argsFlag}`, {
             cwd: PROJECT_ROOT,
             stdio: 'inherit',
             env: { ...process.env, ...ARTISAN_ENV },
         });
     } catch (error) {
-        // ✅ FIX: throw, bukan process.exit — biarkan Playwright handle
         throw new Error(
-            `[E2E] Gagal menjalankan: php artisan ${command}\n` +
-            `Error: ${(error as Error).message}\n` +
-            `Cek log di atas untuk detail.`,
+            `[E2E] Gagal menjalankan: php artisan ${command}${forceFlag}${argsFlag}\n` +
+                `Error: ${(error as Error).message}\n` +
+                `Cek log di atas untuk detail.`,
         );
     }
 }
 
 // ==========================================
-// SHELL HELPER
+// 5. VERIFIKASI SEEDER
 // ==========================================
+/**
+ * Verifikasi data seed penting ada di database.
+ *
+ * Panggil `php artisan e2e:verify-seeder` (custom command) — lebih
+ * robust dari `tinker` karena:
+ * - Tidak ada escaping shell yang rumit.
+ * - Exit code jelas (0 = OK, 1 = gagal).
+ * - Bisa di-test dengan Pest.
+ *
+ * Command: `app/Console/Commands/VerifySeeder.php`
+ *
+ * User yang dicek (sesuai `TestSeeder`):
+ * - admin@test.com (role=admin)
+ * - mitra@test.com (role=mitra)
+ * - client@test.com (role=client)
+ *
+ * Kalau ada yang hilang → throw Error (seed gagal).
+ */
+function verifySeeder(): void {
+    logInfo('Verifikasi seed data...');
 
+    const envString = Object.entries(ARTISAN_ENV)
+        .map(([key, value]) => `${key}=${shellEscape(value)}`)
+        .join(' ');
+
+    try {
+        execSync(`${envString} php artisan e2e:verify-seeder`, {
+            cwd: PROJECT_ROOT,
+            stdio: 'inherit',
+            env: { ...process.env, ...ARTISAN_ENV },
+        });
+    } catch (error) {
+        throw new Error(
+            `[E2E] Verifikasi seeder gagal: ${(error as Error).message}\n` +
+                `Cek TestSeeder — mungkin tidak dijalankan atau gagal.\n` +
+                `Debug manual: php artisan e2e:verify-seeder`,
+        );
+    }
+
+    logSuccess(
+        `Seed data terverifikasi (${SEEDED_USERS.map((u) => u.role).join(', ')}).`,
+    );
+}
+
+// ==========================================
+// 6. HEALTH-CHECK `/_test/health`
+// ==========================================
+/**
+ * Polling `GET /_test/health` sampai status 200.
+ *
+ * Tujuan: fail-fast jika route `/_test/*` tidak terdaftar.
+ *
+ * Penyebab umum:
+ * - `APP_ENV` bukan `testing` → `bootstrap/app.php` tidak load `web-testing.php`.
+ * - Port zombie (`php -S` dari run sebelumnya).
+ * - Storage shard tidak writable.
+ *
+ * Status yang dianggap berhasil: 200 (atau 4xx selain 404).
+ * Status yang dianggap gagal: 404 (route tidak ada) atau network error.
+ */
+async function waitForTestRoutes(shardLabel: string): Promise<void> {
+    const url = `${APP.url}${HEALTHCHECK.path}`;
+    const { maxAttempts, intervalMs, timeoutMs } = HEALTHCHECK;
+
+    logInfo(`Health-check ${HEALTHCHECK.path}...`);
+    logInfo(`  URL: ${HEALTHCHECK.method} ${url}`);
+
+    let lastStatus: number | null = null;
+    let lastError: string | null = null;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+            const response = await fetch(url, {
+                method: HEALTHCHECK.method,
+                headers: {
+                    Accept: 'application/json',
+                },
+                signal: controller.signal,
+            });
+
+            clearTimeout(timer);
+            lastStatus = response.status;
+            lastError = null;
+
+            // Route terdaftar jika status BUKAN 404
+            if (response.status !== 404) {
+                let body: unknown = null;
+                try {
+                    body = await response.json();
+                } catch {
+                    // ignore
+                }
+
+                logSuccess(
+                    `Route /_test/* terdaftar (HTTP ${response.status}, attempt ${attempt}/${maxAttempts})`,
+                );
+
+                // Cek body: `{ok: true, env: 'testing'}`
+                if (
+                    body &&
+                    typeof body === 'object' &&
+                    'env' in body &&
+                    body.env !== 'testing'
+                ) {
+                    logWarning(
+                        `APP_ENV bukan 'testing' (dapat: ${body.env}). ` +
+                            `Route /_test/* mungkin tidak aktif.`,
+                    );
+                }
+
+                return;
+            }
+
+            // 404 — retry
+            if (attempt < maxAttempts) {
+                logInfo(
+                    `  404 (attempt ${attempt}/${maxAttempts}), retry ${intervalMs}ms...`,
+                );
+                await sleep(intervalMs);
+            }
+        } catch (error) {
+            const err = error as Error;
+            lastError = err.message;
+            lastStatus = null;
+
+            if (attempt < maxAttempts) {
+                logInfo(
+                    `  Network error: ${err.message} ` +
+                        `(attempt ${attempt}/${maxAttempts}), retry ${intervalMs}ms...`,
+                );
+                await sleep(intervalMs);
+            }
+        }
+    }
+
+    throw new Error(
+        `\n` +
+            `═══════════════════════════════════════════════════════════\n` +
+            `  HEALTH-CHECK GAGAL — ${shardLabel}\n` +
+            `═══════════════════════════════════════════════════════════\n` +
+            `\n` +
+            `URL:              ${HEALTHCHECK.method} ${url}\n` +
+            `Status terakhir:  ${lastStatus ?? 'network error'}\n` +
+            `Error terakhir:   ${lastError ?? '-'}\n` +
+            `\n` +
+            `Kemungkinan penyebab:\n` +
+            `  1. APP_ENV bukan 'testing' → route /_test/* tidak terdaftar\n` +
+            `  2. Port ${APP.port} dipakai proses lain (zombie php -S)\n` +
+            `     → cek: lsof -i:${APP.port} atau ss -tlnp | grep ${APP.port}\n` +
+            `     → kill: kill -9 <pid>\n` +
+            `  3. Storage shard tidak writable\n` +
+            `     → cek: ls -la ${PATHS.storage}\n` +
+            `  4. bootstrap/app.php tidak load routes/web-testing.php\n` +
+            `     → cek: app()->environment('testing')\n` +
+            `\n` +
+            `Debug manual:\n` +
+            `  curl -i ${url}\n` +
+            `═══════════════════════════════════════════════════════════\n`,
+    );
+}
+
+// ==========================================
+// UTILITY
+// ==========================================
 /**
  * Escape nilai agar aman dipakai di shell command.
  */

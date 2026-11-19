@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Client\ListBookingRequest;
 use App\Http\Requests\Client\StoreBookingRequest;
 use App\Http\Requests\Client\UploadPaymentProofRequest;
 use App\Http\Resources\BookingResource;
@@ -14,24 +15,30 @@ use App\Services\Booking\BookingPaymentService;
 use App\Services\Booking\BookingQueryService;
 use App\Support\Storage;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Throwable;
 
 /**
  * Controller booking untuk client.
  *
  * Perubahan dari versi lama:
- * - `BookingService` dipecah ke 4 service (PRD 5.7).
- * - `abort_unless` / `authorizeOwnership` -> `$this->authorize` (Policy).
- * - Validasi upload bukti via `UploadPaymentProofRequest` (S-08).
+ * - BookingService dipecah ke 4 service (PRD 5.7).
+ * - abort_unless / authorizeOwnership -> $this->authorize (Policy).
+ * - Validasi upload bukti via UploadPaymentProofRequest (S-08).
  * - Route download bukti transfer privat ditambahkan (S-09/B-01).
  * - Controller < 100 baris per method (NF-03).
- * - `Storage::disk()` diganti `App\Support\Storage::disk()` agar
+ * - Storage::disk() diganti App\Support\Storage::disk() agar
  *   type-safe (FilesystemAdapter) dan Intelephense mengenali
- *   method `download()`.
+ *   method download().
+ * - index memakai ListBookingRequest (konsisten dengan admin/mitra).
+ * - store catch ValidationException + Throwable -> response ramah.
+ * - uploadProof memakai $request->paymentProof() (type-safe).
+ * - downloadProof trim path (defensive).
+ * - show trim UUID (defensive, legacy data).
  */
 final class BookingController extends Controller
 {
@@ -42,18 +49,19 @@ final class BookingController extends Controller
         private readonly BookingCancellationService $bookingCancellationService,
     ) {}
 
-    public function index(Request $request): InertiaResponse
+    public function index(ListBookingRequest $request): InertiaResponse
     {
         $client = $request->user();
+        $validated = $request->validated();
 
         $filters = [
-            'search' => $request->input('search'),
-            'status' => $request->input('status'),
-            'sort' => $request->input('sort', 'created_at'),
-            'direction' => $request->input('direction', 'desc'),
+            'search' => is_string($validated['search'] ?? null) ? $validated['search'] : null,
+            'status' => is_string($validated['status'] ?? null) ? $validated['status'] : null,
+            'sort' => is_string($validated['sort'] ?? null) ? $validated['sort'] : 'created_at',
+            'direction' => is_string($validated['direction'] ?? null) ? $validated['direction'] : 'desc',
         ];
 
-        $perPage = (int) $request->input('per_page', 10);
+        $perPage = (int) ($validated['per_page'] ?? 10);
 
         return Inertia::render('Client/Bookings/Index', [
             'bookings' => $this->bookingQueryService->paginateForClient($client, $filters, $perPage),
@@ -75,18 +83,32 @@ final class BookingController extends Controller
 
     public function store(StoreBookingRequest $request, Package $package): RedirectResponse
     {
-        $booking = $this->bookingCreationService->create(
-            package: $package,
-            client: $request->user(),
-            data: $request->validated(),
-        );
+        try {
+            $booking = $this->bookingCreationService->create(
+                package: $package,
+                client: $request->user(),
+                data: $request->validated(),
+            );
 
-        return redirect()
-            ->route('client.bookings.show', $booking->id)
-            ->with('status', 'Booking berhasil dibuat. Silakan transfer ke rekening Mitra.');
+            return redirect()
+                ->route('client.bookings.show', $booking->id)
+                ->with('status', 'Booking berhasil dibuat. Silakan transfer ke rekening Mitra.');
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors())->withInput();
+        } catch (Throwable $e) {
+            Log::error('Client booking creation failed', [
+                'user_id' => $request->user()?->id,
+                'package_id' => $package->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()
+                ->with('error', 'Gagal membuat booking. Silakan coba lagi.')
+                ->withInput();
+        }
     }
 
-    public function show(Request $request, Booking $booking): InertiaResponse
+    public function show(Booking $booking): InertiaResponse
     {
         $this->authorize('view', $booking);
 
@@ -106,9 +128,9 @@ final class BookingController extends Controller
             'booking' => (new BookingResource($booking))->resolve(),
             'eticket' => $eticket !== null
                 ? [
-                    'uuid' => $eticket->uuid,
-                    'download_url' => route('client.e-tickets.download', $eticket->uuid),
-                    'generated_at' => $eticket->generated_at?->toIso8601String(),
+                    'uuid' => trim($eticket->uuid),
+                    'download_url' => route('client.e-tickets.download', trim($eticket->uuid)),
+                    'generated_at' => $eticket->generated_at->toIso8601String(),
                 ]
                 : null,
             'refunds' => $booking->refunds
@@ -116,14 +138,14 @@ final class BookingController extends Controller
                     'id' => $refund->id,
                     'amount' => (string) $refund->amount,
                     'status' => $refund->status->value,
-                    'created_at' => $refund->created_at?->toIso8601String(),
+                    'created_at' => $refund->created_at->toIso8601String(),
                 ])
                 ->values()
                 ->all(),
         ]);
     }
 
-    public function cancel(Request $request, Booking $booking): RedirectResponse
+    public function cancel(Booking $booking): RedirectResponse
     {
         $this->authorize('cancelByClient', $booking);
 
@@ -144,7 +166,7 @@ final class BookingController extends Controller
 
         $this->bookingPaymentService->uploadProof(
             $booking,
-            $request->file('payment_proof'),
+            $request->paymentProof(),
         );
 
         return back()->with('status', 'Bukti transfer berhasil diunggah. Menunggu verifikasi Mitra.');
@@ -153,17 +175,17 @@ final class BookingController extends Controller
     /**
      * Akses privat bukti transfer (S-09/B-01).
      *
-     * File disimpan di disk `local` sehingga tidak bisa diakses via
-     * `/storage/`. Route ini adalah satu-satunya jalan untuk client
+     * File disimpan di disk local sehingga tidak bisa diakses via
+     * /storage/. Route ini adalah satu-satunya jalan untuk client
      * melihat kembali bukti transfer yang ia unggah.
      */
     public function downloadProof(Booking $booking): StreamedResponse
     {
         $this->authorize('view', $booking);
 
-        $path = $booking->payment_proof_path;
+        $path = trim((string) $booking->payment_proof_path);
 
-        abort_if($path === null || $path === '', 404);
+        abort_if($path === '', 404);
 
         $disk = Storage::disk(BookingPaymentService::PROOF_DISK);
 

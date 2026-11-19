@@ -2,15 +2,19 @@
 
 namespace App\Exports;
 
-use App\Models\User;
+use App\Services\Report\ReportService;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
+use Maatwebsite\Excel\Concerns\WithStyles;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class MitraPerformanceExport implements FromCollection, WithHeadings, WithMapping
+class MitraPerformanceExport implements FromCollection, ShouldAutoSize, WithHeadings, WithMapping, WithStyles
 {
     protected string $startDate;
+
     protected string $endDate;
 
     public function __construct(string $startDate, string $endDate)
@@ -19,40 +23,68 @@ class MitraPerformanceExport implements FromCollection, WithHeadings, WithMappin
         $this->endDate = $endDate;
     }
 
+    /**
+     * @return Collection<int, array<int, mixed>>
+     */
     public function collection(): Collection
     {
-        return User::where('role', 'mitra')
-            ->withCount(['trips as total_trip' => function ($q) {
-                $q->where('status', 'completed')
-                  ->whereBetween('tanggal_mulai', [$this->startDate, $this->endDate]);
-            }])
-            ->withSum(['mitraBookings as total_revenue' => function ($q) {
-                $q->whereIn('status', ['confirmed', 'completed'])
-                  ->whereBetween('created_at', [$this->startDate.' 00:00:00', $this->endDate.' 23:59:59']);
-            }], 'total_harga')
-            ->orderByDesc('total_revenue')
-            ->get();
+        $data = app(ReportService::class)->getMitraPerformanceData($this->startDate, $this->endDate);
+
+        /** @var array<int, array<int, mixed>> $summaryRows */
+        $summaryRows = [
+            ['LAPORAN KINERJA MITRA SI-CANGKAL'],
+            ['Periode:', $this->startDate.' s/d '.$this->endDate],
+            [''],
+            ['Total Mitra Aktif', $data['total_mitra'].' Mitra'],
+            ['Total Trip Diselesaikan', $data['total_trip_completed'].' Trip'],
+            [''],
+            ['No', 'Nama Mitra', 'Email', 'Total Trip Selesai', 'Total Pendapatan (Rp)'],
+        ];
+
+        /** @var array<int, array<string, mixed>> $rawMitras */
+        $rawMitras = $data['mitras'] ?? [];
+
+        /** @var array<int, array<int, mixed>> $mitraRows */
+        $mitraRows = [];
+
+        foreach ($rawMitras as $index => $m) {
+            $mitraRows[] = [
+                $index + 1,
+                (string) ($m['name'] ?? ''),
+                (string) ($m['email'] ?? ''),
+                (int) ($m['total_trip'] ?? 0),
+                (float) ($m['total_revenue'] ?? 0),
+            ];
+        }
+
+        return collect(array_merge($summaryRows, $mitraRows));
     }
 
+    /**
+     * @return array<int, string>
+     */
     public function headings(): array
     {
-        return [
-            'ID Mitra',
-            'Nama Mitra',
-            'Email',
-            'Total Trip Selesai',
-            'Total Revenue (Rp)',
-        ];
+        return [];
     }
 
-    public function map($mitra): array
+    /**
+     * @param  mixed  $row
+     * @return array<int, mixed>
+     */
+    public function map($row): array
+    {
+        return is_array($row) ? $row : $row->toArray();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function styles(Worksheet $sheet): array
     {
         return [
-            $mitra->id,
-            $mitra->name,
-            $mitra->email,
-            $mitra->total_trip ?? 0,
-            (float) ($mitra->total_revenue ?? 0),
+            1 => ['font' => ['bold' => true, 'size' => 14]],
+            7 => ['font' => ['bold' => true]],
         ];
     }
 }

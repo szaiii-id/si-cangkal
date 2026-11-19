@@ -1,71 +1,72 @@
-import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import BackButton from '../BackButton.svelte';
 
-// ============================================================
-// MOCK INERTIA
-// ============================================================
+// 1. MOCK MODUL INERTIA
 vi.mock('@inertiajs/svelte', () => ({
-    inertia: () => ({
-        update: vi.fn(),
-        destroy: vi.fn(),
-    }),
+    inertia: vi.fn(),
 }));
 
-// ============================================================
-// KATEGORI 1 — UI CONTRACT & RENDERING
-// ============================================================
-
-describe('BackButton.svelte — UI Contract', () => {
-    it('merender link dengan label default "Kembali"', () => {
-        render(BackButton, { props: { href: '/dashboard' } });
-
-        const link = screen.getByRole('link', { name: /Kembali/i });
-        expect(link).toBeInTheDocument();
-        expect(link.textContent?.trim()).toBe('Kembali');
+describe('BackButton Component (Refactored)', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
     });
 
-    it('merender link dengan label kustom', () => {
-        render(BackButton, {
-            props: {
-                href: '/admin/packages',
-                label: 'Kembali ke Daftar Paket',
-            },
+    // ==========================================
+    // 1. PROPS & RENDERING
+    // ==========================================
+    describe('Rendering Props', () => {
+        it('harus merender label default "Kembali"', () => {
+            render(BackButton, { props: { href: '/admin/packages' } });
+            expect(screen.getByText('Kembali')).toBeInTheDocument();
         });
 
-        const link = screen.getByRole('link', {
-            name: /Kembali ke Daftar Paket/i,
-        });
-        expect(link).toBeInTheDocument();
-    });
-
-    it('atribut href terpasang dengan benar', () => {
-        render(BackButton, { props: { href: '/admin/packages' } });
-
-        const link = screen.getByRole('link');
-        // ✅ Perbaikan: cocokkan dengan href yang dikirim (bukan '/admin/users')
-        expect(link).toHaveAttribute('href', '/admin/packages');
-    });
-
-    it('merender ikon SVG panah ke kiri', () => {
-        render(BackButton, { props: { href: '/dashboard' } });
-
-        const link = screen.getByRole('link');
-        const svg = link.querySelector('svg');
-
-        expect(svg).toBeInTheDocument();
-        expect(svg).toHaveAttribute('viewBox', '0 0 24 24');
-    });
-
-    it('posisi ikon berada sebelum teks label', () => {
-        render(BackButton, {
-            props: { href: '/dashboard', label: 'Kembali' },
+        it('harus merender label kustom', () => {
+            render(BackButton, { props: { href: '/admin/packages', label: 'Kembali ke Daftar Paket' } });
+            expect(screen.getByText('Kembali ke Daftar Paket')).toBeInTheDocument();
         });
 
-        const link = screen.getByRole('link');
-        const children = Array.from(link.children);
+        it('harus menerapkan atribut href yang benar', () => {
+            render(BackButton, { props: { href: '/admin/users' } });
+            const link = screen.getByRole('link');
+            expect(link).toHaveAttribute('href', '/admin/users');
+        });
 
-        expect(children[0].tagName.toLowerCase()).toBe('svg');
-        expect(link.textContent?.trim()).toBe('Kembali');
+        it('harus menerapkan class tambahan dari props className', () => {
+            render(BackButton, { props: { href: '/test', class: 'mb-5 custom-class' } });
+            const link = screen.getByRole('link');
+            expect(link).toHaveClass('mb-5');
+            expect(link).toHaveClass('custom-class');
+            // Pastikan class bawaan komponen tetap ada
+            expect(link).toHaveClass('inline-flex');
+        });
+    });
+
+    // ==========================================
+    // 2. AKSESIBILITAS (a11y)
+    // ==========================================
+    describe('Accessibility', () => {
+        it('harus memiliki aria-label yang sesuai dengan teks label', () => {
+            render(BackButton, { props: { href: '/test', label: 'Kembali ke Beranda' } });
+            const link = screen.getByRole('link', { name: 'Kembali ke Beranda' });
+            expect(link).toBeInTheDocument();
+        });
+
+        it('ikon SVG harus disembunyikan dari screen reader (aria-hidden)', () => {
+            const { container } = render(BackButton, { props: { href: '/test' } });
+            const svg = container.querySelector('svg');
+            expect(svg).toHaveAttribute('aria-hidden', 'true');
+        });
+    });
+
+    // ==========================================
+    // 3. USER INTERACTION
+    // ==========================================
+    describe('User Interaction', () => {
+        it('harus menjadi link yang bisa diakses (enabled)', () => {
+            render(BackButton, { props: { href: '/dashboard' } });
+            const link = screen.getByRole('link');
+            expect(link).toBeEnabled();
+        });
     });
 });

@@ -1,7 +1,7 @@
 /**
  * Union type & enum untuk status/kategori di backend.
  *
- * ⚠️ File ini HANYA berisi union type (sesuai namanya).
+ *   File ini HANYA berisi union type (sesuai namanya).
  * Tipe object seperti `Refund`, `Booking`, dsb
  * dipindahkan ke `./models.ts` (sesuai PRD §4.4).
  *

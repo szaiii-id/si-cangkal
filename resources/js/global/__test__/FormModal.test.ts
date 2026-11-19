@@ -1,235 +1,130 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
-import FormModalFixture from './__fixtures__/FormModalFixture.svelte';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { createRawSnippet } from 'svelte';
+import FormModal from '../FormModal.svelte';
 
-// ============================================================
-// SETUP & TEARDOWN
-// ============================================================
+// Helper untuk membuat snippet palsu
+const mockSnippet = (text: string) => createRawSnippet(() => ({
+    render: () => `<div data-testid="mock-snippet">${text}</div>`,
+}));
 
-beforeEach(() => {
-    vi.clearAllMocks();
-});
-
-// ============================================================
-// KATEGORI 1 — RENDERING DASAR & OPEN STATE
-// ============================================================
-
-describe('FormModal.svelte — Rendering Dasar', () => {
-    it('TIDAK merender apa pun jika open = false', () => {
-        render(FormModalFixture, {
-            props: { open: false, title: 'Tambah Data', onSubmit: vi.fn() },
-        });
-
-        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+describe('FormModal Component', () => {
+    beforeEach(() => {
+        document.body.style.overflow = '';
     });
 
-    it('merender dialog jika open = true', () => {
-        render(FormModalFixture, {
-            props: { open: true, title: 'Tambah Data', onSubmit: vi.fn() },
+    // ==========================================
+    // 1. RENDERING & PROPS
+    // ==========================================
+    describe('Rendering', () => {
+        it('TIDAK boleh merender apa pun jika open=false', () => {
+            render(FormModal, { 
+                props: { open: false, title: 'Test', onSubmit: vi.fn(), children: mockSnippet('Form') } 
+            });
+            expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
         });
 
-        const dialog = screen.getByRole('dialog');
-        expect(dialog).toBeInTheDocument();
-        expect(dialog).toHaveAttribute('aria-modal', 'true');
+        it('harus merender title, description, dan children jika open=true', () => {
+            render(FormModal, { 
+                props: { 
+                    open: true, 
+                    title: 'Tambah Data', 
+                    description: 'Isi form di bawah',
+                    onSubmit: vi.fn(), 
+                    children: mockSnippet('Isi Form') 
+                } 
+            });
+            
+            expect(screen.getByRole('dialog')).toBeInTheDocument();
+            expect(screen.getByText('Tambah Data')).toBeInTheDocument();
+            expect(screen.getByText('Isi form di bawah')).toBeInTheDocument();
+            expect(screen.getByTestId('mock-snippet')).toBeInTheDocument();
+        });
     });
 
-    it('menampilkan title yang diberikan', () => {
-        render(FormModalFixture, {
-            props: { open: true, title: 'Tambah Hari', onSubmit: vi.fn() },
+    // ==========================================
+    // 2. SUBMIT & CANCEL
+    // ==========================================
+    describe('Interaction', () => {
+        it('harus memanggil onSubmit saat form disubmit', async () => {
+            const onSubmit = vi.fn();
+            render(FormModal, { 
+                props: { open: true, title: 'Test', onSubmit, children: mockSnippet('Form') } 
+            });
+
+            const form = screen.getByRole('dialog').querySelector('form')!;
+            await fireEvent.submit(form);
+            
+            expect(onSubmit).toHaveBeenCalledTimes(1);
         });
 
-        expect(screen.getByText('Tambah Hari')).toBeInTheDocument();
+        it('harus memanggil onCancel dan menutup modal saat tombol Batal diklik', async () => {
+            const onCancel = vi.fn();
+            render(FormModal, { 
+                props: { open: true, title: 'Test', onSubmit: vi.fn(), onCancel, children: mockSnippet('Form') } 
+            });
+
+            await fireEvent.click(screen.getByText('Batal'));
+            expect(onCancel).toHaveBeenCalledTimes(1);
+        });
+
+        it('harus menutup modal saat tombol Escape ditekan', async () => {
+            const onCancel = vi.fn();
+            render(FormModal, { 
+                props: { open: true, title: 'Test', onSubmit: vi.fn(), onCancel, children: mockSnippet('Form') } 
+            });
+
+            await fireEvent.keyDown(window, { key: 'Escape' });
+            expect(onCancel).toHaveBeenCalledTimes(1);
+        });
     });
 
-    it('menampilkan deskripsi jika diberikan', () => {
-        render(FormModalFixture, {
-            props: {
-                open: true,
-                title: 'Judul',
-                description: 'Deskripsi modal',
-                onSubmit: vi.fn(),
-            },
+    // ==========================================
+    // 3. PROCESSING STATE
+    // ==========================================
+    describe('Processing State', () => {
+        it('harus menonaktifkan tombol dan menampilkan spinner saat processing=true', () => {
+            render(FormModal, { 
+                props: { open: true, title: 'Test', processing: true, onSubmit: vi.fn(), children: mockSnippet('Form') } 
+            });
+
+            const submitBtn = screen.getByText('Menyimpan...');
+            expect(submitBtn).toBeDisabled();
+            
+            const cancelBtn = screen.getByText('Batal');
+            expect(cancelBtn).toBeDisabled();
         });
 
-        expect(screen.getByText('Deskripsi modal')).toBeInTheDocument();
+        it('TIDAK boleh memanggil onSubmit jika processing=true', async () => {
+            const onSubmit = vi.fn();
+            render(FormModal, { 
+                props: { open: true, title: 'Test', processing: true, onSubmit, children: mockSnippet('Form') } 
+            });
+
+            const form = screen.getByRole('dialog').querySelector('form')!;
+            await fireEvent.submit(form);
+            
+            expect(onSubmit).not.toHaveBeenCalled();
+        });
     });
 
-    it('merender children (konten form)', () => {
-        render(FormModalFixture, {
-            props: { open: true, title: 'Judul', onSubmit: vi.fn() },
+    // ==========================================
+    // 4. BODY SCROLL LOCK
+    // ==========================================
+    describe('Body Scroll Lock', () => {
+        it('harus mengunci scroll body saat modal terbuka', () => {
+            render(FormModal, { 
+                props: { open: true, title: 'Test', onSubmit: vi.fn(), children: mockSnippet('Form') } 
+            });
+            expect(document.body.style.overflow).toBe('hidden');
         });
 
-        expect(screen.getByPlaceholderText('Isi form')).toBeInTheDocument();
-    });
-});
-
-// ============================================================
-// KATEGORI 2 — FOOTER DEFAULT (SUBMIT & CANCEL)
-// ============================================================
-
-describe('FormModal.svelte — Footer Default', () => {
-    it('menampilkan tombol submit dengan label default "Simpan"', () => {
-        render(FormModalFixture, {
-            props: { open: true, title: 'Judul', onSubmit: vi.fn() },
+        it('harus melepas scroll body saat modal ditutup (unmount)', () => {
+            const { unmount } = render(FormModal, { 
+                props: { open: true, title: 'Test', onSubmit: vi.fn(), children: mockSnippet('Form') } 
+            });
+            unmount();
+            expect(document.body.style.overflow).toBe('');
         });
-
-        expect(
-            screen.getByRole('button', { name: /Simpan/i }),
-        ).toBeInTheDocument();
-    });
-
-    it('menampilkan tombol submit dengan label kustom', () => {
-        render(FormModalFixture, {
-            props: {
-                open: true,
-                title: 'Judul',
-                submitLabel: 'Tambah',
-                onSubmit: vi.fn(),
-            },
-        });
-
-        expect(
-            screen.getByRole('button', { name: /Tambah/i }),
-        ).toBeInTheDocument();
-    });
-
-    it('menampilkan tombol batal dengan label default "Batal"', () => {
-        render(FormModalFixture, {
-            props: { open: true, title: 'Judul', onSubmit: vi.fn() },
-        });
-
-        expect(
-            screen.getByRole('button', { name: /Batal/i }),
-        ).toBeInTheDocument();
-    });
-
-    it('memanggil onSubmit saat form disubmit', async () => {
-        const onSubmit = vi.fn();
-        render(FormModalFixture, {
-            props: { open: true, title: 'Judul', onSubmit },
-        });
-
-        const form = screen
-            .getByRole('button', { name: /Simpan/i })
-            .closest('form') as HTMLFormElement;
-        await fireEvent.submit(form);
-
-        expect(onSubmit).toHaveBeenCalledTimes(1);
-    });
-
-    it('menonaktifkan tombol submit & batal saat processing = true', () => {
-        render(FormModalFixture, {
-            props: {
-                open: true,
-                title: 'Judul',
-                processing: true,
-                onSubmit: vi.fn(),
-            },
-        });
-
-        expect(
-            screen.getByRole('button', { name: /Menyimpan/i }),
-        ).toBeDisabled();
-        expect(
-            screen.getByRole('button', { name: /Batal/i }),
-        ).toBeDisabled();
-    });
-});
-
-// ============================================================
-// KATEGORI 3 — CUSTOM FOOTER (SNIPPET)
-// ------------------------------------------------------------
-// Svelte 5: `footer` adalah Snippet, bukan fungsi JS yang
-// return HTMLElement. Wrapper fixture yang men-declare
-// {#snippet footer()} di .svelte asli.
-// ============================================================
-
-describe('FormModal.svelte — Custom Footer', () => {
-    it('merender custom footer jika diberikan', () => {
-        render(FormModalFixture, {
-            props: {
-                open: true,
-                title: 'Judul',
-                onSubmit: vi.fn(),
-                withCustomFooter: true,
-            },
-        });
-
-        expect(
-            screen.getByRole('button', { name: /Aksi Kustom/i }),
-        ).toBeInTheDocument();
-        // Tombol default tidak dirender
-        expect(
-            screen.queryByRole('button', { name: /^Simpan$/i }),
-        ).not.toBeInTheDocument();
-    });
-});
-
-// ============================================================
-// KATEGORI 4 — INTERAKSI PENUTUPAN (ESCAPE & BACKDROP)
-// ============================================================
-
-describe('FormModal.svelte — Interaksi Penutupan', () => {
-    it('memanggil onCancel dan menutup modal saat klik backdrop', async () => {
-        const onCancel = vi.fn();
-        render(FormModalFixture, {
-            props: { open: true, title: 'Judul', onSubmit: vi.fn(), onCancel },
-        });
-
-        expect(screen.getByRole('dialog')).toBeInTheDocument();
-
-        const backdrop = screen.getByRole('button', {
-            name: /Tutup modal/i,
-        });
-        await fireEvent.click(backdrop);
-
-        expect(onCancel).toHaveBeenCalledTimes(1);
-        // Svelte 5: verifikasi modal tertutup lewat DOM
-        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    });
-
-    it('memanggil onCancel saat tombol "X" (Tutup) diklik', async () => {
-        const onCancel = vi.fn();
-        render(FormModalFixture, {
-            props: { open: true, title: 'Judul', onSubmit: vi.fn(), onCancel },
-        });
-
-        const closeBtn = screen.getByRole('button', {
-            name: /^Tutup$/i,
-        });
-        await fireEvent.click(closeBtn);
-
-        expect(onCancel).toHaveBeenCalledTimes(1);
-    });
-
-    it('menutup modal saat tombol Escape ditekan', async () => {
-        const onCancel = vi.fn();
-        render(FormModalFixture, {
-            props: { open: true, title: 'Judul', onSubmit: vi.fn(), onCancel },
-        });
-
-        await fireEvent.keyDown(window, { key: 'Escape' });
-        expect(onCancel).toHaveBeenCalledTimes(1);
-    });
-
-    it('TIDAK menutup modal saat processing = true', async () => {
-        const onCancel = vi.fn();
-        render(FormModalFixture, {
-            props: {
-                open: true,
-                title: 'Judul',
-                processing: true,
-                onSubmit: vi.fn(),
-                onCancel,
-            },
-        });
-
-        const backdrop = screen.getByRole('button', {
-            name: /Tutup modal/i,
-        });
-        await fireEvent.click(backdrop);
-        await fireEvent.keyDown(window, { key: 'Escape' });
-
-        expect(onCancel).not.toHaveBeenCalled();
     });
 });

@@ -13,6 +13,9 @@ class UpdatePackageFacilityRequest extends FormRequest
         return $this->user()?->isMitra() === true;
     }
 
+    /**
+     * @return array<string, array<int, mixed>|string>
+     */
     public function rules(): array
     {
         return [

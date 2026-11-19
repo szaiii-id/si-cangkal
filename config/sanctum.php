@@ -61,7 +61,7 @@ return [
     | security scanning initiatives maintained by open source platforms
     | that notify developers if they commit tokens into repositories.
     |
-    | Nilai default `ttm_` (Titiktemu) memudahkan secret scanner (GitHub,
+    | Nilai default `ttm_` (SI-CANGKAL) memudahkan secret scanner (GitHub,
     | GitGuardian, dll.) mendeteksi token yang bocor di repository publik.
     | Override via SANCTUM_TOKEN_PREFIX di .env bila perlu.
     |

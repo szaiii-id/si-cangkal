@@ -14,7 +14,7 @@ return new class extends Migration
 
             $table->foreignId('package_id')->constrained('packages')->restrictOnDelete();
             $table->foreignId('user_id')->constrained('users')->restrictOnDelete();
-            
+
             // Relasi Mitra (Denormalisasi)
             $table->foreignId('mitra_id')->constrained('users')->restrictOnDelete();
 

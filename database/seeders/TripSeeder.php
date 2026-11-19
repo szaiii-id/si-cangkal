@@ -31,6 +31,7 @@ class TripSeeder extends Seeder
             // Skip jika sudah ada trip
             if (Trip::where('booking_id', $booking->id)->exists()) {
                 $this->command->line("⏭️  Trip untuk {$booking->kode} sudah ada.");
+
                 continue;
             }
 
@@ -51,7 +52,7 @@ class TripSeeder extends Seeder
                 // Ubah status jadi CONFIRMED dulu agar lolos guard di service
                 $originalStatus = $booking->status;
                 $booking->update(['status' => BookingStatus::CONFIRMED->value]);
-                
+
                 $trip = $this->tripService->createFromBooking($booking);
 
                 // 3. Set status Trip sesuai kebutuhan
@@ -71,16 +72,16 @@ class TripSeeder extends Seeder
                 // 4. Generate E-Ticket
                 try {
                     $this->eTicketService->generateForTrip($trip);
-                    $this->command->line("✅ Trip + E-Ticket dibuat: {$trip->kode} (dari {$booking->kode})");
+                    $this->command->line(" Trip + E-Ticket dibuat: {$trip->kode} (dari {$booking->kode})");
                 } catch (\Throwable $e) {
-                    $this->command->warn("⚠️ E-Ticket gagal untuk {$trip->kode}: {$e->getMessage()}");
+                    $this->command->warn("  E-Ticket gagal untuk {$trip->kode}: {$e->getMessage()}");
                 }
 
             } catch (\Throwable $e) {
-                $this->command->error("❌ Gagal buat trip untuk {$booking->kode}: {$e->getMessage()}");
+                $this->command->error("   Gagal buat trip untuk {$booking->kode}: {$e->getMessage()}");
             }
         }
 
-        $this->command->info('✅ TripSeeder selesai.');
+        $this->command->info(' TripSeeder selesai.');
     }
 }

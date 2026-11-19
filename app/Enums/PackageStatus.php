@@ -40,7 +40,7 @@ enum PackageStatus: string
     }
 
     /**
-     * Warna badge untuk tampilan UI (mengikuti design system Titiktemu).
+     * Warna badge untuk tampilan UI (mengikuti design system SI-CANGKAL).
      *
      * Return string Tailwind class.
      */

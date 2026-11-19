@@ -46,18 +46,6 @@ export default defineConfig({
             ],
         },
     },
-    test: {
-        environment: 'jsdom',
-        globals: true,
-        setupFiles: ['./vitest-setup.ts'],
-        include: ['resources/js/**/*.{test,spec}.{ts,js}'],
-        alias: [
-            {
-                find: '@',
-                replacement: path.resolve(__dirname, './resources/js'),
-            },
-        ],
-    },
     lint: {
         ignorePatterns: [
             'vendor/**',
@@ -94,7 +82,7 @@ export default defineConfig({
         },
     },
     resolve: {
-        conditions: ['browser'],
+        conditions: ['svelte', 'browser', 'module', 'import', 'default'],
         alias: {
             '@': path.resolve(__dirname, './resources/js'),
         },

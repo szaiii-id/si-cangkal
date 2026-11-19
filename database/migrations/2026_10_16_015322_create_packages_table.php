@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('packages', function (Blueprint $table) {
             $table->id();
-            
+
             // Relasi Mitra
             $table->foreignId('mitra_id')
                 ->constrained('users')

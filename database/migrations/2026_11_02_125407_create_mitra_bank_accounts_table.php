@@ -11,14 +11,14 @@ return new class extends Migration
         Schema::create('mitra_bank_accounts', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
-            
-            $table->string('tipe', 20); 
-            $table->string('nama_penyedia', 50); 
+
+            $table->string('tipe', 20);
+            $table->string('nama_penyedia', 50);
             $table->text('nomor_rekening');
             $table->string('nama_pemilik', 100);
-            
+
             $table->boolean('is_primary')->default(false);
-            
+
             $table->timestamps();
         });
     }

@@ -4,23 +4,6 @@ namespace App\Http\Requests\Mitra;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-/**
- * Validasi onboarding mitra (data usaha + rekening bank).
- *
- * Menggantikan blok `$request->validate([...])` di
- * `Mitra\OnboardingController@store` (S-02, NF-03).
- *
- * Aturan:
- * - Hanya mitra yang boleh melakukan onboarding.
- * - Minimal 1 rekening (bank atau e-wallet) harus diisi.
- * - Rekening pertama otomatis menjadi `is_primary` (ditangani di Service).
- *
- * Catatan: `authorize()` sengaja TIDAK mengecek apakah mitra sudah
- * punya rekening. Middleware `EnsureMitraProfileCompleted` sudah
- * mengarahkan mitra yang sudah onboarding ke dashboard sebelum
- * request ini sampai. Bila controller memutuskan untuk mengizinkan
- * update rekening, `authorize()` di sini tetap `true` untuk mitra.
- */
 final class StoreOnboardingRequest extends FormRequest
 {
     /**
@@ -41,6 +24,7 @@ final class StoreOnboardingRequest extends FormRequest
         return [
             // === Identitas usaha ===
             'nama_penyedia_usaha' => ['required', 'string', 'min:2', 'max:255'],
+            'no_hp' => ['required', 'string', 'max:20', 'regex:/^[0-9+]+$/'],
             'deskripsi' => ['nullable', 'string', 'max:1000'],
 
             // === Rekening bank / e-wallet ===
@@ -63,6 +47,11 @@ final class StoreOnboardingRequest extends FormRequest
             'nama_penyedia_usaha.required' => 'Nama penyedia usaha wajib diisi.',
             'nama_penyedia_usaha.min' => 'Nama penyedia usaha minimal 2 karakter.',
             'nama_penyedia_usaha.max' => 'Nama penyedia usaha maksimal 255 karakter.',
+
+            'no_hp.required' => 'Nomor HP wajib diisi.',
+            'no_hp.max' => 'Nomor HP maksimal 20 karakter.',
+            'no_hp.regex' => 'Format nomor HP tidak valid. Gunakan hanya angka atau tanda plus.',
+
             'deskripsi.max' => 'Deskripsi maksimal 1000 karakter.',
 
             'accounts.required' => 'Minimal satu rekening harus diisi.',
@@ -97,6 +86,7 @@ final class StoreOnboardingRequest extends FormRequest
     {
         return [
             'nama_penyedia_usaha' => 'nama penyedia usaha',
+            'no_hp' => 'nomor HP',
             'deskripsi' => 'deskripsi',
             'accounts' => 'rekening',
             'accounts.*.tipe' => 'tipe rekening',

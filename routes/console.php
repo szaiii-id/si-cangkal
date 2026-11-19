@@ -10,7 +10,7 @@ Artisan::command('inspire', function () {
 
 /*
 |--------------------------------------------------------------------------
-| SCHEDULER — Titiktemu
+| SCHEDULER — SI-CANGKAL
 |--------------------------------------------------------------------------
 |
 | Semua jadwal task otomatis:

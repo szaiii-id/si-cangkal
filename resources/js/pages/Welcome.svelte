@@ -8,7 +8,7 @@
 </script>
 
 <svelte:head>
-    <title>Beranda | Titiktemu</title>
+    <title>Beranda | SI-CANGKAL</title>
 </svelte:head>
 
 <Layout>

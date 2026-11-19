@@ -2,26 +2,15 @@
 
 namespace App\Http\Controllers\Mitra;
 
+use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Controller;
 use App\Models\Trip;
 use App\Services\Trip\TripService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
+use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
-/**
- * Controller trip untuk mitra.
- *
- * Perubahan dari versi lama:
- * - `abort_unless($trip->mitra_id === $request->user()->id, 403)`
- *   diganti `$this->authorize('view', $trip)` (S-02/S-03).
- * - `show()` menambahkan eager-load `days.trip` (B-03) — wajib
- *   agar `TripDayResource` tidak memicu N+1 saat memanggil
- *   `jamMulai()`, `isToday()`, dsb.
- * - `index()` memanggil `$this->authorize('viewAny', Trip::class)`
- *   untuk konsistensi (walaupun middleware role:mitra sudah
- *   menjaga, Policy adalah defense in depth).
- */
 final class TripController extends Controller
 {
     public function __construct(
@@ -63,5 +52,19 @@ final class TripController extends Controller
         return Inertia::render('Mitra/Trips/Show', [
             'trip' => $trip,
         ]);
+    }
+
+    /**
+     * Cetak manifest trip (PDF).
+     * Menggunakan fungsi export dari ReportController Admin
+     * agar tidak perlu duplikasi logika PDF.
+     */
+    public function manifest(
+        Trip $trip,
+        ReportController $reportController
+    ): HttpResponse {
+        $this->authorize('view', $trip);
+
+        return $reportController->exportTripManifest($trip);
     }
 }

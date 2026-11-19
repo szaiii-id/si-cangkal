@@ -3,25 +3,17 @@
 namespace App\Http\Controllers\Notification;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
-/**
- * Controller untuk menerima FCM Token dari browser user.
- *
- * Endpoint: POST /notifications/fcm
- * 
- * Bertanggung jawab menyimpan token perangkat user ke database
- * agar backend bisa mengirim push notification ke HP mereka.
- */
 final class FcmTokenController extends Controller
 {
     /**
      * Simpan / perbarui FCM Token milik user yang sedang login.
      */
-    public function update(Request $request): JsonResponse
+    public function update(Request $request): RedirectResponse
     {
         try {
             $validated = $request->validate([
@@ -31,10 +23,7 @@ final class FcmTokenController extends Controller
             $user = $request->user();
 
             if ($user === null) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Unauthenticated.',
-                ], 401);
+                return back()->withErrors(['error' => 'Sesi Anda telah berakhir. Silakan login ulang.']);
             }
 
             // Hanya update jika token berubah (mencegah query UPDATE yang tidak perlu)
@@ -43,26 +32,21 @@ final class FcmTokenController extends Controller
 
                 Log::info('FCM token diperbarui', [
                     'user_id' => $user->id,
-                    'token_prefix' => substr($validated['token'], 0, 10) . '...',
+                    'token_prefix' => substr($validated['token'], 0, 10).'...',
                 ]);
             }
 
-            return response()->json(['success' => true]);
+            return back()->with('status', 'Notifikasi berhasil diaktifkan!');
+
         } catch (ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'errors' => $e->errors(),
-            ], 422);
+            return back()->withErrors($e->errors());
         } catch (\Throwable $e) {
             Log::error('Gagal menyimpan FCM token', [
                 'user_id' => $request->user()?->id,
                 'error' => $e->getMessage(),
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal menyimpan token.',
-            ], 500);
+            return back()->withErrors(['error' => 'Gagal menyimpan token notifikasi.']);
         }
     }
 }

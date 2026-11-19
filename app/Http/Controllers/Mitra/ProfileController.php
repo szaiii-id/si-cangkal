@@ -21,7 +21,6 @@ class ProfileController extends Controller
      */
     public function edit(): InertiaResponse
     {
-        // ✅ Eager load profile dan bankAccounts
         $user = auth()->user()->load(['profile', 'bankAccounts']);
 
         return Inertia::render('Mitra/Profile', [

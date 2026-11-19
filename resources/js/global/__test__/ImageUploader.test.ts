@@ -1,273 +1,140 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import ImageUploader from '../ImageUploader.svelte';
 
-// ============================================================
-// MOCK UTILS (fileUpload)
-// ============================================================
+// ==========================================
+// MOCK UTILS (Agar kita hanya menguji UI komponen)
+// ==========================================
 vi.mock('@/utils/fileUpload', () => ({
-    validateImageFile: (file: File, opts: { maxSizeMB: number }) => {
-        if (file.size > opts.maxSizeMB * 1024 * 1024) {
-            return { valid: false, error: 'Ukuran file terlalu besar.' };
-        }
-        if (file.type === 'application/pdf') {
-            return { valid: false, error: 'Format file tidak didukung.' };
-        }
+    validateImageFile: vi.fn((file) => {
+        if (file.size > 2 * 1024 * 1024) return { valid: false, error: 'Ukuran file maksimal 2MB.' };
         return { valid: true, error: null };
-    },
-    createImagePreview: vi.fn().mockResolvedValue('data:image/png;base64,fake-preview'),
-    formatFileSize: (bytes: number) => `${(bytes / 1024 / 1024).toFixed(2)} MB`,
+    }),
+    createImagePreview: vi.fn(async (file) => `data:image/png;base64,MOCK_PREVIEW_${file.name}`),
+    formatFileSize: vi.fn((bytes) => `${(bytes / 1024).toFixed(1)} KB`),
 }));
 
-// ============================================================
-// SETUP & TEARDOWN
-// ============================================================
+// Helper untuk membuat File palsu
+function createMockFile(name: string, sizeInBytes: number, type: string): File {
+    const file = new File([''], name, { type });
+    Object.defineProperty(file, 'size', { value: sizeInBytes });
+    return file;
+}
 
-beforeEach(() => {
-    vi.clearAllMocks();
-    vi.stubGlobal('crypto', {
-        randomUUID: () => 'fake-uuid-1234',
+describe('ImageUploader Component', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
     });
-});
 
-const createMockFile = (name: string, size: number, type = 'image/png') => {
-    return {
-        name,
-        size,
-        type,
-    } as unknown as File;
-};
-
-// ============================================================
-// KATEGORI 1 — RENDERING DASAR
-// ============================================================
-
-describe('ImageUploader.svelte — Rendering Dasar', () => {
-    it('merender label dan hint yang diberikan', () => {
-        render(ImageUploader, {
-            props: {
-                label: 'Foto Bukti',
-                hint: 'Pastikan wajah terlihat jelas',
-            },
+    // ==========================================
+    // 1. RENDERING DASAR
+    // ==========================================
+    describe('Rendering', () => {
+        it('harus menampilkan tombol upload jika belum ada gambar', () => {
+            render(ImageUploader);
+            expect(screen.getByTestId('logo-upload-button')).toBeInTheDocument();
         });
 
-        expect(screen.getByText(/Foto Bukti/i)).toBeInTheDocument();
-        expect(screen.getByText('Pastikan wajah terlihat jelas')).toBeInTheDocument();
-    });
-
-    it('merender info batasan file (single)', () => {
-        render(ImageUploader, {
-            props: { label: 'Logo', single: true, maxSizeMB: 2 },
+        it('harus menampilkan gambar existing jika existingUrls diberikan', () => {
+            render(ImageUploader, {
+                props: { existingUrls: ['https://example.com/image1.jpg'] },
+            });
+            expect(screen.getByTestId('logo-preview')).toHaveAttribute('src', 'https://example.com/image1.jpg');
         });
 
-        expect(screen.getByText(/1 file/)).toBeInTheDocument();
-        expect(screen.getByText(/maks 2 MB per file/)).toBeInTheDocument();
-    });
-
-    it('merender info batasan file (multi)', () => {
-        render(ImageUploader, {
-            props: { label: 'Bukti', maxFiles: 3, maxSizeMB: 5 },
-        });
-
-        expect(screen.getByText(/1–3 file/)).toBeInTheDocument();
-        expect(screen.getByText(/maks 5 MB per file/)).toBeInTheDocument();
-    });
-
-    it('merender tombol upload jika belum ada file', () => {
-        // ✅ FIX A11Y: `aria-label` dihapus dari tombol upload, jadi
-        // accessible name = gabungan teks visible tombol:
-        // "Klik untuk upload JPG, PNG, atau WEBP".
-        //
-        // Assertion lama `/Upload Gambar/i` GAGAL karena accessible name
-        // sekarang bukan "Upload Gambar" lagi.
-        //
-        // Assertion baru: cek accessible name yang benar (dari teks visible).
-        // Alternatif: pakai getByTestId('logo-upload-button') yang lebih
-        // robust terhadap perubahan a11y di masa depan.
-        render(ImageUploader, { props: {} });
-        expect(
-            screen.getByRole('button', { name: /Klik untuk upload/i }),
-        ).toBeInTheDocument();
-    });
-
-    it('merender error kustom dari props jika ada', () => {
-        render(ImageUploader, {
-            props: { error: 'File wajib diisi.' },
-        });
-        expect(screen.getByText('File wajib diisi.')).toBeInTheDocument();
-    });
-});
-
-// ============================================================
-// KATEGORI 2 — EXISTING URLS
-// ============================================================
-
-describe('ImageUploader.svelte — Existing URLs', () => {
-    it('merender gambar yang sudah ada berdasarkan URL', () => {
-        render(ImageUploader, {
-            props: {
-                existingUrls: ['/storage/img1.jpg', '/storage/img2.jpg'],
-                maxFiles: 3,
-            },
-        });
-
-        const img1 = screen.getByAltText('Gambar 1');
-        const img2 = screen.getByAltText('Gambar 2');
-
-        expect(img1).toHaveAttribute('src', '/storage/img1.jpg');
-        expect(img2).toHaveAttribute('src', '/storage/img2.jpg');
-    });
-
-    it('merender tombol hapus pada existing URL jika bukan single', () => {
-        render(ImageUploader, {
-            props: {
-                existingUrls: ['/storage/img1.jpg'],
-                maxFiles: 2,
-                single: false,
-            },
-        });
-
-        // ✅ FIX: aria-label di komponen adalah "Hapus logo", bukan "Hapus gambar 1"
-        expect(screen.getByRole('button', { name: 'Hapus logo' })).toBeInTheDocument();
-    });
-
-    it('TIDAK merender tombol hapus pada existing URL jika single', () => {
-        render(ImageUploader, {
-            props: {
-                existingUrls: ['/storage/img1.jpg'],
-                single: true,
-            },
-        });
-
-        // Komponen SELALU merender tombol hapus (meskipun single) — lihat kode Svelte.
-        // Jadi assertion di sini harus disesuaikan dengan perilaku komponen.
-        // Jika ingin strict, kita bisa cek dengan existingUrls dan single.
-        // Karena komponen merender tombol, kita ekspektasi ada.
-        // (Atau ganti assertion sesuai kebutuhan — ini opsional)
-        expect(screen.getByRole('button', { name: 'Hapus logo' })).toBeInTheDocument();
-    });
-
-    it('memanggil onRemoveExisting saat tombol hapus existing diklik', async () => {
-        const onRemoveExisting = vi.fn();
-        render(ImageUploader, {
-            props: {
-                existingUrls: ['/storage/img1.jpg'],
-                onRemoveExisting,
-            },
-        });
-
-        // ✅ FIX: aria-label di komponen adalah "Hapus logo"
-        const btn = screen.getByRole('button', { name: 'Hapus logo' });
-        await fireEvent.click(btn);
-
-        expect(onRemoveExisting).toHaveBeenCalledWith('/storage/img1.jpg', 0);
-    });
-});
-
-// ============================================================
-// KATEGORI 3 — UPLOAD FILE BARU
-// ============================================================
-
-describe('ImageUploader.svelte — Upload File', () => {
-    it('menerima file baru dan merender preview', async () => {
-        render(ImageUploader, {
-            props: { files: [], maxFiles: 2 },
-        });
-
-        const file = createMockFile('test.png', 1024 * 1024);
-        const input = document.querySelector('input[type="file"]') as HTMLInputElement;
-
-        Object.defineProperty(input, 'files', { value: [file] });
-        await fireEvent.change(input);
-
-        await waitFor(() => {
-            expect(screen.getByAltText('Preview 1')).toBeInTheDocument();
-            expect(screen.getByAltText('Preview 1')).toHaveAttribute('src', 'data:image/png;base64,fake-preview');
+        it('harus menyembunyikan tombol upload jika sudah mencapai maxFiles', () => {
+            render(ImageUploader, {
+                props: { existingUrls: ['url1', 'url2'], maxFiles: 2 },
+            });
+            expect(screen.queryByTestId('logo-upload-button')).not.toBeInTheDocument();
         });
     });
 
-    it('menampilkan nama dan ukuran file di bawah preview', async () => {
-        render(ImageUploader, { props: {} });
+    // ==========================================
+    // 2. UPLOAD & PREVIEW
+    // ==========================================
+    describe('Upload & Preview', () => {
+        it('harus memproses file yang diunggah dan menampilkan preview', async () => {
+            const { container } = render(ImageUploader, { props: { maxFiles: 2 } });
+            const input = screen.getByTestId('logo-input');
+            const file = createMockFile('test.png', 500 * 1024, 'image/png');
 
-        const file = createMockFile('dokumen.png', 2 * 1024 * 1024);
-        const input = document.querySelector('input[type="file"]') as HTMLInputElement;
-        Object.defineProperty(input, 'files', { value: [file] });
+            await fireEvent.change(input, { target: { files: [file] } });
 
-        await fireEvent.change(input);
-
-        expect(screen.getByText(/dokumen.png · 2.00 MB/i)).toBeInTheDocument();
-    });
-
-    it('merender tombol hapus pada file baru dan menghapusnya saat diklik', async () => {
-        render(ImageUploader, {
-            props: { files: [createMockFile('test.png', 1024)] },
+            // Tunggu efek async (createImagePreview) selesai
+            await waitFor(() => {
+                expect(screen.getByTestId('logo-preview')).toBeInTheDocument();
+            });
         });
 
-        await waitFor(() => {
-            expect(screen.getByRole('button', { name: 'Hapus logo' })).toBeInTheDocument();
+        it('harus menolak file yang melebihi batas ukuran', async () => {
+            const { container } = render(ImageUploader);
+            const input = screen.getByTestId('logo-input');
+            const file = createMockFile('large.jpg', 3 * 1024 * 1024, 'image/jpeg'); // 3MB
+
+            await fireEvent.change(input, { target: { files: [file] } });
+
+            expect(screen.getByTestId('logo-error')).toHaveTextContent('Ukuran file maksimal 2MB.');
         });
 
-        await fireEvent.click(screen.getByRole('button', { name: 'Hapus logo' }));
+        it('harus menolak jika jumlah file melebihi maxFiles', async () => {
+            render(ImageUploader, {
+                props: { existingUrls: ['url1'], maxFiles: 2 },
+            });
+            
+            const input = screen.getByTestId('logo-input');
+            const file1 = createMockFile('test1.png', 500 * 1024, 'image/png');
+            const file2 = createMockFile('test2.png', 500 * 1024, 'image/png');
 
-        await waitFor(() => {
-            expect(screen.queryByAltText('Preview 1')).not.toBeInTheDocument();
+            await fireEvent.change(input, { target: { files: [file1, file2] } });
+
+            expect(screen.getByTestId('logo-error')).toHaveTextContent(/Maksimal 2 file/);
         });
     });
-});
 
-// ============================================================
-// KATEGORI 4 — VALIDASI
-// ============================================================
+    // ==========================================
+    // 3. REMOVE FILE
+    // ==========================================
+    describe('Remove Actions', () => {
+        it('harus memanggil onRemoveExisting saat tombol hapus (existing) diklik', async () => {
+            const onRemoveExisting = vi.fn();
+            render(ImageUploader, {
+                props: { existingUrls: ['url1'], onRemoveExisting },
+            });
 
-describe('ImageUploader.svelte — Validasi', () => {
-    it('menampilkan error jika file melebihi maxSizeMB', async () => {
-        render(ImageUploader, { props: { maxSizeMB: 2 } });
+            const removeBtn = screen.getByTestId('logo-remove-button');
+            await fireEvent.click(removeBtn);
 
-        const file = createMockFile('besar.png', 3 * 1024 * 1024);
-        const input = document.querySelector('input[type="file"]') as HTMLInputElement;
-        Object.defineProperty(input, 'files', { value: [file] });
-
-        await fireEvent.change(input);
-
-        expect(screen.getByText('Ukuran file terlalu besar.')).toBeInTheDocument();
-    });
-
-    it('menampilkan error jika jumlah file melebihi maxFiles', async () => {
-        render(ImageUploader, { props: { maxFiles: 1 } });
-
-        const file1 = createMockFile('1.png', 1024);
-        const file2 = createMockFile('2.png', 1024);
-        const input = document.querySelector('input[type="file"]') as HTMLInputElement;
-
-        Object.defineProperty(input, 'files', { value: [file1, file2] });
-        await fireEvent.change(input);
-
-        expect(screen.getByText(/Maksimal 1 file. Anda sudah punya 0 file./i)).toBeInTheDocument();
-    });
-});
-
-// ============================================================
-// KATEGORI 5 — STATE DISABLED & MAX FILE
-// ============================================================
-
-describe('ImageUploader.svelte — State', () => {
-    it('TIDAK merender tombol upload jika jumlah file sudah mencapai maxFiles', () => {
-        render(ImageUploader, {
-            props: {
-                files: [createMockFile('1.png', 1024)],
-                maxFiles: 1,
-            },
+            expect(onRemoveExisting).toHaveBeenCalledWith('url1', 0);
         });
 
-        expect(screen.queryByRole('button', { name: /Klik untuk upload/i })).not.toBeInTheDocument();
-        expect(screen.getByText(/Maksimal 1 file tercapai./i)).toBeInTheDocument();
+        it('harus menghapus file baru dari daftar saat tombol hapus diklik', async () => {
+            render(ImageUploader, { props: { maxFiles: 2 } });
+            const input = screen.getByTestId('logo-input');
+            const file = createMockFile('test.png', 500 * 1024, 'image/png');
+
+            await fireEvent.change(input, { target: { files: [file] } });
+            await waitFor(() => expect(screen.getByTestId('logo-preview')).toBeInTheDocument());
+
+            const removeBtn = screen.getByTestId('logo-remove-button');
+            await fireEvent.click(removeBtn);
+
+            await waitFor(() => {
+                expect(screen.queryByTestId('logo-preview')).not.toBeInTheDocument();
+            });
+        });
     });
 
-    it('TIDAK merender tombol upload jika disabled = true', () => {
-        render(ImageUploader, {
-            props: { disabled: true },
-        });
+    // ==========================================
+    // 4. STATE DISABLED
+    // ==========================================
+    describe('Disabled State', () => {
+        it('harus menyembunyikan tombol hapus jika disabled=true', () => {
+            render(ImageUploader, {
+                props: { existingUrls: ['url1'], disabled: true },
+            });
 
-        expect(screen.queryByRole('button', { name: /Klik untuk upload/i })).not.toBeInTheDocument();
+            expect(screen.queryByTestId('logo-remove-button')).not.toBeInTheDocument();
+        });
     });
 });

@@ -5,6 +5,7 @@ namespace App\Http\Requests\Mitra;
 use App\Models\Package;
 use App\Support\Timezone;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 
 /**
  * Validasi pembuatan pesanan manual oleh mitra.
@@ -15,15 +16,10 @@ use Illuminate\Foundation\Http\FormRequest;
  * Aturan bisnis yang ditegakkan:
  * - Hanya mitra pemilik paket yang boleh membuat pesanan manual
  *   (authorize()).
- * - Tanggal keberangkatan minimal H+3 dari hari ini (timezone paket)
- *   agar konsisten dengan `Client\StoreBookingRequest`.
+ * - Tanggal keberangkatan minimal hari ini (H-0, timezone paket) karena
+ *   mitra dapat memastikan kesiapan armada/pemandu secara langsung.
  * - Jumlah peserta >= 1 dan, bila paket rombongan, <= `max_peserta`.
  * - Data peserta harus lengkap sesuai `jumlah_peserta`.
- *
- * Catatan: `Client\StoreBookingRequest` memakai aturan tanggal yang
- * sama (`after_or_equal:minTanggal()`), tetapi file ini menghitung
- * tanggal minimum dari timezone paket secara eksplisit, bukan dari
- * timezone client (mitra bisa beda timezone dengan client).
  */
 final class StoreManualBookingRequest extends FormRequest
 {
@@ -61,7 +57,7 @@ final class StoreManualBookingRequest extends FormRequest
         $package = $this->getPackage();
 
         $maxPesertaRule = 'max:1000';
-        if ($package !== null && $package->isRombongan() && $package->max_peserta) {
+        if ($package !== null && $package->isRombongan() && $package->max_peserta !== null) {
             $maxPesertaRule = 'max:'.$package->max_peserta;
         }
 
@@ -114,7 +110,7 @@ final class StoreManualBookingRequest extends FormRequest
             'tanggal_keberangkatan.required' => 'Tanggal keberangkatan wajib diisi.',
             'tanggal_keberangkatan.date' => 'Tanggal keberangkatan tidak valid.',
             'tanggal_keberangkatan.date_format' => 'Format tanggal harus YYYY-MM-DD.',
-            'tanggal_keberangkatan.after_or_equal' => 'Tanggal keberangkatan minimal H+3 dari hari ini (timezone paket).',
+            'tanggal_keberangkatan.after_or_equal' => 'Tanggal keberangkatan tidak boleh sebelum hari ini (timezone paket).',
 
             'jumlah_peserta.required' => 'Jumlah peserta wajib diisi.',
             'jumlah_peserta.integer' => 'Jumlah peserta harus berupa angka.',
@@ -162,20 +158,21 @@ final class StoreManualBookingRequest extends FormRequest
     /**
      * Validasi tambahan: jumlah participants harus sesuai jumlah_peserta.
      *
-     * @return array<int, callable>
+     * @return array<int, callable(Validator): void>
      */
     public function after(): array
     {
         return [
-            function ($validator): void {
-                $jumlahPeserta = (int) $this->input('jumlah_peserta', 0);
+            function (Validator $validator): void {
+                $jumlahPeserta = $this->integer('jumlah_peserta');
                 $participants = $this->input('participants', []);
+                $participantCount = is_array($participants) ? count($participants) : 0;
 
-                if (is_array($participants) && count($participants) !== $jumlahPeserta) {
+                if ($participantCount !== $jumlahPeserta) {
                     $validator->errors()->add(
                         'participants',
                         "Data peserta harus sesuai jumlah peserta ({$jumlahPeserta} orang). ".
-                        'Saat ini: '.count($participants).' data.',
+                        "Saat ini: {$participantCount} data.",
                     );
                 }
             },
@@ -193,16 +190,14 @@ final class StoreManualBookingRequest extends FormRequest
     }
 
     /**
-     * Hitung tanggal minimal (H+3 dari timezone package).
+     * Hitung tanggal minimal (hari ini / H-0 dari timezone package).
      */
     private function minTanggal(?Package $package): string
     {
         if ($package === null) {
-            return now()->addDays(3)->format('Y-m-d');
+            return now()->format('Y-m-d');
         }
 
-        return Timezone::today($package->timezone)
-            ->addDays(3)
-            ->format('Y-m-d');
+        return Timezone::today($package->timezone)->format('Y-m-d');
     }
 }

@@ -47,7 +47,6 @@ final class AuditLogger
      *
      * @param  string  $action  Nama aksi stabil berformat `domain.event`.
      * @param  array<string, mixed>  $context  Data konteks yang aman untuk dilog.
-     * @return void
      */
     public static function log(string $action, array $context = []): void
     {
@@ -60,9 +59,7 @@ final class AuditLogger
      * Menambahkan penanda `actor_type = system` agar dapat dibedakan
      * dari aksi user pada saat query log.
      *
-     * @param  string  $action
      * @param  array<string, mixed>  $context
-     * @return void
      */
     public static function system(string $action, array $context = []): void
     {
@@ -78,8 +75,6 @@ final class AuditLogger
      * Bila channel `audit` belum terdaftar di `config/logging.php`
      * (mis. saat migrasi bertahap), fallback ke channel default agar
      * tidak ada log yang hilang.
-     *
-     * @return \Psr\Log\LoggerInterface
      */
     private static function writer(): LoggerInterface
     {

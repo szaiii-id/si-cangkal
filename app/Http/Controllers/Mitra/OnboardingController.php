@@ -9,15 +9,6 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
-/**
- * Controller onboarding mitra (data usaha + rekening bank).
- *
- * Perubahan dari versi lama:
- * - Validasi inline (14 baris) -> `StoreOnboardingRequest` (NF-03).
- * - `MitraBankAccount` dibiarkan ter-update via relasi karena
- *   operasi ini hanya berjalan sekali (mitra onboarding), bukan
- *   operasi kritis yang butuh service layer terpisah.
- */
 final class OnboardingController extends Controller
 {
     public function index(Request $request): InertiaResponse|RedirectResponse
@@ -43,6 +34,7 @@ final class OnboardingController extends Controller
             [
                 'tipe' => 'mitra',
                 'nama_penyedia_usaha' => $validated['nama_penyedia_usaha'],
+                'telepon' => $validated['no_hp'],
                 'deskripsi' => $validated['deskripsi'] ?? null,
             ],
         );

@@ -1,32 +1,23 @@
 /**
  * Utility untuk format angka menjadi tampilan Rupiah Indonesia.
- *
- * Pemakaian:
- *
- *     import { formatCurrency, formatNumber, parseCurrency } from '@/utils/formatCurrency';
- *
- *     formatCurrency(850000);       // "Rp 850.000"
- *     formatCurrency("1500000.00"); // "Rp 1.500.000"
- *     formatCurrency(null);         // "—"
- *
- *     formatNumber(850000);         // "850.000"
- *     formatNumber(null);           // "—"
- *
- *     parseCurrency("850.000");     // 850000
- *     parseCurrency("1,5");         // 1.5
  */
+
+// ==========================================
+// PERFORMANCE: CACHE INTL FORMATTER
+// ==========================================
+// Membuat instance Intl berulang kali sangat lambat.
+// Kita buat sekali dan simpan di memori (Singleton).
+const currencyFormatter = new Intl.NumberFormat('id-ID', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+});
+
+// ==========================================
+// FORMATTERS
+// ==========================================
 
 /**
  * Format angka menjadi string Rupiah.
- *
- * - Selalu ada prefix "Rp " (dengan spasi).
- * - Tanpa desimal (dibulatkan).
- * - Titik sebagai pemisah ribuan.
- * - Return "—" kalau value null/undefined/empty/invalid.
- *
- * @param value  Angka, string angka (termasuk decimal cast Laravel "850000.00"),
- *               atau null/undefined.
- * @returns      String Rupiah, atau "—" kalau invalid.
  */
 export function formatCurrency(
     value: number | string | null | undefined,
@@ -37,24 +28,11 @@ export function formatCurrency(
         return '—';
     }
 
-    return (
-        'Rp ' +
-        new Intl.NumberFormat('id-ID', {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0,
-        }).format(num)
-    );
+    return `Rp ${currencyFormatter.format(num)}`;
 }
 
 /**
  * Format angka tanpa prefix "Rp".
- *
- * - Titik sebagai pemisah ribuan.
- * - Tanpa desimal.
- * - Return "—" kalau invalid.
- *
- * @param value  Angka, string angka, atau null/undefined.
- * @returns      String angka terformat, atau "—" kalau invalid.
  */
 export function formatNumber(
     value: number | string | null | undefined,
@@ -65,28 +43,14 @@ export function formatNumber(
         return '—';
     }
 
-    return new Intl.NumberFormat('id-ID', {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-    }).format(num);
+    return currencyFormatter.format(num);
 }
 
 /**
  * Parse string input user menjadi number.
- *
- * Handle format Indonesia:
- * - "850.000"    → 850000   (titik = ribuan)
- * - "1.500.000"  → 1500000
- * - "1,5"        → 1.5      (koma = desimal)
- * - "850000"     → 850000
- * - "850000.00"  → 850000   (dari decimal cast Laravel)
- * - ""           → 0
- *
- * ⚠️ AMBIGU: "1.500" — apakah 1500 (ribuan) atau 1.5 (desimal)?
- *    Kita asumsikan RIBUAN → 1500.
- *
- * @param value  String atau number.
- * @returns      Number, atau 0 kalau invalid.
+ */
+/**
+ * Parse string input user menjadi number.
  */
 export function parseCurrency(value: string | number | null | undefined): number {
     if (value === null || value === undefined || value === '') {
@@ -97,43 +61,71 @@ export function parseCurrency(value: string | number | null | undefined): number
         return Number.isNaN(value) ? 0 : value;
     }
 
-    // Bersihkan spasi & prefix "Rp"
+    // 1. Bersihkan prefix Rp dan spasi
     let cleaned = value.toString().trim().replace(/^Rp\s*/i, '');
 
-    // Deteksi format:
-    // - Kalau ada titik DAN koma → titik = ribuan, koma = desimal
-    // - Kalau hanya titik → titik = ribuan (asumsi)
-    // - Kalau hanya koma → koma = desimal
     const hasDot = cleaned.includes('.');
     const hasComma = cleaned.includes(',');
 
     if (hasDot && hasComma) {
-        // Format Indonesia: 1.500.000,50
-        cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+        const lastDot = cleaned.lastIndexOf('.');
+        const lastComma = cleaned.lastIndexOf(',');
+
+        if (lastComma > lastDot) {
+            cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+        } else {
+            cleaned = cleaned.replace(/,/g, '');
+        }
     } else if (hasDot) {
-        // Cek: apakah titik = ribuan atau desimal?
-        // Kalau ada > 1 titik → pasti ribuan
-        // Kalau ada 1 titik dan 3 digit setelah titik → kemungkinan ribuan
-        // Kalau ada 1 titik dan bukan 3 digit setelah → kemungkinan desimal
+        // Hanya ada titik
         const parts = cleaned.split('.');
         if (parts.length > 2 || (parts[1] && parts[1].length === 3)) {
-            // Ribuan
             cleaned = cleaned.replace(/\./g, '');
         }
-        // else: biarkan sebagai desimal (misal "1.5")
     } else if (hasComma) {
-        // Koma = desimal
-        cleaned = cleaned.replace(',', '.');
+        const parts = cleaned.split(',');
+        if (parts.length > 2 || (parts[1] && parts[1].length === 3)) {
+            cleaned = cleaned.replace(/,/g, '');
+        } else {
+            cleaned = cleaned.replace(',', '.');
+        }
     }
 
     const num = parseFloat(cleaned);
     return Number.isNaN(num) ? 0 : num;
 }
 
+// ==========================================
+// REKENING BANK & CLIPBOARD
+// ==========================================
+
+/**
+ * Sensor nomor rekening untuk tampilan visual.
+ */
+export function maskAccountNumber(accountNumber: string | null | undefined): string {
+    if (!accountNumber) return '-';
+    const cleanNumber = accountNumber.replace(/\s+/g, '');
+    if (cleanNumber.length <= 4) return '****';
+    return `•••• •••• ${cleanNumber.slice(-4)}`;
+}
+
+/**
+ * Salin teks ke clipboard dengan proteksi SSR.
+ * (Bisa dipanggil dari event handler tombol di Svelte).
+ */
+export function copyToClipboard(text: string): Promise<void> {
+    if (typeof window === 'undefined' || !navigator.clipboard) {
+        return Promise.reject(new Error('Clipboard API tidak tersedia'));
+    }
+    return navigator.clipboard.writeText(text);
+}
+
+// ==========================================
+// INTERNAL HELPER
+// ==========================================
+
 /**
  * Parse value apapun jadi number, atau null kalau invalid/kosong.
- *
- * Internal helper — untuk formatCurrency & formatNumber.
  */
 function parseToNumber(
     value: number | string | null | undefined,

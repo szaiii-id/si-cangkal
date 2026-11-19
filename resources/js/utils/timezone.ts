@@ -114,7 +114,7 @@ export function timezoneOffset(tz: string): string {
 /**
  * Return tanggal "hari ini" di timezone tertentu, format `YYYY-MM-DD`.
  *
- * ⚠️ DILARANG pakai `new Date().toISOString().slice(0, 10)` untuk ini.
+ *   DILARANG pakai `new Date().toISOString().slice(0, 10)` untuk ini.
  * Itu pakai UTC, bukan timezone yang diinginkan.
  *
  * @example

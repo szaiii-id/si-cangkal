@@ -13,20 +13,10 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
-/**
- * Service pengelolaan paket wisata.
- *
- * Perubahan dari versi lama:
- * - `updateWithRelations()` BARU: menangani update data utama + sinkronisasi
- *   `days` & `facilities` dari JSON (dipindah dari controller, SOC/NF-03).
- * - `AuditLogger` di semua transisi state (S-16).
- * - `isRombongan()` dipertahankan sebagai helper validasi.
- */
 final class PackageService
 {
     public function __construct(
@@ -37,6 +27,10 @@ final class PackageService
     // READ
     // ==========================================
 
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return LengthAwarePaginator<int, Package>
+     */
     public function paginate(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
         return $this->packageRepository->paginate($filters, $perPage);
@@ -59,6 +53,18 @@ final class PackageService
     public function allAktif(): Collection
     {
         return $this->packageRepository->allAktif();
+    }
+
+    /** @return Collection<int, Package> */
+    public function getLatestForClient(int $limit = 4): Collection
+    {
+        return $this->packageRepository->getLatestForClient($limit);
+    }
+
+    /** @return Collection<int, Package> */
+    public function getBestSellerForClient(int $limit = 4): Collection
+    {
+        return $this->packageRepository->getBestSellerForClient($limit);
     }
 
     /** @return array<string, int> */
@@ -145,6 +151,11 @@ final class PackageService
                     Storage::disk('public')->delete($package->cover_image);
                 }
                 $updateData['cover_image'] = $data['cover_image']->store('packages', 'public');
+            } elseif (isset($data['remove_cover_image']) && $data['remove_cover_image'] == '1') {
+                if ($package->cover_image && Storage::disk('public')->exists($package->cover_image)) {
+                    Storage::disk('public')->delete($package->cover_image);
+                }
+                $updateData['cover_image'] = null;
             }
 
             $updated = $this->packageRepository->update($package, $updateData);
@@ -162,10 +173,6 @@ final class PackageService
     /**
      * Update paket + sinkronisasi hari & fasilitas sekaligus.
      *
-     * Menggantikan logika panjang di `Mitra\PackageController@update`
-     * (pelanggaran NF-03 & SOC). Menerima payload JSON string
-     * (`days` dan `facilities`) dari frontend.
-     *
      * @param  array<string, mixed>  $data
      *
      * @throws ValidationException
@@ -175,7 +182,6 @@ final class PackageService
         $this->validate($data, $package->id);
 
         return DB::transaction(function () use ($package, $data): Package {
-            // 1. Update data utama
             $updateData = [
                 'nama' => $data['nama'],
                 'deskripsi' => $data['deskripsi'] ?? null,
@@ -192,20 +198,22 @@ final class PackageService
                 $updateData['slug'] = $this->generateUniqueSlug((string) $data['nama'], $package->id);
             }
 
-            // 2. Upload cover baru
             if (isset($data['cover_image']) && $data['cover_image'] instanceof UploadedFile) {
                 if ($package->cover_image && Storage::disk('public')->exists($package->cover_image)) {
                     Storage::disk('public')->delete($package->cover_image);
                 }
                 $updateData['cover_image'] = $data['cover_image']->store('packages', 'public');
+            } elseif (isset($data['remove_cover_image']) && $data['remove_cover_image'] == '1') {
+                if ($package->cover_image && Storage::disk('public')->exists($package->cover_image)) {
+                    Storage::disk('public')->delete($package->cover_image);
+                }
+                $updateData['cover_image'] = null;
             }
 
             $package = $this->packageRepository->update($package, $updateData);
 
-            // 3. Sinkronisasi hari
             $this->syncDays($package, $data['days'] ?? null);
 
-            // 4. Sinkronisasi fasilitas
             $this->syncFacilities($package, $data['facilities'] ?? null);
 
             AuditLogger::log('package.updated_with_relations', [
@@ -232,16 +240,24 @@ final class PackageService
             ]);
         }
 
-        if (! $package->hasDays()) {
+        if ($package->days()->count() < $package->durasi_hari) {
             throw ValidationException::withMessages([
-                'status' => ['Paket harus punya minimal 1 hari itinerary sebelum dipublish.'],
+                'status' => [
+                    "Itinerary belum lengkap. Paket ini untuk {$package->durasi_hari} hari, ".
+                    "tapi baru ada {$package->days()->count()} hari terisi.",
+                ],
             ]);
         }
 
-        $hasInclude = $package->facilities()->where('tipe', 'include')->exists();
-        if (! $hasInclude) {
+        if (! $package->facilities()->where('tipe', 'include')->exists()) {
             throw ValidationException::withMessages([
                 'status' => ['Paket harus punya minimal 1 fasilitas "include" sebelum dipublish.'],
+            ]);
+        }
+
+        if (! $package->facilities()->where('tipe', 'exclude')->exists()) {
+            throw ValidationException::withMessages([
+                'status' => ['Paket harus punya minimal 1 fasilitas "exclude" sebelum dipublish.'],
             ]);
         }
 
@@ -346,11 +362,6 @@ final class PackageService
         return $slug;
     }
 
-    /**
-     * Sinkronisasi hari (delete + recreate).
-     *
-     * @param  string|null  $rawJson
-     */
     private function syncDays(Package $package, ?string $rawJson): void
     {
         $package->days()->delete();
@@ -382,11 +393,6 @@ final class PackageService
         }
     }
 
-    /**
-     * Sinkronisasi fasilitas (delete + recreate).
-     *
-     * @param  string|null  $rawJson
-     */
     private function syncFacilities(Package $package, ?string $rawJson): void
     {
         $package->facilities()->delete();

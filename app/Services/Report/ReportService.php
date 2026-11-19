@@ -21,7 +21,7 @@ use Symfony\Component\HttpFoundation\Response as HttpResponse;
  *   tidak memicu N+1 saat mengakses `jamMulai()`/`lokasi()` (bila
  *   view memakainya).
  */
-final class ReportService
+class ReportService
 {
     public function __construct(
         private readonly ReportRepository $reportRepository,

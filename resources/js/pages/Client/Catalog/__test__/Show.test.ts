@@ -1,91 +1,106 @@
+/**
+ * ============================================================
+ * Client Catalog — Show Page (Detail Paket) — Component Test
+ * ============================================================
+ *
+ * Fokus pengujian:
+ *   1. Isolation & Mocking  → Inertia, enums, format helpers, timezone,
+ *                             & child components (ClientLayout) di-mock.
+ *   2. Props & Rendering    → hero, info, itinerary, fasilitas,
+ *                             mitra, harga (conditional), booking link.
+ *   3. Interaction          → WhatsApp link, booking link.
+ *   4. Helper logic         → formatTime, toWhatsAppNumber (conversion).
+ * ============================================================
+ */
+
+import { render, screen, within } from '@testing-library/svelte';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/svelte';
-import CatalogShow from '../Show.svelte';
+import Show from '../Show.svelte';
 
 // ============================================================
-// MOCK INERTIA — lengkap dengan page.props
+// 1. MOCK — INERTIA
 // ============================================================
 vi.mock('@inertiajs/svelte', () => ({
-    inertia: () => ({
-        update: vi.fn(),
-        destroy: vi.fn(),
+    inertia: vi.fn(),
+}));
+
+// ============================================================
+// 2. MOCK — ENUMS
+// ============================================================
+vi.mock('@/utils/enums', () => ({
+    packageKategoriLabel: vi.fn((k: string) => {
+        const map: Record<string, string> = {
+            wisata_alam: 'Alam',
+            budaya: 'Budaya',
+            kuliner: 'Kuliner',
+            petualangan: 'Petualangan',
+            lainnya: 'Lainnya',
+        };
+        return map[k] ?? k;
     }),
-    page: {
-        get props() {
-            return {
-                auth: {
-                    user: {
-                        id: 1,
-                        name: 'Client Test',
-                        username: 'client',
-                        email: 'client@example.com',
-                        role: 'client',
-                    },
-                },
-                unread_notifications: 0,
-                flash: {},
-            };
-        },
-        get url() {
-            return '/client/catalog/paket-bali';
-        },
-        get component() {
-            return 'Client/Catalog/Show';
-        },
+}));
+
+// ============================================================
+// 3. MOCK — FORMAT HELPERS
+// ============================================================
+vi.mock('@/utils/formatCurrency', () => ({
+    formatCurrency: vi.fn((v: string | number) => `Rp ${Number(v).toLocaleString('id-ID')}`),
+}));
+
+vi.mock('@/utils/duration', () => ({
+    formatDurasi: vi.fn((hari: number, malam: number) => `${hari}H / ${malam}M`),
+}));
+
+vi.mock('@/utils/timezone', () => ({
+    timezoneLabelLong: vi.fn((tz: string) => `Waktu ${tz}`),
+}));
+
+// ============================================================
+// 4. MOCK — CLIENT LAYOUT
+// ============================================================
+vi.mock('@/components/layout/ClientLayout.svelte', () => ({
+    default: (anchor: Node, props: { children?: (anchor: Node) => void }) => {
+        props.children?.(anchor);
+        return {};
     },
 }));
 
 // ============================================================
-// MOCK UTILS
+// 5. STATIC IMPORT
 // ============================================================
-vi.mock('@/utils/enums', () => ({
-    packageKategoriBadge: (s: string) => `badge-kategori-${s}`,
-    packageKategoriLabel: (s: string) => `Label Kategori ${s}`,
-}));
-
-vi.mock('@/utils/formatCurrency', () => ({
-    formatCurrency: (n: number | string) => `Rp ${n}`,
-}));
-
-vi.mock('@/utils/duration', () => ({
-    formatDurasi: (h: number, m: number) => `${h} Hari ${m} Malam`,
-}));
-
-vi.mock('@/utils/timezone', () => ({
-    timezoneLabelLong: (tz: string) => `TZ: ${tz}`,
-}));
+import { formatCurrency } from '@/utils/formatCurrency';
+import { formatDurasi } from '@/utils/duration';
+import { timezoneLabelLong } from '@/utils/timezone';
 
 // ============================================================
-// HELPERS
+// 6. FIXTURES
 // ============================================================
-
-const createMockPackage = (overrides: any = {}): any => ({
-    id: 10,
-    kode: 'PKT-BALI',
+const makePackage = (overrides = {}) => ({
+    id: 1,
     nama: 'Paket Bali',
     slug: 'paket-bali',
-    deskripsi: 'Deskripsi paket bali',
     kategori: 'wisata_alam',
+    cover_image: 'packages/bali.jpg',
+    deskripsi: 'Liburan seru di Bali',
     durasi_hari: 3,
     durasi_malam: 2,
-    harga_per_orang: '1500000',
-    harga_per_rombongan: null,
-    min_peserta: 1,
-    max_peserta: 10,
-    timezone: 'Asia/Makassar',
-    cover_image: null,
-    creator: null,
-    days: [
-        {
-            id: 1,
-            hari_ke: 1,
-            judul: 'Hari Pertama',
-            deskripsi: 'Kegiatan hari 1',
-            jam_mulai: '08:00:00',
-            jam_selesai: '17:00:00',
-            lokasi: 'Lokasi 1',
-            costs: [],
+    harga_per_orang: '750000',
+    harga_per_rombongan: null as string | null,
+    max_peserta: 20,
+    timezone: 'Asia/Jakarta',
+    mitra: {
+        id: 1,
+        name: 'PT Mitra Jaya',
+        profile: {
+            nama_penyedia_usaha: 'Mitra Jaya Travel',
+            telepon: '081234567890',
+            kota: 'Denpasar',
+            provinsi: 'Bali',
         },
+    },
+    days: [
+        { id: 1, hari_ke: 1, judul: 'Kedatangan', deskripsi: 'Arrive', jam_mulai: '08:00:00', jam_selesai: '12:00:00', lokasi: 'Bandara' },
+        { id: 2, hari_ke: 2, judul: 'Explore', deskripsi: 'Tour', jam_mulai: null, jam_selesai: null, lokasi: null },
     ],
     facilities: [
         { id: 1, tipe: 'include', nama: 'Hotel' },
@@ -95,190 +110,233 @@ const createMockPackage = (overrides: any = {}): any => ({
     ...overrides,
 });
 
-// ============================================================
-// SETUP
-// ============================================================
-
-beforeEach(() => {
-    vi.clearAllMocks();
-});
+const renderPage = (pkg = makePackage()) =>
+    render(Show, { props: { package: pkg } });
 
 // ============================================================
-// KATEGORI 1 — HERO & INFO UTAMA
+// 7. TEST SUITE
 // ============================================================
-
-describe('Client Catalog Show — Hero & Info', () => {
-    it('merender nama paket dan deskripsi di hero section', () => {
-        render(CatalogShow, { props: { package: createMockPackage() } });
-
-        expect(
-            screen.getByRole('heading', { level: 1, name: 'Paket Bali' })
-        ).toBeInTheDocument();
-        expect(screen.getByText('Deskripsi paket bali')).toBeInTheDocument();
+describe('Client Catalog — Show Page', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
     });
 
-    it('merender badge kategori, durasi, dan timezone', () => {
-        render(CatalogShow, { props: { package: createMockPackage() } });
+    // ----------------------------------------------------------
+    // 7.1 RENDERING — Hero & Header
+    // ----------------------------------------------------------
+    describe('Rendering — Hero', () => {
+        it('menampilkan cover image dengan alt=nama', () => {
+            renderPage();
 
-        expect(
-            screen.getByText('Label Kategori wisata_alam')
-        ).toBeInTheDocument();
-
-        // Durasi muncul di hero + booking card
-        expect(
-            screen.getAllByText('3 Hari 2 Malam').length
-        ).toBeGreaterThanOrEqual(1);
-
-        // Timezone muncul di hero + booking card
-        expect(
-            screen.getAllByText('TZ: Asia/Makassar').length
-        ).toBeGreaterThanOrEqual(1);
-    });
-
-    it('merender inisial besar jika tidak ada cover_image', () => {
-        render(CatalogShow, {
-            props: { package: createMockPackage({ cover_image: null }) },
+            const img = screen.getByAltText('Paket Bali') as HTMLImageElement;
+            expect(img).toHaveAttribute('src', '/storage/packages/bali.jpg');
         });
 
-        // Inisial 'P' dari "Paket Bali" di hero section — mungkin muncul beberapa kali
-        expect(screen.getAllByText('P').length).toBeGreaterThanOrEqual(1);
-        expect(screen.queryByRole('img')).not.toBeInTheDocument();
-    });
+        it('menampilkan fallback image saat cover_image null', () => {
+            renderPage(makePackage({ cover_image: null }));
 
-    it('merender gambar cover jika cover_image ada', () => {
-        render(CatalogShow, {
-            props: {
-                package: createMockPackage({ cover_image: 'covers/bali.jpg' }),
-            },
+            const img = screen.getByAltText('Fallback');
+            expect(img.getAttribute('src')).toContain('unsplash.com');
         });
 
-        const img = screen.getByRole('img');
-        expect(img).toHaveAttribute('src', '/storage/covers/bali.jpg');
-        expect(img).toHaveAttribute('alt', 'Paket Bali');
-    });
-});
-
-// ============================================================
-// KATEGORI 2 — ITINERARY
-// ============================================================
-
-describe('Client Catalog Show — Itinerary', () => {
-    it('merender itinerary sesuai jumlah hari', () => {
-        const pkg = createMockPackage({
-            days: [
-                {
-                    id: 1,
-                    hari_ke: 1,
-                    judul: 'Hari Pertama',
-                    deskripsi: 'Kegiatan 1',
-                    jam_mulai: '08:00:00',
-                    jam_selesai: '17:00:00',
-                    lokasi: 'Lokasi 1',
-                    costs: [],
-                },
-                {
-                    id: 2,
-                    hari_ke: 2,
-                    judul: 'Hari Kedua',
-                    deskripsi: 'Kegiatan 2',
-                    jam_mulai: null,
-                    jam_selesai: null,
-                    lokasi: null,
-                    costs: [],
-                },
-            ],
-        });
-        render(CatalogShow, { props: { package: pkg } });
-
-        // Hari dan deskripsi dirender normal
-        expect(screen.getByText('Hari Pertama')).toBeInTheDocument();
-        expect(screen.getByText('Hari Kedua')).toBeInTheDocument();
-
-        // ✅ Jam: cari elemen yang textContent-nya mengandung "08:00" dan "17:00"
-        // (dash-nya bisa – atau - atau —, tidak penting)
-        const timeElement = screen.getByText((_content, element) => {
-            const text = element?.textContent ?? '';
-            return (
-                element?.tagName === 'SPAN' &&
-                text.includes('08:00') &&
-                text.includes('17:00')
-            );
-        });
-        expect(timeElement).toBeInTheDocument();
-
-        // Lokasi
-        expect(screen.getByText('Lokasi 1')).toBeInTheDocument();
-    });
-
-    it('merender pesan kosong jika tidak ada itinerary', () => {
-        render(CatalogShow, {
-            props: { package: createMockPackage({ days: [] }) },
+        it('menampilkan kategori badge', () => {
+            renderPage();
+            
+            // Scope ke header info, bukan card lain
+            const header = screen.getByRole('heading', { level: 1, name: 'Paket Bali' }).closest('div');
+            expect(within(header!).getByText('Alam')).toBeInTheDocument();
         });
 
-        expect(
-            screen.getByText(/Itinerary belum tersedia/i)
-        ).toBeInTheDocument();
-    });
-});
-
-// ============================================================
-// KATEGORI 3 — FASILITAS
-// ============================================================
-
-describe('Client Catalog Show — Fasilitas', () => {
-    it('merender fasilitas include dan exclude', () => {
-        render(CatalogShow, { props: { package: createMockPackage() } });
-
-        expect(screen.getByText('Termasuk')).toBeInTheDocument();
-        expect(screen.getByText('Hotel')).toBeInTheDocument();
-        expect(screen.getByText('Makan')).toBeInTheDocument();
-
-        expect(screen.getByText('Tidak Termasuk')).toBeInTheDocument();
-        expect(screen.getByText('Tiket Pesawat')).toBeInTheDocument();
-    });
-});
-
-// ============================================================
-// KATEGORI 4 — BOOKING CARD
-// ============================================================
-
-describe('Client Catalog Show — Booking Card', () => {
-    it('merender harga per orang dan tombol pesan', () => {
-        render(CatalogShow, { props: { package: createMockPackage() } });
-
-        expect(screen.getByText('Harga per Orang')).toBeInTheDocument();
-        // Rp 1500000 muncul 1x di booking card
-        expect(screen.getAllByText('Rp 1500000').length).toBeGreaterThanOrEqual(1);
-
-        const cta = screen.getByRole('link', { name: /Pesan Sekarang/i });
-        expect(cta).toHaveAttribute('href', '/client/bookings/create/10');
+        it('menampilkan judul paket sebagai h1', () => {
+            renderPage();
+            expect(screen.getByRole('heading', { level: 1, name: 'Paket Bali' })).toBeInTheDocument();
+        });
     });
 
-    it('merender info harga rombongan jika ada', () => {
-        render(CatalogShow, {
-            props: {
-                package: createMockPackage({ harga_per_rombongan: '5000000' }),
-            },
+    // ----------------------------------------------------------
+    // 7.2 RENDERING — Info Singkat
+    // ----------------------------------------------------------
+    describe('Rendering — Info Singkat', () => {
+        it('memanggil formatDurasi dengan durasi_hari & durasi_malam', () => {
+            renderPage();
+            expect(formatDurasi).toHaveBeenCalledWith(3, 2);
         });
 
-        expect(screen.getByText('Harga Rombongan')).toBeInTheDocument();
-        expect(screen.getByText('Rp 5000000')).toBeInTheDocument();
+        it('menampilkan max peserta', () => {
+            renderPage();
+            expect(screen.getByText(/Maks. 20 orang/)).toBeInTheDocument();
+        });
+
+        it('TIDAK menampilkan max peserta saat null', () => {
+            renderPage(makePackage({ max_peserta: null }));
+            expect(screen.queryByText(/Maks\./)).not.toBeInTheDocument();
+        });
+
+        it('memanggil timezoneLabelLong', () => {
+            renderPage();
+            expect(timezoneLabelLong).toHaveBeenCalledWith('Asia/Jakarta');
+            expect(screen.getByText('Waktu Asia/Jakarta')).toBeInTheDocument();
+        });
     });
 
-    it('merender info min/max peserta dan durasi', () => {
-        render(CatalogShow, { props: { package: createMockPackage() } });
+    // ----------------------------------------------------------
+    // 7.3 RENDERING — Deskripsi
+    // ----------------------------------------------------------
+    describe('Rendering — Deskripsi', () => {
+        it('menampilkan deskripsi saat ada', () => {
+            renderPage();
+            expect(screen.getByText('Liburan seru di Bali')).toBeInTheDocument();
+        });
 
-        // Teks "Min. 1 – Maks. 10 orang" muncul sebagai gabungan node
-        // Cek dengan matcher function
-        expect(
-            screen.getByText((_content, element) => {
-                return (
-                    element?.tagName === 'SPAN' &&
-                    /Min\.\s*1\s*–\s*Maks\.\s*10\s*orang/.test(
-                        element?.textContent ?? ''
-                    )
-                );
-            })
-        ).toBeInTheDocument();
+        it('TIDAK merender section deskripsi saat null', () => {
+            renderPage(makePackage({ deskripsi: null }));
+            expect(screen.queryByText('Tentang Paket')).not.toBeInTheDocument();
+        });
+    });
+
+    // ----------------------------------------------------------
+    // 7.4 RENDERING — Itinerary
+    // ----------------------------------------------------------
+    describe('Rendering — Itinerary', () => {
+        it('merender 2 hari itinerary', () => {
+            renderPage();
+            expect(screen.getByText('Kedatangan')).toBeInTheDocument();
+            expect(screen.getByText('Explore')).toBeInTheDocument();
+        });
+
+        it('menampilkan jam mulai & selesai (format HH:MM)', () => {
+            renderPage();
+            // 08:00:00 → "08:00", 12:00:00 → "12:00"
+            expect(screen.getByText(/08:00/)).toBeInTheDocument();
+            expect(screen.getByText(/12:00/)).toBeInTheDocument();
+        });
+
+        it('menampilkan lokasi day', () => {
+            renderPage();
+            expect(screen.getByText('Bandara')).toBeInTheDocument();
+        });
+
+        it('menampilkan placeholder saat itinerary kosong', () => {
+            renderPage(makePackage({ days: [] }));
+            expect(screen.getByText('Rencana perjalanan belum tersedia.')).toBeInTheDocument();
+        });
+    });
+
+    // ----------------------------------------------------------
+    // 7.5 RENDERING — Facilities
+    // ----------------------------------------------------------
+    describe('Rendering — Facilities', () => {
+        it('merender include facilities', () => {
+            renderPage();
+            expect(screen.getByText('Hotel')).toBeInTheDocument();
+            expect(screen.getByText('Makan')).toBeInTheDocument();
+        });
+
+        it('merender exclude facilities', () => {
+            renderPage();
+            expect(screen.getByText('Tiket Pesawat')).toBeInTheDocument();
+        });
+
+        it('menampilkan placeholder jika include kosong', () => {
+            renderPage(makePackage({
+                facilities: [{ id: 1, tipe: 'exclude', nama: 'Tiket' }],
+            }));
+            // "Belum ada info" muncul di include
+            expect(screen.getAllByText('Belum ada info.').length).toBeGreaterThanOrEqual(1);
+        });
+    });
+
+    // ----------------------------------------------------------
+    // 7.6 RENDERING — Mitra Card
+    // ----------------------------------------------------------
+    describe('Rendering — Mitra Card', () => {
+        it('menampilkan nama penyedia usaha', () => {
+            renderPage();
+            expect(screen.getByText('Mitra Jaya Travel')).toBeInTheDocument();
+        });
+
+        it('menampilkan lokasi mitra', () => {
+            renderPage();
+            expect(screen.getByText('Denpasar, Bali')).toBeInTheDocument();
+        });
+
+        it('fallback ke nama mitra saat profile null', () => {
+            renderPage(makePackage({
+                mitra: { id: 1, name: 'Mitra Name Only', profile: null },
+            }));
+            expect(screen.getByText('Mitra Name Only')).toBeInTheDocument();
+        });
+
+        it('TIDAK render card mitra saat mitra null', () => {
+            renderPage(makePackage({ mitra: null }));
+            expect(screen.queryByText('Diselenggarakan oleh')).not.toBeInTheDocument();
+        });
+    });
+
+    // ----------------------------------------------------------
+    // 7.7 RENDERING — WhatsApp Link
+    // ----------------------------------------------------------
+    describe('Rendering — WhatsApp', () => {
+        it('merender WA link saat telepon ada', () => {
+            renderPage();
+
+            const waLink = screen.getByRole('link', { name: /Hubungi via WA/i });
+            expect(waLink).toHaveAttribute('href', expect.stringContaining('https://wa.me/6281234567890'));
+        });
+
+        it('WhatsApp URL mengandung text prefilled', () => {
+            renderPage();
+
+            const waLink = screen.getByRole('link', { name: /Hubungi via WA/i });
+            expect(waLink.getAttribute('href')).toContain('text=');
+            expect(decodeURIComponent(waLink.getAttribute('href')!)).toContain('Paket Bali');
+        });
+
+        it('TIDAK render WA link saat telepon null', () => {
+            renderPage(makePackage({
+                mitra: { id: 1, name: 'X', profile: { nama_penyedia_usaha: 'Y', telepon: null, kota: 'Z', provinsi: 'W' } },
+            }));
+            expect(screen.queryByRole('link', { name: /Hubungi via WA/i })).not.toBeInTheDocument();
+        });
+
+        it('konversi 08xxx → 628xxx', () => {
+            renderPage();
+            const waLink = screen.getByRole('link', { name: /Hubungi via WA/i });
+            expect(waLink.getAttribute('href')).toContain('wa.me/6281234567890');
+        });
+    });
+
+    // ----------------------------------------------------------
+    // 7.8 RENDERING — Harga (conditional)
+    // ----------------------------------------------------------
+    describe('Rendering — Harga', () => {
+        it('menampilkan harga per orang saat rombongan null', () => {
+            renderPage();
+            expect(screen.getByText('/ orang')).toBeInTheDocument();
+            expect(formatCurrency).toHaveBeenCalledWith('750000');
+        });
+
+        it('menampilkan harga rombongan saat ada', () => {
+            renderPage(makePackage({ harga_per_rombongan: '5000000' }));
+            expect(screen.getByText('/ rombongan')).toBeInTheDocument();
+            expect(formatCurrency).toHaveBeenCalledWith('5000000');
+        });
+    });
+
+    // ----------------------------------------------------------
+    // 7.9 INTERACTION — Links
+    // ----------------------------------------------------------
+    describe('Interaction — Links', () => {
+        it('link "Kembali ke Katalog" ke /client/catalog', () => {
+            renderPage();
+            const backLink = screen.getByRole('link', { name: /Kembali ke Katalog/i });
+            expect(backLink).toHaveAttribute('href', '/client/catalog');
+        });
+
+        it('link "Booking Sekarang" ke /client/bookings/create/:id', () => {
+            renderPage();
+            const bookingLink = screen.getByRole('link', { name: /Booking Sekarang/i });
+            expect(bookingLink).toHaveAttribute('href', '/client/bookings/create/1');
+        });
     });
 });

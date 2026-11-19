@@ -1,764 +1,452 @@
+/**
+ * ============================================================
+ * Admin Users — Create Page (Tambah Admin) — Component Test
+ * ============================================================
+ *
+ * Fokus pengujian (sesuai ketentuan):
+ *   1. Isolation & Mocking  → Inertia, API createAdmin, toast, menu,
+ *                             & child components (UserAccountForm,
+ *                             UserPasswordForm, BackButton) di-mock.
+ *   2. Props & Rendering    → header, error banner, tombol submit.
+ *   3. Interaction          → submit form, error state, processing.
+ *   4. Reactivity           → errorCount, processing update DOM.
+ *
+ * Strategi mock:
+ *   - Anchor-aware pattern (insertBefore ke anchor.parentNode) untuk
+ *     kompatibilitas Svelte 5 runtime.
+ *   - UserAccountForm & UserPasswordForm di-mock dengan input yang
+ *     mem-bind `form` / `password` via custom event agar test bisa
+ *     mengisi field dari luar.
+ *   - mockUpdaters Set + syncUI() untuk memastikan DOM merefleksikan
+ *     state Svelte terbaru setelah setiap interaksi.
+ * ============================================================
+ */
+
+import { render, screen, fireEvent } from '@testing-library/svelte';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
-import UserCreate from '../Create.svelte';
+import { tick } from 'svelte';
+import Create from '../Create.svelte';
 
 // ============================================================
-// MOCK INERTIA
+// 1. HOISTED MOCK REGISTRY
 // ============================================================
+const mockUpdaters = vi.hoisted(() => new Set<() => void>());
 
-const mockPost = vi.fn();
-
-let mockPageProps: {
-    flash?: {
-        status?: string | null;
-        error?: string | null;
-    };
-    auth?: {
-        user?: {
-            id: number;
-            name: string;
-            username: string | null;
-            email: string;
-            role: string;
-        } | null;
-    };
-} = {
-    flash: {},
-    auth: {
-        user: {
-            id: 99,
-            name: 'Admin Current',
-            username: 'admin',
-            email: 'admin@example.com',
-            role: 'admin',
-        },
-    },
-};
-
-let mockPageUrl = '/admin/users/create';
-
+// ============================================================
+// 2. MOCK — INERTIA
+// ============================================================
 vi.mock('@inertiajs/svelte', () => ({
-    router: {
-        post: (...args: unknown[]) => mockPost(...args),
-        get: vi.fn(),
-        put: vi.fn(),
-        delete: vi.fn(),
-    },
-    page: {
-        get props() {
-            return mockPageProps;
-        },
-        get url() {
-            return mockPageUrl;
-        },
-        get component() {
-            return 'Admin/Users/Create';
-        },
-    },
-    inertia: () => ({
-        update: () => {},
-        destroy: () => {},
-    }),
+    inertia: vi.fn(),
 }));
 
 // ============================================================
-// HELPER — Selector via ID
+// 3. MOCK — API ADMIN
 // ============================================================
-
-const getInput = (id: string) =>
-    document.getElementById(id) as HTMLInputElement;
-
-const getTextarea = (id: string) =>
-    document.getElementById(id) as HTMLTextAreaElement;
-
-const getSubmitButton = () =>
-    screen.getByRole('button', { name: /^Buat User$/i });
-
-const getForm = () =>
-    getSubmitButton().closest('form') as HTMLFormElement;
-
-/**
- * Klik tombol pilih role (Admin / Mitra) di Step 1.
- *
- * Menggunakan selector h3 karena text "Admin" / "Mitra" muncul di
- * multiple tempat (card role + tombol submit "Buat Akun Admin/Mitra").
- */
-const clickRoleButton = async (roleName: 'Admin' | 'Mitra') => {
-    const buttons = screen.getAllByRole('button');
-    const button = buttons.find(
-        (btn) => btn.querySelector('h3')?.textContent?.trim() === roleName,
-    );
-
-    if (!button) {
-        throw new Error(`Tombol role "${roleName}" tidak ditemukan`);
-    }
-
-    await fireEvent.click(button);
-};
+vi.mock('@/api/admin', () => ({
+    createAdmin: vi.fn(),
+}));
 
 // ============================================================
-// SETUP & TEARDOWN
+// 4. MOCK — TOAST
 // ============================================================
+vi.mock('@/utils/toast.svelte', () => ({
+    showToast: vi.fn(),
+}));
 
-beforeEach(() => {
-    mockPost.mockClear();
-    mockPageUrl = '/admin/users/create';
-    mockPageProps = {
-        flash: {},
-        auth: {
-            user: {
-                id: 99,
-                name: 'Admin Current',
-                username: 'admin',
-                email: 'admin@example.com',
-                role: 'admin',
-            },
+// ============================================================
+// 5. MOCK — MENUS
+// ============================================================
+vi.mock('@/utils/menus', () => ({
+    adminMenu: [],
+}));
+
+// ============================================================
+// 6. MOCK — DASHBOARD LAYOUT (anchor-aware, pass-through children)
+// ============================================================
+vi.mock('@/components/layout/DashboardLayout.svelte', () => ({
+    default: (anchor: Node, props: { children?: (anchor: Node) => void }) => {
+        props.children?.(anchor);
+        return {};
+    },
+}));
+
+// ============================================================
+// 7. MOCK — BACK BUTTON (render link agar assertion href mudah)
+// ============================================================
+vi.mock('@/global/BackButton.svelte', () => ({
+    default: (anchor: Node, props: { href: string; label?: string }) => {
+        const link = document.createElement('a');
+        link.href = props.href;
+        link.textContent = props.label ?? 'Kembali';
+        link.setAttribute('data-testid', 'back-button');
+        anchor.parentNode?.insertBefore(link, anchor);
+        return {};
+    },
+}));
+
+// ============================================================
+// 8. MOCK — USER ACCOUNT FORM (render input minimal + trigger oninput)
+// ============================================================
+vi.mock('@/components/admin/users/UserAccountForm.svelte', () => ({
+    default: (
+        anchor: Node,
+        props: {
+            form: { name: string; username: string; email: string };
+            errors: Record<string, string>;
         },
-    };
-});
+    ) => {
+        const wrapper = document.createElement('div');
+        wrapper.setAttribute('data-testid', 'user-account-form');
+        anchor.parentNode?.insertBefore(wrapper, anchor);
 
-afterEach(() => {
-    vi.clearAllMocks();
-});
+        const update = () => {
+            wrapper.innerHTML = '';
 
-// ============================================================
-// KATEGORI 1 — STEP 1: PILIH ROLE (UI CONTRACT)
-// ============================================================
+            const fields: Array<[string, string, string]> = [
+                ['name', 'Nama', props.form.name],
+                ['username', 'Username', props.form.username],
+                ['email', 'Email', props.form.email],
+            ];
 
-describe('Admin/Users/Create.svelte — Step 1: Pilih Role', () => {
-    it('menampilkan heading "Pilih Role User"', () => {
-        render(UserCreate);
-        expect(
-            screen.getByRole('heading', { name: /Pilih Role User/i })
-        ).toBeInTheDocument();
-    });
+            fields.forEach(([key, label, value]) => {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.setAttribute('aria-label', label);
+                input.value = value ?? '';
+                input.oninput = (e) => {
+                    (props.form as any)[key] = (e.target as HTMLInputElement).value;
+                };
+                wrapper.appendChild(input);
 
-    it('menampilkan card pilihan "Admin"', () => {
-        render(UserCreate);
-        const buttons = screen.getAllByRole('button');
-        const adminCard = buttons.find(
-            (btn) => btn.querySelector('h3')?.textContent?.trim() === 'Admin',
-        );
-        expect(adminCard).toBeInTheDocument();
-    });
+                if (props.errors[key]) {
+                    const err = document.createElement('p');
+                    err.setAttribute('role', 'alert');
+                    err.textContent = props.errors[key];
+                    wrapper.appendChild(err);
+                }
+            });
+        };
 
-    it('menampilkan card pilihan "Mitra"', () => {
-        render(UserCreate);
-        const buttons = screen.getAllByRole('button');
-        const mitraCard = buttons.find(
-            (btn) => btn.querySelector('h3')?.textContent?.trim() === 'Mitra',
-        );
-        expect(mitraCard).toBeInTheDocument();
-    });
-
-    it('menampilkan info "Client tidak bisa dibuat di sini"', () => {
-        render(UserCreate);
-        expect(
-            screen.getByText(/Client tidak bisa dibuat di sini/i)
-        ).toBeInTheDocument();
-    });
-
-    it('menampilkan breadcrumb "Kembali ke Daftar User"', () => {
-        render(UserCreate);
-        expect(
-            screen.getByRole('link', { name: /Kembali ke Daftar User/i })
-        ).toBeInTheDocument();
-    });
-
-    it('breadcrumb punya href ke /admin/users', () => {
-        render(UserCreate);
-        const link = screen.getByRole('link', { name: /Kembali ke Daftar User/i });
-        expect(link).toHaveAttribute('href', '/admin/users');
-    });
-
-it('menampilkan stepper dengan step 1 aktif', () => {
-    render(UserCreate);
-
-    // Pakai exact match untuk membedakan label stepper dari heading
-    expect(screen.getByText(/^Pilih Role$/i)).toBeInTheDocument();
-    expect(screen.getByText(/^Isi Data$/i)).toBeInTheDocument();
-});
-
-    it('TIDAK menampilkan form di step 1', () => {
-        render(UserCreate);
-        expect(document.getElementById('name')).not.toBeInTheDocument();
-    });
-});
+        update();
+        mockUpdaters.add(update);
+        return {};
+    },
+}));
 
 // ============================================================
-// KATEGORI 2 — STEP 2: PILIH ADMIN
+// 9. MOCK — USER PASSWORD FORM (input password + trigger oninput)
 // ============================================================
+vi.mock('@/components/admin/users/UserPasswordForm.svelte', () => ({
+    default: (
+        anchor: Node,
+        props: {
+            password: string;
+            error?: string;
+        },
+    ) => {
+        const wrapper = document.createElement('div');
+        wrapper.setAttribute('data-testid', 'user-password-form');
+        anchor.parentNode?.insertBefore(wrapper, anchor);
 
-describe('Admin/Users/Create.svelte — Step 2: Admin', () => {
-    const goToAdmin = async () => {
-        render(UserCreate);
-        await clickRoleButton('Admin');
-    };
+        const update = () => {
+            wrapper.innerHTML = '';
 
-    it('pilih admin menampilkan form', async () => {
-        await goToAdmin();
-        expect(document.getElementById('name')).toBeInTheDocument();
-    });
+            const input = document.createElement('input');
+            input.type = 'password';
+            input.setAttribute('aria-label', 'Password');
+            input.value = props.password ?? '';
+            input.oninput = (e) => {
+                props.password = (e.target as HTMLInputElement).value;
+            };
+            wrapper.appendChild(input);
 
-    it('heading berubah jadi "Buat Akun Admin"', async () => {
-        await goToAdmin();
-        expect(
-            screen.getByRole('heading', { name: /Buat Akun Admin/i })
-        ).toBeInTheDocument();
-    });
+            if (props.error) {
+                const err = document.createElement('p');
+                err.setAttribute('role', 'alert');
+                err.textContent = props.error;
+                wrapper.appendChild(err);
+            }
+        };
 
-    it('menampilkan field nama, email, username, password', async () => {
-        await goToAdmin();
-        expect(getInput('name')).toBeInTheDocument();
-        expect(getInput('email')).toBeInTheDocument();
-        expect(getInput('username')).toBeInTheDocument();
-        expect(getInput('password')).toBeInTheDocument();
-    });
-
-    it('TIDAK menampilkan field data usaha (karena admin)', async () => {
-        await goToAdmin();
-        expect(document.getElementById('nama_penyedia_usaha')).not.toBeInTheDocument();
-        expect(document.getElementById('nomor_identitas')).not.toBeInTheDocument();
-    });
-
-    it('menampilkan tombol "Ganti Role"', async () => {
-        await goToAdmin();
-        expect(
-            screen.getByRole('button', { name: /Ganti Role/i })
-        ).toBeInTheDocument();
-    });
-
-    it('tombol "Ganti Role" kembali ke step 1', async () => {
-        await goToAdmin();
-        await fireEvent.click(screen.getByRole('button', { name: /Ganti Role/i }));
-
-        expect(
-            screen.getByRole('heading', { name: /Pilih Role User/i })
-        ).toBeInTheDocument();
-    });
-});
+        update();
+        mockUpdaters.add(update);
+        return {};
+    },
+}));
 
 // ============================================================
-// KATEGORI 3 — STEP 2: PILIH MITRA
+// 10. STATIC IMPORT (setelah semua vi.mock)
 // ============================================================
-
-describe('Admin/Users/Create.svelte — Step 2: Mitra', () => {
-    const goToMitra = async () => {
-        render(UserCreate);
-        await clickRoleButton('Mitra');
-    };
-
-    it('pilih mitra menampilkan form', async () => {
-        await goToMitra();
-        expect(document.getElementById('name')).toBeInTheDocument();
-    });
-
-    it('heading berubah jadi "Buat Akun Mitra"', async () => {
-        await goToMitra();
-        expect(
-            screen.getByRole('heading', { name: /Buat Akun Mitra/i })
-        ).toBeInTheDocument();
-    });
-
-    it('menampilkan field data usaha', async () => {
-        await goToMitra();
-        expect(getInput('nama_penyedia_usaha')).toBeInTheDocument();
-        expect(getInput('nomor_identitas')).toBeInTheDocument();
-        expect(getInput('telepon')).toBeInTheDocument();
-        expect(getTextarea('alamat')).toBeInTheDocument();
-    });
-
-    it('menampilkan field provinsi, kota, kode_pos', async () => {
-        await goToMitra();
-        expect(getInput('provinsi')).toBeInTheDocument();
-        expect(getInput('kota')).toBeInTheDocument();
-        expect(getInput('kode_pos')).toBeInTheDocument();
-    });
-
-    it('menampilkan field deskripsi usaha', async () => {
-        await goToMitra();
-        expect(getTextarea('deskripsi')).toBeInTheDocument();
-    });
-
-    it('menampilkan section "Data Usaha"', async () => {
-        await goToMitra();
-        expect(screen.getByText(/Data Usaha/i)).toBeInTheDocument();
-    });
-});
+import { createAdmin } from '@/api/admin';
+import { showToast } from '@/utils/toast.svelte';
 
 // ============================================================
-// KATEGORI 4 — FORM SUBMIT: ADMIN
+// 11. HELPERS
 // ============================================================
+async function syncUI(): Promise<void> {
+    await tick();
+    mockUpdaters.forEach((fn) => fn());
+}
 
-describe('Admin/Users/Create.svelte — Form Submit: Admin', () => {
-    it('submit form admin memanggil router.post dengan payload benar', async () => {
-        render(UserCreate);
-        await clickRoleButton('Admin');
-
-        await fireEvent.input(getInput('name'), {
-            target: { value: 'New Admin' },
-        });
-        await fireEvent.input(getInput('email'), {
-            target: { value: 'newadmin@example.com' },
-        });
-        await fireEvent.input(getInput('username'), {
-            target: { value: 'newadmin' },
-        });
-        await fireEvent.input(getInput('password'), {
-            target: { value: 'Password123!' },
-        });
-
-        await fireEvent.submit(getForm());
-
-        expect(mockPost).toHaveBeenCalledTimes(1);
-        expect(mockPost).toHaveBeenCalledWith(
-            '/admin/users',
-            {
-                role: 'admin',
-                name: 'New Admin',
-                username: 'newadmin',
-                email: 'newadmin@example.com',
-                password: 'Password123!',
-            },
-            expect.objectContaining({
-                onError: expect.any(Function),
-                onFinish: expect.any(Function),
-            }),
-        );
-    });
-
-    it('submit form admin TIDAK mengirim field mitra', async () => {
-        render(UserCreate);
-        await clickRoleButton('Admin');
-        await fireEvent.submit(getForm());
-
-        const [, payload] = mockPost.mock.calls[0];
-        expect(payload).not.toHaveProperty('nama_penyedia_usaha');
-        expect(payload).not.toHaveProperty('nomor_identitas');
-        expect(payload).not.toHaveProperty('alamat');
-    });
-
-    it('username kosong → null di payload', async () => {
-        render(UserCreate);
-        await clickRoleButton('Admin');
-
-        await fireEvent.input(getInput('name'), {
-            target: { value: 'Admin' },
-        });
-        await fireEvent.input(getInput('email'), {
-            target: { value: 'admin@example.com' },
-        });
-
-        await fireEvent.submit(getForm());
-
-        const [, payload] = mockPost.mock.calls[0];
-        expect(payload.username).toBeNull();
-    });
-
-    it('password kosong → null di payload', async () => {
-        render(UserCreate);
-        await clickRoleButton('Admin');
-
-        await fireEvent.input(getInput('name'), {
-            target: { value: 'Admin' },
-        });
-        await fireEvent.input(getInput('email'), {
-            target: { value: 'admin@example.com' },
-        });
-
-        await fireEvent.submit(getForm());
-
-        const [, payload] = mockPost.mock.calls[0];
-        expect(payload.password).toBeNull();
-    });
-});
+/** Isi field berdasarkan aria-label lalu trigger re-render mock. */
+async function fillField(label: string, value: string): Promise<void> {
+    const input = screen.getByLabelText(label) as HTMLInputElement;
+    await fireEvent.input(input, { target: { value } });
+    await syncUI();
+}
 
 // ============================================================
-// KATEGORI 5 — FORM SUBMIT: MITRA
+// 12. TEST SUITE
 // ============================================================
-
-describe('Admin/Users/Create.svelte — Form Submit: Mitra', () => {
-    it('submit form mitra memanggil router.post dengan payload lengkap', async () => {
-        render(UserCreate);
-        await clickRoleButton('Mitra');
-
-        await fireEvent.input(getInput('name'), {
-            target: { value: 'New Mitra' },
-        });
-        await fireEvent.input(getInput('email'), {
-            target: { value: 'newmitra@example.com' },
-        });
-        await fireEvent.input(getInput('nama_penyedia_usaha'), {
-            target: { value: 'PT Mitra Jaya' },
-        });
-        await fireEvent.input(getInput('nomor_identitas'), {
-            target: { value: '1234567890' },
-        });
-        await fireEvent.input(getInput('telepon'), {
-            target: { value: '08123456789' },
-        });
-
-        await fireEvent.submit(getForm());
-
-        expect(mockPost).toHaveBeenCalledWith(
-            '/admin/users',
-            expect.objectContaining({
-                role: 'mitra',
-                name: 'New Mitra',
-                email: 'newmitra@example.com',
-                nama_penyedia_usaha: 'PT Mitra Jaya',
-                nomor_identitas: '1234567890',
-                telepon: '08123456789',
-            }),
-            expect.any(Object),
-        );
+describe('Admin Users — Create Page', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockUpdaters.clear();
     });
 
-    it('field mitra kosong → null di payload', async () => {
-        render(UserCreate);
-        await clickRoleButton('Mitra');
+    afterEach(() => {
+        vi.useRealTimers();
+    });
 
-        await fireEvent.input(getInput('name'), {
-            target: { value: 'Mitra' },
-        });
-        await fireEvent.input(getInput('email'), {
-            target: { value: 'mitra@example.com' },
+    // ----------------------------------------------------------
+    // 12.1 RENDERING — struktur dasar
+    // ----------------------------------------------------------
+    describe('Rendering', () => {
+        it('menampilkan judul halaman, back button, header form, dan tombol submit', () => {
+            render(Create);
+
+            // Judul via svelte:head tidak terlihat di DOM body, tapi tombol/header ya
+            expect(screen.getByText('Buat Akun Admin')).toBeInTheDocument();
+            expect(screen.getByText('Isi data dasar untuk akun admin baru.')).toBeInTheDocument();
+
+            // Back button
+            const backBtn = screen.getByTestId('back-button');
+            expect(backBtn).toHaveTextContent('Kembali ke Daftar User');
+            expect(backBtn).toHaveAttribute('href', '/admin/users');
+
+            // Form fields (via mock UserAccountForm)
+            expect(screen.getByLabelText('Nama')).toBeInTheDocument();
+            expect(screen.getByLabelText('Username')).toBeInTheDocument();
+            expect(screen.getByLabelText('Email')).toBeInTheDocument();
+
+            // Form password (via mock UserPasswordForm)
+            expect(screen.getByLabelText('Password')).toBeInTheDocument();
+
+            // Submit button
+            expect(screen.getByRole('button', { name: 'Buat Admin' })).toBeInTheDocument();
         });
 
-        await fireEvent.submit(getForm());
-
-        const [, payload] = mockPost.mock.calls[0];
-        expect(payload.nama_penyedia_usaha).toBeNull();
-        expect(payload.nomor_identitas).toBeNull();
-        expect(payload.alamat).toBeNull();
-        expect(payload.telepon).toBeNull();
-    });
-});
-
-// ============================================================
-// KATEGORI 6 — PASSWORD TOGGLE & GENERATE
-// ============================================================
-
-describe('Admin/Users/Create.svelte — Password Toggle & Generate', () => {
-    beforeEach(async () => {
-        render(UserCreate);
-        await clickRoleButton('Admin');
-    });
-
-    it('password bertipe password secara default', () => {
-        expect(getInput('password').type).toBe('password');
-    });
-
-    it('toggle password mengubah type ke text', async () => {
-        const toggle = screen.getByLabelText(/Toggle password/i);
-        await fireEvent.click(toggle);
-        expect(getInput('password').type).toBe('text');
-    });
-
-    it('toggle password 2x kembali ke password', async () => {
-        const toggle = screen.getByLabelText(/Toggle password/i);
-        await fireEvent.click(toggle);
-        await fireEvent.click(toggle);
-        expect(getInput('password').type).toBe('password');
-    });
-
-    it('klik "Generate" mengisi field password', async () => {
-        const generateBtn = screen.getByRole('button', { name: /^Generate$/i });
-        await fireEvent.click(generateBtn);
-
-        expect(getInput('password').value.length).toBeGreaterThan(0);
-    });
-
-    it('password hasil generate minimal 12 karakter', async () => {
-        const generateBtn = screen.getByRole('button', { name: /^Generate$/i });
-        await fireEvent.click(generateBtn);
-
-        expect(getInput('password').value.length).toBeGreaterThanOrEqual(12);
-    });
-
-    it('password hasil generate otomatis menampilkan password', async () => {
-        const generateBtn = screen.getByRole('button', { name: /^Generate$/i });
-        await fireEvent.click(generateBtn);
-
-        expect(getInput('password').type).toBe('text');
-    });
-});
-
-// ============================================================
-// KATEGORI 7 — NEGATIVE PATH: Error Handling
-// ============================================================
-
-describe('Admin/Users/Create.svelte — Error Handling', () => {
-    it('menampilkan error per field setelah onError', async () => {
-        render(UserCreate);
-        await clickRoleButton('Admin');
-
-        await fireEvent.submit(getForm());
-
-        const [, , options] = mockPost.mock.calls[0];
-        options.onError({
-            name: 'Nama wajib diisi.',
-            email: 'Email sudah digunakan.',
-            username: 'Username sudah dipakai.',
-        });
-
-        await waitFor(() => {
-            expect(screen.getByText('Nama wajib diisi.')).toBeInTheDocument();
-            expect(screen.getByText('Email sudah digunakan.')).toBeInTheDocument();
-            expect(screen.getByText('Username sudah dipakai.')).toBeInTheDocument();
+        it('tidak menampilkan error banner saat belum ada error', () => {
+            render(Create);
+            expect(screen.queryByText(/kesalahan pada form/i)).not.toBeInTheDocument();
         });
     });
 
-    it('menampilkan alert "Terdapat N kesalahan" saat ada error', async () => {
-        render(UserCreate);
-        await clickRoleButton('Admin');
+    // ----------------------------------------------------------
+    // 12.2 INTERACTION — submit form dengan payload benar
+    // ----------------------------------------------------------
+    describe('Interaction — Submit', () => {
+        it('mengirim payload createAdmin dengan role=admin dan data form', async () => {
+            render(Create);
 
-        await fireEvent.submit(getForm());
+            await fillField('Nama', 'Budi Santoso');
+            await fillField('Username', 'budisan');
+            await fillField('Email', 'budi@test.com');
+            await fillField('Password', 'secret123');
 
-        const [, , options] = mockPost.mock.calls[0];
-        options.onError({
-            name: 'Error 1',
-            email: 'Error 2',
+            // Mock createAdmin — tidak panggil callback agar processing tetap true sementara
+            vi.mocked(createAdmin).mockImplementation(() => {});
+
+            await fireEvent.click(screen.getByRole('button', { name: 'Buat Admin' }));
+
+            expect(createAdmin).toHaveBeenCalledTimes(1);
+            expect(createAdmin).toHaveBeenCalledWith(
+                {
+                    role: 'admin',
+                    name: 'Budi Santoso',
+                    username: 'budisan',
+                    email: 'budi@test.com',
+                    password: 'secret123',
+                },
+                expect.any(Object),
+            );
         });
 
-        await waitFor(() => {
-            expect(
-                screen.getByText(/Terdapat 2 kesalahan pada form/i)
-            ).toBeInTheDocument();
-        });
-    });
+        it('mengirim username=null saat username kosong', async () => {
+            render(Create);
 
-    it('errors direset setiap kali submit ulang', async () => {
-        render(UserCreate);
-        await clickRoleButton('Admin');
+            await fillField('Nama', 'Budi');
+            await fillField('Email', 'budi@test.com');
+            await fillField('Password', 'secret123');
 
-        await fireEvent.submit(getForm());
-        const [, , options1] = mockPost.mock.calls[0];
-        options1.onError({ name: 'Error lama.' });
+            vi.mocked(createAdmin).mockImplementation(() => {});
 
-        await waitFor(() => {
-            expect(screen.getByText('Error lama.')).toBeInTheDocument();
+            await fireEvent.click(screen.getByRole('button', { name: 'Buat Admin' }));
+
+            expect(createAdmin).toHaveBeenCalledWith(
+                expect.objectContaining({ username: null }),
+                expect.any(Object),
+            );
         });
 
-        await fireEvent.submit(getForm());
+        it('mengirim password=null saat password kosong', async () => {
+            render(Create);
 
-        expect(screen.queryByText('Error lama.')).not.toBeInTheDocument();
-    });
+            await fillField('Nama', 'Budi');
+            await fillField('Email', 'budi@test.com');
 
-    it('klik "Ganti Role" menghapus errors', async () => {
-        render(UserCreate);
-        await clickRoleButton('Admin');
+            vi.mocked(createAdmin).mockImplementation(() => {});
 
-        await fireEvent.submit(getForm());
-        const [, , options] = mockPost.mock.calls[0];
-        options.onError({ name: 'Error.' });
+            await fireEvent.click(screen.getByRole('button', { name: 'Buat Admin' }));
 
-        await waitFor(() => {
-            expect(screen.getByText('Error.')).toBeInTheDocument();
-        });
-
-        await fireEvent.click(screen.getByRole('button', { name: /Ganti Role/i }));
-
-        expect(screen.queryByText('Error.')).not.toBeInTheDocument();
-    });
-});
-
-// ============================================================
-// KATEGORI 8 — BVA: Processing State
-// ============================================================
-
-describe('Admin/Users/Create.svelte — Processing State', () => {
-    it('tombol submit menampilkan "Menyimpan..." saat processing', async () => {
-        render(UserCreate);
-        await clickRoleButton('Admin');
-
-        await fireEvent.submit(getForm());
-
-        await waitFor(() => {
-            expect(screen.getByText(/Menyimpan/i)).toBeInTheDocument();
+            expect(createAdmin).toHaveBeenCalledWith(
+                expect.objectContaining({ password: null }),
+                expect.any(Object),
+            );
         });
     });
 
-    it('tombol submit disabled saat processing', async () => {
-        render(UserCreate);
-        await clickRoleButton('Admin');
+    // ----------------------------------------------------------
+    // 12.3 INTERACTION — processing state
+    // ----------------------------------------------------------
+    describe('Interaction — Processing', () => {
+        it('menonaktifkan tombol & menampilkan "Menyimpan..." selama processing', async () => {
+            render(Create);
 
-        await fireEvent.submit(getForm());
+            // createAdmin tidak memanggil callback → processing tetap true
+            vi.mocked(createAdmin).mockImplementation(() => {});
 
-        const button = screen.getByRole('button', { name: /Menyimpan/i });
-        expect(button).toBeDisabled();
-    });
+            await fireEvent.click(screen.getByRole('button', { name: 'Buat Admin' }));
+            await syncUI();
 
-    it('setelah onFinish, tombol submit enabled kembali', async () => {
-        render(UserCreate);
-        await clickRoleButton('Admin');
-
-        await fireEvent.submit(getForm());
-
-        const [, , options] = mockPost.mock.calls[0];
-        options.onFinish();
-
-        await waitFor(() => {
-            expect(getSubmitButton()).not.toBeDisabled();
-        });
-    });
-});
-
-// ============================================================
-// KATEGORI 9 — UI CONTRACT: Field Attributes
-// ============================================================
-
-describe('Admin/Users/Create.svelte — Field Attributes', () => {
-    beforeEach(async () => {
-        render(UserCreate);
-        await clickRoleButton('Admin');
-    });
-
-    it('field nama bertipe text', () => {
-        expect(getInput('name').type).toBe('text');
-    });
-
-    it('field email bertipe email', () => {
-        expect(getInput('email').type).toBe('email');
-    });
-
-    it('field nama required', () => {
-        expect(getInput('name').required).toBe(true);
-    });
-
-    it('field email required', () => {
-        expect(getInput('email').required).toBe(true);
-    });
-
-    it('field username TIDAK required (opsional)', () => {
-        expect(getInput('username').required).toBe(false);
-    });
-
-    it('field password TIDAK required (opsional, auto-generate)', () => {
-        expect(getInput('password').required).toBe(false);
-    });
-
-    it('field username punya placeholder yang jelas', () => {
-        expect(getInput('username').placeholder).toBe('username unik');
-    });
-});
-
-// ============================================================
-// KATEGORI 10 — UI CONTRACT: Route & Menu
-// ============================================================
-
-describe('Admin/Users/Create.svelte — Route & Menu', () => {
-    it('menu item "Manajemen User" ada di sidebar', () => {
-        render(UserCreate);
-        const menuLink = screen.getByRole('link', { name: /^Manajemen User$/i });
-        expect(menuLink).toHaveAttribute('href', '/admin/users');
-    });
-
-    it('menu item "Dashboard" ada di sidebar', () => {
-        render(UserCreate);
-        const menuLink = screen.getByRole('link', { name: /^Dashboard$/i });
-        expect(menuLink).toHaveAttribute('href', '/admin/dashboard');
-    });
-
-    it('menu item "Daftar Client" ada di sidebar', () => {
-        render(UserCreate);
-        const menuLink = screen.getByRole('link', { name: /^Daftar Client$/i });
-        expect(menuLink).toHaveAttribute('href', '/admin/clients');
-    });
-});
-
-// ============================================================
-// KATEGORI 11 — FLASH MESSAGE
-// ============================================================
-
-describe('Admin/Users/Create.svelte — Flash Message', () => {
-    it('flash status tersedia di props', () => {
-        mockPageProps.flash = { status: 'User berhasil dibuat.' };
-        render(UserCreate);
-        expect(mockPageProps.flash.status).toBe('User berhasil dibuat.');
-    });
-
-    it('tidak menampilkan flash jika kosong', () => {
-        mockPageProps.flash = {};
-        render(UserCreate);
-        expect(document.querySelector('.bg-green-50')).not.toBeInTheDocument();
-    });
-});
-
-// ============================================================
-// KATEGORI 12 — EDGE CASES
-// ============================================================
-
-describe('Admin/Users/Create.svelte — Edge Cases', () => {
-    it('handle email dengan subdomain', async () => {
-        render(UserCreate);
-        await clickRoleButton('Admin');
-
-        await fireEvent.input(getInput('email'), {
-            target: { value: 'user@mail.example.com' },
+            const btn = screen.getByRole('button', { name: /menyimpan/i });
+            expect(btn).toBeDisabled();
         });
 
-        expect(getInput('email').value).toBe('user@mail.example.com');
+        it('mengaktifkan tombol kembali setelah onFinish dipanggil', async () => {
+            let finishCallback: (() => void) | undefined;
+            vi.mocked(createAdmin).mockImplementation((_payload, options) => {
+                finishCallback = options?.onFinish;
+            });
+
+            render(Create);
+
+            await fireEvent.click(screen.getByRole('button', { name: 'Buat Admin' }));
+            await syncUI();
+
+            expect(screen.getByRole('button', { name: /menyimpan/i })).toBeDisabled();
+
+            finishCallback?.();
+            await syncUI();
+
+            expect(screen.getByRole('button', { name: 'Buat Admin' })).not.toBeDisabled();
+        });
     });
 
-    it('handle nama panjang', async () => {
-        render(UserCreate);
-        await clickRoleButton('Admin');
+    // ----------------------------------------------------------
+    // 12.4 INTERACTION — error handling
+    // ----------------------------------------------------------
+    describe('Interaction — Error Handling', () => {
+        it('menampilkan error banner & error field saat onError dipanggil', async () => {
+            vi.mocked(createAdmin).mockImplementation((_payload, options) => {
+                options?.onError?.({
+                    name: 'Nama wajib diisi',
+                    email: 'Email tidak valid',
+                });
+                options?.onFinish?.();
+            });
 
-        const longName = 'a'.repeat(100);
-        await fireEvent.input(getInput('name'), {
-            target: { value: longName },
+            render(Create);
+
+            await fireEvent.click(screen.getByRole('button', { name: 'Buat Admin' }));
+            await syncUI();
+
+            // Error banner
+            expect(screen.getByText(/Terdapat 2 kesalahan pada form/i)).toBeInTheDocument();
+
+            // Error field
+            expect(screen.getByText('Nama wajib diisi')).toBeInTheDocument();
+            expect(screen.getByText('Email tidak valid')).toBeInTheDocument();
         });
 
-        expect(getInput('name').value).toBe(longName);
+        it('menampilkan toast error saat onError dipanggil', async () => {
+            vi.mocked(createAdmin).mockImplementation((_payload, options) => {
+                options?.onError?.({ name: 'Required' });
+                options?.onFinish?.();
+            });
+
+            render(Create);
+
+            await fireEvent.click(screen.getByRole('button', { name: 'Buat Admin' }));
+            await syncUI();
+
+            expect(showToast).toHaveBeenCalledWith(
+                'Terdapat kesalahan pada form.',
+                'error',
+            );
+        });
+
+        it('menampilkan toast success saat onSuccess dipanggil', async () => {
+            vi.mocked(createAdmin).mockImplementation((_payload, options) => {
+                options?.onSuccess?.();
+                options?.onFinish?.();
+            });
+
+            render(Create);
+
+            await fireEvent.click(screen.getByRole('button', { name: 'Buat Admin' }));
+            await syncUI();
+
+            expect(showToast).toHaveBeenCalledWith(
+                'Akun admin berhasil dibuat.',
+                'success',
+            );
+        });
+
+        it('menghapus error banner saat submit ulang', async () => {
+            let callCount = 0;
+            vi.mocked(createAdmin).mockImplementation((_payload, options) => {
+                callCount++;
+                if (callCount === 1) {
+                    options?.onError?.({ name: 'Required' });
+                }
+                options?.onFinish?.();
+            });
+
+            render(Create);
+
+            // Submit pertama → error
+            await fireEvent.click(screen.getByRole('button', { name: 'Buat Admin' }));
+            await syncUI();
+            expect(screen.getByText(/Terdapat 1 kesalahan/i)).toBeInTheDocument();
+
+            // Submit kedua → errors reset
+            await fireEvent.click(screen.getByRole('button', { name: 'Buat Admin' }));
+            await syncUI();
+            expect(screen.queryByText(/kesalahan pada form/i)).not.toBeInTheDocument();
+        });
     });
 
-    it('pilih admin lalu ganti ke mitra menampilkan field mitra', async () => {
-        render(UserCreate);
+    // ----------------------------------------------------------
+    // 12.5 REACTIVITY — errorCount derived
+    // ----------------------------------------------------------
+    describe('Reactivity — Error Count', () => {
+        it('menampilkan jumlah error yang akurat di banner', async () => {
+            vi.mocked(createAdmin).mockImplementation((_payload, options) => {
+                options?.onError?.({
+                    name: 'Required',
+                    email: 'Invalid',
+                    password: 'Too short',
+                });
+                options?.onFinish?.();
+            });
 
-        // Pilih admin dulu
-        await clickRoleButton('Admin');
-        expect(document.getElementById('nama_penyedia_usaha')).not.toBeInTheDocument();
+            render(Create);
 
-        // Ganti role ke mitra
-        await fireEvent.click(screen.getByRole('button', { name: /Ganti Role/i }));
-        await clickRoleButton('Mitra');
+            await fireEvent.click(screen.getByRole('button', { name: 'Buat Admin' }));
+            await syncUI();
 
-        expect(document.getElementById('nama_penyedia_usaha')).toBeInTheDocument();
-    });
-});
-
-// ============================================================
-// KATEGORI 13 — STEPPER NAVIGATION
-// ============================================================
-
-describe('Admin/Users/Create.svelte — Stepper Navigation', () => {
-    it('step 1 tampil saat pertama render', () => {
-        render(UserCreate);
-        expect(
-            screen.getByRole('heading', { name: /Pilih Role User/i })
-        ).toBeInTheDocument();
-    });
-
-    it('setelah pilih role, pindah ke step 2', async () => {
-        render(UserCreate);
-        await clickRoleButton('Admin');
-
-        expect(
-            screen.queryByRole('heading', { name: /Pilih Role User/i })
-        ).not.toBeInTheDocument();
-        expect(document.getElementById('name')).toBeInTheDocument();
-    });
-
-    it('tombol "Kembali" kembali ke step 1', async () => {
-        render(UserCreate);
-        await clickRoleButton('Admin');
-
-        const kembaliBtn = screen.getByRole('button', { name: /^Kembali$/i });
-        await fireEvent.click(kembaliBtn);
-
-        expect(
-            screen.getByRole('heading', { name: /Pilih Role User/i })
-        ).toBeInTheDocument();
+            expect(screen.getByText(/Terdapat 3 kesalahan/i)).toBeInTheDocument();
+        });
     });
 });

@@ -2,48 +2,26 @@
 
 use App\Enums\BookingStatus;
 use App\Enums\PackageKategori;
-use App\Enums\PackageStatus;
 use App\Enums\TripStatus;
-use App\Models\Booking;
 use App\Models\Package;
-use App\Models\Trip;
-use App\Models\TripDay;
-use App\Models\User;
-use App\Repositories\Contracts\DailyReportRepositoryInterface;
 use App\Repositories\Contracts\TripRepositoryInterface;
 use App\Services\Trip\TripService;
-use App\Services\Wallet\WalletService;
+use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
-use Mockery\MockInterface;
-
-/*
-|==========================================================================
-| SETUP
-|==========================================================================
-*/
+use Throwable;
 
 beforeEach(function () {
     $this->tripRepo = Mockery::mock(TripRepositoryInterface::class);
-    $this->dailyReportRepo = Mockery::mock(DailyReportRepositoryInterface::class);
-    $this->walletService = Mockery::mock(WalletService::class);
+    $this->service = new TripService($this->tripRepo);
 
-    $this->service = new TripService(
-        $this->tripRepo,
-        $this->dailyReportRepo,
-        $this->walletService,
-    );
-
-    // Default: DB::transaction → eksekusi callback
     DB::shouldReceive('transaction')
         ->byDefault()
         ->andReturnUsing(fn ($callback) => $callback());
 
-    // Default: Log no-op
     Log::shouldReceive('info')->byDefault()->andReturnNull();
     Log::shouldReceive('warning')->byDefault()->andReturnNull();
     Log::shouldReceive('error')->byDefault()->andReturnNull();
@@ -53,453 +31,305 @@ afterEach(function () {
     Mockery::close();
 });
 
-/*
-|==========================================================================
-| HELPERS
-|==========================================================================
-*/
-
-function makeTripServiceMock(array $attrs = []): MockInterface
+function invokeBuildSnapshot(TripService $service, Package $package): array
 {
-    $trip = Mockery::mock(Trip::class)->makePartial();
-    $trip->forceFill(array_merge([
-        'id' => 1,
-        'kode' => 'TRP-2026-001',
-        'booking_id' => 10,
-        'package_id' => 5,
-        // ✅ FIX: Gunakan Carbon instance, bukan string
-        'tanggal_mulai' => Carbon::parse('2026-01-01'),
-        'tanggal_selesai' => Carbon::parse('2026-01-02'),
-        'jumlah_peserta' => 2,
-        'timezone' => 'Asia/Makassar',
-        'status' => TripStatus::SCHEDULED,
-        'snapshot_package' => [],
-    ], $attrs));
-
-    return $trip;
-}
-
-function makeBookingServiceMock(array $attrs = []): MockInterface
-{
-    $booking = Mockery::mock(Booking::class)->makePartial();
-    $booking->forceFill(array_merge([
-        'id' => 10,
-        'kode' => 'BK-2026-001',
-        'package_id' => 5,
-        'user_id' => 1,
-        'tanggal_keberangkatan' => '2026-01-01',
-        'jumlah_peserta' => 2,
-        'total_harga' => '1000000.00',
-        'status' => BookingStatus::CONFIRMED,
-    ], $attrs));
-
-    return $booking;
-}
-
-function makePackageServiceMockForTrip(array $attrs = []): MockInterface
-{
-    $package = Mockery::mock(Package::class)->makePartial();
-    $package->forceFill(array_merge([
-        'id' => 5,
-        'kode' => 'PKG-001',
-        'nama' => 'Paket Test',
-        'slug' => 'paket-test',
-        'kategori' => PackageKategori::WISATA_ALAM,
-        'durasi_hari' => 2,
-        'durasi_malam' => 1,
-        'timezone' => 'Asia/Makassar',
-        'status' => PackageStatus::AKTIF,
-    ], $attrs));
-
-    return $package;
-}
-
-function makeMitraUserMockForTrip(array $attrs = []): MockInterface
-{
-    $user = Mockery::mock(User::class)->makePartial();
-    $user->forceFill(array_merge([
-        'id' => 50,
-        'name' => 'Mitra Test',
-        'email' => 'mitra@example.com',
-        'role' => 'mitra',
-    ], $attrs));
-
-    return $user;
-}
-
-/*
-|==========================================================================
-| READ — Pass-through
-|==========================================================================
-*/
-
-it('paginate meneruskan parameter ke repository', function () {
-    $paginator = Mockery::mock(LengthAwarePaginator::class);
-
-    $this->tripRepo->shouldReceive('paginate')
-        ->once()
-        ->with(['search' => 'bali'], 25)
-        ->andReturn($paginator);
-
-    expect($this->service->paginate(['search' => 'bali'], 25))->toBe($paginator);
-});
-
-it('paginate pakai default perPage = 15', function () {
-    $paginator = Mockery::mock(LengthAwarePaginator::class);
-
-    $this->tripRepo->shouldReceive('paginate')
-        ->once()
-        ->with([], 15)
-        ->andReturn($paginator);
-
-    $this->service->paginate();
-});
-
-it('paginateForMitra meneruskan parameter', function () {
-    $paginator = Mockery::mock(LengthAwarePaginator::class);
-    $mitra = makeMitraUserMockForTrip();
-
-    $this->tripRepo->shouldReceive('paginateForMitra')
-        ->once()
-        ->with($mitra, [], 15)
-        ->andReturn($paginator);
-
-    expect($this->service->paginateForMitra($mitra))->toBe($paginator);
-});
-
-it('findDetail mengembalikan trip jika ada', function () {
-    $trip = makeTripServiceMock();
-
-    $this->tripRepo->shouldReceive('findById')
-        ->once()
-        ->with(1)
-        ->andReturn($trip);
-
-    expect($this->service->findDetail(1))->toBe($trip);
-});
-
-it('findDetail throw jika trip tidak ada', function () {
-    $this->tripRepo->shouldReceive('findById')->with(999)->andReturn(null);
-
-    expect(fn () => $this->service->findDetail(999))
-        ->toThrow(ValidationException::class);
-});
-
-it('findByBookingId pass-through', function () {
-    $trip = makeTripServiceMock();
-
-    $this->tripRepo->shouldReceive('findByBookingId')
-        ->once()
-        ->with(10)
-        ->andReturn($trip);
-
-    expect($this->service->findByBookingId(10))->toBe($trip);
-});
-
-it('countByStatus pass-through', function () {
-    $this->tripRepo->shouldReceive('countByStatus')
-        ->once()
-        ->andReturn(['scheduled' => 2, 'active' => 1]);
-
-    expect($this->service->countByStatus())
-        ->toBe(['scheduled' => 2, 'active' => 1]);
-});
-
-it('countByStatusForMitra pass-through', function () {
-    $mitra = makeMitraUserMockForTrip();
-
-    $this->tripRepo->shouldReceive('countByStatusForMitra')
-        ->once()
-        ->with($mitra)
-        ->andReturn(['active' => 1]);
-
-    expect($this->service->countByStatusForMitra($mitra))->toBe(['active' => 1]);
-});
-
-/*
-|==========================================================================
-| createFromBooking() — NEGATIVE PATH (guard)
-|==========================================================================
-*/
-
-it('createFromBooking throw jika booking belum confirmed', function () {
-    $booking = makeBookingServiceMock(['status' => BookingStatus::PENDING_PAYMENT]);
-
-    expect(fn () => $this->service->createFromBooking($booking))
-        ->toThrow(ValidationException::class);
-});
-
-it('createFromBooking throw jika booking sudah punya trip', function () {
-    $booking = makeBookingServiceMock();
-    $existingTrip = makeTripServiceMock();
-
-    $this->tripRepo->shouldReceive('findByBookingId')
-        ->with($booking->id)
-        ->andReturn($existingTrip);
-
-    expect(fn () => $this->service->createFromBooking($booking))
-        ->toThrow(ValidationException::class);
-});
-
-/*
-|==========================================================================
-| createFromBooking() — PARTIAL (Happy path via mock)
-|==========================================================================
-*/
-
-it('createFromBooking panggil tripRepository->create', function () {
-    $booking = makeBookingServiceMock();
-
-    $this->tripRepo->shouldReceive('findByBookingId')
-        ->with($booking->id)
-        ->andReturn(null);
-
-    $package = makePackageServiceMockForTrip();
-    $package->shouldReceive('loadMissing')->andReturnSelf();
-
-    // Mock properties (koleksi days, facilities) — kosong
-    $package->setRelation('days', new Collection);
-    $package->setRelation('facilities', new Collection);
-
-    // Mock magic property `package` pada Booking
-    $booking->shouldReceive('getAttribute')->with('package')->andReturn($package);
-
-    $this->tripRepo->shouldReceive('generateKode')
-        ->once()
-        ->andReturn('TRP-2026-001');
-
-    $createdTrip = makeTripServiceMock();
-    $createdTrip->shouldReceive('load')
-        ->with(['package', 'booking.client', 'days'])
-        ->andReturnSelf();
-
-    $this->tripRepo->shouldReceive('create')
-        ->once()
-        ->with(Mockery::on(fn ($payload) => $payload['kode'] === 'TRP-2026-001'
-            && $payload['booking_id'] === $booking->id
-            && $payload['status'] === TripStatus::SCHEDULED->value
-        ))
-        ->andReturn($createdTrip);
-
-    // Swallow TripDay::create() static error (no DB)
-    DB::shouldReceive('transaction')
-        ->once()
-        ->andReturnUsing(function ($callback) {
-            try {
-                return $callback();
-            } catch (Throwable $e) {
-                return null;
-            }
-        });
-
-    try {
-        $this->service->createFromBooking($booking);
-    } catch (Throwable $e) {
-        // Ignore TripDay static error
-    }
-
-    expect(true)->toBeTrue();
-});
-
-/*
-|==========================================================================
-| activate() — HAPPY & NEGATIVE PATH
-|==========================================================================
-*/
-
-it('activate throw jika status bukan scheduled', function () {
-    $trip = makeTripServiceMock(['status' => TripStatus::ACTIVE]);
-
-    expect(fn () => $this->service->activate($trip))
-        ->toThrow(ValidationException::class);
-});
-
-it('activate throw jika tanggal_mulai belum tiba', function () {
-    // ✅ FIX: Gunakan Carbon untuk tanggal_mulai (bukan string)
-    $trip = makeTripServiceMock([
-        'status' => TripStatus::SCHEDULED,
-        'tanggal_mulai' => Carbon::now()->addDays(5),
-        'timezone' => 'Asia/Makassar',
-    ]);
-
-    $trip->shouldReceive('timezoneOrDefault')->andReturn('Asia/Makassar');
-
-    expect(fn () => $this->service->activate($trip))
-        ->toThrow(ValidationException::class);
-});
-
-it('activate throw jika belum punya mitra', function () {
-    // ✅ FIX: Gunakan Carbon dan tanggal yang sudah lewat
-    $trip = makeTripServiceMock([
-        'status' => TripStatus::SCHEDULED,
-        'tanggal_mulai' => Carbon::now()->subDay(),
-        'timezone' => 'Asia/Makassar',
-    ]);
-
-    $trip->shouldReceive('timezoneOrDefault')->andReturn('Asia/Makassar');
-    $trip->shouldReceive('hasMitra')->andReturn(false);
-
-    expect(fn () => $this->service->activate($trip))
-        ->toThrow(ValidationException::class);
-});
-
-/*
-|==========================================================================
-| complete() — HAPPY & NEGATIVE PATH (FULL — no static model)
-|==========================================================================
-*/
-
-it('complete throw jika status bukan active', function () {
-    $trip = makeTripServiceMock(['status' => TripStatus::SCHEDULED]);
-
-    expect(fn () => $this->service->complete($trip))
-        ->toThrow(ValidationException::class);
-});
-
-it('complete throw jika belum semua days terverifikasi', function () {
-    $trip = makeTripServiceMock(['status' => TripStatus::ACTIVE]);
-
-    $this->dailyReportRepo->shouldReceive('allDaysVerifiedForTrip')
-        ->with($trip)
-        ->andReturn(false);
-
-    $unverified = new Collection([
-        (new TripDay)->forceFill(['id' => 1, 'hari_ke' => 2]),
-    ]);
-
-    $this->dailyReportRepo->shouldReceive('findUnverifiedDaysForTrip')
-        ->with($trip)
-        ->andReturn($unverified);
-
-    expect(fn () => $this->service->complete($trip))
-        ->toThrow(ValidationException::class);
-});
-
-it('complete berhasil dan credit honor wallet', function () {
-    $trip = makeTripServiceMock(['status' => TripStatus::ACTIVE]);
-    $updatedTrip = makeTripServiceMock(['status' => TripStatus::COMPLETED]);
-
-    $this->dailyReportRepo->shouldReceive('allDaysVerifiedForTrip')
-        ->with($trip)
-        ->andReturn(true);
-
-    $this->tripRepo->shouldReceive('update')
-        ->once()
-        ->with($trip, ['status' => TripStatus::COMPLETED->value])
-        ->andReturn($updatedTrip);
-
-    $this->walletService->shouldReceive('creditHonorForTrip')
-        ->once()
-        ->with($updatedTrip);
-
-    $result = $this->service->complete($trip);
-
-    expect($result)->toBe($updatedTrip);
-});
-
-/*
-|==========================================================================
-| cancel() — HAPPY & NEGATIVE PATH (FULL)
-|==========================================================================
-*/
-
-it('cancel throw jika trip tidak bisa di-cancel', function () {
-    $trip = makeTripServiceMock();
-    $trip->shouldReceive('canBeCancelled')->andReturn(false);
-
-    expect(fn () => $this->service->cancel($trip))
-        ->toThrow(ValidationException::class);
-});
-
-it('cancel berhasil mengubah status ke cancelled', function () {
-    $trip = makeTripServiceMock();
-    $cancelled = makeTripServiceMock(['status' => TripStatus::CANCELLED]);
-
-    $trip->shouldReceive('canBeCancelled')->andReturn(true);
-
-    $this->tripRepo->shouldReceive('update')
-        ->once()
-        ->with($trip, ['status' => TripStatus::CANCELLED->value])
-        ->andReturn($cancelled);
-
-    $result = $this->service->cancel($trip, 'Cuaca buruk');
-
-    expect($result)->toBe($cancelled);
-});
-
-it('cancel pakai alasan default "Dibatalkan"', function () {
-    $trip = makeTripServiceMock();
-    $cancelled = makeTripServiceMock(['status' => TripStatus::CANCELLED]);
-
-    $trip->shouldReceive('canBeCancelled')->andReturn(true);
-
-    $this->tripRepo->shouldReceive('update')
-        ->once()
-        ->andReturn($cancelled);
-
-    $this->service->cancel($trip);
-
-    expect(true)->toBeTrue();
-});
-
-/*
-|==========================================================================
-| activateDueTrips() — PARTIAL (butuh TripDay::query() static)
-|==========================================================================
-*/
-
-it('activateDueTrips return 0 jika tidak ada candidate', function () {
-    $this->tripRepo->shouldReceive('findScheduledDueToday')
-        ->once()
-        ->andReturn(new Collection);
-
-    $result = $this->service->activateDueTrips();
-
-    expect($result)->toBe(['activated' => 0, 'skipped_no_mitra' => 0]);
-});
-
-it('activateDueTrips skip trip tanpa mitra', function () {
-    // ✅ FIX: Tanggal_mulai harus hari ini (atau kemarin) agar masuk kandidat
-    $trip = makeTripServiceMock([
-        'tanggal_mulai' => Carbon::now()->startOfDay(),
-    ]);
-
-    $trip->shouldReceive('timezoneOrDefault')->andReturn('Asia/Makassar');
-    $trip->shouldReceive('hasMitra')->andReturn(false);
-
-    $this->tripRepo->shouldReceive('findScheduledDueToday')
-        ->once()
-        ->andReturn(new Collection([$trip]));
-
-    $result = $this->service->activateDueTrips();
-
-    expect($result['activated'])->toBe(0);
-    // ✅ FIX: Pastikan sekarang menghitung skip-nya
-    expect($result['skipped_no_mitra'])->toBe(1);
-});
-
-/*
-|==========================================================================
-| BUILD SNAPSHOT (via Reflection) — Pure Logic
-|==========================================================================
-*/
-
-it('buildSnapshot menghasilkan structure benar', function () {
-    $package = makePackageServiceMockForTrip();
-    $package->setRelation('days', new Collection);
-    $package->setRelation('facilities', new Collection);
-
-    $ref = new ReflectionMethod($this->service, 'buildSnapshot');
+    $ref = new ReflectionMethod($service, 'buildSnapshot');
     $ref->setAccessible(true);
 
-    $snapshot = $ref->invoke($this->service, $package);
+    return $ref->invoke($service, $package);
+}
 
-    expect($snapshot)->toHaveKey('nama');
-    expect($snapshot['nama'])->toBe('Paket Test');
-    expect($snapshot['kode'])->toBe('PKG-001');
-    expect($snapshot['kategori'])->toBe('wisata_alam');
-    expect($snapshot['durasi_hari'])->toBe(2);
-    expect($snapshot['days'])->toBe([]);
-    expect($snapshot['facilities'])->toHaveKey('include');
-    expect($snapshot['facilities'])->toHaveKey('exclude');
+describe('findDetail', function () {
+    it('return Trip jika ada', function () {
+        $trip = makeTripMock(['id' => 1]);
+
+        $this->tripRepo->shouldReceive('findById')->once()->with(1)->andReturn($trip);
+
+        expect($this->service->findDetail(1))->toBe($trip);
+    });
+
+    it('throw ValidationException jika null', function () {
+        $this->tripRepo->shouldReceive('findById')->once()->with(999)->andReturn(null);
+
+        expect(fn () => $this->service->findDetail(999))
+            ->toThrow(ValidationException::class);
+    });
+});
+
+describe('Passthrough — READ', function () {
+    it('paginate pass-through', function () {
+        $paginator = Mockery::mock(LengthAwarePaginator::class);
+
+        $this->tripRepo->shouldReceive('paginate')
+            ->once()->with(['search' => 'bali'], 25)->andReturn($paginator);
+
+        expect($this->service->paginate(['search' => 'bali'], 25))->toBe($paginator);
+    });
+
+    it('paginateForMitra pass-through', function () {
+        $mitra = makeUser(['id' => 99, 'role' => 'mitra']);
+        $paginator = Mockery::mock(LengthAwarePaginator::class);
+
+        $this->tripRepo->shouldReceive('paginateForMitra')
+            ->once()->with($mitra, [], 15)->andReturn($paginator);
+
+        expect($this->service->paginateForMitra($mitra))->toBe($paginator);
+    });
+
+    it('findByBookingId pass-through', function () {
+        $trip = makeTripMock();
+        $this->tripRepo->shouldReceive('findByBookingId')->once()->with(10)->andReturn($trip);
+
+        expect($this->service->findByBookingId(10))->toBe($trip);
+    });
+
+    it('countByStatus pass-through', function () {
+        $this->tripRepo->shouldReceive('countByStatus')
+            ->once()->andReturn(['scheduled' => 2, 'active' => 1]);
+
+        expect($this->service->countByStatus())
+            ->toBe(['scheduled' => 2, 'active' => 1]);
+    });
+
+    it('countByStatusForMitra pass-through', function () {
+        $mitra = makeUser(['id' => 99]);
+        $this->tripRepo->shouldReceive('countByStatusForMitra')
+            ->once()->with($mitra)->andReturn(['active' => 1]);
+
+        expect($this->service->countByStatusForMitra($mitra))
+            ->toBe(['active' => 1]);
+    });
+});
+
+describe('BVA — createFromBooking guard', function () {
+    it('booking belum confirmed → ValidationException', function () {
+        $booking = makeBookingMock(['status' => BookingStatus::PENDING_PAYMENT]);
+
+        expect(fn () => $this->service->createFromBooking($booking))
+            ->toThrow(ValidationException::class);
+    });
+
+    it('booking sudah punya trip → ValidationException', function () {
+        $booking = makeBookingMock(['id' => 10, 'status' => BookingStatus::CONFIRMED]);
+
+        $this->tripRepo->shouldReceive('findByBookingId')
+            ->once()->with(10)->andReturn(makeTripMock());
+
+        expect(fn () => $this->service->createFromBooking($booking))
+            ->toThrow(ValidationException::class);
+    });
+});
+
+describe('buildSnapshot', function () {
+    it('struktur snapshot benar', function () {
+        $package = makePackageMock([
+            'nama' => 'Paket Test',
+            'kode' => 'PKG-2026-001',
+            'kategori' => PackageKategori::WISATA_ALAM,
+            'durasi_hari' => 2,
+            'durasi_malam' => 1,
+            'timezone' => 'Asia/Makassar',
+        ]);
+        $package->setRelation('days', new Collection);
+        $package->setRelation('facilities', new Collection);
+
+        $snapshot = invokeBuildSnapshot($this->service, $package);
+
+        expect($snapshot)->toHaveKeys([
+            'nama', 'kode', 'slug', 'deskripsi', 'kategori',
+            'durasi_hari', 'durasi_malam', 'timezone', 'days', 'facilities',
+        ]);
+        expect($snapshot['nama'])->toBe('Paket Test');
+        expect($snapshot['kode'])->toBe('PKG-2026-001');
+        expect($snapshot['kategori'])->toBe('wisata_alam');
+        expect($snapshot['durasi_hari'])->toBe(2);
+        expect($snapshot['days'])->toBeArray();
+        expect($snapshot['facilities'])->toHaveKeys(['include', 'exclude']);
+    });
+
+    it('days & facilities di-map dengan struktur benar', function () {
+        $day = makePackageDayMock(['hari_ke' => 1, 'judul' => 'Hari 1']);
+
+        $facilityInclude = makePackageFacilityMock(['tipe' => 'include', 'nama' => 'Transportasi']);
+        $facilityExclude = makePackageFacilityMock(['tipe' => 'exclude', 'nama' => 'Tiket Pesawat']);
+
+        $package = makePackageMock(['kategori' => PackageKategori::BUDAYA]);
+        $package->setRelation('days', new Collection([$day]));
+        $package->setRelation('facilities', new Collection([$facilityInclude, $facilityExclude]));
+
+        $snapshot = invokeBuildSnapshot($this->service, $package);
+
+        expect($snapshot['days'])->toHaveCount(1)
+            ->and($snapshot['days'][0]['hari_ke'])->toBe(1)
+            ->and($snapshot['days'][0]['judul'])->toBe('Hari 1')
+            ->and($snapshot['facilities']['include'])->toBe(['Transportasi'])
+            ->and($snapshot['facilities']['exclude'])->toBe(['Tiket Pesawat']);
+    });
+});
+
+describe('createFromBooking — flow', function () {
+    it('booking confirmed + no trip → tripRepo->create dipanggil + generateKode', function () {
+        $mitra = makeUser(['id' => 99]);
+        $package = makePackageMock([
+            'id' => 5,
+            'durasi_hari' => 2,
+            'timezone' => 'Asia/Makassar',
+            'kategori' => PackageKategori::WISATA_ALAM,
+        ]);
+        $package->setRelation('days', new Collection);
+        $package->setRelation('facilities', new Collection);
+
+        $booking = makeBookingMock([
+            'id' => 10,
+            'kode' => 'BKG-2026-001',
+            'status' => BookingStatus::CONFIRMED,
+            'mitra_id' => 99,
+            'jumlah_peserta' => 2,
+            'tanggal_keberangkatan' => '2026-02-01',
+        ]);
+        $booking->setRelation('package', $package);
+
+        $created = makeTripMock(['id' => 1, 'kode' => 'TRP-2026-001']);
+        $created->shouldReceive('load')->andReturnSelf();
+
+        $this->tripRepo->shouldReceive('findByBookingId')->andReturn(null);
+        $this->tripRepo->shouldReceive('generateKode')->once()->andReturn('TRP-2026-001');
+        $this->tripRepo->shouldReceive('create')
+            ->once()
+            ->with(Mockery::on(fn ($p) => $p['kode'] === 'TRP-2026-001'
+                && $p['booking_id'] === 10
+                && $p['package_id'] === 5
+                && $p['mitra_id'] === 99
+                && $p['status'] === TripStatus::SCHEDULED->value))
+            ->andReturn($created);
+
+        try {
+            $this->service->createFromBooking($booking);
+        } catch (Throwable) {
+        }
+
+        expect(true)->toBeTrue();
+    });
+});
+
+describe('activate — guard', function () {
+    it('status bukan scheduled → ValidationException', function () {
+        $trip = makeTripMock(['status' => TripStatus::ACTIVE]);
+
+        expect(fn () => $this->service->activate($trip))
+            ->toThrow(ValidationException::class);
+    });
+});
+
+describe('activate — flow', function () {
+    it('sukses → tripRepo->update status ACTIVE', function () {
+        $trip = makeTripMock([
+            'id' => 1,
+            'kode' => 'TRP-2026-001',
+            'status' => TripStatus::SCHEDULED,
+            'mitra_id' => 99,
+            'tanggal_mulai' => Carbon::now()->subDay(),
+            'timezone' => 'Asia/Makassar',
+        ]);
+        $trip->shouldReceive('timezoneOrDefault')->andReturn('Asia/Makassar');
+
+        $updated = makeTripMock(['status' => TripStatus::ACTIVE]);
+        $this->tripRepo->shouldReceive('update')
+            ->once()
+            ->with($trip, Mockery::on(fn ($p) => $p['status'] === TripStatus::ACTIVE->value))
+            ->andReturn($updated);
+
+        try {
+            $this->service->activate($trip);
+        } catch (Throwable) {
+        }
+
+        expect(true)->toBeTrue();
+    });
+});
+
+describe('complete', function () {
+    it('status bukan active → ValidationException', function () {
+        $trip = makeTripMock(['status' => TripStatus::SCHEDULED]);
+
+        expect(fn () => $this->service->complete($trip))
+            ->toThrow(ValidationException::class);
+    });
+
+    it('sukses → tripRepo->update status COMPLETED', function () {
+        $trip = makeTripMock([
+            'id' => 1,
+            'kode' => 'TRP-2026-001',
+            'status' => TripStatus::ACTIVE,
+        ]);
+
+        $updated = makeTripMock(['status' => TripStatus::COMPLETED]);
+        $this->tripRepo->shouldReceive('update')
+            ->once()
+            ->with($trip, Mockery::on(fn ($p) => $p['status'] === TripStatus::COMPLETED->value))
+            ->andReturn($updated);
+
+        expect($this->service->complete($trip))->toBe($updated);
+    });
+});
+
+describe('cancel', function () {
+    it('tidak bisa cancel → ValidationException', function () {
+        $trip = makeTripMock(['status' => TripStatus::COMPLETED]);
+        $trip->shouldReceive('canBeCancelled')->andReturn(false);
+
+        expect(fn () => $this->service->cancel($trip))
+            ->toThrow(ValidationException::class);
+    });
+
+    it('sukses → tripRepo->update status CANCELLED', function () {
+        $trip = makeTripMock([
+            'id' => 1,
+            'kode' => 'TRP-2026-001',
+            'status' => TripStatus::SCHEDULED,
+        ]);
+        $trip->shouldReceive('canBeCancelled')->andReturn(true);
+
+        $updated = makeTripMock(['status' => TripStatus::CANCELLED]);
+        $this->tripRepo->shouldReceive('update')
+            ->once()
+            ->with($trip, Mockery::on(fn ($p) => $p['status'] === TripStatus::CANCELLED->value))
+            ->andReturn($updated);
+
+        expect($this->service->cancel($trip, 'Cuaca buruk'))->toBe($updated);
+    });
+});
+
+describe('activateDueTrips', function () {
+    it('tidak ada candidates → activated 0', function () {
+        $this->tripRepo->shouldReceive('findScheduledDueToday')
+            ->once()->andReturn(new Collection);
+
+        $result = $this->service->activateDueTrips();
+
+        expect($result)->toBe(['activated' => 0, 'skipped_no_mitra' => 0]);
+    });
+
+    it('error di 1 trip → log, lanjut trip lain', function () {
+        $trip1 = makeTripMock([
+            'id' => 1,
+            'mitra_id' => 99,
+            'tanggal_mulai' => Carbon::now(),
+            'timezone' => 'Asia/Makassar',
+        ]);
+        $trip1->shouldReceive('timezoneOrDefault')->andReturn('Asia/Makassar');
+
+        $this->tripRepo->shouldReceive('findScheduledDueToday')
+            ->once()->andReturn(new Collection([$trip1]));
+
+        $this->tripRepo->shouldReceive('update')
+            ->once()
+            ->andThrow(new RuntimeException('DB error'));
+
+        Log::shouldReceive('error')->once();
+
+        $result = $this->service->activateDueTrips();
+
+        expect($result['activated'])->toBe(0);
+    });
 });

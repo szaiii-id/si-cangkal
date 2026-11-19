@@ -31,7 +31,7 @@ enum RefundReason: string
             self::REQUESTED_BY_CUSTOMER => 'Client mengajukan pembatalan dan disetujui mitra.',
             self::DUPLICATE => 'Pembayaran terjadi lebih dari sekali untuk booking yang sama.',
             self::FRAUDULENT => 'Transaksi terindikasi penipuan atau penyalahgunaan.',
-            self::OTHERS => 'Alasan lain — wajib isi catatan internal untuk audit.',
+            self::OTHERS => 'Alasan lain - wajib isi catatan internal untuk audit.',
         };
     }
 
@@ -56,11 +56,17 @@ enum RefundReason: string
         return in_array($this, [self::FRAUDULENT, self::DUPLICATE], true);
     }
 
+    /**
+     * @return array<int, string>
+     */
     public static function values(): array
     {
         return array_map(fn (self $case) => $case->value, self::cases());
     }
 
+    /**
+     * @return array<string, string>
+     */
     public static function options(): array
     {
         return collect(self::cases())->mapWithKeys(fn (self $case) => [$case->value => $case->label()])->all();

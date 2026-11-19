@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CreateUserRequest;
 use App\Http\Requests\Admin\ListUserRequest;
 use App\Http\Requests\Admin\UpdateUserRequest;
+use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\User\UserService;
 use Illuminate\Database\QueryException;
@@ -20,9 +21,6 @@ class UserController extends Controller
         protected UserService $userService,
     ) {}
 
-    /**
-     * Daftar user (admin + mitra) dengan search & pagination.
-     */
     public function index(ListUserRequest $request): InertiaResponse
     {
         $users = $this->userService->paginateByRoles(
@@ -41,21 +39,28 @@ class UserController extends Controller
     }
 
     /**
-     * Form pilih role (step 1).
+     * Detail user (Mitra/Admin).
      */
+    public function show(User $user): InertiaResponse
+    {
+        abort_if($user->role === 'client', 404);
+
+        $user->load(['profile', 'bankAccounts']);
+
+        return Inertia::render('Admin/Users/Show', [
+            'user' => (new UserResource($user))->resolve(),
+        ]);
+    }
+
     public function create(): InertiaResponse
     {
         return Inertia::render('Admin/Users/Create');
     }
 
-    /**
-     * Proses buat user baru (HANYA admin).
-     */
     public function store(CreateUserRequest $request): RedirectResponse
     {
         $result = $this->userService->createAdmin($request->validated());
 
-        // Simpan kredensial di session flash (hanya bisa dilihat 1x)
         return redirect()
             ->route('admin.users.index')
             ->with('credentials', [
@@ -68,12 +73,8 @@ class UserController extends Controller
             ->with('status', 'User admin berhasil dibuat.');
     }
 
-    /**
-     * Form edit user.
-     */
     public function edit(User $user): InertiaResponse
     {
-        // Cegah edit client dari sini (client read-only)
         abort_if($user->role === 'client', 404);
 
         $user->load('profile');
@@ -83,9 +84,6 @@ class UserController extends Controller
         ]);
     }
 
-    /**
-     * Proses update user.
-     */
     public function update(UpdateUserRequest $request, User $user): RedirectResponse
     {
         abort_if($user->role === 'client', 404);
@@ -101,9 +99,6 @@ class UserController extends Controller
             ->with('status', 'User berhasil diperbarui.');
     }
 
-    /**
-     * Hapus user.
-     */
     public function destroy(User $user): RedirectResponse
     {
         abort_if($user->role === 'client', 404);
@@ -131,9 +126,6 @@ class UserController extends Controller
         }
     }
 
-    /**
-     * Reset password user, tampilkan kredensial baru.
-     */
     public function resetPassword(User $user): RedirectResponse
     {
         abort_if($user->role === 'client', 404);

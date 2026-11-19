@@ -64,7 +64,6 @@ final class ClientSeeder extends Seeder
      * `null` (tidak mengubah apa pun). Caller menghitung sebagai "dilewati".
      *
      * @param  array{name: string, username: string, email: string}  $data
-     * @return User|null
      */
     private function createClientIfMissing(array $data): ?User
     {

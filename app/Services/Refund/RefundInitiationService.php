@@ -10,7 +10,7 @@ use App\Models\Booking;
 use App\Models\Payment;
 use App\Models\Refund;
 use App\Models\User;
-use App\Services\Notification\NotificationDispatcher;
+use App\Services\Notification\Contracts\NotificationDispatcherInterface;
 use App\Support\AuditLogger;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -20,16 +20,16 @@ use Illuminate\Validation\ValidationException;
  *
  * Dipakai saat mitra memutuskan mengembalikan dana booking tanpa ada
  * permintaan refund tertunda dari client. Refund langsung berstatus
- * `SUCCEEDED` karena mitra memprosesnya secara manual (transfer balik).
+ * SUCCEEDED karena mitra memprosesnya secara manual (transfer balik).
  *
- * Berbeda dari {@see RefundApprovalService} yang memproses refund
- * berstatus `PENDING` (hasil pengajuan refund).
+ * Berbeda dari RefundApprovalService yang memproses refund
+ * berstatus PENDING (hasil pengajuan refund).
  *
  * Tanggung jawab:
  * - Validasi kelayakan booking (status, kepemilikan, jumlah).
- * - Membuat record `Refund` (status `SUCCEEDED`).
- * - Mencatat `Payment` negatif sebagai jejak pengembalian dana.
- * - Mengubah status booking menjadi `CANCELLED`.
+ * - Membuat record Refund (status SUCCEEDED).
+ * - Mencatat Payment negatif sebagai jejak pengembalian dana.
+ * - Mengubah status booking menjadi CANCELLED.
  * - Mengirim notifikasi ke client (in-app + push FCM).
  *
  * Semua transisi state menulis audit log (S-16). Notifikasi dikirim
@@ -38,7 +38,7 @@ use Illuminate\Validation\ValidationException;
 final class RefundInitiationService
 {
     public function __construct(
-        private readonly NotificationDispatcher $notificationDispatcher,
+        private readonly NotificationDispatcherInterface $notificationDispatcher,
     ) {}
 
     /**
@@ -193,7 +193,8 @@ final class RefundInitiationService
 
     private function notifyRefundSucceededToClient(Refund $refund): void
     {
-        $client = $refund->booking?->client;
+        $booking = $refund->booking;
+        $client = $booking->client;
 
         if ($client === null) {
             return;
@@ -203,7 +204,7 @@ final class RefundInitiationService
             user: $client,
             tipe: 'refund_succeeded',
             judul: 'Refund Berhasil',
-            pesan: "Dana refund sebesar {$refund->amountRupiah()} untuk booking {$refund->booking?->kode} telah diproses. Silakan cek rekening Anda.",
+            pesan: "Dana refund sebesar {$refund->amountRupiah()} untuk booking {$booking->kode} telah diproses. Silakan cek rekening Anda.",
             data: [
                 'refund_id' => $refund->id,
                 'booking_id' => $refund->booking_id,

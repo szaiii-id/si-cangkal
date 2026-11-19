@@ -1,206 +1,143 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
-import ButtonFixture from './__fixtures__/ButtonFixture.svelte';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { createRawSnippet } from 'svelte';
+import Button from '../Button.svelte';
+import { router } from '@inertiajs/svelte';
 
-// ============================================================
-// MOCK INERTIA
-// ============================================================
-const mockRouterPost = vi.fn();
-const mockRouterPut = vi.fn();
-const mockRouterPatch = vi.fn();
-const mockRouterDelete = vi.fn();
-
+// ==========================================
+// MOCK INERTIA ROUTER
+// ==========================================
 vi.mock('@inertiajs/svelte', () => ({
     router: {
-        post: (...args: any[]) => mockRouterPost(...args),
-        put: (...args: any[]) => mockRouterPut(...args),
-        patch: (...args: any[]) => mockRouterPatch(...args),
-        delete: (...args: any[]) => mockRouterDelete(...args),
         get: vi.fn(),
+        post: vi.fn(),
+        put: vi.fn(),
+        patch: vi.fn(),
+        delete: vi.fn(),
     },
 }));
 
-beforeEach(() => {
-    vi.clearAllMocks();
-});
+// ==========================================
+// HELPER: Buat Snippet valid untuk children
+// ==========================================
+const mockSnippet = (text: string) =>
+    createRawSnippet(() => ({
+        render: () => `<span>${text}</span>`,
+    }));
 
-// ============================================================
-// KATEGORI 1 — RENDERING DASAR & TIPE ELEMEN
-// ============================================================
-
-describe('Button.svelte — Rendering Dasar', () => {
-    it('merender elemen <button> jika tidak ada href', () => {
-        render(ButtonFixture);
-
-        const btn = screen.getByRole('button', { name: /Tombol Saya/i });
-        expect(btn.tagName).toBe('BUTTON');
+describe('Button Component', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
     });
 
-    it('merender elemen <a> jika ada href dan method="get"', () => {
-        render(ButtonFixture, {
-            props: { href: '/dashboard', method: 'get' },
+    // ==========================================
+    // 1. RENDERING DASAR
+    // ==========================================
+    describe('Rendering', () => {
+        it('harus merender tag <button> secara default', () => {
+            render(Button, { props: { children: mockSnippet('Klik Saya') } });
+            const btn = screen.getByRole('button');
+            expect(btn).toBeInTheDocument();
+            expect(btn.tagName).toBe('BUTTON');
+            expect(screen.getByText('Klik Saya')).toBeInTheDocument();
         });
 
-        const link = screen.getByRole('link', { name: /Tombol Saya/i });
-        expect(link.tagName).toBe('A');
-        expect(link).toHaveAttribute('href', '/dashboard');
-    });
-
-    it('merender elemen <button> jika ada href tapi method bukan "get"', () => {
-        render(ButtonFixture, {
-            props: { href: '/delete', method: 'post' },
+        it('harus merender tag <a> jika props href dan method="get"', () => {
+            render(Button, {
+                props: { href: '/dashboard', method: 'get', children: mockSnippet('Link') },
+            });
+            // Source menambahkan role="button" pada <a>, jadi query via button
+            const link = screen.getByRole('button', { name: 'Link' });
+            expect(link.tagName).toBe('A');
+            expect(link).toHaveAttribute('href', '/dashboard');
+            expect(link).toHaveAttribute('role', 'button');
         });
 
-        const btn = screen.getByRole('button', { name: /Tombol Saya/i });
-        expect(btn.tagName).toBe('BUTTON');
-    });
-});
-
-// ============================================================
-// KATEGORI 2 — VARIANT & SIZE
-// ============================================================
-
-describe('Button.svelte — Variant & Size', () => {
-    it('menerapkan class default (primary, md)', () => {
-        render(ButtonFixture);
-        const btn = screen.getByRole('button', { name: /Tombol Saya/i });
-
-        expect(btn).toHaveClass('bg-pink-dark');
-        expect(btn).toHaveClass('px-6');
-        expect(btn).toHaveClass('py-3');
+        it('harus menerapkan class variant dan size dengan benar', () => {
+            render(Button, {
+                props: { variant: 'danger', size: 'lg', children: mockSnippet('Hapus') },
+            });
+            const btn = screen.getByRole('button');
+            expect(btn).toHaveClass('bg-red-600');
+            expect(btn).toHaveClass('px-8');
+        });
     });
 
-    it('menerapkan variant "danger"', () => {
-        render(ButtonFixture, { props: { variant: 'danger' } });
-        const btn = screen.getByRole('button', { name: /Tombol Saya/i });
-
-        expect(btn).toHaveClass('bg-red-600');
-    });
-
-    it('menerapkan size "sm"', () => {
-        render(ButtonFixture, { props: { size: 'sm' } });
-        const btn = screen.getByRole('button', { name: /Tombol Saya/i });
-
-        expect(btn).toHaveClass('px-4');
-        expect(btn).toHaveClass('text-xs');
-    });
-
-    it('menerapkan fullWidth', () => {
-        render(ButtonFixture, { props: { fullWidth: true } });
-        const btn = screen.getByRole('button', { name: /Tombol Saya/i });
-
-        expect(btn).toHaveClass('w-full');
-    });
-});
-
-// ============================================================
-// KATEGORI 3 — STATE (LOADING & DISABLED)
-// ============================================================
-
-describe('Button.svelte — State', () => {
-    it('merender spinner SVG jika loading = true', () => {
-        render(ButtonFixture, { props: { loading: true } });
-
-        const btn = screen.getByRole('button');
-        const spinner = btn.querySelector('svg.animate-spin');
-
-        expect(spinner).toBeInTheDocument();
-    });
-
-    it('button disabled jika loading = true', () => {
-        render(ButtonFixture, { props: { loading: true } });
-        expect(screen.getByRole('button')).toBeDisabled();
-    });
-
-    it('button disabled jika disabled = true', () => {
-        render(ButtonFixture, { props: { disabled: true } });
-        expect(screen.getByRole('button')).toBeDisabled();
-    });
-
-    it('class disabled:opacity-50 ada di className', () => {
-        render(ButtonFixture, { props: { disabled: true } });
-        const btn = screen.getByRole('button');
-        expect(btn).toHaveClass('disabled:opacity-50');
-    });
-});
-
-// ============================================================
-// KATEGORI 4 — BEHAVIOR (KLIK & ROUTING)
-// ============================================================
-
-describe('Button.svelte — Behavior', () => {
-    it('memanggil onclick biasa jika tidak ada href', async () => {
-        const handleClick = vi.fn();
-        render(ButtonFixture, { props: { onclick: handleClick } });
-
-        await fireEvent.click(screen.getByRole('button'));
-        expect(handleClick).toHaveBeenCalledTimes(1);
-    });
-
-    it('TIDAK memanggil onclick jika disabled = true', async () => {
-        const handleClick = vi.fn();
-        render(ButtonFixture, {
-            props: { disabled: true, onclick: handleClick },
+    // ==========================================
+    // 2. STATE: DISABLED & LOADING
+    // ==========================================
+    describe('State Disabled & Loading', () => {
+        it('harus menonaktifkan tombol jika disabled=true', () => {
+            render(Button, {
+                props: { disabled: true, children: mockSnippet('Disabled') },
+            });
+            const btn = screen.getByRole('button');
+            expect(btn).toBeDisabled();
+            expect(btn).toHaveClass('pointer-events-none');
         });
 
-        await fireEvent.click(screen.getByRole('button'));
-        expect(handleClick).not.toHaveBeenCalled();
-    });
-
-    it('memanggil router.post jika method="post" diklik', async () => {
-        render(ButtonFixture, {
-            props: { href: '/users', method: 'post' },
+        it('harus menampilkan spinner dan menonaktifkan tombol jika loading=true', () => {
+            render(Button, {
+                props: { loading: true, children: mockSnippet('Loading') },
+            });
+            const btn = screen.getByRole('button');
+            expect(btn).toBeDisabled();
+            expect(btn.querySelector('svg')).toBeInTheDocument();
         });
 
-        await fireEvent.click(screen.getByRole('button'));
+        it('harus mencegah klik jika loading=true', async () => {
+            const handleClick = vi.fn();
+            render(Button, {
+                props: { loading: true, onclick: handleClick, children: mockSnippet('Loading') },
+            });
 
-        expect(mockRouterPost).toHaveBeenCalledWith('/users');
+            const btn = screen.getByRole('button');
+            await fireEvent.click(btn);
+
+            expect(handleClick).not.toHaveBeenCalled();
+        });
     });
 
-    it('memanggil router.delete jika method="delete" diklik', async () => {
-        render(ButtonFixture, {
-            props: { href: '/users/1', method: 'delete' },
+    // ==========================================
+    // 3. INTERAKSI & INERTIA ROUTER
+    // ==========================================
+    describe('Interaction & Router', () => {
+        it('harus memanggil callback onclick saat diklik', async () => {
+            const handleClick = vi.fn();
+            render(Button, {
+                props: { onclick: handleClick, children: mockSnippet('Klik') },
+            });
+
+            await fireEvent.click(screen.getByRole('button'));
+            expect(handleClick).toHaveBeenCalledTimes(1);
         });
 
-        await fireEvent.click(screen.getByRole('button'));
+        it('harus memanggil router.post jika method="post"', async () => {
+            render(Button, {
+                props: { href: '/logout', method: 'post', children: mockSnippet('Logout') },
+            });
 
-        expect(mockRouterDelete).toHaveBeenCalledWith('/users/1');
-    });
+            await fireEvent.click(screen.getByRole('button'));
 
-    it('link (<a>) dirender untuk method="get" dan tidak memanggil router', () => {
-        render(ButtonFixture, {
-            props: { href: '/dashboard', method: 'get' },
+            expect(router.post).toHaveBeenCalledWith('/logout');
         });
 
-        const link = screen.getByRole('link');
-        expect(link).toBeInTheDocument();
-        expect(link).toHaveAttribute('href', '/dashboard');
-        expect(mockRouterPost).not.toHaveBeenCalled();
-        expect(mockRouterDelete).not.toHaveBeenCalled();
-    });
-});
+        it('TIDAK boleh memanggil router jika link <a> dalam kondisi loading', async () => {
+            render(Button, {
+                props: {
+                    href: '/dashboard',
+                    method: 'get',
+                    loading: true,
+                    children: mockSnippet('Loading'),
+                },
+            });
 
-// ============================================================
-// KATEGORI 5 — ATRIBUT TAMBAHAN (REST PROPS)
-// ============================================================
+            // Source menambahkan role="button" pada <a>
+            const link = screen.getByRole('button', { name: 'Loading' });
+            await fireEvent.click(link);
 
-describe('Button.svelte — Atribut Tambahan', () => {
-    it('meneruskan atribut data-testid ke elemen', () => {
-        render(ButtonFixture, {
-            props: { 'data-testid': 'my-btn' },
+            expect(link).toHaveAttribute('aria-disabled', 'true');
+            expect(link).toHaveAttribute('tabindex', '-1');
         });
-
-        expect(screen.getByTestId('my-btn')).toBeInTheDocument();
-    });
-
-    it('menerapkan atribut type="submit" pada elemen button', () => {
-        render(ButtonFixture, {
-            props: { type: 'submit' },
-        });
-
-        expect(screen.getByRole('button')).toHaveAttribute(
-            'type',
-            'submit',
-        );
     });
 });

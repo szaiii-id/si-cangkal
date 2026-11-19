@@ -1,28 +1,30 @@
 <?php
 
-use App\Exports\DailyReportExport;
 use App\Exports\MitraPerformanceExport;
-use App\Exports\PayoutExport;
 use App\Exports\RevenueExport;
 use App\Models\Trip;
-use App\Models\User;
 use App\Repositories\Eloquent\ReportRepository;
 use App\Services\Report\ReportService;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Http\Response;
+use Barryvdh\DomPDF\PDF as PdfService;
+use Illuminate\Http\Response as IlluminateResponse;
+use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
-use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /*
 |==========================================================================
-| SETUP
+| SETUP — Unit Test (NO DB)
 |==========================================================================
 */
 
 beforeEach(function () {
-    $this->reportRepository = Mockery::mock(ReportRepository::class);
-    $this->service = new ReportService($this->reportRepository);
+    $this->reportRepo = Mockery::mock(ReportRepository::class);
+    $this->service = new ReportService($this->reportRepo);
+
+    Log::shouldReceive('info')->byDefault()->andReturnNull();
+    Log::shouldReceive('warning')->byDefault()->andReturnNull();
+    Log::shouldReceive('error')->byDefault()->andReturnNull();
 });
 
 afterEach(function () {
@@ -31,366 +33,207 @@ afterEach(function () {
 
 /*
 |==========================================================================
-| KATEGORI 1 — BEHAVIORAL / INTERACTION TESTING
+| KATEGORI 1 — PASSTHROUGH
 |==========================================================================
 */
 
-it('getRevenueData memanggil repository dengan parameter yang benar', function () {
-    $expected = ['total_revenue' => 1000000, 'total_honor' => 200000, 'gross_profit' => 800000, 'transactions' => []];
+describe('Passthrough — getRevenueData', function () {
+    it('meneruskan startDate + endDate ke repository', function () {
+        $expected = [
+            'gross_revenue' => 1_000_000,
+            'total_refund' => 200_000,
+            'total_revenue' => 800_000,
+            'transactions' => [],
+        ];
 
-    $this->reportRepository
-        ->shouldReceive('getRevenueData')
-        ->once()
-        ->with('2026-01-01', '2026-01-31')
-        ->andReturn($expected);
+        $this->reportRepo->shouldReceive('getRevenueData')
+            ->once()
+            ->with('2026-01-01', '2026-01-31')
+            ->andReturn($expected);
 
-    $result = $this->service->getRevenueData('2026-01-01', '2026-01-31');
-
-    expect($result)->toBe($expected);
+        expect($this->service->getRevenueData('2026-01-01', '2026-01-31'))->toBe($expected);
+    });
 });
 
-it('getMitraPerformanceData memanggil repository dengan parameter yang benar', function () {
-    $expected = ['total_mitra' => 10, 'total_trip_completed' => 50, 'mitras' => []];
+describe('Passthrough — getMonthlyRevenue', function () {
+    it('meneruskan ke repository', function () {
+        $expected = [
+            ['bulan' => 'Jan', 'total' => 1_000_000],
+            ['bulan' => 'Feb', 'total' => 2_000_000],
+        ];
 
-    $this->reportRepository
-        ->shouldReceive('getMitraPerformanceData')
-        ->once()
-        ->with('2026-01-01', '2026-01-31')
-        ->andReturn($expected);
+        $this->reportRepo->shouldReceive('getMonthlyRevenue')->once()->andReturn($expected);
 
-    $result = $this->service->getMitraPerformanceData('2026-01-01', '2026-01-31');
-
-    expect($result)->toBe($expected);
+        expect($this->service->getMonthlyRevenue())->toBe($expected);
+    });
 });
 
-it('getDailyReportData memanggil repository dengan parameter yang benar', function () {
-    $expected = ['total_reports' => 30, 'pending_verify' => 5, 'verified' => 25, 'reports' => []];
+describe('Passthrough — getMitraPerformanceData', function () {
+    it('meneruskan startDate + endDate ke repository', function () {
+        $expected = [
+            'total_mitra' => 10,
+            'total_trip_completed' => 50,
+            'mitras' => [],
+        ];
 
-    $this->reportRepository
-        ->shouldReceive('getDailyReportData')
-        ->once()
-        ->with('2026-01-01', '2026-01-31')
-        ->andReturn($expected);
+        $this->reportRepo->shouldReceive('getMitraPerformanceData')
+            ->once()
+            ->with('2026-01-01', '2026-01-31')
+            ->andReturn($expected);
 
-    $result = $this->service->getDailyReportData('2026-01-01', '2026-01-31');
-
-    expect($result)->toBe($expected);
-});
-
-it('getPayoutData memanggil repository dengan parameter yang benar', function () {
-    $expected = ['total_dicairkan' => 5000000, 'total_pending' => 1000000, 'total_saldo_mengendap' => 2000000, 'payouts' => []];
-
-    $this->reportRepository
-        ->shouldReceive('getPayoutData')
-        ->once()
-        ->with('2026-01-01', '2026-01-31')
-        ->andReturn($expected);
-
-    $result = $this->service->getPayoutData('2026-01-01', '2026-01-31');
-
-    expect($result)->toBe($expected);
-});
-
-it('getMonthlyRevenue memanggil repository tanpa parameter', function () {
-    $expected = [
-        ['bulan' => 'Jan', 'total' => 1000000],
-        ['bulan' => 'Feb', 'total' => 2000000],
-    ];
-
-    $this->reportRepository
-        ->shouldReceive('getMonthlyRevenue')
-        ->once()
-        ->andReturn($expected);
-
-    $result = $this->service->getMonthlyRevenue();
-
-    expect($result)->toBe($expected);
+        expect($this->service->getMitraPerformanceData('2026-01-01', '2026-01-31'))->toBe($expected);
+    });
 });
 
 /*
 |==========================================================================
-| KATEGORI 2 — EXPORT PDF (BEHAVIORAL)
+| KATEGORI 2 — EXPORT PDF
 |==========================================================================
+|
+|   Catatan: `Barryvdh\DomPDF\PDF::stream()` return type =
+| Illuminate\Http\Response (bukan Symfony). Test pakai Illuminate.
+|
 */
 
-it('exportRevenuePdf memanggil getRevenueData dan Pdf::loadView', function () {
-    $this->reportRepository
-        ->shouldReceive('getRevenueData')
-        ->once()
-        ->with('2026-01-01', '2026-01-31')
-        ->andReturn(['total_revenue' => 1000000]);
+describe('exportRevenuePdf', function () {
+    it('loadView + setPaper a4 landscape + stream', function () {
+        $data = ['total_revenue' => 1_000_000];
 
-    $response = new Response('pdf-content');
+        $this->reportRepo->shouldReceive('getRevenueData')->once()->andReturn($data);
 
-    $pdfMock = Mockery::mock(Barryvdh\DomPDF\PDF::class);
-    $pdfMock->shouldReceive('setPaper')->once()->with('a4', 'landscape')->andReturnSelf();
-    $pdfMock->shouldReceive('stream')->once()->andReturn($response);
+        $response = new IlluminateResponse('pdf-content');
 
-    Pdf::shouldReceive('loadView')
-        ->once()
-        ->with('reports.revenue-pdf', Mockery::on(fn ($data) => isset($data['data']['total_revenue'])))
-        ->andReturn($pdfMock);
+        $pdfMock = Mockery::mock(PdfService::class);
+        $pdfMock->shouldReceive('setPaper')->once()->with('a4', 'landscape')->andReturnSelf();
+        $pdfMock->shouldReceive('stream')
+            ->once()
+            ->with(Mockery::on(fn ($name) => str_starts_with($name, 'Laporan-Pendapatan-')))
+            ->andReturn($response);
 
-    $result = $this->service->exportRevenuePdf('2026-01-01', '2026-01-31');
+        Pdf::shouldReceive('loadView')
+            ->once()
+            ->with('reports.revenue-pdf', Mockery::on(fn ($d) => $d['data'] === $data))
+            ->andReturn($pdfMock);
 
-    expect($result)->toBe($response);
+        expect($this->service->exportRevenuePdf('2026-01-01', '2026-01-31'))->toBe($response);
+    });
 });
 
-it('exportMitraPdf memanggil getMitraPerformanceData dan Pdf::loadView', function () {
-    $this->reportRepository
-        ->shouldReceive('getMitraPerformanceData')
-        ->once()
-        ->with('2026-01-01', '2026-01-31')
-        ->andReturn(['total_mitra' => 10]);
+describe('exportMitraPdf', function () {
+    it('loadView mitra-performance-pdf + setPaper a4 portrait', function () {
+        $data = ['total_mitra' => 10];
 
-    $response = new Response('pdf-content');
+        $this->reportRepo->shouldReceive('getMitraPerformanceData')->once()->andReturn($data);
 
-    $pdfMock = Mockery::mock(Barryvdh\DomPDF\PDF::class);
-    $pdfMock->shouldReceive('setPaper')->once()->with('a4', 'portrait')->andReturnSelf();
-    $pdfMock->shouldReceive('stream')->once()->andReturn($response);
+        $response = new IlluminateResponse('pdf-content');
 
-    Pdf::shouldReceive('loadView')
-        ->once()
-        ->with('reports.mitra-performance-pdf', Mockery::on(fn ($data) => isset($data['data']['total_mitra'])))
-        ->andReturn($pdfMock);
+        $pdfMock = Mockery::mock(PdfService::class);
+        $pdfMock->shouldReceive('setPaper')->once()->with('a4', 'portrait')->andReturnSelf();
+        $pdfMock->shouldReceive('stream')
+            ->once()
+            ->with(Mockery::on(fn ($name) => str_starts_with($name, 'Laporan-Kinerja-Mitra-')))
+            ->andReturn($response);
 
-    $result = $this->service->exportMitraPdf('2026-01-01', '2026-01-31');
+        Pdf::shouldReceive('loadView')
+            ->once()
+            ->with('reports.mitra-performance-pdf', Mockery::type('array'))
+            ->andReturn($pdfMock);
 
-    expect($result)->toBe($response);
-});
-
-it('exportDailyPdf memanggil getDailyReportData dan Pdf::loadView', function () {
-    $this->reportRepository
-        ->shouldReceive('getDailyReportData')
-        ->once()
-        ->with('2026-01-01', '2026-01-31')
-        ->andReturn(['total_reports' => 30]);
-
-    $response = new Response('pdf-content');
-
-    $pdfMock = Mockery::mock(Barryvdh\DomPDF\PDF::class);
-    $pdfMock->shouldReceive('setPaper')->once()->with('a4', 'landscape')->andReturnSelf();
-    $pdfMock->shouldReceive('stream')->once()->andReturn($response);
-
-    Pdf::shouldReceive('loadView')
-        ->once()
-        ->with('reports.daily-reports-pdf', Mockery::on(fn ($data) => isset($data['data']['total_reports'])))
-        ->andReturn($pdfMock);
-
-    $result = $this->service->exportDailyPdf('2026-01-01', '2026-01-31');
-
-    expect($result)->toBe($response);
-});
-
-it('exportPayoutPdf memanggil getPayoutData dan Pdf::loadView', function () {
-    $this->reportRepository
-        ->shouldReceive('getPayoutData')
-        ->once()
-        ->with('2026-01-01', '2026-01-31')
-        ->andReturn(['total_dicairkan' => 5000000]);
-
-    $response = new Response('pdf-content');
-
-    $pdfMock = Mockery::mock(Barryvdh\DomPDF\PDF::class);
-    $pdfMock->shouldReceive('setPaper')->once()->with('a4', 'landscape')->andReturnSelf();
-    $pdfMock->shouldReceive('stream')->once()->andReturn($response);
-
-    Pdf::shouldReceive('loadView')
-        ->once()
-        ->with('reports.payout-pdf', Mockery::on(fn ($data) => isset($data['data']['total_dicairkan'])))
-        ->andReturn($pdfMock);
-
-    $result = $this->service->exportPayoutPdf('2026-01-01', '2026-01-31');
-
-    expect($result)->toBe($response);
+        expect($this->service->exportMitraPdf('2026-01-01', '2026-01-31'))->toBe($response);
+    });
 });
 
 /*
 |==========================================================================
-| KATEGORI 3 — EXPORT EXCEL (BEHAVIORAL)
+| KATEGORI 3 — EXPORT EXCEL
 |==========================================================================
 */
 
-it('exportRevenueExcel memanggil Excel::download dengan RevenueExport', function () {
-    $response = Mockery::mock(BinaryFileResponse::class);
+describe('exportRevenueExcel', function () {
+    it('Excel::download dengan RevenueExport', function () {
+        $response = Mockery::mock(BinaryFileResponse::class);
 
-    Excel::shouldReceive('download')
-        ->once()
-        ->with(Mockery::type(RevenueExport::class), Mockery::type('string'))
-        ->andReturn($response);
+        Excel::shouldReceive('download')
+            ->once()
+            ->with(
+                Mockery::type(RevenueExport::class),
+                Mockery::on(fn ($name) => str_starts_with($name, 'Laporan-Pendapatan-')
+                    && str_ends_with($name, '.xlsx')),
+            )
+            ->andReturn($response);
 
-    $result = $this->service->exportRevenueExcel('2026-01-01', '2026-01-31');
-
-    expect($result)->toBe($response);
+        expect($this->service->exportRevenueExcel('2026-01-01', '2026-01-31'))->toBe($response);
+    });
 });
 
-it('exportMitraExcel memanggil Excel::download dengan MitraPerformanceExport', function () {
-    $response = Mockery::mock(BinaryFileResponse::class);
+describe('exportMitraExcel', function () {
+    it('Excel::download dengan MitraPerformanceExport', function () {
+        $response = Mockery::mock(BinaryFileResponse::class);
 
-    Excel::shouldReceive('download')
-        ->once()
-        ->with(Mockery::type(MitraPerformanceExport::class), Mockery::type('string'))
-        ->andReturn($response);
+        Excel::shouldReceive('download')
+            ->once()
+            ->with(
+                Mockery::type(MitraPerformanceExport::class),
+                Mockery::on(fn ($name) => str_starts_with($name, 'Laporan-Kinerja-Mitra-')),
+            )
+            ->andReturn($response);
 
-    $result = $this->service->exportMitraExcel('2026-01-01', '2026-01-31');
-
-    expect($result)->toBe($response);
-});
-
-it('exportDailyExcel memanggil Excel::download dengan DailyReportExport', function () {
-    $response = Mockery::mock(BinaryFileResponse::class);
-
-    Excel::shouldReceive('download')
-        ->once()
-        ->with(Mockery::type(DailyReportExport::class), Mockery::type('string'))
-        ->andReturn($response);
-
-    $result = $this->service->exportDailyExcel('2026-01-01', '2026-01-31');
-
-    expect($result)->toBe($response);
-});
-
-it('exportPayoutExcel memanggil Excel::download dengan PayoutExport', function () {
-    $response = Mockery::mock(BinaryFileResponse::class);
-
-    Excel::shouldReceive('download')
-        ->once()
-        ->with(Mockery::type(PayoutExport::class), Mockery::type('string'))
-        ->andReturn($response);
-
-    $result = $this->service->exportPayoutExcel('2026-01-01', '2026-01-31');
-
-    expect($result)->toBe($response);
+        expect($this->service->exportMitraExcel('2026-01-01', '2026-01-31'))->toBe($response);
+    });
 });
 
 /*
 |==========================================================================
-| KATEGORI 4 — MANIFEST TRIP (NEGATIVE PATH & POSITIVE PATH)
+| KATEGORI 4 — EXPORT TRIP MANIFEST
 |==========================================================================
 */
 
-it('exportTripManifest throw 403 jika user adalah mitra yang tidak di-assign', function () {
-    $trip = Mockery::mock(Trip::class);
-    $trip->shouldReceive('mitras->where->exists')
-        ->andReturn(false);
+describe('exportTripManifest', function () {
+    it('$trip->load relasi + Pdf::loadView + stream dengan kode trip', function () {
+        $trip = Mockery::mock(Trip::class)->makePartial();
+        $trip->forceFill(['id' => 1, 'kode' => 'TRP-2026-001']);
 
-    $mitra = new User;
-    $mitra->forceFill(['id' => 99, 'role' => 'mitra']);
+        $trip->shouldReceive('load')
+            ->once()
+            ->with([
+                'booking.client',
+                'booking.participants',
+                'package',
+                'mitra',
+                'days.trip',
+            ])
+            ->andReturnSelf();
 
-    expect(fn () => $this->service->exportTripManifest($trip, $mitra))
-        ->toThrow(HttpException::class);
-});
+        $response = new IlluminateResponse('pdf-content');
 
-it('exportTripManifest throw 403 jika user bukan admin dan bukan mitra', function () {
-    $trip = Mockery::mock(Trip::class);
-    $trip->shouldNotReceive('mitras');
+        $pdfMock = Mockery::mock(PdfService::class);
+        $pdfMock->shouldReceive('setPaper')->once()->with('a4', 'portrait')->andReturnSelf();
+        $pdfMock->shouldReceive('stream')
+            ->once()
+            ->with('Itinerary-dan-Peserta-TRP-2026-001.pdf')
+            ->andReturn($response);
 
-    $client = new User;
-    $client->forceFill(['id' => 99, 'role' => 'client']);
+        Pdf::shouldReceive('loadView')
+            ->once()
+            ->with('reports.trip-manifest', Mockery::on(fn ($d) => $d['trip'] === $trip))
+            ->andReturn($pdfMock);
 
-    expect(fn () => $this->service->exportTripManifest($trip, $client))
-        ->toThrow(HttpException::class);
-});
+        expect($this->service->exportTripManifest($trip))->toBe($response);
+    });
 
-it('exportTripManifest berhasil untuk admin', function () {
-    $trip = Mockery::mock(Trip::class);
-    $trip->shouldReceive('load')
-        ->once()
-        ->with(['booking.client', 'booking.participants', 'package', 'mitras.mitra', 'days.dailyReports'])
-        ->andReturnSelf();
-    $trip->shouldReceive('getAttribute')->with('kode')->andReturn('TRP-2026-001');
+    it('tidak ada otorisasi di service (SOC)', function () {
+        $trip = Mockery::mock(Trip::class)->makePartial();
+        $trip->forceFill(['id' => 1, 'kode' => 'TRP-2026-001']);
+        $trip->shouldReceive('load')->andReturnSelf();
 
-    $admin = new User;
-    $admin->forceFill(['id' => 1, 'role' => 'admin']);
+        $response = new IlluminateResponse('pdf');
 
-    $response = new Response('pdf-content');
+        $pdfMock = Mockery::mock(PdfService::class);
+        $pdfMock->shouldReceive('setPaper')->andReturnSelf();
+        $pdfMock->shouldReceive('stream')->andReturn($response);
 
-    $pdfMock = Mockery::mock(Barryvdh\DomPDF\PDF::class);
-    $pdfMock->shouldReceive('setPaper')->once()->with('a4', 'portrait')->andReturnSelf();
-    $pdfMock->shouldReceive('stream')->once()->andReturn($response);
+        Pdf::shouldReceive('loadView')->andReturn($pdfMock);
 
-    Pdf::shouldReceive('loadView')
-        ->once()
-        ->with('reports.trip-manifest', Mockery::on(fn ($data) => $data['trip'] === $trip))
-        ->andReturn($pdfMock);
-
-    $result = $this->service->exportTripManifest($trip, $admin);
-
-    expect($result)->toBe($response);
-});
-
-it('exportTripManifest berhasil untuk mitra yang di-assign', function () {
-    $trip = Mockery::mock(Trip::class);
-    $trip->shouldReceive('mitras->where->exists')
-        ->once()
-        ->andReturn(true);
-    $trip->shouldReceive('load')->once()->andReturnSelf();
-    $trip->shouldReceive('getAttribute')->with('kode')->andReturn('TRP-2026-001');
-
-    $mitra = new User;
-    $mitra->forceFill(['id' => 50, 'role' => 'mitra']);
-
-    $response = new Response('pdf-content');
-
-    $pdfMock = Mockery::mock(Barryvdh\DomPDF\PDF::class);
-    $pdfMock->shouldReceive('setPaper')->once()->andReturnSelf();
-    $pdfMock->shouldReceive('stream')->once()->andReturn($response);
-
-    Pdf::shouldReceive('loadView')->once()->andReturn($pdfMock);
-
-    $result = $this->service->exportTripManifest($trip, $mitra);
-
-    expect($result)->toBe($response);
-});
-
-/*
-|==========================================================================
-| KATEGORI 5 — EDGE CASES
-|==========================================================================
-*/
-
-it('exportRevenuePdf menghasilkan nama file dengan tanggal hari ini', function () {
-    $this->reportRepository
-        ->shouldReceive('getRevenueData')
-        ->once()
-        ->andReturn([]);
-
-    $response = new Response('pdf-content');
-
-    $pdfMock = Mockery::mock(Barryvdh\DomPDF\PDF::class);
-    $pdfMock->shouldReceive('setPaper')->once()->andReturnSelf();
-    $pdfMock->shouldReceive('stream')
-        ->once()
-        ->with(Mockery::on(fn ($filename) => str_starts_with($filename, 'Laporan-Pendapatan-')))
-        ->andReturn($response);
-
-    Pdf::shouldReceive('loadView')->once()->andReturn($pdfMock);
-
-    $result = $this->service->exportRevenuePdf('2026-01-01', '2026-01-31');
-
-    expect($result)->toBe($response);
-});
-
-it('exportTripManifest menghasilkan nama file dengan kode trip', function () {
-    $trip = Mockery::mock(Trip::class);
-    $trip->shouldReceive('load')->andReturnSelf();
-    $trip->shouldReceive('getAttribute')->with('kode')->andReturn('TRP-2026-001');
-
-    $admin = new User;
-    $admin->forceFill(['role' => 'admin']);
-
-    $response = new Response('pdf-content');
-
-    $pdfMock = Mockery::mock(Barryvdh\DomPDF\PDF::class);
-    $pdfMock->shouldReceive('setPaper')->once()->andReturnSelf();
-    $pdfMock->shouldReceive('stream')
-        ->once()
-        ->with('Itinerary-dan-Peserta-TRP-2026-001.pdf')
-        ->andReturn($response);
-
-    Pdf::shouldReceive('loadView')->once()->andReturn($pdfMock);
-
-    $result = $this->service->exportTripManifest($trip, $admin);
-
-    expect($result)->toBe($response);
+        expect($this->service->exportTripManifest($trip))->toBe($response);
+    });
 });

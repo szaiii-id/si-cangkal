@@ -1,115 +1,121 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
     formatCurrency,
     formatNumber,
     parseCurrency,
+    maskAccountNumber,
+    copyToClipboard,
 } from '../formatCurrency';
 
-// ============================================================
-// KATEGORI 1 — formatCurrency
-// ============================================================
+describe('FormatCurrency & FormatNumber', () => {
+    describe('formatCurrency()', () => {
+        it('harus memformat angka dengan benar (Happy Path)', () => {
+            expect(formatCurrency(850000)).toBe('Rp 850.000');
+            expect(formatCurrency(1500000.50)).toBe('Rp 1.500.001'); // dibulatkan
+            expect(formatCurrency(0)).toBe('Rp 0');
+        });
 
-describe('formatCurrency', () => {
-    it('mengembalikan "—" untuk input null/undefined/empty', () => {
-        expect(formatCurrency(null)).toBe('—');
-        expect(formatCurrency(undefined)).toBe('—');
-        expect(formatCurrency('')).toBe('—');
+        it('harus menangani input string (dari backend)', () => {
+            expect(formatCurrency('1500000.00')).toBe('Rp 1.500.000');
+        });
+
+        it('harus mengembalikan "—" untuk input null/undefined/invalid (Edge Case)', () => {
+            expect(formatCurrency(null)).toBe('—');
+            expect(formatCurrency(undefined)).toBe('—');
+            expect(formatCurrency('')).toBe('—');
+            expect(formatCurrency('abc')).toBe('—');
+        });
     });
 
-    it('mengembalikan "—" untuk nilai tidak valid', () => {
-        expect(formatCurrency('abc')).toBe('—');
-        expect(formatCurrency(NaN)).toBe('—');
-    });
+    describe('formatNumber()', () => {
+        it('harus memformat angka tanpa "Rp"', () => {
+            expect(formatNumber(850000)).toBe('850.000');
+            expect(formatNumber('12000')).toBe('12.000');
+        });
 
-    it('memformat angka dengan prefix "Rp" dan titik ribuan', () => {
-        expect(formatCurrency(850000)).toBe('Rp 850.000');
-        expect(formatCurrency(1500000)).toBe('Rp 1.500.000');
-    });
-
-    it('memformat angka 0', () => {
-        expect(formatCurrency(0)).toBe('Rp 0');
-    });
-
-    it('memformat string angka ("1500000.00" dari Laravel)', () => {
-        expect(formatCurrency('1500000.00')).toBe('Rp 1.500.000');
-    });
-
-    it('membulatkan desimal', () => {
-        expect(formatCurrency(1500.4)).toBe('Rp 1.500');
-        expect(formatCurrency(1500.5)).toBe('Rp 1.501');
+        it('harus mengembalikan "—" untuk input kosong', () => {
+            expect(formatNumber(null)).toBe('—');
+        });
     });
 });
 
-// ============================================================
-// KATEGORI 2 — formatNumber
-// ============================================================
+describe('parseCurrency()', () => {
+    describe('Happy Path', () => {
+        it('harus mem-parse angka murni', () => {
+            expect(parseCurrency(1500)).toBe(1500);
+            expect(parseCurrency('1500')).toBe(1500);
+        });
 
-describe('formatNumber', () => {
-    it('mengembalikan "—" untuk input invalid', () => {
-        expect(formatNumber(null)).toBe('—');
-        expect(formatNumber(undefined)).toBe('—');
-        expect(formatNumber('')).toBe('—');
-        expect(formatNumber('abc')).toBe('—');
-        expect(formatNumber(NaN)).toBe('—');
+        it('harus mem-parse format Rupiah Indonesia (titik ribuan)', () => {
+            expect(parseCurrency('850.000')).toBe(850000);
+            expect(parseCurrency('1.500.000')).toBe(1500000);
+            expect(parseCurrency('Rp 1.500.000')).toBe(1500000);
+        });
+
+        it('harus mem-parse format desimal (koma)', () => {
+            expect(parseCurrency('1,5')).toBe(1.5);
+            expect(parseCurrency('2,75')).toBe(2.75);
+        });
     });
 
-    it('memformat angka tanpa prefix "Rp"', () => {
-        expect(formatNumber(850000)).toBe('850.000');
-        expect(formatNumber(1500000)).toBe('1.500.000');
-    });
+    describe('Edge Cases', () => {
+        it('harus mengembalikan 0 untuk input kosong/null', () => {
+            expect(parseCurrency(null)).toBe(0);
+            expect(parseCurrency(undefined)).toBe(0);
+            expect(parseCurrency('')).toBe(0);
+        });
 
-    it('memformat string angka', () => {
-        expect(formatNumber('1500000.00')).toBe('1.500.000');
+        it('harus mengembalikan 0 untuk string yang bukan angka', () => {
+            expect(parseCurrency('abc')).toBe(0);
+            expect(parseCurrency('Rp. ')).toBe(0);
+        });
+
+        it('harus menangani format titik dan koma bersamaan (ribuan & desimal)', () => {
+            // Contoh: 1.500,50 (standar Indonesia)
+            expect(parseCurrency('1.500,50')).toBe(1500.5);
+            // Contoh: 1,500.50 (standar Inggris/Amerika)
+            expect(parseCurrency('1,500.50')).toBe(1500.5);
+        });
     });
 });
 
-// ============================================================
-// KATEGORI 3 — parseCurrency
-// ============================================================
-
-describe('parseCurrency', () => {
-    it('mengembalikan 0 untuk input kosong/null/undefined', () => {
-        expect(parseCurrency(null)).toBe(0);
-        expect(parseCurrency(undefined)).toBe(0);
-        expect(parseCurrency('')).toBe(0);
+describe('maskAccountNumber()', () => {
+    it('harus menutupi semua digit kecuali 4 digit terakhir', () => {
+        expect(maskAccountNumber('1234567890')).toBe('•••• •••• 7890');
+        expect(maskAccountNumber('1234')).toBe('****'); // <= 4 digit disensor semua
     });
 
-    it('mengembalikan number as-is untuk input number', () => {
-        expect(parseCurrency(850000)).toBe(850000);
-        expect(parseCurrency(NaN)).toBe(0);
+    it('harus mengembalikan "-" untuk input kosong', () => {
+        expect(maskAccountNumber(null)).toBe('-');
+        expect(maskAccountNumber('')).toBe('-');
+    });
+});
+
+describe('copyToClipboard()', () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
     });
 
-    it('parse format ribuan dengan titik', () => {
-        expect(parseCurrency('850.000')).toBe(850000);
-        expect(parseCurrency('1.500.000')).toBe(1500000);
+    it('harus memanggil navigator.clipboard.writeText', async () => {
+        // 1. Mock API Clipboard
+        const writeTextMock = vi.fn().mockResolvedValue(undefined);
+        vi.stubGlobal('navigator', {
+            clipboard: { writeText: writeTextMock },
+        });
+
+        // 2. Panggil fungsi
+        await copyToClipboard('teks-rahasia');
+
+        // 3. Verifikasi
+        expect(writeTextMock).toHaveBeenCalledWith('teks-rahasia');
     });
 
-    it('parse format desimal dengan koma', () => {
-        expect(parseCurrency('1,5')).toBe(1.5);
-    });
+    it('harus error jika API Clipboard tidak didukung (Edge Case)', async () => {
+        // Mock navigator tanpa clipboard
+        vi.stubGlobal('navigator', {});
 
-    it('parse format ribuan + desimal', () => {
-        expect(parseCurrency('1.500.000,50')).toBe(1500000.5);
-    });
-
-    it('parse string tanpa pemisah', () => {
-        expect(parseCurrency('850000')).toBe(850000);
-    });
-
-    it('parse format desimal Laravel ("850000.00")', () => {
-        expect(parseCurrency('850000.00')).toBe(850000);
-    });
-
-    it('menghapus prefix "Rp" (case-insensitive)', () => {
-        expect(parseCurrency('Rp 850.000')).toBe(850000);
-        expect(parseCurrency('rp 1.500.000')).toBe(1500000);
-    });
-
-    it('mengasumsikan "1.500" sebagai ribuan (1500)', () => {
-        expect(parseCurrency('1.500')).toBe(1500);
-    });
-
-    it('mengembalikan 0 untuk string non-numerik', () => {
-        expect(parseCurrency('abc')).toBe(0);
+        await expect(copyToClipboard('text')).rejects.toThrow(
+            'Clipboard API tidak tersedia'
+        );
     });
 });

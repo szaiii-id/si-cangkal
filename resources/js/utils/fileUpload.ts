@@ -59,7 +59,7 @@ export function validateImageFile(
     const allowedTypes = options.allowedTypes ?? DEFAULT_ALLOWED_TYPES;
     const label = options.label ?? 'file';
 
-    // ✅ SIZE DULU — pesan ukuran selalu menang untuk file > maxSizeMB
+    //  SIZE DULU — pesan ukuran selalu menang untuk file > maxSizeMB
     if (file.size > maxSizeMB * 1024 * 1024) {
         return {
             valid: false,
