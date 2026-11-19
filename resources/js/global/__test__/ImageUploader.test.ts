@@ -55,6 +55,7 @@ describe('ImageUploader Component', () => {
     // ==========================================
     describe('Upload & Preview', () => {
         it('harus memproses file yang diunggah dan menampilkan preview', async () => {
+            render(ImageUploader);
             const input = screen.getByTestId('logo-input');
             const file = createMockFile('test.png', 500 * 1024, 'image/png');
 
@@ -67,6 +68,7 @@ describe('ImageUploader Component', () => {
         });
 
         it('harus menolak file yang melebihi batas ukuran', async () => {
+            render(ImageUploader);
             const input = screen.getByTestId('logo-input');
             const file = createMockFile('large.jpg', 3 * 1024 * 1024, 'image/jpeg'); // 3MB
 
@@ -79,7 +81,7 @@ describe('ImageUploader Component', () => {
             render(ImageUploader, {
                 props: { existingUrls: ['url1'], maxFiles: 2 },
             });
-            
+
             const input = screen.getByTestId('logo-input');
             const file1 = createMockFile('test1.png', 500 * 1024, 'image/png');
             const file2 = createMockFile('test2.png', 500 * 1024, 'image/png');

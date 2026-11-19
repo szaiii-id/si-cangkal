@@ -8,17 +8,17 @@ describe('MitraSummary Component', () => {
     // ==========================================
     describe('Rendering', () => {
         it('harus merender label "Total Mitra"', () => {
-            render(MitraSummary, { props: { totalMitra: 10, totalTrip: 0 } });
+            render(MitraSummary, { props: { totalMitra: 10, totalTrip: 5 } });
             expect(screen.getByText(/Total Mitra/i)).toBeInTheDocument();
         });
 
         it('harus merender nilai totalMitra', () => {
-            render(MitraSummary, { props: { totalMitra: 10, totalTrip: 0 } });
+            render(MitraSummary, { props: { totalMitra: 10, totalTrip: 5 } });
             expect(screen.getByText('10')).toBeInTheDocument();
         });
 
         it('harus merender nilai 0 jika totalMitra=0', () => {
-            render(MitraSummary, { props: { totalMitra: 0, totalTrip: 0 } });
+            render(MitraSummary, { props: { totalMitra: 0, totalTrip: 5 } });
             expect(screen.getByText('0')).toBeInTheDocument();
         });
     });
@@ -28,7 +28,7 @@ describe('MitraSummary Component', () => {
     // ==========================================
     describe('Accessibility', () => {
         it('ikon SVG dekoratif harus disembunyikan dari screen reader', () => {
-            const { container } = render(MitraSummary, { props: { totalMitra: 10, totalTrip: 0 } });
+            const { container } = render(MitraSummary, { props: { totalMitra: 10, totalTrip: 5 } });
 
             // Cek apakah semua SVG berada di dalam elemen dengan aria-hidden
             const svgs = container.querySelectorAll('svg');

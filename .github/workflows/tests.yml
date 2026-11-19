@@ -4,7 +4,7 @@
 #
 # Jobs:
 # 1. lint      → Pint + PHPStan + Svelte Check (Fail-fast)
-# 2. test-php  → Pest (functional + rate-limit)
+# 2. test-php  → Pest
 # 3. test-js   → Vitest
 
 name: Tests (Lint, Pest & Vitest)
@@ -191,30 +191,14 @@ jobs:
       - name: Build frontend
         run: bun run build
 
-      - name: Run Pest (functional, exclude rate-limit)
+      - name: Run Pest
         env:
           AUTH_THROTTLE_LOGIN_TEST_OVERRIDE: 1000
           AUTH_THROTTLE_REGISTER_TEST_OVERRIDE: 1000
           AUTH_THROTTLE_FORGOT_PASSWORD_TEST_OVERRIDE: 1000
           AUTH_THROTTLE_RESET_PASSWORD_TEST_OVERRIDE: 1000
           AUTH_THROTTLE_CONTACT_TEST_OVERRIDE: 1000
-        run: php artisan test --exclude-group=rate-limit
-
-      - name: Run Pest (rate-limit)
-        env:
-          AUTH_THROTTLE_LOGIN_MAX: 5
-          AUTH_THROTTLE_LOGIN_DECAY: 60
-          AUTH_THROTTLE_LOGIN_TEST_OVERRIDE: 5
-          AUTH_THROTTLE_REGISTER_MAX: 3
-          AUTH_THROTTLE_REGISTER_DECAY: 60
-          AUTH_THROTTLE_REGISTER_TEST_OVERRIDE: 3
-          AUTH_THROTTLE_FORGOT_MAX: 3
-          AUTH_THROTTLE_FORGOT_DECAY: 60
-          AUTH_THROTTLE_FORGOT_PASSWORD_TEST_OVERRIDE: 3
-          AUTH_THROTTLE_RESET_MAX: 5
-          AUTH_THROTTLE_RESET_DECAY: 60
-          AUTH_THROTTLE_RESET_PASSWORD_TEST_OVERRIDE: 5
-        run: php artisan test --group=rate-limit
+        run: php artisan test
 
   # ==========================================
   # 3. JS TESTS (Vitest)

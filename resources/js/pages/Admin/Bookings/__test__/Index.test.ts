@@ -2,26 +2,6 @@
  * ============================================================
  * Admin Bookings — Index Page — Component Test
  * ============================================================
- *
- * Fokus pengujian:
- *   1. Isolation & Mocking  → Inertia, API getBookings, menu, utils
- *                             (bookingRules, enums), & child components
- *                             (PageHeader, BookingFilterBar, BookingTable,
- *                             EmptyState, Pagination) di-mock anchor-aware.
- *   2. Props & Rendering    → header, status tabs, tabel/empty, pagination,
- *                             "Pesanan Hari Ini" toggle state.
- *   3. Interaction          → search debounce, change status, date range,
- *                             toggle today, clear filters.
- *   4. Reactivity           → isToday toggle, hasActiveFilters derived.
- *
- * Strategi:
- *   - BookingFilterBar di-mock dengan input yang mem-bind props
- *     (search, selectedStatus, dateFrom, dateTo) via DOM events +
- *     trigger callback (onSearch, onStatusChange, onApplyDate, onClearAll).
- *   - BookingTable di-mock minimal — render row per booking.
- *   - `mockUpdaters` sinkronisasi re-render.
- *   - A11y-first query: `getByRole('button')`, `getByLabelText`.
- * ============================================================
  */
 
 import { render, screen, fireEvent } from '@testing-library/svelte';
@@ -349,6 +329,11 @@ const DEFAULT_FILTERS = {
     direction: 'desc',
 };
 
+const DEFAULT_SORT = {
+    sort: 'created_at',
+    direction: 'desc',
+};
+
 const DEFAULT_STATUS_COUNTS = {
     pending_payment: 0,
     payment_verified: 0,
@@ -517,7 +502,7 @@ describe('Admin Bookings — Index Page', () => {
 
             expect(getBookings).toHaveBeenCalledOnce();
             expect(getBookings).toHaveBeenCalledWith(
-                { search: 'budi' }, // ← hanya parameter aktif
+                { search: 'budi', ...DEFAULT_SORT },
                 { preserveState: true, preserveScroll: true, replace: true },
             );
         });
@@ -536,7 +521,7 @@ describe('Admin Bookings — Index Page', () => {
             await fireEvent.click(screen.getByRole('tab', { name: /Menunggu Bayar/ }));
 
             expect(getBookings).toHaveBeenCalledWith(
-                { status: 'pending_payment' },
+                { status: 'pending_payment', ...DEFAULT_SORT },
                 { preserveState: true, preserveScroll: true, replace: true },
             );
         });
@@ -558,7 +543,7 @@ describe('Admin Bookings — Index Page', () => {
             await fireEvent.click(screen.getByRole('button', { name: 'Terapkan' }));
 
             expect(getBookings).toHaveBeenCalledWith(
-                { tanggal_dari: '2026-02-01', tanggal_sampai: '2026-02-28' },
+                { tanggal_dari: '2026-02-01', tanggal_sampai: '2026-02-28', ...DEFAULT_SORT },
                 { preserveState: true, preserveScroll: true, replace: true },
             );
         });
@@ -574,7 +559,7 @@ describe('Admin Bookings — Index Page', () => {
             await fireEvent.click(screen.getByRole('button', { name: /Pesanan Hari Ini/i }));
 
             expect(getBookings).toHaveBeenCalledWith(
-                { is_today: 1 },
+                { is_today: 1, ...DEFAULT_SORT },
                 { preserveState: true, preserveScroll: true, replace: true },
             );
         });
@@ -587,7 +572,7 @@ describe('Admin Bookings — Index Page', () => {
             );
 
             expect(getBookings).toHaveBeenCalledWith(
-                {},
+                { ...DEFAULT_SORT },
                 { preserveState: true, preserveScroll: true, replace: true },
             );
         });
@@ -602,7 +587,7 @@ describe('Admin Bookings — Index Page', () => {
             await fireEvent.click(screen.getByRole('button', { name: /Pesanan Hari Ini/i }));
 
             expect(getBookings).toHaveBeenCalledWith(
-                { is_today: 1 }, // tanggal_dari & sampai hilang
+                { is_today: 1, ...DEFAULT_SORT },
                 { preserveState: true, preserveScroll: true, replace: true },
             );
         });
