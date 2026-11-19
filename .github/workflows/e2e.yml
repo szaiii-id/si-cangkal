@@ -118,6 +118,19 @@ jobs:
       - name: Prepare environment
         run: |
           cp .env.testing .env
+          mkdir -p storage/app/firebase
+          cat << 'EOF' > storage/app/firebase/firebase-adminsdk.json
+          {
+            "type": "service_account",
+            "project_id": "sicangkal-test",
+            "private_key_id": "dummy-key-id",
+            "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC7W8\n-----END PRIVATE KEY-----\n",
+            "client_email": "firebase-adminsdk-dummy@sicangkal-test.iam.gserviceaccount.com",
+            "client_id": "000000000000000000000",
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token"
+          }
+          EOF
           php artisan key:generate
 
       - name: Build frontend
@@ -221,6 +234,19 @@ jobs:
       - name: Prepare environment
         run: |
           cp .env.testing .env
+          mkdir -p storage/app/firebase
+          cat << 'EOF' > storage/app/firebase/firebase-adminsdk.json
+          {
+            "type": "service_account",
+            "project_id": "sicangkal-test",
+            "private_key_id": "dummy-key-id",
+            "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC7W8\n-----END PRIVATE KEY-----\n",
+            "client_email": "firebase-adminsdk-dummy@sicangkal-test.iam.gserviceaccount.com",
+            "client_id": "000000000000000000000",
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token"
+          }
+          EOF
           php artisan key:generate
 
       - name: Build frontend
