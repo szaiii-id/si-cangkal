@@ -1,7 +1,6 @@
 import { render, screen } from '@testing-library/svelte';
 import { describe, it, expect } from 'vitest';
 import BookingStatusBanner from '../BookingStatusBanner.svelte';
-import type { BookingStatus } from '@/types/enum';
 
 describe('BookingStatusBanner Component', () => {
     // ==========================================

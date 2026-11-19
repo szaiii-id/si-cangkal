@@ -24,14 +24,23 @@
 
     // FASE 1: Info & Harga
     let form = $state({
+        // svelte-ignore state_referenced_locally
         nama: pkg.nama,
+        // svelte-ignore state_referenced_locally
         deskripsi: pkg.deskripsi ?? '',
+        // svelte-ignore state_referenced_locally
         kategori: pkg.kategori,
+        // svelte-ignore state_referenced_locally
         durasi_hari: pkg.durasi_hari,
+        // svelte-ignore state_referenced_locally
         durasi_malam: pkg.durasi_malam,
+        // svelte-ignore state_referenced_locally
         harga_per_orang: Number(pkg.harga_per_orang) || 0,
+        // svelte-ignore state_referenced_locally
         harga_per_rombongan: pkg.harga_per_rombongan ? Number(pkg.harga_per_rombongan) : 0,
+        // svelte-ignore state_referenced_locally
         max_peserta: pkg.max_peserta ?? 0,
+        // svelte-ignore state_referenced_locally
         timezone: pkg.timezone,
     });
 

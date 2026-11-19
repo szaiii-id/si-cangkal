@@ -16,14 +16,12 @@
  *
  * Strategi:
  *   - Anchor-aware mock via `insertBefore(anchor.parentNode)`.
- *   - `mockUpdaters` + `syncUI()` untuk re-render.
  *   - A11y-first query: `getByRole('heading')`, `getByRole('link')`.
  * ============================================================
  */
 
-import { render, screen, fireEvent } from '@testing-library/svelte';
+import { render, screen } from '@testing-library/svelte';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { tick } from 'svelte';
 import Show from '../Show.svelte';
 
 // ============================================================
@@ -151,66 +149,64 @@ vi.mock('@/components/admin/trips/TripItinerary.svelte', () => ({
 import { formatCurrency } from '@/utils/formatCurrency';
 
 // ============================================================
-// 11. HELPERS
+// 11. FIXTURES
 // ============================================================
-async function syncUI(): Promise<void> {
-    await tick();
-    mockUpdaters.forEach((fn) => fn());
-}
-
-// ============================================================
-// 12. FIXTURES
-// ============================================================
-const makeTrip = (overrides = {}) => ({
-    id: 1,
-    kode: 'TRIP-001',
-    status: 'scheduled',
-    tanggal_mulai: '2026-02-01',
-    tanggal_selesai: '2026-02-03',
-    jumlah_peserta: 2,
-    timezone: 'Asia/Jakarta',
-    snapshot_package: { nama: 'Paket Bali (Snapshot)' },
-    package: {
+const makeTrip = (overrides: Record<string, unknown> = {}) =>
+    ({
         id: 1,
-        nama: 'Paket Bali 3H2M',
-        kode: 'PKT-BALI-001',
-        slug: 'paket-bali',
-        timezone: 'Asia/Jakarta',
-        cover_image: null,
-    },
-    booking: {
-        id: 10,
-        kode: 'BK-2026-001',
-        tanggal_keberangkatan: '2026-02-01',
+        mitra_id: 200,
+        package_id: 1,
+        booking_id: 10,
+        kode: 'TRIP-001',
+        status: 'scheduled',
+        tanggal_mulai: '2026-02-01',
+        tanggal_selesai: '2026-02-03',
         jumlah_peserta: 2,
-        total_harga: '1500000',
-        status: 'confirmed',
-        client: {
-            id: 100,
-            name: 'Budi Santoso',
-            email: 'budi@test.com',
-            username: 'budisan',
-        },
-    },
-    mitra: {
-        id: 200,
-        name: 'PT Mitra Jaya',
-        email: 'mitra@test.com',
-        username: 'mitrajaya',
         timezone: 'Asia/Jakarta',
-    },
-    days: [
-        { id: 1, hari_ke: 1, judul: 'Kedatangan', deskripsi: 'Arrive di Bali', tanggal: '2026-02-01', status: 'pending' },
-        { id: 2, hari_ke: 2, judul: 'Explore Ubud', deskripsi: 'Tour', tanggal: '2026-02-02', status: 'pending' },
-        { id: 3, hari_ke: 3, judul: 'Kembali', deskripsi: 'Check out', tanggal: '2026-02-03', status: 'pending' },
-    ],
-    ...overrides,
-});
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+        snapshot_package: { nama: 'Paket Bali (Snapshot)' },
+        package: {
+            id: 1,
+            nama: 'Paket Bali 3H2M',
+            kode: 'PKT-BALI-001',
+            slug: 'paket-bali',
+            timezone: 'Asia/Jakarta',
+            cover_image: null,
+        },
+        booking: {
+            id: 10,
+            kode: 'BK-2026-001',
+            tanggal_keberangkatan: '2026-02-01',
+            jumlah_peserta: 2,
+            total_harga: '1500000',
+            status: 'confirmed',
+            client: {
+                id: 100,
+                name: 'Budi Santoso',
+                email: 'budi@test.com',
+                username: 'budisan',
+            },
+        },
+        mitra: {
+            id: 200,
+            name: 'PT Mitra Jaya',
+            email: 'mitra@test.com',
+            username: 'mitrajaya',
+            timezone: 'Asia/Jakarta',
+        },
+        days: [
+            { id: 1, hari_ke: 1, judul: 'Kedatangan', deskripsi: 'Arrive di Bali', tanggal: '2026-02-01', status: 'pending' },
+            { id: 2, hari_ke: 2, judul: 'Explore Ubud', deskripsi: 'Tour', tanggal: '2026-02-02', status: 'pending' },
+            { id: 3, hari_ke: 3, judul: 'Kembali', deskripsi: 'Check out', tanggal: '2026-02-03', status: 'pending' },
+        ],
+        ...overrides,
+    }) as any;
 
 const renderPage = (trip = makeTrip()) => render(Show, { props: { trip } });
 
 // ============================================================
-// 13. TEST SUITE
+// 12. TEST SUITE
 // ============================================================
 describe('Admin Trips — Show Page', () => {
     beforeEach(() => {
@@ -219,7 +215,7 @@ describe('Admin Trips — Show Page', () => {
     });
 
     // ----------------------------------------------------------
-    // 13.1 RENDERING — Header & Back Button
+    // 12.1 RENDERING — Header & Back Button
     // ----------------------------------------------------------
     describe('Rendering — Header', () => {
         it('menampilkan BackButton dengan href benar', () => {
@@ -244,7 +240,7 @@ describe('Admin Trips — Show Page', () => {
     });
 
     // ----------------------------------------------------------
-    // 13.2 RENDERING — Itinerary
+    // 12.2 RENDERING — Itinerary
     // ----------------------------------------------------------
     describe('Rendering — TripItinerary', () => {
         it('merender TripItinerary dengan jumlah days benar', () => {
@@ -267,7 +263,7 @@ describe('Admin Trips — Show Page', () => {
     });
 
     // ----------------------------------------------------------
-    // 13.3 RENDERING — Mitra Card
+    // 12.3 RENDERING — Mitra Card
     // ----------------------------------------------------------
     describe('Rendering — TripMitraCard', () => {
         it('merender TripMitraCard dengan data mitra', () => {
@@ -288,7 +284,7 @@ describe('Admin Trips — Show Page', () => {
     });
 
     // ----------------------------------------------------------
-    // 13.4 RENDERING — Info Pesanan (conditional)
+    // 12.4 RENDERING — Info Pesanan (conditional)
     // ----------------------------------------------------------
     describe('Rendering — Info Pesanan', () => {
         it('merender section Info Pesanan saat booking ada', () => {
@@ -336,7 +332,7 @@ describe('Admin Trips — Show Page', () => {
     });
 
     // ----------------------------------------------------------
-    // 13.5 REACTIVITY — snapshot fallback
+    // 12.5 REACTIVITY — snapshot fallback
     // ----------------------------------------------------------
     describe('Reactivity — Snapshot Fallback', () => {
         it('meneruskan snapshot kosong saat snapshot_package undefined', () => {
@@ -366,7 +362,7 @@ describe('Admin Trips — Show Page', () => {
     });
 
     // ----------------------------------------------------------
-    // 13.6 A11Y
+    // 12.6 A11Y
     // ----------------------------------------------------------
     describe('Accessibility', () => {
         it('heading "Info Pesanan" pakai h3', () => {
@@ -388,7 +384,7 @@ describe('Admin Trips — Show Page', () => {
     });
 
     // ----------------------------------------------------------
-    // 13.7 EDGE CASE
+    // 12.7 EDGE CASE
     // ----------------------------------------------------------
     describe('Edge Cases', () => {
         it('handle trip dengan semua relasi null', () => {

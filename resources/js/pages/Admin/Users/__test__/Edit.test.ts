@@ -396,7 +396,7 @@ describe('Admin Users — Edit Page', () => {
         it('mengaktifkan tombol kembali setelah onFinish', async () => {
             let finishCallback: (() => void) | undefined;
             vi.mocked(updateUser).mockImplementation((_id, _data, options) => {
-                finishCallback = options?.onFinish;
+                finishCallback = () => options?.onFinish?.({} as any);
             });
 
             render(Edit, { user: makeAdmin() });
@@ -422,7 +422,7 @@ describe('Admin Users — Edit Page', () => {
                     name: 'Nama wajib diisi',
                     email: 'Email tidak valid',
                 });
-                options?.onFinish?.();
+                options?.onFinish?.({} as any);
             });
 
             render(Edit, { user: makeAdmin() });
@@ -437,7 +437,7 @@ describe('Admin Users — Edit Page', () => {
         it('mengaktifkan tombol submit kembali setelah error', async () => {
             vi.mocked(updateUser).mockImplementation((_id, _data, options) => {
                 options?.onError?.({ name: 'Required' });
-                options?.onFinish?.();
+                options?.onFinish?.({} as any);
             });
 
             render(Edit, { user: makeAdmin() });
@@ -455,7 +455,7 @@ describe('Admin Users — Edit Page', () => {
                 if (callCount === 1) {
                     options?.onError?.({ name: 'Required' });
                 }
-                options?.onFinish?.();
+                options?.onFinish?.({} as any);
             });
 
             render(Edit, { user: makeAdmin() });
@@ -488,7 +488,7 @@ describe('Admin Users — Edit Page', () => {
         it('field dengan error memiliki aria-invalid dan role="alert"', async () => {
             vi.mocked(updateUser).mockImplementation((_id, _data, options) => {
                 options?.onError?.({ name: 'Wajib' });
-                options?.onFinish?.();
+                options?.onFinish?.({} as any);
             });
 
             render(Edit, { user: makeAdmin() });

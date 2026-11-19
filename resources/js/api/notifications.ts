@@ -1,5 +1,4 @@
 import { router } from '@inertiajs/svelte';
-import type { RequestPayload } from '@inertiajs/core';
 
 // Best practice: Tipe otomatis dari method router
 type NotificationOptions = Parameters<typeof router.post>[2];

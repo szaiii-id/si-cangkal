@@ -52,14 +52,16 @@ describe('DaysEditor Component', () => {
 
             expect(screen.getByText('Hari ke-1')).toBeInTheDocument();
             expect(screen.getByText('Penjemputan')).toBeInTheDocument();
-            
-            const timeSpan = screen.getByText((content, element) => {
-                return element?.tagName === 'SPAN' && 
-                       element.textContent?.includes('08:00') && 
-                       element.textContent?.includes('09:00');
+
+            const timeSpan = screen.getByText((_content, element) => {
+                return Boolean(
+                    element?.tagName === 'SPAN' &&
+                        element.textContent?.includes('08:00') &&
+                        element.textContent?.includes('09:00'),
+                );
             });
             expect(timeSpan).toBeInTheDocument();
-            
+
             expect(screen.getByText('Bandara')).toBeInTheDocument();
         });
 

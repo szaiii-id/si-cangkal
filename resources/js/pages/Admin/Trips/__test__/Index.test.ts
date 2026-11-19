@@ -19,14 +19,13 @@
  * Strategi:
  *   - TripFilterBar di-mock dengan input yang mem-bind props + callback.
  *   - TripTable di-mock minimal — render row per trip.
- *   - `mockUpdaters` + `syncUI()` sinkronisasi.
+ *   - `mockUpdaters` sinkronisasi.
  *   - A11y-first query.
  * ============================================================
  */
 
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { tick } from 'svelte';
 import Index from '../Index.svelte';
 
 // ============================================================
@@ -290,41 +289,41 @@ vi.mock('@/global/Pagination.svelte', () => ({
 import { getTrips } from '@/api/admin';
 
 // ============================================================
-// 14. HELPERS
+// 14. FIXTURES
 // ============================================================
-async function syncUI(): Promise<void> {
-    await tick();
-    mockUpdaters.forEach((fn) => fn());
-}
+const makeTrip = (overrides: Record<string, unknown> = {}) =>
+    ({
+        id: 1,
+        booking_id: 10,
+        package_id: 1,
+        mitra_id: 200,
+        kode: 'TRIP-001',
+        status: 'scheduled',
+        tanggal_mulai: '2026-02-01',
+        tanggal_selesai: '2026-02-03',
+        jumlah_peserta: 2,
+        timezone: 'Asia/Jakarta',
+        snapshot_package: null,
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+        package: { nama: 'Paket Bali' },
+        booking: { client: { name: 'Budi', email: 'budi@test.com' } },
+        mitra: { name: 'PT Mitra' },
+        ...overrides,
+    }) as any;
 
-// ============================================================
-// 15. FIXTURES
-// ============================================================
-const makeTrip = (overrides = {}) => ({
-    id: 1,
-    kode: 'TRIP-001',
-    status: 'scheduled',
-    tanggal_mulai: '2026-02-01',
-    tanggal_selesai: '2026-02-03',
-    jumlah_peserta: 2,
-    timezone: 'Asia/Jakarta',
-    package: { nama: 'Paket Bali' },
-    booking: { client: { name: 'Budi', email: 'budi@test.com' } },
-    mitra: { name: 'PT Mitra' },
-    ...overrides,
-});
-
-const makeTrips = (data = [makeTrip()], overrides = {}) => ({
-    current_page: 1,
-    last_page: 1,
-    per_page: 15,
-    total: data.length,
-    from: data.length ? 1 : null,
-    to: data.length ? data.length : null,
-    links: [],
-    data,
-    ...overrides,
-});
+const makeTrips = (data = [makeTrip()], overrides: Record<string, unknown> = {}) =>
+    ({
+        current_page: 1,
+        last_page: 1,
+        per_page: 15,
+        total: data.length,
+        from: data.length ? 1 : null,
+        to: data.length ? data.length : null,
+        links: [],
+        data,
+        ...overrides,
+    }) as any;
 
 const DEFAULT_FILTERS = {
     search: '',
@@ -333,8 +332,8 @@ const DEFAULT_FILTERS = {
     tanggal_sampai: '',
     sort: 'tanggal_mulai',
     direction: 'desc' as const,
-    mitra_id: null as number | null,
-    package_id: null as number | null,
+    mitra_id: null as string | null,
+    package_id: null as string | number | null,
 };
 
 const DEFAULT_STATUS_COUNTS = {
@@ -346,15 +345,15 @@ const DEFAULT_STATUS_COUNTS = {
 
 const renderPage = (
     trips = makeTrips(),
-    filters = DEFAULT_FILTERS,
+    filters: Record<string, unknown> = DEFAULT_FILTERS,
     statusCounts = DEFAULT_STATUS_COUNTS,
 ) =>
     render(Index, {
-        props: { trips, filters, statusCounts },
+        props: { trips, filters, statusCounts } as any,
     });
 
 // ============================================================
-// 16. TEST SUITE
+// 15. TEST SUITE
 // ============================================================
 describe('Admin Trips — Index Page', () => {
     beforeEach(() => {
@@ -368,7 +367,7 @@ describe('Admin Trips — Index Page', () => {
     });
 
     // ----------------------------------------------------------
-    // 16.1 RENDERING — Header & Back Button
+    // 15.1 RENDERING — Header & Back Button
     // ----------------------------------------------------------
     describe('Rendering — Header', () => {
         it('menampilkan judul "Jadwal Perjalanan"', () => {
@@ -407,7 +406,7 @@ describe('Admin Trips — Index Page', () => {
     });
 
     // ----------------------------------------------------------
-    // 16.2 RENDERING — Status Tabs
+    // 15.2 RENDERING — Status Tabs
     // ----------------------------------------------------------
     describe('Rendering — Status Tabs', () => {
         it('menampilkan tab "Semua" dengan total semua status', () => {
@@ -446,7 +445,7 @@ describe('Admin Trips — Index Page', () => {
     });
 
     // ----------------------------------------------------------
-    // 16.3 RENDERING — Content
+    // 15.3 RENDERING — Content
     // ----------------------------------------------------------
     describe('Rendering — Content', () => {
         it('merender TripTable + Pagination saat data tersedia', () => {
@@ -479,7 +478,7 @@ describe('Admin Trips — Index Page', () => {
     });
 
     // ----------------------------------------------------------
-    // 16.4 INTERACTION — Search Debounce
+    // 15.4 INTERACTION — Search Debounce
     // ----------------------------------------------------------
     describe('Interaction — Search Debounce', () => {
         it('tidak memanggil getTrips sebelum 300ms', async () => {
@@ -514,7 +513,7 @@ describe('Admin Trips — Index Page', () => {
     });
 
     // ----------------------------------------------------------
-    // 16.5 INTERACTION — Status Change
+    // 15.5 INTERACTION — Status Change
     // ----------------------------------------------------------
     describe('Interaction — Status Change', () => {
         it('klik tab status memanggil getTrips dengan query status', async () => {
@@ -535,7 +534,7 @@ describe('Admin Trips — Index Page', () => {
     });
 
     // ----------------------------------------------------------
-    // 16.6 INTERACTION — Date Range
+    // 15.6 INTERACTION — Date Range
     // ----------------------------------------------------------
     describe('Interaction — Date Range', () => {
         it('klik Terapkan memanggil getTrips dengan tanggal_dari & tanggal_sampai', async () => {
@@ -560,7 +559,7 @@ describe('Admin Trips — Index Page', () => {
     });
 
     // ----------------------------------------------------------
-    // 16.7 INTERACTION — Clear Filters
+    // 15.7 INTERACTION — Clear Filters
     // ----------------------------------------------------------
     describe('Interaction — Clear Filters', () => {
         it('klik "Hapus Semua Filter" memanggil getTrips dengan query kosong', async () => {
@@ -606,7 +605,7 @@ describe('Admin Trips — Index Page', () => {
     });
 
     // ----------------------------------------------------------
-    // 16.8 REACTIVITY — Has Active Filters
+    // 15.8 REACTIVITY — Has Active Filters
     // ----------------------------------------------------------
     describe('Reactivity — Has Active Filters', () => {
         it('filter bar menerima hasActiveFilters=true saat search terisi', () => {
@@ -627,7 +626,7 @@ describe('Admin Trips — Index Page', () => {
     });
 
     // ----------------------------------------------------------
-    // 16.9 A11Y
+    // 15.9 A11Y
     // ----------------------------------------------------------
     describe('Accessibility', () => {
         it('status tabs punya role="tablist" dan aria-selected', () => {

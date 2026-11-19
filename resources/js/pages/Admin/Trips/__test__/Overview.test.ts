@@ -19,7 +19,6 @@
 
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { tick } from 'svelte';
 import Overview from '../Overview.svelte';
 
 // ============================================================
@@ -189,13 +188,6 @@ import { getPackages } from '@/api/admin';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { formatDurasi } from '@/utils/duration';
 
-// ============================================================
-// 12. HELPERS
-// ============================================================
-async function syncUI(): Promise<void> {
-    await tick();
-    mockUpdaters.forEach((fn) => fn());
-}
 
 // ============================================================
 // 13. FIXTURES

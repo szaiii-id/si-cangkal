@@ -18,7 +18,6 @@
 
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { tick } from 'svelte';
 import Index from '../Index.svelte';
 
 // ============================================================
@@ -222,14 +221,6 @@ vi.mock('@/global/Pagination.svelte', () => ({
 // 12. STATIC IMPORT
 // ============================================================
 import { getRefunds } from '@/api/admin';
-
-// ============================================================
-// 13. HELPERS
-// ============================================================
-async function syncUI(): Promise<void> {
-    await tick();
-    mockUpdaters.forEach((fn) => fn());
-}
 
 // ============================================================
 // 14. FIXTURES (Sesuai RefundResource)

@@ -85,6 +85,8 @@ vi.mock('@/components/mitra/BankAccountManager.svelte', () => ({
 // ============================================================
 const makeProfile = (overrides = {}) => ({
     id: 1,
+    user_id: 1,
+    tipe: 'mitra' as const,
     nama_penyedia_usaha: 'PT Mitra Jaya',
     nomor_identitas: '1234567890',
     alamat: 'Jl. Merdeka No. 1',
@@ -94,6 +96,7 @@ const makeProfile = (overrides = {}) => ({
     kode_pos: '80119',
     logo: 'logos/mitra.jpg',
     deskripsi: 'Travel agent terpercaya',
+    meta: null,
     ...overrides,
 });
 

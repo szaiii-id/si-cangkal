@@ -148,11 +148,6 @@ vi.mock('@/components/booking/PaymentHistory.svelte', () => ({
 }));
 
 // ============================================================
-// STATIC IMPORT
-// ============================================================
-import { canClientCancelBooking, needsMitraCancel } from '@/utils/bookingRules';
-
-// ============================================================
 // HELPERS
 // ============================================================
 async function syncUI() {
@@ -163,44 +158,47 @@ async function syncUI() {
 // ============================================================
 // FIXTURES
 // ============================================================
-const makeBooking = (overrides = {}) => ({
-    id: 1,
-    kode: 'BK-001',
-    status: 'pending_payment',
-    total_harga: '1500000',
-    tanggal_keberangkatan: '2026-02-01',
-    jumlah_peserta: 2,
-    expired_at: '2026-01-20T12:00:00Z',
-    has_payment_proof: false,
-    package: { id: 1, nama: 'Paket Bali', kode: 'PKT-001', durasi_hari: 3, durasi_malam: 2 },
-    participants: [{ id: 1, nama: 'Budi' }],
-    payments: [],
-    mitra: {
-        name: 'PT Mitra',
-        telepon: '08123456789',
-        // ✅ FIX: pakai `nama_penyedia`, bukan `nama_bank`
-        bankAccounts: [
-            {
-                id: 1,
-                tipe: 'bank',
-                nama_penyedia: 'BCA',           // ← source: `acc.nama_penyedia`
-                nomor_rekening: '123456789',     // ← source: `acc.nomor_rekening`
-                nama_pemilik: 'PT Mitra',        // ← source: `acc.nama_pemilik`
-                is_primary: true,                // ← source: `acc.is_primary`
-            },
-        ],
-    },
-    ...overrides,
-});
+const makeBooking = (overrides: Record<string, unknown> = {}) =>
+    ({
+        id: 1,
+        kode: 'BK-001',
+        status: 'pending_payment',
+        statusLabel: 'Menunggu Pembayaran',
+        total_harga: '1500000',
+        tanggal_keberangkatan: '2026-02-01',
+        jumlah_peserta: 2,
+        expired_at: '2026-01-20T12:00:00Z',
+        catatan: null,
+        created_at: '2026-01-01T00:00:00Z',
+        has_payment_proof: false,
+        package: { id: 1, nama: 'Paket Bali', kode: 'PKT-001', durasi_hari: 3, durasi_malam: 2 },
+        participants: [{ id: 1, nama: 'Budi' }],
+        payments: [],
+        mitra: {
+            name: 'PT Mitra',
+            telepon: '08123456789',
+            bankAccounts: [
+                {
+                    id: 1,
+                    tipe: 'bank',
+                    nama_penyedia: 'BCA',
+                    nomor_rekening: '123456789',
+                    nama_pemilik: 'PT Mitra',
+                    is_primary: true,
+                },
+            ],
+        },
+        ...overrides,
+    }) as any;
 
-const renderPage = (props = {}) =>
+const renderPage = (props: Record<string, unknown> = {}) =>
     render(Show, {
         props: {
             booking: makeBooking(),
             eticket: null,
             refunds: [],
             ...props,
-        },
+        } as any,
     });
 
 // ============================================================
@@ -283,7 +281,7 @@ describe('Client Bookings — Show Page', () => {
 
         it('membuka ConfirmModal saat tombol batalkan diklik', async () => {
             renderPage();
-            
+
             await fireEvent.click(screen.getByRole('button', { name: 'Batalkan Pesanan' }));
             await syncUI();
 
@@ -293,7 +291,7 @@ describe('Client Bookings — Show Page', () => {
 
         it('memanggil router.post /cancel saat konfirmasi modal diklik', async () => {
             renderPage();
-            
+
             await fireEvent.click(screen.getByRole('button', { name: 'Batalkan Pesanan' }));
             await syncUI();
 
@@ -318,7 +316,7 @@ describe('Client Bookings — Show Page', () => {
             });
 
             renderPage();
-            
+
             const copyBtn = screen.getByRole('button', { name: /Salin Rekening/i });
             await fireEvent.click(copyBtn);
 

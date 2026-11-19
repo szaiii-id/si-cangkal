@@ -156,7 +156,11 @@ async function syncUI() {
 // ============================================================
 // 5. FIXTURES
 // ============================================================
-const makePackage = (overrides = {}) => ({
+// Jangan deklarasikan ulang `PackageDetail` — tipe asli di project
+// punya `kategori: PackageKategori` & `status: PackageStatus`, jadi
+// deklarasi lokal bikin error "Two different types with this name".
+// Cukup sempitkan literal di fixture, lalu cast di titik `render`.
+const makePackage = (overrides: Record<string, unknown> = {}) => ({
     id: 1,
     kode: 'PKT-01',
     nama: 'Paket Bali',
@@ -166,11 +170,11 @@ const makePackage = (overrides = {}) => ({
     durasi_hari: 3,
     durasi_malam: 2,
     harga_per_orang: '750000',
-    harga_per_rombongan: null,
+    harga_per_rombongan: null as string | null,
     max_peserta: 20,
     timezone: 'Asia/Jakarta',
-    cover_image: 'packages/bali.jpg',
-    status: 'draft',
+    cover_image: 'packages/bali.jpg' as string | null,
+    status: 'draft' as 'draft' | 'aktif' | 'arsip',
     created_at: '2026-01-01',
     updated_at: '2026-01-02',
     days: [
@@ -185,7 +189,8 @@ const makePackage = (overrides = {}) => ({
     ...overrides,
 });
 
-const renderPage = (pkg = makePackage()) => render(Show, { props: { package: pkg } });
+const renderPage = (pkg = makePackage()) =>
+    render(Show, { props: { package: pkg } as any });
 
 // ============================================================
 // 6. TEST SUITE
@@ -256,7 +261,7 @@ describe('Mitra Packages — Show Page', () => {
         });
 
         it('memanggil archivePackage saat modal dikonfirmasi', async () => {
-            mockApi.archivePackage.mockImplementation((_id, opts) => opts.onFinish?.());
+            mockApi.archivePackage.mockImplementation((_id: number, opts: any) => opts.onFinish?.());
             renderPage();
             await fireEvent.click(screen.getByText('Archive'));
             await syncUI();
@@ -285,7 +290,7 @@ describe('Mitra Packages — Show Page', () => {
         });
 
         it('memanggil deletePackage saat modal dikonfirmasi', async () => {
-            mockApi.deletePackage.mockImplementation((_id, opts) => opts.onFinish?.());
+            mockApi.deletePackage.mockImplementation((_id: number, opts: any) => opts.onFinish?.());
             renderPage();
             await fireEvent.click(screen.getByText('Delete'));
             await syncUI();

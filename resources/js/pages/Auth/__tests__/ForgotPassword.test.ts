@@ -87,7 +87,7 @@ describe('ForgotPassword Page', () => {
         it('harus menampilkan error validasi email dari backend', async () => {
             vi.mocked(forgotPassword).mockImplementation((_data, options) => {
                 options?.onError?.({ email: 'Email tidak terdaftar' });
-                options?.onFinish?.();
+                options?.onFinish?.({} as any);
             });
 
             render(ForgotPassword);
@@ -105,7 +105,7 @@ describe('ForgotPassword Page', () => {
         it('input harus memiliki aria-invalid=true jika error', async () => {
             vi.mocked(forgotPassword).mockImplementation((_data, options) => {
                 options?.onError?.({ email: 'Error' });
-                options?.onFinish?.();
+                options?.onFinish?.({} as any);
             });
 
             render(ForgotPassword);
@@ -213,7 +213,7 @@ describe('ForgotPassword Page', () => {
         it('pesan error validasi email harus memiliki role="alert"', async () => {
             vi.mocked(forgotPassword).mockImplementation((_data, options) => {
                 options?.onError?.({ email: 'Error validasi' });
-                options?.onFinish?.();
+                options?.onFinish?.({} as any);
             });
 
             render(ForgotPassword);

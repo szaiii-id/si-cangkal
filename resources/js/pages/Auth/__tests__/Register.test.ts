@@ -193,7 +193,7 @@ describe('Register Page', () => {
                     password: 'Password terlalu lemah',
                     password_confirmation: 'Konfirmasi gagal',
                 });
-                options?.onFinish?.();
+                options?.onFinish?.({} as any);
             });
 
             render(Register);

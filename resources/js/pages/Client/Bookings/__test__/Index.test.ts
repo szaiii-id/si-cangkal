@@ -13,7 +13,7 @@
  * ============================================================
  */
 
-import { render, screen, fireEvent, within } from '@testing-library/svelte';
+import { render, screen, fireEvent } from '@testing-library/svelte';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import Index from '../Index.svelte';
 

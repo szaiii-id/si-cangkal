@@ -14,7 +14,9 @@
 
     let { data, monthly_revenue, filters }: AdminReportRevenueProps = $props();
 
+    // svelte-ignore state_referenced_locally
     let startDate = $state(filters.start_date);
+    // svelte-ignore state_referenced_locally
     let endDate = $state(filters.end_date);
 
     function applyFilter() {

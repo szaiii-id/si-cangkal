@@ -14,7 +14,6 @@ vi.mock('@/utils/toast.svelte', () => ({
 }));
 
 import { uploadPaymentProof } from '@/api/mitra';
-import { showToast } from '@/utils/toast.svelte';
 
 describe('UploadPaymentProofCard Component', () => {
     beforeEach(() => {

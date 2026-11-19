@@ -6,7 +6,6 @@
 
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { tick } from 'svelte';
 import Index from '../Index.svelte';
 
 // ============================================================
@@ -77,10 +76,10 @@ vi.mock('@/global/FilterBar.svelte', () => ({
                 <button type="button" data-action="clear">Hapus Filter</button>
                 <button type="button" data-action="status-pending">Pending</button>
             `;
-            
-            el.querySelector('input')!.oninput = (e) => props.onSearch((e.target as HTMLInputElement).value);
-            el.querySelector('[data-action="clear"]')!.onclick = () => props.onClear();
-            el.querySelector('[data-action="status-pending"]')!.onclick = () => props.onStatusChange('pending_payment');
+
+            (el.querySelector('input') as HTMLInputElement).oninput = (e) => props.onSearch((e.target as HTMLInputElement).value);
+            (el.querySelector('[data-action="clear"]') as HTMLButtonElement).onclick = () => props.onClear();
+            (el.querySelector('[data-action="status-pending"]') as HTMLButtonElement).onclick = () => props.onStatusChange('pending_payment');
         };
 
         update();
@@ -100,7 +99,7 @@ vi.mock('@/global/EmptyState.svelte', () => ({
 }));
 
 vi.mock('@/global/Pagination.svelte', () => ({
-    default: (anchor: Node, props: any) => {
+    default: (anchor: Node) => {
         const el = document.createElement('div');
         el.setAttribute('data-testid', 'pagination');
         anchor.parentNode?.insertBefore(el, anchor);
@@ -109,20 +108,12 @@ vi.mock('@/global/Pagination.svelte', () => ({
 }));
 
 // ============================================================
-// 4. HELPERS
+// 4. FIXTURES
 // ============================================================
-async function syncUI() {
-    await tick();
-    mockUpdaters.forEach(fn => fn());
-}
-
-// ============================================================
-// 5. FIXTURES
-// ============================================================
-const makeBooking = (overrides = {}) => ({
+const makeBooking = (overrides: Record<string, unknown> = {}) => ({
     id: 1,
     kode: 'BK-01',
-    status: 'pending_payment',
+    status: 'pending_payment' as const,
     tanggal_keberangkatan: '2026-02-01',
     jumlah_peserta: 2,
     total_harga: '1500000',
@@ -133,25 +124,26 @@ const makeBooking = (overrides = {}) => ({
     ...overrides,
 });
 
-const makeProps = (overrides = {}) => ({
-    bookings: {
-        data: [makeBooking()],
-        current_page: 1, last_page: 1, total: 1, per_page: 15, from: 1, to: 1, links: []
-    },
-    filters: { search: '', status: '', sort: 'created_at', direction: 'desc' },
-    statusCounts: {
-        pending_payment: 1,
-        payment_verified: 0,
-        confirmed: 0,
-        in_progress: 0,
-        completed: 0,
-        cancelled: 0,
-    },
-    ...overrides,
-});
+const makeProps = (overrides: Record<string, unknown> = {}) =>
+    ({
+        bookings: {
+            data: [makeBooking()],
+            current_page: 1, last_page: 1, total: 1, per_page: 15, from: 1, to: 1, links: []
+        },
+        filters: { search: '', status: '', sort: 'created_at', direction: 'desc' },
+        statusCounts: {
+            pending_payment: 1,
+            payment_verified: 0,
+            confirmed: 0,
+            in_progress: 0,
+            completed: 0,
+            cancelled: 0,
+        },
+        ...overrides,
+    }) as any;
 
 // ============================================================
-// 6. TEST SUITE
+// 5. TEST SUITE
 // ============================================================
 describe('Mitra Bookings — Index Page', () => {
     beforeEach(() => {
@@ -182,14 +174,14 @@ describe('Mitra Bookings — Index Page', () => {
 
         it('merender data booking dan Pagination jika ada', () => {
             render(Index, { props: makeProps() });
-            
+
             // Cek data booking
             expect(screen.getByText('BK-01')).toBeInTheDocument();
             expect(screen.getByText('Paket Bali')).toBeInTheDocument();
             expect(screen.getByText('Budi — budi@test.com')).toBeInTheDocument();
             expect(screen.getByText('Rp 1500000')).toBeInTheDocument();
             expect(screen.getByText('2 peserta')).toBeInTheDocument();
-            
+
             // Cek pagination
             expect(screen.getByTestId('pagination')).toBeInTheDocument();
         });
@@ -205,7 +197,7 @@ describe('Mitra Bookings — Index Page', () => {
         it('memanggil getBookings saat search debounce selesai', async () => {
             render(Index, { props: makeProps() });
             const input = screen.getByLabelText('Search');
-            
+
             await fireEvent.input(input, { target: { value: 'budi' } });
             expect(mockApi.getBookings).not.toHaveBeenCalled();
 
@@ -219,7 +211,7 @@ describe('Mitra Bookings — Index Page', () => {
         it('memanggil getBookings saat filter status diubah', async () => {
             render(Index, { props: makeProps() });
             await fireEvent.click(screen.getByText('Pending'));
-            
+
             expect(mockApi.getBookings).toHaveBeenCalledWith(
                 expect.objectContaining({ status: 'pending_payment' }),
                 expect.any(Object)
@@ -227,14 +219,14 @@ describe('Mitra Bookings — Index Page', () => {
         });
 
         it('memanggil getBookings saat tombol clear filter diklik', async () => {
-            render(Index, { 
-                props: makeProps({ 
-                    filters: { search: 'budi', status: 'pending_payment', sort: 'created_at', direction: 'desc' } 
-                }) 
+            render(Index, {
+                props: makeProps({
+                    filters: { search: 'budi', status: 'pending_payment', sort: 'created_at', direction: 'desc' }
+                })
             });
-            
+
             await fireEvent.click(screen.getByText('Hapus Filter'));
-            
+
             expect(mockApi.getBookings).toHaveBeenCalledWith(
                 {},
                 expect.any(Object)

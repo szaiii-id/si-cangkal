@@ -326,7 +326,7 @@ describe('Admin Users — Create Page', () => {
         it('mengaktifkan tombol kembali setelah onFinish dipanggil', async () => {
             let finishCallback: (() => void) | undefined;
             vi.mocked(createAdmin).mockImplementation((_payload, options) => {
-                finishCallback = options?.onFinish;
+                finishCallback = () => options?.onFinish?.({} as any);
             });
 
             render(Create);
@@ -353,7 +353,7 @@ describe('Admin Users — Create Page', () => {
                     name: 'Nama wajib diisi',
                     email: 'Email tidak valid',
                 });
-                options?.onFinish?.();
+                options?.onFinish?.({} as any);
             });
 
             render(Create);
@@ -372,7 +372,7 @@ describe('Admin Users — Create Page', () => {
         it('menampilkan toast error saat onError dipanggil', async () => {
             vi.mocked(createAdmin).mockImplementation((_payload, options) => {
                 options?.onError?.({ name: 'Required' });
-                options?.onFinish?.();
+                options?.onFinish?.({} as any);
             });
 
             render(Create);
@@ -388,8 +388,8 @@ describe('Admin Users — Create Page', () => {
 
         it('menampilkan toast success saat onSuccess dipanggil', async () => {
             vi.mocked(createAdmin).mockImplementation((_payload, options) => {
-                options?.onSuccess?.();
-                options?.onFinish?.();
+                options?.onSuccess?.({} as any);
+                options?.onFinish?.({} as any);
             });
 
             render(Create);
@@ -410,7 +410,7 @@ describe('Admin Users — Create Page', () => {
                 if (callCount === 1) {
                     options?.onError?.({ name: 'Required' });
                 }
-                options?.onFinish?.();
+                options?.onFinish?.({} as any);
             });
 
             render(Create);
@@ -438,7 +438,7 @@ describe('Admin Users — Create Page', () => {
                     email: 'Invalid',
                     password: 'Too short',
                 });
-                options?.onFinish?.();
+                options?.onFinish?.({} as any);
             });
 
             render(Create);

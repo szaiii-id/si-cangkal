@@ -183,7 +183,7 @@ describe('RegisterMitra Page', () => {
                     username: 'Username sudah digunakan',
                     email: 'Email tidak valid',
                 });
-                options?.onFinish?.();
+                options?.onFinish?.({} as any);
             });
 
             render(RegisterMitra);

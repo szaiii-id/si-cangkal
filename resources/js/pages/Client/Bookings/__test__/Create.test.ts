@@ -13,7 +13,7 @@
  * ============================================================
  */
 
-import { render, screen, fireEvent, within } from '@testing-library/svelte';
+import { render, screen, fireEvent } from '@testing-library/svelte';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import Create from '../Create.svelte';
 
@@ -58,22 +58,23 @@ vi.mock('@/components/layout/ClientLayout.svelte', () => ({
 // ============================================================
 // 5. FIXTURES
 // ============================================================
-const makePackage = (overrides = {}) => ({
-    id: 1,
-    kode: 'PKT-001',
-    nama: 'Paket Bali',
-    slug: 'paket-bali',
-    deskripsi: 'Liburan seru',
-    kategori: 'wisata_alam',
-    durasi_hari: 3,
-    durasi_malam: 2,
-    harga_per_orang: '750000',
-    harga_per_rombongan: null,
-    max_peserta: 10,
-    timezone: 'Asia/Jakarta',
-    facilities: [],
-    ...overrides,
-});
+const makePackage = (overrides: Record<string, unknown> = {}) =>
+    ({
+        id: 1,
+        kode: 'PKT-001',
+        nama: 'Paket Bali',
+        slug: 'paket-bali',
+        deskripsi: 'Liburan seru',
+        kategori: 'wisata_alam' as const,
+        durasi_hari: 3,
+        durasi_malam: 2,
+        harga_per_orang: '750000',
+        harga_per_rombongan: null,
+        max_peserta: 10,
+        timezone: 'Asia/Jakarta',
+        facilities: [],
+        ...overrides,
+    }) as any;
 
 const renderPage = (pkg = makePackage()) =>
     render(Create, { props: { package: pkg } });
@@ -104,7 +105,7 @@ describe('Client Bookings — Create Page', () => {
     describe('Rendering — Step 1', () => {
         it('menampilkan form info pemesanan secara default', () => {
             renderPage();
-            
+
             expect(screen.getByRole('heading', { name: 'Info Pemesanan' })).toBeInTheDocument();
             expect(screen.getByLabelText(/Tanggal Keberangkatan/i)).toBeInTheDocument();
             expect(screen.getByLabelText(/Jumlah Peserta/i)).toBeInTheDocument();
@@ -119,10 +120,10 @@ describe('Client Bookings — Create Page', () => {
 
         it('menampilkan error alert jika validasi step 1 gagal', async () => {
             renderPage();
-            
+
             // Kosongkan field & submit
             await fireEvent.click(screen.getByRole('button', { name: /Lanjut Isi Peserta/i }));
-            
+
             expect(screen.getByRole('alert')).toHaveTextContent(/Terdapat 1 kesalahan pada form/i);
         });
     });
@@ -133,13 +134,13 @@ describe('Client Bookings — Create Page', () => {
     describe('Interaction — Step 1', () => {
         it('tidak lanjut ke step 2 jika tanggal kosong', async () => {
             renderPage();
-            
+
             // Isi hanya qty
             const qtyInput = screen.getByLabelText(/Jumlah Peserta/i);
             await fireEvent.input(qtyInput, { target: { value: '2' } });
 
             await fireEvent.click(screen.getByRole('button', { name: /Lanjut Isi Peserta/i }));
-            
+
             // Tetap di step 1
             expect(screen.queryByRole('heading', { name: 'Data Peserta' })).not.toBeInTheDocument();
         });
@@ -150,7 +151,7 @@ describe('Client Bookings — Create Page', () => {
 
             // Step 2 muncul
             expect(screen.getByRole('heading', { name: 'Data Peserta' })).toBeInTheDocument();
-            
+
             // Cek jumlah field nama peserta (qty=2)
             expect(screen.getAllByLabelText(/Nama Lengkap/i)).toHaveLength(2);
         });

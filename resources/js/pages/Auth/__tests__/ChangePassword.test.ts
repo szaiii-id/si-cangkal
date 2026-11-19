@@ -164,7 +164,7 @@ describe('ChangePassword Page', () => {
         it('harus menampilkan error validasi dari backend', async () => {
             vi.mocked(changePassword).mockImplementation((_data, options) => {
                 options?.onError?.({ password: 'Password terlalu lemah' });
-                options?.onFinish?.();
+                options?.onFinish?.({} as any);
             });
 
             render(ChangePassword, { props: { mustChangePassword: false } });

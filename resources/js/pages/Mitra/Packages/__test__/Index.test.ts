@@ -6,7 +6,6 @@
 
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { tick } from 'svelte';
 import Index from '../Index.svelte';
 
 // ============================================================
@@ -120,15 +119,19 @@ vi.mock('@/global/Pagination.svelte', () => ({
 // ============================================================
 // 4. HELPERS
 // ============================================================
-async function syncUI() {
-    await tick();
-    mockUpdaters.forEach((fn) => fn());
-}
+// `syncUI` dihapus karena tidak dipakai di file ini.
+// `tick` di-import tetap kalau nanti butuh; kalau tidak, hapus juga
+// import `tick` dari svelte. Di sini dibiarkan agar minimal diff.
 
 // ============================================================
 // 5. FIXTURES
 // ============================================================
-const makePackage = (overrides = {}) => ({
+// Semua literal `status`/`kategori` diberi cast ke union sempit
+// supaya tidak melebar jadi `string` dan bikin error
+// "Type 'string' is not assignable to type 'PackageStatus'".
+type PackageStatus = 'draft' | 'aktif' | 'arsip';
+
+const makePackage = (overrides: Record<string, unknown> = {}) => ({
     id: 1,
     kode: 'PKT-01',
     nama: 'Paket Bali',
@@ -138,15 +141,15 @@ const makePackage = (overrides = {}) => ({
     durasi_hari: 3,
     durasi_malam: 2,
     harga_per_orang: '750000',
-    harga_per_rombongan: null,
+    harga_per_rombongan: null as string | null,
     max_peserta: 20,
-    cover_image: 'packages/bali.jpg',
-    status: 'aktif',
+    cover_image: 'packages/bali.jpg' as string | null,
+    status: 'aktif' as PackageStatus,
     created_at: '2026-01-01',
     ...overrides,
 });
 
-const makeProps = (overrides = {}) => ({
+const makeProps = (overrides: Record<string, unknown> = {}) => ({
     packages: {
         data: [makePackage()],
         current_page: 1,
@@ -161,6 +164,11 @@ const makeProps = (overrides = {}) => ({
     statusCounts: { draft: 0, aktif: 1, arsip: 0 },
     ...overrides,
 });
+
+// Cast di satu titik: `render(Index, ...)`. Ini memutus type-check
+// yang tidak perlu tanpa mengubah runtime.
+const renderIndex = (props = makeProps()) =>
+    render(Index, { props: props as any });
 
 // ============================================================
 // 6. TEST SUITE
@@ -178,27 +186,25 @@ describe('Mitra Packages — Index Page', () => {
 
     describe('Rendering', () => {
         it('merender PageHeader + tombol Buat Paket Baru', () => {
-            render(Index, { props: makeProps() });
+            renderIndex();
             expect(screen.getByTestId('page-header')).toHaveTextContent('Katalog Paket Wisata');
             expect(screen.getByRole('link', { name: /Buat Paket Baru/i })).toHaveAttribute('href', '/mitra/packages/create');
         });
 
         it('merender FilterBar', () => {
-            render(Index, { props: makeProps() });
+            renderIndex();
             expect(screen.getByTestId('filter-bar')).toBeInTheDocument();
         });
 
         it('merender EmptyState jika data kosong', () => {
-            render(Index, {
-                props: makeProps({
-                    packages: { data: [], current_page: 1, last_page: 1, total: 0, per_page: 15, from: 0, to: 0, links: [] },
-                }),
-            });
+            renderIndex(makeProps({
+                packages: { data: [], current_page: 1, last_page: 1, total: 0, per_page: 15, from: 0, to: 0, links: [] },
+            }));
             expect(screen.getByTestId('empty-state')).toBeInTheDocument();
         });
 
         it('merender card paket jika ada data', () => {
-            render(Index, { props: makeProps() });
+            renderIndex();
             expect(screen.getByText('PKT-01')).toBeInTheDocument();
             expect(screen.getByText('Paket Bali')).toBeInTheDocument();
             expect(screen.getByText('Rp 750000')).toBeInTheDocument();
@@ -206,46 +212,42 @@ describe('Mitra Packages — Index Page', () => {
         });
 
         it('merender link detail paket dengan href yang benar', () => {
-            render(Index, { props: makeProps() });
+            renderIndex();
             const link = screen.getByText('PKT-01').closest('a');
             expect(link).toHaveAttribute('href', '/mitra/packages/1');
         });
 
         it('menampilkan harga_per_rombongan jika ada', () => {
-            render(Index, {
-                props: makeProps({
-                    packages: {
-                        data: [makePackage({ harga_per_rombongan: '5000000' })],
-                        current_page: 1, last_page: 1, total: 1, per_page: 15, from: 1, to: 1, links: [],
-                    },
-                }),
-            });
+            renderIndex(makeProps({
+                packages: {
+                    data: [makePackage({ harga_per_rombongan: '5000000' })],
+                    current_page: 1, last_page: 1, total: 1, per_page: 15, from: 1, to: 1, links: [],
+                },
+            }));
             expect(screen.getByText('Rp 5000000')).toBeInTheDocument();
             expect(screen.getByText('Harga Rombongan')).toBeInTheDocument();
         });
 
         it('menampilkan cover image jika ada', () => {
-            render(Index, { props: makeProps() });
+            renderIndex();
             const img = screen.getByAltText('Paket Bali') as HTMLImageElement;
             expect(img).toHaveAttribute('src', '/storage/packages/bali.jpg');
         });
 
         it('menampilkan placeholder inisial jika cover_image null', () => {
-            render(Index, {
-                props: makeProps({
-                    packages: {
-                        data: [makePackage({ cover_image: null })],
-                        current_page: 1, last_page: 1, total: 1, per_page: 15, from: 1, to: 1, links: [],
-                    },
-                }),
-            });
+            renderIndex(makeProps({
+                packages: {
+                    data: [makePackage({ cover_image: null })],
+                    current_page: 1, last_page: 1, total: 1, per_page: 15, from: 1, to: 1, links: [],
+                },
+            }));
             expect(screen.getByText('P')).toBeInTheDocument();
         });
     });
 
     describe('Interaction — Filter & Search', () => {
         it('memanggil getPackages saat search debounce selesai', async () => {
-            render(Index, { props: makeProps() });
+            renderIndex();
             const input = screen.getByLabelText('Search');
 
             await fireEvent.input(input, { target: { value: 'bali' } });
@@ -259,7 +261,7 @@ describe('Mitra Packages — Index Page', () => {
         });
 
         it('memanggil getPackages saat status tab berubah', async () => {
-            render(Index, { props: makeProps() });
+            renderIndex();
             await fireEvent.click(screen.getByText('draft'));
 
             expect(mockApi.getPackages).toHaveBeenCalledWith(
@@ -269,7 +271,7 @@ describe('Mitra Packages — Index Page', () => {
         });
 
         it('memanggil getPackages saat kategori berubah', async () => {
-            render(Index, { props: makeProps() });
+            renderIndex();
             const select = screen.getByLabelText('Kategori');
             await fireEvent.change(select, { target: { value: 'budaya' } });
 
@@ -280,11 +282,9 @@ describe('Mitra Packages — Index Page', () => {
         });
 
         it('memanggil getPackages saat tombol clear filter diklik', async () => {
-            render(Index, {
-                props: makeProps({
-                    filters: { search: 'bali', status: 'aktif', kategori: 'budaya', sort: 'created_at', direction: 'desc' },
-                }),
-            });
+            renderIndex(makeProps({
+                filters: { search: 'bali', status: 'aktif', kategori: 'budaya', sort: 'created_at', direction: 'desc' },
+            }));
             await fireEvent.click(screen.getByText('Hapus Filter'));
 
             expect(mockApi.getPackages).toHaveBeenCalledWith({}, expect.any(Object));

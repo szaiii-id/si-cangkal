@@ -21,6 +21,7 @@
     // ==========================================
     // STATE
     // ==========================================
+    // svelte-ignore state_referenced_locally
     let bankForm = $state<{ accounts: BankFormItem[]; password: string }>({
         accounts:
             bankAccounts.length > 0

@@ -51,15 +51,17 @@ describe('PackageItinerary Component', () => {
             render(PackageItinerary, { props: { days } });
 
             expect(screen.getByText('Penjemputan')).toBeInTheDocument();
-            
+
             // PERBAIKAN: Gunakan matcher kustom untuk teks yang dipecah
-            const timeSpan = screen.getByText((content, element) => {
-                return element?.tagName === 'SPAN' && 
-                       element.textContent?.includes('08:00') && 
-                       element.textContent?.includes('09:00');
+            const timeSpan = screen.getByText((_content, element) => {
+                return Boolean(
+                    element?.tagName === 'SPAN' &&
+                        element.textContent?.includes('08:00') &&
+                        element.textContent?.includes('09:00'),
+                );
             });
             expect(timeSpan).toBeInTheDocument();
-            
+
             expect(screen.getByText('Bandara')).toBeInTheDocument();
         });
 
@@ -75,10 +77,10 @@ describe('PackageItinerary Component', () => {
     // ==========================================
     describe('Accessibility', () => {
         it('ikon SVG dekoratif harus disembunyikan dari screen reader', () => {
-            const { container } = render(PackageItinerary, { 
-                props: { days: [createMockDay()] } 
+            const { container } = render(PackageItinerary, {
+                props: { days: [createMockDay()] },
             });
-            
+
             const svgs = container.querySelectorAll('svg');
             svgs.forEach((svg) => {
                 expect(svg).toHaveAttribute('aria-hidden', 'true');
@@ -86,17 +88,17 @@ describe('PackageItinerary Component', () => {
         });
 
         it('garis timeline dekoratif harus disembunyikan dari screen reader', () => {
-            const { container } = render(PackageItinerary, { 
-                props: { days: [createMockDay()] } 
+            const { container } = render(PackageItinerary, {
+                props: { days: [createMockDay()] },
             });
-            
+
             const timelineLine = container.querySelector('.left-3');
             expect(timelineLine).toHaveAttribute('aria-hidden', 'true');
         });
 
         it('empty state harus memiliki role="status"', () => {
             render(PackageItinerary, { props: { days: [] } });
-            
+
             const emptyState = screen.getByRole('status');
             expect(emptyState).toHaveTextContent('Rencana perjalanan belum tersedia.');
         });

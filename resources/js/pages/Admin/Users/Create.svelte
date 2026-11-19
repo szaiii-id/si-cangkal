@@ -1,24 +1,30 @@
 <script lang="ts">
     import DashboardLayout from '@/components/layout/DashboardLayout.svelte';
     import BackButton from '@/global/BackButton.svelte';
-    import UserAccountForm from '@/components/admin/users/UserAccountForm.svelte';
+    import UserAccountForm, { type UserAccountFormData } from '@/components/admin/users/UserAccountForm.svelte';
     import UserPasswordForm from '@/components/admin/users/UserPasswordForm.svelte';
+    import type { UserRole } from '@/types/models/user';
     import { createAdmin } from '@/api/admin';
     import { showToast } from '@/utils/toast.svelte';
     import { adminMenu } from '@/utils/menus';
 
-    let form = $state({ name: '', username: '', email: '', password: '' });
+    let form = $state<UserAccountFormData & { password: string }>({
+        name: '',
+        username: '',
+        email: '',
+        role: 'admin' as UserRole,
+        password: '',
+    });
     let errors = $state<Record<string, string>>({});
     let processing = $state(false);
     let errorCount = $derived(Object.keys(errors).length);
 
-    function handleSubmit(e: SubmitEvent) {
-        e.preventDefault();
+    function submitAdmin() {
         errors = {};
         processing = true;
 
         const payload = {
-            role: 'admin',
+            role: form.role,
             name: form.name,
             username: form.username || null,
             email: form.email,
@@ -34,6 +40,11 @@
             },
             onFinish: () => (processing = false),
         });
+    }
+
+    function handleSubmit(e: SubmitEvent) {
+        e.preventDefault();
+        submitAdmin();
     }
 </script>
 
@@ -65,7 +76,7 @@
             <form onsubmit={handleSubmit}>
                 <div class="p-5 sm:p-6 border-b border-gray-100 space-y-6">
                     <!-- Komponen 1 -->
-                    <UserAccountForm {form} {errors} />
+                    <UserAccountForm {form} {errors} {processing} onSubmit={submitAdmin} />
                     <!-- Komponen 2 -->
                     <UserPasswordForm bind:password={form.password} error={errors.password} />
                 </div>

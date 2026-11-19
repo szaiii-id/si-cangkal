@@ -6,7 +6,7 @@
 
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { tick } from 'svelte';
+import type { MitraTripIndexProps } from '@/types/props/mitra';
 import Index from '../Index.svelte';
 
 // ============================================================
@@ -135,46 +135,53 @@ vi.mock('@/global/Pagination.svelte', () => ({
 }));
 
 // ============================================================
-// 4. HELPERS
+// 4. FIXTURES
 // ============================================================
-async function syncUI() {
-    await tick();
-    mockUpdaters.forEach((fn) => fn());
-}
-
-// ============================================================
-// 5. FIXTURES
-// ============================================================
-const makeTrip = (overrides = {}) => ({
+const makeTrip = (overrides: Record<string, unknown> = {}) => ({
     id: 1,
+    booking_id: 10,
+    package_id: 1,
+    mitra_id: 1,
     kode: 'TRIP-01',
-    status: 'active',
+    status: 'active' as const,
     tanggal_mulai: '2026-01-01',
     tanggal_selesai: '2026-01-03',
     jumlah_peserta: 2,
     timezone: 'Asia/Jakarta',
-    package: { id: 1, nama: 'Paket Bali', kode: 'PKT-01' },
+    snapshot_package: {
+        nama: 'Paket Bali',
+        facilities: {
+            include: ['Hotel'],
+            exclude: ['Tiket Pesawat'],
+        },
+    },
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+    package: { id: 1, nama: 'Paket Bali', kode: 'PKT-01', timezone: 'Asia/Jakarta' },
+    booking: null,
+    mitra: null,
     ...overrides,
 });
 
-const makeProps = (overrides = {}) => ({
-    trips: {
-        data: [makeTrip()],
-        current_page: 1,
-        last_page: 1,
-        total: 1,
-        per_page: 15,
-        from: 1,
-        to: 1,
-        links: [],
-    },
-    filters: { search: '', status: '', sort: 'tanggal_mulai', direction: 'desc' },
-    statusCounts: { scheduled: 0, active: 1, completed: 0, cancelled: 0 },
-    ...overrides,
-});
+const makeProps = (overrides: Record<string, unknown> = {}): MitraTripIndexProps =>
+    ({
+        trips: {
+            data: [makeTrip()],
+            current_page: 1,
+            last_page: 1,
+            total: 1,
+            per_page: 15,
+            from: 1,
+            to: 1,
+            links: [],
+        },
+        filters: { search: '', status: '', sort: 'tanggal_mulai', direction: 'desc' },
+        statusCounts: { scheduled: 0, active: 1, completed: 0, cancelled: 0 },
+        ...overrides,
+    }) as unknown as MitraTripIndexProps;
 
 // ============================================================
-// 6. TEST SUITE
+// 5. TEST SUITE
 // ============================================================
 describe('Mitra Trips — Index Page', () => {
     beforeEach(() => {

@@ -5,12 +5,12 @@ import MitraTable from '../MitraTable.svelte';
 // ==========================================
 // MOCK DATA
 // ==========================================
-const createMockMitra = (overrides = {}) => ({
+const createMockMitra = (overrides: Record<string, unknown> = {}) => ({
     id: 1,
     name: 'Mitra Travel',
     email: 'mitra@test.com',
     total_trip: 10,
-    total_revenue: '5000000',
+    total_revenue: 5000000,
     ...overrides,
 });
 
@@ -29,13 +29,13 @@ describe('MitraTable Component', () => {
         });
 
         it('harus merender jumlah mitra terdaftar', () => {
-            render(MitraTable, { 
-                props: { 
+            render(MitraTable, {
+                props: {
                     mitras: [
                         createMockMitra({ id: 1, name: 'Mitra A' }),
                         createMockMitra({ id: 2, name: 'Mitra B' }),
-                    ] 
-                } 
+                    ],
+                },
             });
             expect(screen.getByText('2 mitra terdaftar')).toBeInTheDocument();
         });
@@ -56,7 +56,7 @@ describe('MitraTable Component', () => {
     describe('Empty State', () => {
         it('harus menampilkan pesan kosong di mobile dan desktop', () => {
             render(MitraTable, { props: { mitras: [] } });
-            
+
             // PERBAIKAN: Pesan muncul 2 kali (mobile & desktop)
             const emptyMessages = screen.getAllByText('Belum ada data mitra pada periode ini.');
             expect(emptyMessages.length).toBe(2);
@@ -68,8 +68,8 @@ describe('MitraTable Component', () => {
     // ==========================================
     describe('Formatting', () => {
         it('harus memformat total_revenue menjadi Rupiah', () => {
-            render(MitraTable, { 
-                props: { mitras: [createMockMitra({ total_revenue: '1500000' })] } 
+            render(MitraTable, {
+                props: { mitras: [createMockMitra({ total_revenue: 1500000 })] },
             });
             expect(screen.getAllByText(/Rp 1.500.000/).length).toBeGreaterThan(0);
         });
@@ -81,14 +81,14 @@ describe('MitraTable Component', () => {
     describe('Accessibility', () => {
         it('tabel harus memiliki aria-label', () => {
             render(MitraTable, { props: { mitras: [createMockMitra()] } });
-            
+
             const table = screen.getByRole('table', { name: /Peringkat Kinerja Mitra/i });
             expect(table).toBeInTheDocument();
         });
 
         it('ikon SVG dekoratif harus disembunyikan dari screen reader', () => {
             const { container } = render(MitraTable, { props: { mitras: [createMockMitra()] } });
-            
+
             const svgs = container.querySelectorAll('svg');
             svgs.forEach((svg) => {
                 expect(svg).toHaveAttribute('aria-hidden', 'true');

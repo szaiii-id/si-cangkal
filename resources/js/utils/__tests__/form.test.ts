@@ -85,8 +85,8 @@ describe('Form Utilities', () => {
         });
 
         it('harus mendeteksi perubahan tipe data (number string vs number)', () => {
-            const initial = { age: 25 };
-            const current = { age: '25' }; // String vs Number
+            const initial: { age: number | string } = { age: 25 };
+            const current: { age: number | string } = { age: '25' }; // String vs Number
             // Karena normalizeForCompare mengubah '25' jadi 25, ini dianggap SAMA
             expect(hasFormChanges(current, initial)).toBe(false);
         });
@@ -99,12 +99,12 @@ describe('Form Utilities', () => {
         });
 
         it('harus mendeteksi perbedaan null vs string kosong', () => {
-            const initial = { note: null };
-            const current = { note: '' };
+            const initial: { note: string | null } = { note: null };
+            const current: { note: string | null } = { note: '' };
             // Di normalizeForCompare, null dan '' dianggap sama ('')
             expect(hasFormChanges(current, initial)).toBe(false);
         });
-
+        
         it('harus mendeteksi perubahan pada array/object (JSON stringify)', () => {
             const initial = { tags: ['a', 'b'] };
             const current = { tags: ['a', 'b', 'c'] };

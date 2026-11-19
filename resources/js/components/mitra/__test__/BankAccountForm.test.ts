@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
+import { render, screen, fireEvent } from '@testing-library/svelte';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import BankAccountForm from '../BankAccountForm.svelte';
 
@@ -14,7 +14,6 @@ vi.mock('@/utils/toast.svelte', () => ({
 }));
 
 import { updateBankAccounts } from '@/api/mitra';
-import { showToast } from '@/utils/toast.svelte';
 
 describe('BankAccountForm Component', () => {
     beforeEach(() => {

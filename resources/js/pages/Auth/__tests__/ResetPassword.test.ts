@@ -156,7 +156,7 @@ describe('ResetPassword Page', () => {
                     password: 'Password minimal 8 karakter',
                     password_confirmation: 'Konfirmasi password wajib diisi',
                 });
-                options?.onFinish?.();
+                options?.onFinish?.({} as any);
             });
 
             render(ResetPassword, defaultProps);

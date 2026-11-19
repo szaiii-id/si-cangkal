@@ -17,7 +17,6 @@
 
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { tick } from 'svelte';
 import Index from '../Index.svelte';
 
 // ============================================================
@@ -91,15 +90,7 @@ import { formatCurrency } from '@/utils/formatCurrency';
 import { formatDurasi } from '@/utils/duration';
 
 // ============================================================
-// 8. HELPERS
-// ============================================================
-async function syncUI(): Promise<void> {
-    await tick();
-    mockUpdaters.forEach((fn) => fn());
-}
-
-// ============================================================
-// 9. FIXTURES
+// 8. FIXTURES
 // ============================================================
 const makePackage = (overrides = {}) => ({
     id: 1,
@@ -151,6 +142,7 @@ const SAMPLE_PACKAGES = [
 
 const DEFAULT_FILTERS = {
     search: '',
+    status: null,
     kategori: '',
     sort: 'nama',
     direction: 'asc',
@@ -158,14 +150,14 @@ const DEFAULT_FILTERS = {
 
 const renderPage = (
     packages = makePackages(SAMPLE_PACKAGES),
-    filters = DEFAULT_FILTERS,
+    filters: Record<string, unknown> = DEFAULT_FILTERS,
 ) =>
     render(Index, {
-        props: { packages, filters },
+        props: { packages, filters } as any,
     });
 
 // ============================================================
-// 10. TEST SUITE
+// 9. TEST SUITE
 // ============================================================
 describe('Client Catalog — Index Page', () => {
     beforeEach(() => {
@@ -179,7 +171,7 @@ describe('Client Catalog — Index Page', () => {
     });
 
     // ----------------------------------------------------------
-    // 10.1 RENDERING — Header & Search
+    // 9.1 RENDERING — Header & Search
     // ----------------------------------------------------------
     describe('Rendering — Header', () => {
         it('menampilkan judul "Jelajahi Paket"', () => {
@@ -214,7 +206,7 @@ describe('Client Catalog — Index Page', () => {
     });
 
     // ----------------------------------------------------------
-    // 10.2 RENDERING — Kategori Chips
+    // 9.2 RENDERING — Kategori Chips
     // ----------------------------------------------------------
     describe('Rendering — Kategori Chips', () => {
         it('merender 6 chip kategori (Semua + 5)', () => {
@@ -244,7 +236,7 @@ describe('Client Catalog — Index Page', () => {
     });
 
     // ----------------------------------------------------------
-    // 10.3 RENDERING — Grid Card
+    // 9.3 RENDERING — Grid Card
     // ----------------------------------------------------------
     describe('Rendering — Grid Card', () => {
         it('merender 2 card untuk 2 paket', () => {
@@ -269,20 +261,20 @@ describe('Client Catalog — Index Page', () => {
 
         it('menampilkan badge kategori', () => {
             renderPage();
-            
+
             // Ambil card links (bukan chip filter)
             const cardLinks = screen
                 .getAllByRole('link')
                 .filter((el) => el.getAttribute('href')?.startsWith('/client/catalog/'));
-            
+
             // Card Bali (index 0) → kategori "Alam"
-            const baliCard = cardLinks.find((el) => 
+            const baliCard = cardLinks.find((el) =>
                 el.getAttribute('href') === '/client/catalog/paket-bali'
             )!;
             expect(baliCard).toHaveTextContent('Alam');
-            
+
             // Card Lombok (index 1) → kategori "Budaya"
-            const lombokCard = cardLinks.find((el) => 
+            const lombokCard = cardLinks.find((el) =>
                 el.getAttribute('href') === '/client/catalog/paket-lombok'
             )!;
             expect(lombokCard).toHaveTextContent('Budaya');
@@ -296,7 +288,7 @@ describe('Client Catalog — Index Page', () => {
     });
 
     // ----------------------------------------------------------
-    // 10.4 RENDERING — Harga (conditional)
+    // 9.4 RENDERING — Harga (conditional)
     // ----------------------------------------------------------
     describe('Rendering — Harga', () => {
         it('menampilkan "Mulai dari" saat harga_per_rombongan null', () => {
@@ -318,7 +310,7 @@ describe('Client Catalog — Index Page', () => {
     });
 
     // ----------------------------------------------------------
-    // 10.5 RENDERING — Link ke Detail
+    // 9.5 RENDERING — Link ke Detail
     // ----------------------------------------------------------
     describe('Rendering — Link Detail', () => {
         it('setiap card punya link ke /client/catalog/:slug', () => {
@@ -341,7 +333,7 @@ describe('Client Catalog — Index Page', () => {
     });
 
     // ----------------------------------------------------------
-    // 10.6 RENDERING — Empty State & Pagination
+    // 9.6 RENDERING — Empty State & Pagination
     // ----------------------------------------------------------
     describe('Rendering — Empty State & Pagination', () => {
         it('merender empty state saat data kosong', () => {
@@ -377,7 +369,7 @@ describe('Client Catalog — Index Page', () => {
     });
 
     // ----------------------------------------------------------
-    // 10.7 INTERACTION — Search Debounce
+    // 9.7 INTERACTION — Search Debounce
     // ----------------------------------------------------------
     describe('Interaction — Search Debounce', () => {
         it('tidak memanggil router.get sebelum 300ms', async () => {
@@ -407,7 +399,7 @@ describe('Client Catalog — Index Page', () => {
     });
 
     // ----------------------------------------------------------
-    // 10.8 INTERACTION — Kategori Click
+    // 9.8 INTERACTION — Kategori Click
     // ----------------------------------------------------------
     describe('Interaction — Kategori', () => {
         it('klik chip kategori memanggil router.get dengan kategori baru', async () => {
@@ -439,7 +431,7 @@ describe('Client Catalog — Index Page', () => {
     });
 
     // ----------------------------------------------------------
-    // 10.9 INTERACTION — Sort Change
+    // 9.9 INTERACTION — Sort Change
     // ----------------------------------------------------------
     describe('Interaction — Sort', () => {
         it('ganti sort ke "harga_per_orang" → direction="asc"', async () => {
@@ -476,7 +468,7 @@ describe('Client Catalog — Index Page', () => {
     });
 
     // ----------------------------------------------------------
-    // 10.10 INTERACTION — Clear Filters
+    // 9.10 INTERACTION — Clear Filters
     // ----------------------------------------------------------
     describe('Interaction — Clear Filters', () => {
         it('klik "Hapus Filter" memanggil router.get dengan payload kosong', async () => {

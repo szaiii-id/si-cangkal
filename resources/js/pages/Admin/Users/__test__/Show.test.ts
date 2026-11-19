@@ -117,51 +117,60 @@ function getCardByTitle(title: string): HTMLElement {
 // ============================================================
 // 10. FIXTURES
 // ============================================================
-const makeProfile = (overrides = {}) => ({
-    nama_penyedia_usaha: 'PT Mitra Jaya',
-    nomor_identitas: '1234567890',
-    alamat: 'Jl. Merdeka No. 1',
-    telepon: '+62 812 3456 7890',
-    provinsi: 'Jawa Barat',
-    kota: 'Bandung',
-    kode_pos: '40111',
-    deskripsi: 'Travel agent terpercaya',
-    ...overrides,
-});
+const makeProfile = (overrides: Record<string, unknown> = {}) =>
+    ({
+        id: 1,
+        user_id: 2,
+        tipe: 'badan_usaha',
+        logo: null,
+        meta: null,
+        nama_penyedia_usaha: 'PT Mitra Jaya',
+        nomor_identitas: '1234567890',
+        alamat: 'Jl. Merdeka No. 1',
+        telepon: '+62 812 3456 7890',
+        provinsi: 'Jawa Barat',
+        kota: 'Bandung',
+        kode_pos: '40111',
+        deskripsi: 'Travel agent terpercaya',
+        ...overrides,
+    }) as any;
 
-const makeBankAccount = (overrides = {}) => ({
-    id: 1,
-    tipe: 'bank' as const,
-    nama_penyedia: 'BCA',
-    nomor_rekening: '1234567890',
-    nama_pemilik: 'Mitra Satu',
-    is_primary: true,
-    ...overrides,
-});
+const makeBankAccount = (overrides: Record<string, unknown> = {}) =>
+    ({
+        id: 1,
+        tipe: 'bank' as const,
+        nama_penyedia: 'BCA',
+        nomor_rekening: '1234567890',
+        nama_pemilik: 'Mitra Satu',
+        is_primary: true,
+        ...overrides,
+    }) as any;
 
-const makeAdmin = (overrides = {}) => ({
-    id: 1,
-    name: 'Super Admin',
-    username: 'superadmin',
-    email: 'admin@test.com',
-    role: 'admin' as const,
-    created_at: '2026-01-15T00:00:00Z',
-    profile: null,
-    bank_accounts: [],
-    ...overrides,
-});
+const makeAdmin = (overrides: Record<string, unknown> = {}) =>
+    ({
+        id: 1,
+        name: 'Super Admin',
+        username: 'superadmin',
+        email: 'admin@test.com',
+        role: 'admin' as const,
+        created_at: '2026-01-15T00:00:00Z',
+        profile: null,
+        bank_accounts: [],
+        ...overrides,
+    }) as any;
 
-const makeMitra = (overrides = {}) => ({
-    id: 2,
-    name: 'Mitra Satu',
-    username: 'mitrasatu',
-    email: 'mitra1@test.com',
-    role: 'mitra' as const,
-    created_at: '2026-01-15T00:00:00Z',
-    profile: makeProfile(),
-    bank_accounts: [makeBankAccount()],
-    ...overrides,
-});
+const makeMitra = (overrides: Record<string, unknown> = {}) =>
+    ({
+        id: 2,
+        name: 'Mitra Satu',
+        username: 'mitrasatu',
+        email: 'mitra1@test.com',
+        role: 'mitra' as const,
+        created_at: '2026-01-15T00:00:00Z',
+        profile: makeProfile(),
+        bank_accounts: [makeBankAccount()],
+        ...overrides,
+    }) as any;
 
 // ============================================================
 // 11. TEST SUITE
@@ -405,8 +414,7 @@ describe('Admin Users — Show Page', () => {
     // ----------------------------------------------------------
     describe('Edge Case — Fallback User', () => {
         it('merender fallback "User Tidak Ditemukan" saat user falsy', () => {
-            // @ts-expect-error — force null
-            render(Show, { user: null });
+            render(Show, { user: null as any });
 
             expect(screen.getByRole('heading', { name: 'User Tidak Ditemukan' })).toBeInTheDocument();
             expect(screen.getByText('-')).toBeInTheDocument();

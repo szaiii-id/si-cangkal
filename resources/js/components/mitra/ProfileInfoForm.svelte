@@ -27,6 +27,7 @@
     // ==========================================
     // STATE
     // ==========================================
+    // svelte-ignore state_referenced_locally
     let form = $state({
         nama_penyedia_usaha: profile?.nama_penyedia_usaha ?? '',
         nomor_identitas: profile?.nomor_identitas ?? '',
@@ -39,6 +40,7 @@
     });
 
     let logoFiles = $state<File[]>([]);
+    // svelte-ignore state_referenced_locally
     let existingLogo = $state<string[]>(
         profile?.logo ? [`/storage/${profile.logo}`] : [],
     );

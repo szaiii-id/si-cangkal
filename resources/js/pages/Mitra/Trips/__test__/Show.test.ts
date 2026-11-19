@@ -93,12 +93,17 @@ vi.mock('@/components/mitra/trips/TripFacilitiesCard.svelte', () => ({
 // ============================================================
 const makeTrip = (overrides = {}) => ({
     id: 42,
+    mitra_id: 1,
+    package_id: 1,
+    booking_id: 10,
     kode: 'TRIP-001',
-    status: 'scheduled',
+    status: 'scheduled' as const,
     tanggal_mulai: '2026-02-01',
     tanggal_selesai: '2026-02-03',
     jumlah_peserta: 2,
     timezone: 'Asia/Jakarta',
+    created_at: '2026-01-15T00:00:00Z',
+    updated_at: '2026-01-15T00:00:00Z',
     snapshot_package: {
         nama: 'Paket Bali (Snapshot)',
         facilities: {
@@ -121,8 +126,8 @@ const makeTrip = (overrides = {}) => ({
     },
     mitra: { id: 1, name: 'PT Mitra Jaya', email: 'mitra@test.com', username: 'mitrajaya' },
     days: [
-        { id: 1, hari_ke: 1, judul: 'Hari 1', deskripsi: 'Hari pertama', tanggal: '2026-02-01', status: 'pending' },
-        { id: 2, hari_ke: 2, judul: 'Hari 2', deskripsi: 'Hari kedua', tanggal: '2026-02-02', status: 'pending' },
+        { id: 1, trip_id: 42, hari_ke: 1, judul: 'Hari 1', deskripsi: 'Hari pertama', tanggal: '2026-02-01', status: 'pending' as const, created_at: '2026-01-15T00:00:00Z', updated_at: '2026-01-15T00:00:00Z' },
+        { id: 2, trip_id: 42, hari_ke: 2, judul: 'Hari 2', deskripsi: 'Hari kedua', tanggal: '2026-02-02', status: 'pending' as const, created_at: '2026-01-15T00:00:00Z', updated_at: '2026-01-15T00:00:00Z' },
     ],
     ...overrides,
 });

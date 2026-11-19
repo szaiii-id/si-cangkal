@@ -26,7 +26,7 @@
  * ============================================================
  */
 
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
+import { render, screen, fireEvent } from '@testing-library/svelte';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { tick } from 'svelte';
 import Show from '../Show.svelte';
@@ -245,31 +245,34 @@ async function syncUI(): Promise<void> {
 // ============================================================
 // 17. FIXTURES
 // ============================================================
-const makeBooking = (overrides = {}) => ({
-    id: 1,
-    kode: 'BK-2026-001',
-    status: 'pending_payment',
-    tanggal_keberangkatan: '2026-02-01T00:00:00Z',
-    jumlah_peserta: 2,
-    total_harga: 1500000,
-    expired_at: '2026-01-20T12:00:00Z',
-    catatan: 'Tolong siapkan kamar twin bed',
-    has_payment_proof: false,
-    client: { name: 'Budi Santoso', email: 'budi@test.com' },
-    package: {
-        nama: 'Paket Bali 3H2M',
-        kode: 'PKT-BALI-001',
-        durasi_hari: 3,
-        durasi_malam: 2,
-        harga_per_orang: 750000,
-    },
-    participants: [
-        { id: 1, nama: 'Budi Santoso' },
-        { id: 2, nama: 'Ani Santoso' },
-    ],
-    payments: [],
-    ...overrides,
-});
+const makeBooking = (overrides: Record<string, unknown> = {}) =>
+    ({
+        id: 1,
+        kode: 'BK-2026-001',
+        status: 'pending_payment',
+        statusLabel: 'Menunggu Pembayaran',
+        created_at: '2026-01-15T00:00:00Z',
+        tanggal_keberangkatan: '2026-02-01T00:00:00Z',
+        jumlah_peserta: 2,
+        total_harga: 1500000,
+        expired_at: '2026-01-20T12:00:00Z',
+        catatan: 'Tolong siapkan kamar twin bed',
+        has_payment_proof: false,
+        client: { name: 'Budi Santoso', email: 'budi@test.com' },
+        package: {
+            nama: 'Paket Bali 3H2M',
+            kode: 'PKT-BALI-001',
+            durasi_hari: 3,
+            durasi_malam: 2,
+            harga_per_orang: 750000,
+        },
+        participants: [
+            { id: 1, nama: 'Budi Santoso' },
+            { id: 2, nama: 'Ani Santoso' },
+        ],
+        payments: [],
+        ...overrides,
+    }) as any;
 
 const renderPage = (booking = makeBooking()) =>
     render(Show, { props: { booking } });

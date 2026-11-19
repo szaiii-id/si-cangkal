@@ -82,29 +82,35 @@ async function syncUI() {
     await tick();
 }
 
-const makePackage = (overrides = {}) => ({
-    id: 1,
-    nama: 'Paket Bali',
-    deskripsi: 'Wisata Bali',
-    kategori: 'wisata_alam',
-    durasi_hari: 2,
-    durasi_malam: 1,
-    harga_per_orang: '750000',
-    harga_per_rombongan: null,
-    max_peserta: null,
-    timezone: 'Asia/Makassar',
-    cover_image: null,
-    status: 'draft',
-    days: [
-        { id: 1, hari_ke: 1, judul: 'Day 1', deskripsi: 'Desc 1', jam_mulai: '08:00', jam_selesai: '17:00', lokasi: 'Bali' },
-        { id: 2, hari_ke: 2, judul: 'Day 2', deskripsi: 'Desc 2', jam_mulai: '08:00', jam_selesai: '17:00', lokasi: 'Bali' },
-    ],
-    facilities: [
-        { id: 1, tipe: 'include', nama: 'Hotel' },
-        { id: 2, tipe: 'exclude', nama: 'Tiket Pesawat' },
-    ],
-    ...overrides,
-});
+const makePackage = (overrides: Record<string, unknown> = {}) =>
+    ({
+        id: 1,
+        mitra_id: 1,
+        nama: 'Paket Bali',
+        kode: 'PKT-001',
+        slug: 'paket-bali',
+        deskripsi: 'Wisata Bali',
+        kategori: 'wisata_alam',
+        durasi_hari: 2,
+        durasi_malam: 1,
+        harga_per_orang: '750000',
+        harga_per_rombongan: null,
+        max_peserta: null,
+        timezone: 'Asia/Makassar',
+        cover_image: null,
+        status: 'draft',
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+        days: [
+            { id: 1, hari_ke: 1, judul: 'Day 1', deskripsi: 'Desc 1', jam_mulai: '08:00', jam_selesai: '17:00', lokasi: 'Bali' },
+            { id: 2, hari_ke: 2, judul: 'Day 2', deskripsi: 'Desc 2', jam_mulai: '08:00', jam_selesai: '17:00', lokasi: 'Bali' },
+        ],
+        facilities: [
+            { id: 1, tipe: 'include', nama: 'Hotel' },
+            { id: 2, tipe: 'exclude', nama: 'Tiket Pesawat' },
+        ],
+        ...overrides,
+    }) as any;
 
 const renderPage = (pkg = makePackage()) =>
     render(CompletePhase2, { props: { package: pkg } });

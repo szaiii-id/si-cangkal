@@ -22,7 +22,7 @@ vi.mock('@/utils/toast.svelte', () => ({
     dismissToast: vi.fn(),
 }));
 
-import { subscribeToasts, dismissToast } from '@/utils/toast.svelte';
+import { dismissToast } from '@/utils/toast.svelte';
 
 describe('ToastContainer Component', () => {
     beforeEach(() => {

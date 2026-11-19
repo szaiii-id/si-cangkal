@@ -198,22 +198,26 @@ async function syncUI() {
 // ============================================================
 // 5. FIXTURES
 // ============================================================
-const makeBooking = (overrides = {}) => ({
-    id: 1,
-    kode: 'BK-01',
-    status: 'pending_payment',
-    tanggal_keberangkatan: '2026-02-01',
-    jumlah_peserta: 2,
-    total_harga: '1500000',
-    created_at: '2026-01-01',
-    has_payment_proof: false,
-    package: { id: 1, nama: 'Paket Bali' },
-    client: { id: 10, name: 'Budi', email: 'budi@test.com' },
-    participants: [{ id: 1, nama: 'Budi' }],
-    payments: [],
-    refunds: [],
-    ...overrides,
-});
+const makeBooking = (overrides: Record<string, unknown> = {}) =>
+    ({
+        id: 1,
+        kode: 'BK-01',
+        status: 'pending_payment',
+        statusLabel: 'Menunggu Pembayaran',
+        tanggal_keberangkatan: '2026-02-01',
+        jumlah_peserta: 2,
+        total_harga: '1500000',
+        expired_at: null,
+        catatan: null,
+        created_at: '2026-01-01',
+        has_payment_proof: false,
+        package: { id: 1, nama: 'Paket Bali' },
+        client: { id: 10, name: 'Budi', email: 'budi@test.com' },
+        participants: [{ id: 1, nama: 'Budi' }],
+        payments: [],
+        refunds: [],
+        ...overrides,
+    }) as any;
 
 const renderPage = (booking = makeBooking()) => 
     render(Show, { props: { booking } });

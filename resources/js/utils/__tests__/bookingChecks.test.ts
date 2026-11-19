@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import type { BookingStatus } from '@/types';
 import {
     canClientCancelBooking,
     needsMitraCancel,

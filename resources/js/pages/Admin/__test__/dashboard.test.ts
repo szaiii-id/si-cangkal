@@ -119,14 +119,14 @@ const makeMonthlyRevenue = (count = 6) =>
         total: 5000000 * (i + 1),
     }));
 
-const renderPage = (overrides = {}) =>
+const renderPage = (overrides: Record<string, unknown> = {}) =>
     render(Dashboard, {
         props: {
             stats: makeStats(),
             recent_bookings: makeBookings(3),
             monthly_revenue: makeMonthlyRevenue(6),
             ...overrides,
-        },
+        } as any,
     });
 
 // ============================================================
@@ -263,12 +263,13 @@ describe('Admin Dashboard', () => {
             );
         });
 
-        it('handle recent_bookings default (tidak dipass)', () => {
+        it('handle recent_bookings kosong saat tidak ada booking terbaru', () => {
             render(Dashboard, {
                 props: {
                     stats: makeStats(),
+                    recent_bookings: [],
                     monthly_revenue: [],
-                },
+                } as any,
             });
 
             expect(screen.getByTestId('recent-bookings')).toHaveAttribute(
@@ -305,11 +306,13 @@ describe('Admin Dashboard', () => {
     // 8.7 EDGE CASE
     // ----------------------------------------------------------
     describe('Edge Cases', () => {
-        it('handle semua props default (empty arrays)', () => {
+        it('handle props kosong (empty arrays)', () => {
             render(Dashboard, {
                 props: {
                     stats: makeStats(),
-                },
+                    recent_bookings: [],
+                    monthly_revenue: [],
+                } as any,
             });
 
             expect(screen.getByTestId('recent-bookings')).toHaveAttribute(

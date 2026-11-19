@@ -19,14 +19,13 @@
  *     (search, selectedStatus, dateFrom, dateTo) via DOM events +
  *     trigger callback (onSearch, onStatusChange, onApplyDate, onClearAll).
  *   - BookingTable di-mock minimal — render row per booking.
- *   - `mockUpdaters` + `syncUI()` sinkronisasi re-render.
+ *   - `mockUpdaters` sinkronisasi re-render.
  *   - A11y-first query: `getByRole('button')`, `getByLabelText`.
  * ============================================================
  */
 
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { tick } from 'svelte';
 import Index from '../Index.svelte';
 
 // ============================================================
@@ -301,50 +300,53 @@ vi.mock('@/global/Pagination.svelte', () => ({
 import { getBookings } from '@/api/admin';
 
 // ============================================================
-// 14. HELPERS
+// 14. FIXTURES
 // ============================================================
-async function syncUI(): Promise<void> {
-    await tick();
-    mockUpdaters.forEach((fn) => fn());
-}
+const makeBooking = (overrides: Record<string, unknown> = {}) =>
+    ({
+        id: 1,
+        package_id: 1,
+        user_id: 100,
+        mitra_id: 200,
+        kode: 'BK-001',
+        status: 'pending_payment',
+        tanggal_keberangkatan: '2026-02-01',
+        jumlah_peserta: 2,
+        total_harga: '1000000',
+        catatan: null,
+        payment_proof_path: null,
+        expired_at: null,
+        paid_at: null,
+        confirmed_at: null,
+        cancelled_at: null,
+        created_at: '2026-01-15T00:00:00Z',
+        updated_at: '2026-01-15T00:00:00Z',
+        package: { nama: 'Paket Bali' },
+        client: { name: 'Budi', email: 'budi@test.com' },
+        ...overrides,
+    }) as any;
 
-// ============================================================
-// 15. FIXTURES
-// ============================================================
-const makeBooking = (overrides = {}) => ({
-    id: 1,
-    kode: 'BK-001',
-    status: 'pending_payment',
-    tanggal_keberangkatan: '2026-02-01',
-    jumlah_peserta: 2,
-    total_harga: '1000000',
-    expired_at: null,
-    created_at: '2026-01-15T00:00:00Z',
-    package: { nama: 'Paket Bali' },
-    client: { name: 'Budi', email: 'budi@test.com' },
-    ...overrides,
-});
-
-const makeBookings = (data = [makeBooking()], overrides = {}) => ({
-    current_page: 1,
-    last_page: 1,
-    per_page: 15,
-    total: data.length,
-    from: data.length ? 1 : null,
-    to: data.length ? data.length : null,
-    links: [],
-    data,
-    ...overrides,
-});
+const makeBookings = (data = [makeBooking()], overrides: Record<string, unknown> = {}) =>
+    ({
+        current_page: 1,
+        last_page: 1,
+        per_page: 15,
+        total: data.length,
+        from: data.length ? 1 : null,
+        to: data.length ? data.length : null,
+        links: [],
+        data,
+        ...overrides,
+    }) as any;
 
 const DEFAULT_FILTERS = {
     search: '',
     status: '',
     tanggal_dari: '',
     tanggal_sampai: '',
-    is_today: undefined as boolean | number | string | undefined,
-    sort: undefined as string | undefined,
-    direction: undefined as string | undefined,
+    is_today: '' as string | number | boolean,
+    sort: 'created_at',
+    direction: 'desc',
 };
 
 const DEFAULT_STATUS_COUNTS = {
@@ -358,15 +360,15 @@ const DEFAULT_STATUS_COUNTS = {
 
 const renderPage = (
     bookings = makeBookings(),
-    filters = DEFAULT_FILTERS,
+    filters: Record<string, unknown> = DEFAULT_FILTERS,
     statusCounts = DEFAULT_STATUS_COUNTS,
 ) =>
     render(Index, {
-        props: { bookings, filters, statusCounts },
+        props: { bookings, filters, statusCounts } as any,
     });
 
 // ============================================================
-// 16. TEST SUITE
+// 15. TEST SUITE
 // ============================================================
 describe('Admin Bookings — Index Page', () => {
     beforeEach(() => {
@@ -380,7 +382,7 @@ describe('Admin Bookings — Index Page', () => {
     });
 
     // ----------------------------------------------------------
-    // 16.1 RENDERING — Header & Today Toggle
+    // 15.1 RENDERING — Header & Today Toggle
     // ----------------------------------------------------------
     describe('Rendering — Header', () => {
         it('menampilkan judul & deskripsi halaman', () => {
@@ -415,7 +417,7 @@ describe('Admin Bookings — Index Page', () => {
     });
 
     // ----------------------------------------------------------
-    // 16.2 RENDERING — Status Tabs (derived counts)
+    // 15.2 RENDERING — Status Tabs (derived counts)
     // ----------------------------------------------------------
     describe('Rendering — Status Tabs', () => {
         it('menampilkan tab "Semua" dengan total semua status', () => {
@@ -456,7 +458,7 @@ describe('Admin Bookings — Index Page', () => {
     });
 
     // ----------------------------------------------------------
-    // 16.3 RENDERING — Table / Empty / Pagination
+    // 15.3 RENDERING — Table / Empty / Pagination
     // ----------------------------------------------------------
     describe('Rendering — Content', () => {
         it('merender BookingTable + Pagination saat data tersedia', () => {
@@ -493,7 +495,7 @@ describe('Admin Bookings — Index Page', () => {
     });
 
     // ----------------------------------------------------------
-    // 16.4 INTERACTION — Search Debounce
+    // 15.4 INTERACTION — Search Debounce
     // ----------------------------------------------------------
     describe('Interaction — Search Debounce', () => {
         it('tidak memanggil getBookings sebelum 300ms', async () => {
@@ -522,7 +524,7 @@ describe('Admin Bookings — Index Page', () => {
     });
 
     // ----------------------------------------------------------
-    // 16.5 INTERACTION — Status Change
+    // 15.5 INTERACTION — Status Change
     // ----------------------------------------------------------
     describe('Interaction — Status Change', () => {
         it('klik tab status memanggil getBookings dengan query status', async () => {
@@ -541,7 +543,7 @@ describe('Admin Bookings — Index Page', () => {
     });
 
     // ----------------------------------------------------------
-    // 16.6 INTERACTION — Date Range
+    // 15.6 INTERACTION — Date Range
     // ----------------------------------------------------------
     describe('Interaction — Date Range', () => {
         it('klik Terapkan memanggil getBookings dengan tanggal_dari & tanggal_sampai', async () => {
@@ -563,7 +565,7 @@ describe('Admin Bookings — Index Page', () => {
     });
 
     // ----------------------------------------------------------
-    // 16.7 INTERACTION — Today Toggle
+    // 15.7 INTERACTION — Today Toggle
     // ----------------------------------------------------------
     describe('Interaction — Today Toggle', () => {
         it('klik toggle today memanggil getBookings dengan is_today=1', async () => {
@@ -607,7 +609,7 @@ describe('Admin Bookings — Index Page', () => {
     });
 
     // ----------------------------------------------------------
-    // 16.8 INTERACTION — Clear Filters
+    // 15.8 INTERACTION — Clear Filters
     // ----------------------------------------------------------
     describe('Interaction — Clear Filters', () => {
         it('klik "Hapus Semua Filter" memanggil getBookings dengan query kosong', async () => {
@@ -641,7 +643,7 @@ describe('Admin Bookings — Index Page', () => {
     });
 
     // ----------------------------------------------------------
-    // 16.9 REACTIVITY — Has Active Filters
+    // 15.9 REACTIVITY — Has Active Filters
     // ----------------------------------------------------------
     describe('Reactivity — Has Active Filters', () => {
         it('filter bar menerima hasActiveFilters=true saat search terisi', () => {
@@ -663,7 +665,7 @@ describe('Admin Bookings — Index Page', () => {
     });
 
     // ----------------------------------------------------------
-    // 16.10 A11Y
+    // 15.10 A11Y
     // ----------------------------------------------------------
     describe('Accessibility', () => {
         it('status tabs punya role="tablist" dan aria-selected', () => {

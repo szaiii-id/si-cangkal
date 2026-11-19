@@ -5,14 +5,15 @@ import BankAccountManager from '../BankAccountManager.svelte';
 // ==========================================
 // MOCK DATA
 // ==========================================
-const createMockAccount = (overrides = {}) => ({
-    id: crypto.randomUUID(),
-    tipe: 'bank',
-    nama_penyedia: 'BCA',
-    nomor_rekening: '1234567890',
-    nama_pemilik: 'Budi Santoso',
-    ...overrides,
-});
+const createMockAccount = (overrides: Record<string, unknown> = {}) =>
+    ({
+        id: crypto.randomUUID(),
+        tipe: 'bank' as 'bank' | 'ewallet',
+        nama_penyedia: 'BCA',
+        nomor_rekening: '1234567890',
+        nama_pemilik: 'Budi Santoso',
+        ...overrides,
+    }) as any;
 
 describe('BankAccountManager Component', () => {
     beforeEach(() => {
@@ -25,14 +26,14 @@ describe('BankAccountManager Component', () => {
     describe('Rendering', () => {
         it('harus merender judul dan deskripsi', () => {
             render(BankAccountManager, { props: { accounts: [createMockAccount()], errors: {} } });
-            
+
             expect(screen.getByText('Rekening Pembayaran')).toBeInTheDocument();
             expect(screen.getByText(/Tambahkan minimal 1 rekening/i)).toBeInTheDocument();
         });
 
         it('harus merender 1 rekening jika accounts berisi 1 item', () => {
             render(BankAccountManager, { props: { accounts: [createMockAccount()], errors: {} } });
-            
+
             expect(screen.getByText('Rekening 1')).toBeInTheDocument();
             expect(screen.getByLabelText(/Nama Bank/i)).toBeInTheDocument();
         });
@@ -43,8 +44,8 @@ describe('BankAccountManager Component', () => {
     // ==========================================
     describe('Adding Account', () => {
         it('harus menambahkan rekening baru saat tombol "Tambah Rekening Lain" diklik', async () => {
-            const { component } = render(BankAccountManager, { 
-                props: { accounts: [createMockAccount()], errors: {} } 
+            render(BankAccountManager, {
+                props: { accounts: [createMockAccount()], errors: {} },
             });
 
             const addBtn = screen.getByRole('button', { name: /Tambah Rekening Lain/i });
@@ -97,21 +98,25 @@ describe('BankAccountManager Component', () => {
     // ==========================================
     describe('Conditional Dropdown', () => {
         it('harus menampilkan opsi Bank jika tipe = bank', () => {
-            render(BankAccountManager, { props: { accounts: [createMockAccount({ tipe: 'bank' })], errors: {} } });
-            
+            render(BankAccountManager, {
+                props: { accounts: [createMockAccount({ tipe: 'bank' })], errors: {} },
+            });
+
             const select = screen.getByLabelText(/Nama Bank/i) as HTMLSelectElement;
-            const options = Array.from(select.options).map(o => o.value);
-            
+            const options = Array.from(select.options).map((o) => o.value);
+
             expect(options).toContain('BCA');
             expect(options).not.toContain('DANA');
         });
 
         it('harus menampilkan opsi E-Wallet jika tipe = ewallet', () => {
-            render(BankAccountManager, { props: { accounts: [createMockAccount({ tipe: 'ewallet' })], errors: {} } });
-            
+            render(BankAccountManager, {
+                props: { accounts: [createMockAccount({ tipe: 'ewallet' })], errors: {} },
+            });
+
             const select = screen.getByLabelText(/Nama E-Wallet/i) as HTMLSelectElement;
-            const options = Array.from(select.options).map(o => o.value);
-            
+            const options = Array.from(select.options).map((o) => o.value);
+
             expect(options).toContain('DANA');
             expect(options).not.toContain('BCA');
         });
@@ -122,11 +127,11 @@ describe('BankAccountManager Component', () => {
     // ==========================================
     describe('Error State', () => {
         it('harus menampilkan pesan error untuk nama penyedia jika ada', () => {
-            render(BankAccountManager, { 
-                props: { 
-                    accounts: [createMockAccount()], 
-                    errors: { 'accounts.0.nama_penyedia': 'Pilih bank terlebih dahulu' } 
-                } 
+            render(BankAccountManager, {
+                props: {
+                    accounts: [createMockAccount()],
+                    errors: { 'accounts.0.nama_penyedia': 'Pilih bank terlebih dahulu' },
+                },
             });
 
             expect(screen.getByText('Pilih bank terlebih dahulu')).toBeInTheDocument();

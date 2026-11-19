@@ -14,7 +14,6 @@ vi.mock('@/utils/toast.svelte', () => ({
 }));
 
 import { updatePassword } from '@/api/mitra';
-import { showToast } from '@/utils/toast.svelte';
 
 describe('PasswordForm Component', () => {
     beforeEach(() => {

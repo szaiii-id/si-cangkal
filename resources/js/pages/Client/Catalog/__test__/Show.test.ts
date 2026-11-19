@@ -75,40 +75,46 @@ import { timezoneLabelLong } from '@/utils/timezone';
 // ============================================================
 // 6. FIXTURES
 // ============================================================
-const makePackage = (overrides = {}) => ({
-    id: 1,
-    nama: 'Paket Bali',
-    slug: 'paket-bali',
-    kategori: 'wisata_alam',
-    cover_image: 'packages/bali.jpg',
-    deskripsi: 'Liburan seru di Bali',
-    durasi_hari: 3,
-    durasi_malam: 2,
-    harga_per_orang: '750000',
-    harga_per_rombongan: null as string | null,
-    max_peserta: 20,
-    timezone: 'Asia/Jakarta',
-    mitra: {
+const makePackage = (overrides: Record<string, unknown> = {}) =>
+    ({
         id: 1,
-        name: 'PT Mitra Jaya',
-        profile: {
-            nama_penyedia_usaha: 'Mitra Jaya Travel',
-            telepon: '081234567890',
-            kota: 'Denpasar',
-            provinsi: 'Bali',
+        mitra_id: 1,
+        kode: 'PKT-001',
+        nama: 'Paket Bali',
+        slug: 'paket-bali',
+        kategori: 'wisata_alam',
+        status: 'aktif',
+        cover_image: 'packages/bali.jpg',
+        deskripsi: 'Liburan seru di Bali',
+        durasi_hari: 3,
+        durasi_malam: 2,
+        harga_per_orang: '750000',
+        harga_per_rombongan: null as string | null,
+        max_peserta: 20,
+        timezone: 'Asia/Jakarta',
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+        mitra: {
+            id: 1,
+            name: 'PT Mitra Jaya',
+            profile: {
+                nama_penyedia_usaha: 'Mitra Jaya Travel',
+                telepon: '081234567890',
+                kota: 'Denpasar',
+                provinsi: 'Bali',
+            },
         },
-    },
-    days: [
-        { id: 1, hari_ke: 1, judul: 'Kedatangan', deskripsi: 'Arrive', jam_mulai: '08:00:00', jam_selesai: '12:00:00', lokasi: 'Bandara' },
-        { id: 2, hari_ke: 2, judul: 'Explore', deskripsi: 'Tour', jam_mulai: null, jam_selesai: null, lokasi: null },
-    ],
-    facilities: [
-        { id: 1, tipe: 'include', nama: 'Hotel' },
-        { id: 2, tipe: 'include', nama: 'Makan' },
-        { id: 3, tipe: 'exclude', nama: 'Tiket Pesawat' },
-    ],
-    ...overrides,
-});
+        days: [
+            { id: 1, hari_ke: 1, judul: 'Kedatangan', deskripsi: 'Arrive', jam_mulai: '08:00:00', jam_selesai: '12:00:00', lokasi: 'Bandara' },
+            { id: 2, hari_ke: 2, judul: 'Explore', deskripsi: 'Tour', jam_mulai: null, jam_selesai: null, lokasi: null },
+        ],
+        facilities: [
+            { id: 1, tipe: 'include', nama: 'Hotel' },
+            { id: 2, tipe: 'include', nama: 'Makan' },
+            { id: 3, tipe: 'exclude', nama: 'Tiket Pesawat' },
+        ],
+        ...overrides,
+    }) as any;
 
 const renderPage = (pkg = makePackage()) =>
     render(Show, { props: { package: pkg } });
@@ -141,7 +147,7 @@ describe('Client Catalog — Show Page', () => {
 
         it('menampilkan kategori badge', () => {
             renderPage();
-            
+
             // Scope ke header info, bukan card lain
             const header = screen.getByRole('heading', { level: 1, name: 'Paket Bali' }).closest('div');
             expect(within(header!).getByText('Alam')).toBeInTheDocument();

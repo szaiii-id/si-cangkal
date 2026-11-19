@@ -29,7 +29,7 @@ type RefundItem = {
     mitra: null;
 };
 
-const createMockRefund = (overrides: Partial<RefundItem> = {}): RefundItem => ({
+const createMockRefund = (overrides: Partial<RefundItem> = {}): any => ({
     id: 1,
     booking_id: 100,
     mitra_id: 1,

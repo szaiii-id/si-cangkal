@@ -638,7 +638,7 @@ describe('Admin Users Index Page', () => {
         it('membuka ConfirmModal, memanggil deleteUser, dan menonaktifkan tombol selama processing', async () => {
             let finishCallback: (() => void) | undefined;
             vi.mocked(deleteUser).mockImplementation((_id, options) => {
-                finishCallback = options?.onFinish;
+                finishCallback = () => options?.onFinish?.({} as any);
             });
 
             render(Index, {
@@ -674,7 +674,7 @@ describe('Admin Users Index Page', () => {
         it('membuka ResetPasswordConfirmModal, memanggil resetUserPassword, lalu menutup modal', async () => {
             let finishCallback: (() => void) | undefined;
             vi.mocked(resetUserPassword).mockImplementation((_id, options) => {
-                finishCallback = options?.onFinish;
+                finishCallback = () => options?.onFinish?.({} as any);
             });
 
             render(Index, {

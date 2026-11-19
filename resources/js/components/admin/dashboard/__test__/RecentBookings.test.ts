@@ -12,12 +12,12 @@ vi.mock('@inertiajs/svelte', () => ({
 // ==========================================
 // MOCK DATA
 // ==========================================
-const createMockBooking = (overrides = {}) => ({
+const createMockBooking = (overrides: Record<string, unknown> = {}) => ({
     id: 1,
     paket: 'Paket Bali',
     client: 'Budi',
     status: 'confirmed',
-    total: '1500000',
+    total: 1500000,
     ...overrides,
 });
 
@@ -37,7 +37,7 @@ describe('RecentBookings Component', () => {
 
         it('harus merender tautan "Lihat Semua"', () => {
             render(RecentBookings, { props: { bookings: [createMockBooking()] } });
-            
+
             const link = screen.getByLabelText('Lihat semua pesanan');
             expect(link).toBeInTheDocument();
             expect(link).toHaveAttribute('href', '/admin/bookings');
@@ -67,8 +67,8 @@ describe('RecentBookings Component', () => {
     // ==========================================
     describe('Formatting', () => {
         it('harus memformat total menjadi Rupiah', () => {
-            render(RecentBookings, { 
-                props: { bookings: [createMockBooking({ total: '2500000' })] } 
+            render(RecentBookings, {
+                props: { bookings: [createMockBooking({ total: 2500000 })] },
             });
             expect(screen.getByText(/Rp 2.500.000/)).toBeInTheDocument();
         });
@@ -79,10 +79,10 @@ describe('RecentBookings Component', () => {
     // ==========================================
     describe('Accessibility', () => {
         it('ikon SVG dekoratif harus disembunyikan dari screen reader', () => {
-            const { container } = render(RecentBookings, { 
-                props: { bookings: [createMockBooking()] } 
+            const { container } = render(RecentBookings, {
+                props: { bookings: [createMockBooking()] },
             });
-            
+
             const svgs = container.querySelectorAll('svg');
             svgs.forEach((svg) => {
                 expect(svg).toHaveAttribute('aria-hidden', 'true');
@@ -91,7 +91,7 @@ describe('RecentBookings Component', () => {
 
         it('empty state harus memiliki role="status"', () => {
             render(RecentBookings, { props: { bookings: [] } });
-            
+
             const emptyState = screen.getByRole('status');
             expect(emptyState).toHaveTextContent('Belum ada pesanan terbaru saat ini.');
         });

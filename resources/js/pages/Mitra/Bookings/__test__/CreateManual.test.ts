@@ -122,19 +122,28 @@ vi.mock('@/components/mitra/bookings/ManualBookingSummary.svelte', () => ({
 // ============================================================
 async function syncUI() {
     await tick();
-    mockUpdaters.forEach(fn => fn());
+    mockUpdaters.forEach((fn) => fn());
 }
 
 // ============================================================
 // 5. FIXTURES
 // ============================================================
-const makePackage = (overrides = {}) => ({
-    id: 1,
-    nama: 'Paket Bali',
-    harga_per_orang: '750000',
-    harga_per_rombongan: null,
-    ...overrides,
-});
+const makePackage = (overrides: Record<string, unknown> = {}) =>
+    ({
+        id: 1,
+        kode: 'PKT-001',
+        slug: 'paket-bali',
+        nama: 'Paket Bali',
+        deskripsi: 'Wisata Bali',
+        kategori: 'wisata_alam',
+        durasi_hari: 2,
+        durasi_malam: 1,
+        harga_per_orang: '750000',
+        harga_per_rombongan: null,
+        max_peserta: null,
+        timezone: 'Asia/Makassar',
+        ...overrides,
+    }) as any;
 
 const renderPage = (pkg = makePackage()) =>
     render(CreateManual, { props: { package: pkg } });
