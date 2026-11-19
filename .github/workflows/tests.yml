@@ -82,6 +82,12 @@ jobs:
       - name: Install Bun deps
         run: bun install --frozen-lockfile
 
+      - name: Prepare environment for Svelte Check / Wayfinder
+        run: |
+          cp .env.testing .env
+          php artisan key:generate
+          php artisan wayfinder:generate --with-form
+
       - name: Run Pint
         run: ./vendor/bin/pint --test
 
@@ -150,14 +156,14 @@ jobs:
 
       - name: Prepare environment
         run: |
-          cp .env.example .env
+          cp .env.testing .env
           php artisan key:generate
-
-      - name: Build frontend
-        run: bun run build
 
       - name: Run migrations
         run: php artisan migrate --force
+
+      - name: Build frontend
+        run: bun run build
 
       - name: Run Pest (functional, exclude rate-limit)
         env:
