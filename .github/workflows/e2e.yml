@@ -144,7 +144,7 @@ jobs:
           AUTH_THROTTLE_FORGOT_PASSWORD_TEST_OVERRIDE: 1000
           AUTH_THROTTLE_RESET_PASSWORD_TEST_OVERRIDE: 1000
           AUTH_THROTTLE_CONTACT_TEST_OVERRIDE: 1000
-        run: bun run test:e2e -- --project=${{ matrix.browser }} --ignore=e2e/auth/rate-limit.spec.ts
+        run: bun run test:e2e -- --project=${{ matrix.browser }}
 
       - name: Upload Playwright report
         if: always()

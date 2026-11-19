@@ -119,10 +119,12 @@ export default defineConfig({
         {
             name: 'chromium',
             use: { ...devices['Desktop Chrome'] },
+            testIgnore: /rate-limit\.spec\.ts/,
         },
         {
             name: 'firefox',
             use: { ...devices['Desktop Firefox'] },
+            testIgnore: /rate-limit\.spec\.ts/,
         },
         // WebKit hanya di CI
         ...(CI.isCI
@@ -130,6 +132,7 @@ export default defineConfig({
                   {
                       name: 'webkit',
                       use: { ...devices['Desktop Safari'] },
+                      testIgnore: /rate-limit\.spec\.ts/,
                   },
               ]
             : []),
