@@ -13,20 +13,27 @@ async function dismissNotificationPrompt(page: Page): Promise<void> {
     );
 }
 
+function generateUniquePackageCode(workerIndex: number): string {
+    const rand = Math.random().toString(36).slice(2, 7).toUpperCase();
+    return `PKG-REF-${workerIndex}-${Date.now()}-${rand}`;
+}
+
 test.describe('Mitra — Refund Form Validation & Modal Behavior', () => {
-    const runId = Date.now();
     let bookingKode = '';
 
-    test.beforeAll(async ({ browser }) => {
+    test.beforeAll(async ({ browser }, testInfo) => {
         const context = await browser.newContext();
         const page = await context.newPage();
         const { seed } = await import('../fixtures/seed');
+
+        const uniqueKode = generateUniquePackageCode(testInfo.workerIndex);
 
         await seed.login(page, SEED_USERS.mitra.email, SEED_USERS.mitra.password);
 
         const pkg = await seed.createPackage(page, {
             mitra_email: SEED_USERS.mitra.email,
-            nama: `Paket Refund Validation ${runId}`,
+            kode: uniqueKode,
+            nama: `Paket Refund Validation ${uniqueKode}`,
             status: 'aktif',
             harga_per_orang: 250_000,
             durasi_hari: 1,

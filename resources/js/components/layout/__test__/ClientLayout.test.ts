@@ -120,12 +120,12 @@ describe('ClientLayout Component', () => {
     // 4. NOTIFIKASI BADGE
     // ==========================================
     describe('Notification Badge', () => {
-        it('harus menampilkan badge unread dengan aria-label yang sesuai', () => {
+        it('harus menampilkan badge unread dengan accessible name yang sesuai', () => {
             mockPage.props.unread_notifications = 3;
             render(ClientLayout, { props: { children: mockChildren } });
 
             const notificationLink = screen.getByRole('link', {
-                name: /Notifikasi \(3 belum dibaca\)/i,
+                name: /Notifikasi 3 belum dibaca/i,
             });
             expect(notificationLink).toBeInTheDocument();
             expect(notificationLink).toHaveAttribute('href', '/client/notifications');
@@ -139,6 +139,7 @@ describe('ClientLayout Component', () => {
             const notificationLink = screen.getByRole('link', { name: 'Notifikasi' });
             expect(notificationLink).toBeInTheDocument();
             expect(notificationLink).not.toHaveTextContent('3');
+            expect(notificationLink).not.toHaveTextContent(/belum dibaca/i);
         });
     });
 });

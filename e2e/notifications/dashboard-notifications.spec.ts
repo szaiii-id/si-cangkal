@@ -1,6 +1,16 @@
-import { test, expect } from '../fixtures/base';
+import { test, expect, SEED_USERS } from '../fixtures/base';
 import { SEL, getDateOffset } from '../fixtures/selectors';
 import { ClientBookingPage } from '../pages/ClientBookingPage';
+import type { Page } from '@playwright/test';
+
+async function dismissNotificationPrompt(page: Page): Promise<void> {
+    await page.addLocatorHandler(
+        page.getByRole('dialog', { name: /Aktifkan Notifikasi/i }),
+        async () => {
+            await page.getByRole('button', { name: /Nanti Saja/i }).click();
+        },
+    );
+}
 
 test.describe('Dashboard Notifications — Mitra & Admin (/notifications)', () => {
     test.describe('Mitra Notifications', () => {
@@ -8,6 +18,8 @@ test.describe('Dashboard Notifications — Mitra & Admin (/notifications)', () =
             page,
             seed,
         }) => {
+            await dismissNotificationPrompt(page);
+
             const suffix = `${Date.now()}_${Math.floor(Math.random() * 10000)}`;
             const mitraEmail = `mitra-notif-empty-${suffix}@test.com`;
 
@@ -30,7 +42,9 @@ test.describe('Dashboard Notifications — Mitra & Admin (/notifications)', () =
                     .locator('main')
                     .getByRole('heading', { name: 'Notifikasi', level: 1 }),
             ).toBeVisible();
-            await expect(page.getByText('0 belum dibaca')).toBeVisible();
+            await expect(
+                page.getByText('0 belum dibaca', { exact: true }),
+            ).toBeVisible();
             await expect(
                 page.getByText('Belum ada notifikasi'),
             ).toBeVisible();
@@ -39,7 +53,9 @@ test.describe('Dashboard Notifications — Mitra & Admin (/notifications)', () =
             ).toBeVisible();
 
             await expect(
-                page.locator('header').getByLabel(/notifikasi belum dibaca/i),
+                page
+                    .locator('header')
+                    .getByRole('link', { name: /Notifikasi \d+ belum dibaca/i }),
             ).toHaveCount(0);
             await expect(SEL.NOTIFICATIONS.markAllRead(page)).toHaveCount(0);
         });
@@ -48,9 +64,11 @@ test.describe('Dashboard Notifications — Mitra & Admin (/notifications)', () =
             page,
             asClient,
             seed,
-        }) => {
+        }, testInfo) => {
+            await dismissNotificationPrompt(page);
+
             // 1. Buat mitra terisolasi + paket aktif miliknya
-            const suffix = `${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+            const suffix = `${testInfo.workerIndex}_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
             const mitraEmail = `mitra-notif-${suffix}@test.com`;
 
             await seed.createUser(page, {
@@ -63,9 +81,13 @@ test.describe('Dashboard Notifications — Mitra & Admin (/notifications)', () =
             await seed.resetUser(page, mitraEmail, {
                 fcm_token: 'e2e-dummy-fcm-token',
             });
+            await seed.resetUser(page, SEED_USERS.client.email, {
+                fcm_token: 'e2e-dummy-fcm-token',
+            });
 
             const pkg = await seed.createPackage(page, {
                 mitra_email: mitraEmail,
+                kode: `PKG-NOTIF-${suffix}`,
                 nama: `Paket Notif Mitra ${suffix}`,
                 status: 'aktif',
                 harga_per_orang: 400_000,
@@ -95,9 +117,9 @@ test.describe('Dashboard Notifications — Mitra & Admin (/notifications)', () =
                 await clientBookingPage.fillParticipants([
                     { nama: `Peserta Notif Mitra ${i}` },
                 ]);
-                await clientBookingPage.submitBooking(pkg.package_id);
+                await SEL.CLIENT.booking.submit(page).click();
                 await page.waitForURL(/\/client\/bookings\/\d+/, {
-                    timeout: 15_000,
+                    timeout: 20_000,
                 });
             }
 
@@ -105,11 +127,14 @@ test.describe('Dashboard Notifications — Mitra & Admin (/notifications)', () =
             await seed.login(page, mitraEmail, 'password123');
             await page.goto('/notifications');
 
-            await expect(page.getByText('2 belum dibaca')).toBeVisible();
             await expect(
-                page
-                    .locator('header')
-                    .getByLabel('2 notifikasi belum dibaca', { exact: true }),
+                page.getByText('2 belum dibaca', { exact: true }),
+            ).toBeVisible();
+            await expect(
+                page.locator('header').getByRole('link', {
+                    name: 'Notifikasi 2 belum dibaca',
+                    exact: true,
+                }),
             ).toBeVisible();
 
             const unreadDots = page
@@ -130,11 +155,14 @@ test.describe('Dashboard Notifications — Mitra & Admin (/notifications)', () =
 
             // 5. Kembali ke /notifications -> sisa 1 belum dibaca, lalu klik "Tandai Semua Dibaca"
             await page.goto('/notifications');
-            await expect(page.getByText('1 belum dibaca')).toBeVisible();
             await expect(
-                page
-                    .locator('header')
-                    .getByLabel('1 notifikasi belum dibaca', { exact: true }),
+                page.getByText('1 belum dibaca', { exact: true }),
+            ).toBeVisible();
+            await expect(
+                page.locator('header').getByRole('link', {
+                    name: 'Notifikasi 1 belum dibaca',
+                    exact: true,
+                }),
             ).toBeVisible();
             await expect(unreadDots).toHaveCount(1);
 
@@ -142,9 +170,13 @@ test.describe('Dashboard Notifications — Mitra & Admin (/notifications)', () =
             await expect(markAllBtn).toBeVisible();
             await markAllBtn.click();
 
-            await expect(page.getByText('0 belum dibaca')).toBeVisible();
             await expect(
-                page.locator('header').getByLabel(/notifikasi belum dibaca/i),
+                page.getByText('0 belum dibaca', { exact: true }),
+            ).toBeVisible();
+            await expect(
+                page
+                    .locator('header')
+                    .getByRole('link', { name: /Notifikasi \d+ belum dibaca/i }),
             ).toHaveCount(0);
             await expect(unreadDots).toHaveCount(0);
             await expect(markAllBtn).toHaveCount(0);
@@ -158,6 +190,8 @@ test.describe('Dashboard Notifications — Mitra & Admin (/notifications)', () =
             seed,
             browserName,
         }) => {
+            await dismissNotificationPrompt(page);
+
             const tag = `${Date.now()}${browserName.slice(0, 3)}`;
             const newAdminEmail = `admin-notif-${tag}@sicangkal.test`;
             const newAdminUsername = `admnotif${tag}`;
@@ -209,11 +243,14 @@ test.describe('Dashboard Notifications — Mitra & Admin (/notifications)', () =
                     .locator('main')
                     .getByRole('heading', { name: 'Notifikasi', level: 1 }),
             ).toBeVisible();
-            await expect(page.getByText('1 belum dibaca')).toBeVisible();
             await expect(
-                page
-                    .locator('header')
-                    .getByLabel('1 notifikasi belum dibaca', { exact: true }),
+                page.getByText('1 belum dibaca', { exact: true }),
+            ).toBeVisible();
+            await expect(
+                page.locator('header').getByRole('link', {
+                    name: 'Notifikasi 1 belum dibaca',
+                    exact: true,
+                }),
             ).toBeVisible();
 
             const unreadDots = page
@@ -236,9 +273,13 @@ test.describe('Dashboard Notifications — Mitra & Admin (/notifications)', () =
 
             // 4. Kembali ke /notifications -> sudah dibaca (0 belum dibaca) & tombol tandai semua tersembunyi
             await page.goto('/notifications');
-            await expect(page.getByText('0 belum dibaca')).toBeVisible();
             await expect(
-                page.locator('header').getByLabel(/notifikasi belum dibaca/i),
+                page.getByText('0 belum dibaca', { exact: true }),
+            ).toBeVisible();
+            await expect(
+                page
+                    .locator('header')
+                    .getByRole('link', { name: /Notifikasi \d+ belum dibaca/i }),
             ).toHaveCount(0);
             await expect(unreadDots).toHaveCount(0);
             await expect(markAllBtn).toHaveCount(0);
@@ -250,6 +291,8 @@ test.describe('Dashboard Notifications — Mitra & Admin (/notifications)', () =
             seed,
             browserName,
         }) => {
+            await dismissNotificationPrompt(page);
+
             const tag = `${Date.now()}${browserName.slice(0, 3)}`;
             const newAdminEmail = `admin-markall-${tag}@sicangkal.test`;
             const newAdminUsername = `admmark${tag}`;
@@ -284,14 +327,20 @@ test.describe('Dashboard Notifications — Mitra & Admin (/notifications)', () =
             await seed.login(page, newAdminEmail, adminPassword);
             await page.goto('/notifications');
 
-            await expect(page.getByText('1 belum dibaca')).toBeVisible();
+            await expect(
+                page.getByText('1 belum dibaca', { exact: true }),
+            ).toBeVisible();
             const markAllBtn = SEL.NOTIFICATIONS.markAllRead(page);
             await expect(markAllBtn).toBeVisible();
             await markAllBtn.click();
 
-            await expect(page.getByText('0 belum dibaca')).toBeVisible();
             await expect(
-                page.locator('header').getByLabel(/notifikasi belum dibaca/i),
+                page.getByText('0 belum dibaca', { exact: true }),
+            ).toBeVisible();
+            await expect(
+                page
+                    .locator('header')
+                    .getByRole('link', { name: /Notifikasi \d+ belum dibaca/i }),
             ).toHaveCount(0);
             await expect(
                 page.locator('main').getByLabel('Belum dibaca', { exact: true }),

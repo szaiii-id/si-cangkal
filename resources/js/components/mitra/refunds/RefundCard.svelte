@@ -37,10 +37,10 @@
     <!-- Header: ID & Status -->
     <header class="flex items-start justify-between gap-2 mb-3 pb-3 border-b border-gray-100">
         <div class="min-w-0 flex items-center gap-2">
-            <p class="text-[11px] font-mono text-gray-500 font-bold bg-gray-100 px-2 py-0.5 rounded">
+            <p class="text-[11px] font-mono text-gray-700 font-bold bg-gray-100 px-2 py-0.5 rounded">
                 #{refund.id}
             </p>
-            <p class="text-[10px] text-gray-400">
+            <p class="text-[10px] text-gray-500">
                 {formatDateTime(refund.created_at)}
             </p>
         </div>
@@ -57,7 +57,7 @@
                     <p class="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest mb-0.5">Pesanan Terkait</p>
                     <div class="flex items-center gap-2">
                         <p class="text-xs font-mono text-dark font-bold">{refund.booking.kode}</p>
-                        <span class="text-[10px] text-gray-300">•</span>
+                        <span class="text-[10px] text-gray-300" aria-hidden="true">•</span>
                         <p class="text-[11px] text-gray-500 truncate">{refund.booking.client?.name ?? '-'}</p>
                     </div>
                 </div>
@@ -86,8 +86,8 @@
                 <button
                     type="button"
                     onclick={() => onApprove(refund)}
-                    class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-white bg-green-dark hover:bg-green transition-colors"
-                    aria-label={`Setujui refund #${refund.id} dan kembalikan dana`}
+                    class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 transition-colors"
+                    aria-label={`Setujui & Kembalikan Dana untuk refund #${refund.id}`}
                 >
                     Setujui & Kembalikan Dana
                 </button>
@@ -95,7 +95,7 @@
                     type="button"
                     onclick={() => onReject(refund)}
                     class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 transition-colors"
-                    aria-label={`Tolak pengajuan refund #${refund.id}`}
+                    aria-label={`Tolak Pengajuan refund #${refund.id}`}
                 >
                     Tolak Pengajuan
                 </button>

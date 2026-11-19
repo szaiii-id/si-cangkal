@@ -119,7 +119,7 @@ test.describe('Client Notifications (/client/notifications)', () => {
         await page.goto('/client/notifications');
 
         const bellLink = page.getByRole('link', {
-            name: 'Notifikasi (2 belum dibaca)',
+            name: 'Notifikasi 2 belum dibaca',
         });
         await expect(bellLink).toBeVisible();
         await expect(bellLink).toContainText('2');
@@ -146,7 +146,7 @@ test.describe('Client Notifications (/client/notifications)', () => {
         await page.goto('/client/notifications');
         await expect(
             page.getByRole('link', {
-                name: 'Notifikasi (1 belum dibaca)',
+                name: 'Notifikasi 1 belum dibaca',
             }),
         ).toBeVisible();
         await expect(unreadDots).toHaveCount(1);

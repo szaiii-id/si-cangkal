@@ -114,10 +114,10 @@ describe('RefundCard Component', () => {
     // 4. AKSESIBILITAS (A11Y)
     // ==========================================
     describe('Accessibility', () => {
-        it('tautan pesanan harus memiliki aria-label', () => {
+        it('tautan pesanan harus memiliki accessible name yang sesuai dan mengarah ke detail booking', () => {
             render(RefundCard, { props: { refund: createMockRefund() } });
 
-            const link = screen.getByLabelText(/Lihat pesanan BK-123/i);
+            const link = screen.getByRole('link', { name: /BK-123/i });
             expect(link).toBeInTheDocument();
             expect(link).toHaveAttribute('href', '/admin/bookings/100');
         });

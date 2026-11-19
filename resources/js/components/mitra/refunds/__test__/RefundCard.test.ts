@@ -99,8 +99,8 @@ describe('RefundCard Component (Mitra)', () => {
                 props: { refund: createMockRefund({ status: 'PENDING' }), onApprove: vi.fn(), onReject: vi.fn() },
             });
 
-            expect(screen.getByLabelText(/Setujui refund/)).toBeInTheDocument();
-            expect(screen.getByLabelText(/Tolak pengajuan refund/)).toBeInTheDocument();
+            expect(screen.getByLabelText(/Setujui & Kembalikan Dana untuk refund #1/i)).toBeInTheDocument();
+            expect(screen.getByLabelText(/Tolak Pengajuan refund #1/i)).toBeInTheDocument();
         });
 
         it('harus memanggil onApprove saat tombol Setujui diklik', async () => {
@@ -109,7 +109,7 @@ describe('RefundCard Component (Mitra)', () => {
                 props: { refund: createMockRefund({ status: 'PENDING' }), onApprove, onReject: vi.fn() },
             });
 
-            await fireEvent.click(screen.getByLabelText(/Setujui refund/));
+            await fireEvent.click(screen.getByLabelText(/Setujui & Kembalikan Dana untuk refund #1/i));
             expect(onApprove).toHaveBeenCalledTimes(1);
         });
 
@@ -119,7 +119,7 @@ describe('RefundCard Component (Mitra)', () => {
                 props: { refund: createMockRefund({ status: 'PENDING' }), onApprove: vi.fn(), onReject },
             });
 
-            await fireEvent.click(screen.getByLabelText(/Tolak pengajuan refund/));
+            await fireEvent.click(screen.getByLabelText(/Tolak Pengajuan refund #1/i));
             expect(onReject).toHaveBeenCalledTimes(1);
         });
     });

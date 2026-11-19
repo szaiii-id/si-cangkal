@@ -40,6 +40,16 @@
         if (linkLabel === '...') return 'Halaman lainnya';
         return `Halaman ${linkLabel || index}`;
     }
+
+    function formatLabel(linkLabel: string): string {
+        if (linkLabel.includes('Previous')) {
+            return linkLabel.replace('Previous', 'Sebelumnya');
+        }
+        if (linkLabel.includes('Next')) {
+            return linkLabel.replace('Next', 'Berikutnya');
+        }
+        return linkLabel;
+    }
 </script>
 
 {#if visible}
@@ -56,18 +66,13 @@
         <div class="flex items-center gap-1" role="navigation" aria-label="Navigasi Halaman">
             {#each meta.links as link, i (i)}
                 {#if link.url === null}
-                    <!-- 
-                      PERBAIKAN:
-                      1. Tambahkan role="link" agar aria-disabled dibacakan.
-                      2. Tambahkan aria-label untuk konteks.
-                    -->
                     <span
                         class="px-3.5 py-2.5 text-xs text-gray-300 font-bold select-none cursor-not-allowed"
                         role="link"
                         aria-disabled="true"
                         aria-label={getAriaLabel(link.label, i)}
                     >
-                        {@html link.label}
+                        {@html formatLabel(link.label)}
                     </span>
                 {:else}
                     <a
@@ -80,7 +85,7 @@
                         aria-current={link.active ? 'page' : undefined}
                         aria-label={getAriaLabel(link.label, i)}
                     >
-                        {@html link.label}
+                        {@html formatLabel(link.label)}
                     </a>
                 {/if}
             {/each}

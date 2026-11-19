@@ -174,8 +174,8 @@
                         {#if tab.count !== undefined}
                             <span
                                 class="ml-1 {selectedStatus === tab.value
-                                    ? 'text-white/70'
-                                    : 'text-gray-400'}"
+                                    ? 'text-white/80'
+                                    : 'text-gray-500'}"
                             >
                                 {tab.count}
                             </span>

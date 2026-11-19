@@ -41,7 +41,7 @@
                 <span class="truncate">{tab.label}</span>
                 {#if tab.count !== undefined}
                     <span class="inline-flex items-center justify-center min-w-[20px] h-5 px-1 rounded-full text-[10px] font-extrabold shrink-0
-                        {active === tab.value ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}"
+                        {active === tab.value ? 'bg-black/25 text-white' : 'bg-gray-100 text-gray-700'}"
                         aria-hidden="true"
                     >
                         {tab.count}
@@ -67,7 +67,7 @@
                 {tab.label}
                 {#if tab.count !== undefined}
                     <span class="inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded-full text-xs font-extrabold
-                        {active === tab.value ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}"
+                        {active === tab.value ? 'bg-black/25 text-white' : 'bg-gray-100 text-gray-700'}"
                         aria-hidden="true"
                     >
                         {tab.count}

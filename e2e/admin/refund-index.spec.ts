@@ -11,6 +11,11 @@ async function dismissNotificationPrompt(page: Page): Promise<void> {
     );
 }
 
+function generateUniquePackageCode(workerIndex: number): string {
+    const rand = Math.random().toString(36).slice(2, 7).toUpperCase();
+    return `PKG-ADM-REF-${workerIndex}-${Date.now()}-${rand}`;
+}
+
 test.describe('Admin — Monitoring Pengembalian Dana (Read-Only)', () => {
     // ==========================================
     // 1. ACCESS CONTROL
@@ -49,14 +54,15 @@ test.describe('Admin — Monitoring Pengembalian Dana (Read-Only)', () => {
             asAdmin,
             asMitra,
             seed,
-        }) => {
+        }, testInfo) => {
             await dismissNotificationPrompt(page);
 
             // 1. Setup: Buat paket & booking confirmed, lalu batalkan via Mitra agar menghasilkan Refund PENDING
-            const runId = Date.now();
+            const uniqueKode = generateUniquePackageCode(testInfo.workerIndex);
             const pkg = await seed.createPackage(page, {
                 mitra_email: SEED_USERS.mitra.email,
-                nama: `Paket Admin Refund E2E ${runId}`,
+                kode: uniqueKode,
+                nama: `Paket Admin Refund E2E ${uniqueKode}`,
                 status: 'aktif',
                 durasi_hari: 1,
                 durasi_malam: 0,
@@ -121,7 +127,7 @@ test.describe('Admin — Monitoring Pengembalian Dana (Read-Only)', () => {
 
             // Uji link ke detail pesanan (/admin/bookings/{id}) tersedia di card
             const bookingLink = refundCard.getByRole('link', {
-                name: `Lihat pesanan ${booking.kode}`,
+                name: new RegExp(booking.kode),
             });
             await expect(bookingLink).toHaveAttribute(
                 'href',

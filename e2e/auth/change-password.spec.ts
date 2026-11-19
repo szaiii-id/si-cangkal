@@ -8,7 +8,7 @@
  * - Validasi Browser (required, mismatch)
  * - Validasi Server (old password salah, password baru < 8)
  * - Mutation: Normal Change (wajib old_password) -> tetap login
- * - Mutation: Force Change (must_change_password=true, tanpa old_password) 
+ * - Mutation: Force Change (must_change_password=true, tanpa old_password)
  *   -> logout paksa -> login ulang dengan password baru
  *
  * Backend:
@@ -28,6 +28,11 @@ import { SEED_USERS } from '../fixtures/auth';
 
 const SEED_PASSWORD = SEED_USERS.client.password; // "password"
 const NEW_PASSWORD = 'PasswordBaru123!';
+
+function uniqueEmail(prefix: string): string {
+    const rand = Math.random().toString(36).slice(2, 8);
+    return `${prefix}-${Date.now()}-${rand}@titiktemu.test`;
+}
 
 // ==========================================
 // TEST SUITE
@@ -86,9 +91,7 @@ test.describe('Auth — Change Password', () => {
         test('menampilkan field old_password (mode normal)', async ({
             page,
         }) => {
-            await expect(
-                page.locator('input#old_password'),
-            ).toBeVisible();
+            await expect(page.locator('input#old_password')).toBeVisible();
         });
 
         test('menampilkan field password & password_confirmation', async ({
@@ -161,12 +164,10 @@ test.describe('Auth — Change Password', () => {
             await page.fill('input#password', 'Password123!');
             await page.fill('input#password_confirmation', 'Password456!');
 
-            // Pesan mismatch muncul
             await expect(
                 page.getByText(/Konfirmasi password tidak cocok/i),
             ).toBeVisible();
 
-            // Tombol disabled
             await expect(
                 page.getByRole('button', { name: /Simpan Password Baru/i }),
             ).toBeDisabled();
@@ -178,9 +179,10 @@ test.describe('Auth — Change Password', () => {
             await page.fill('input#password', NEW_PASSWORD);
             await page.fill('input#password_confirmation', NEW_PASSWORD);
 
-            await page.getByRole('button', { name: /Simpan Password Baru/i }).click();
+            await page
+                .getByRole('button', { name: /Simpan Password Baru/i })
+                .click();
 
-            // Tetap di halaman
             await expect(page).toHaveURL('/change-password');
         });
     });
@@ -204,10 +206,12 @@ test.describe('Auth — Change Password', () => {
                 page.waitForResponse(
                     (resp) =>
                         resp.url().includes('/change-password') &&
-                        resp.request().method() === 'PUT', 
+                        resp.request().method() === 'PUT',
                     { timeout: 15_000 },
                 ),
-                page.getByRole('button', { name: /Simpan Password Baru/i }).click(),
+                page
+                    .getByRole('button', { name: /Simpan Password Baru/i })
+                    .click(),
             ]);
 
             await expect(page).toHaveURL('/change-password');
@@ -227,10 +231,12 @@ test.describe('Auth — Change Password', () => {
                 page.waitForResponse(
                     (resp) =>
                         resp.url().includes('/change-password') &&
-                        resp.request().method() === 'PUT', 
+                        resp.request().method() === 'PUT',
                     { timeout: 15_000 },
                 ),
-                page.getByRole('button', { name: /Simpan Password Baru/i }).click(),
+                page
+                    .getByRole('button', { name: /Simpan Password Baru/i })
+                    .click(),
             ]);
 
             await expect(page).toHaveURL('/change-password');
@@ -241,15 +247,27 @@ test.describe('Auth — Change Password', () => {
     });
 
     // ==========================================
-    // MUTATION — NORMAL CHANGE PASSWORD (serial)
+    // MUTATION — NORMAL CHANGE PASSWORD (serial, isolated user)
     // ==========================================
 
     test.describe.serial('Mutation — Normal Change Password', () => {
+        const normalEmail = uniqueEmail('normal-pwd');
+
+        test('setup: buat user client terisolasi', async ({ page, seed }) => {
+            await seed.createUser(page, {
+                email: normalEmail,
+                name: 'Normal Password User',
+                role: 'client',
+                password: SEED_PASSWORD,
+                must_change_password: false,
+            });
+        });
+
         test('ganti password berhasil (mode normal)', async ({
-        page,
-            asClient,
+            page,
+            seed,
         }) => {
-            await asClient();
+            await seed.login(page, normalEmail, SEED_PASSWORD);
             await page.goto('/change-password');
 
             await page.fill('input#old_password', SEED_PASSWORD);
@@ -258,7 +276,9 @@ test.describe('Auth — Change Password', () => {
 
             await Promise.all([
                 page.waitForURL('/client/dashboard', { timeout: 15_000 }),
-                page.getByRole('button', { name: /Simpan Password Baru/i }).click(),
+                page
+                    .getByRole('button', { name: /Simpan Password Baru/i })
+                    .click(),
             ]);
 
             await expect(page).toHaveURL('/client/dashboard');
@@ -271,7 +291,7 @@ test.describe('Auth — Change Password', () => {
             await asGuest();
             await page.goto('/login');
 
-            await SEL.AUTH.login.email(page).fill(SEED_USERS.client.email);
+            await SEL.AUTH.login.email(page).fill(normalEmail);
             await SEL.AUTH.login.password(page).fill(NEW_PASSWORD);
 
             await Promise.all([
@@ -289,7 +309,7 @@ test.describe('Auth — Change Password', () => {
             await asGuest();
             await page.goto('/login');
 
-            await SEL.AUTH.login.email(page).fill(SEED_USERS.client.email);
+            await SEL.AUTH.login.email(page).fill(normalEmail);
             await SEL.AUTH.login.password(page).fill(SEED_PASSWORD);
 
             await SEL.AUTH.login.submit(page).click();
@@ -299,28 +319,24 @@ test.describe('Auth — Change Password', () => {
                 page.getByText(/Kredensial yang diberikan tidak cocok/i),
             ).toBeVisible();
         });
-
-        test('cleanup: reset password client kembali ke seed', async ({
-            page,
-            seed,
-        }) => {
-            await seed.resetUser(page, SEED_USERS.client.email, {
-                password: SEED_PASSWORD,
-                must_change_password: false,
-            });
-        });
     });
 
     // ==========================================
-    // MUTATION — FORCE CHANGE PASSWORD (serial)
+    // MUTATION — FORCE CHANGE PASSWORD (serial, isolated user)
     // ==========================================
 
     test.describe.serial('Mutation — Force Change Password', () => {
-        test('setup: set must_change_password = true', async ({
+        const forceEmail = uniqueEmail('force-pwd');
+        const forceNewPassword = 'ForceBaru123!';
+
+        test('setup: buat user dengan must_change_password = true', async ({
             page,
             seed,
         }) => {
-            await seed.resetUser(page, SEED_USERS.client.email, {
+            await seed.createUser(page, {
+                email: forceEmail,
+                name: 'Force Password User',
+                role: 'client',
                 password: SEED_PASSWORD,
                 must_change_password: true,
             });
@@ -333,7 +349,7 @@ test.describe('Auth — Change Password', () => {
             await asGuest();
             await page.goto('/login');
 
-            await SEL.AUTH.login.email(page).fill(SEED_USERS.client.email);
+            await SEL.AUTH.login.email(page).fill(forceEmail);
             await SEL.AUTH.login.password(page).fill(SEED_PASSWORD);
 
             await Promise.all([
@@ -346,11 +362,12 @@ test.describe('Auth — Change Password', () => {
 
         test('mode force: field old_password disembunyikan (tidak wajib)', async ({
             page,
+            asGuest,
         }) => {
-            // Login manual setelah setup must_change_password=true.
+            await asGuest();
             await page.goto('/login');
 
-            await SEL.AUTH.login.email(page).fill(SEED_USERS.client.email);
+            await SEL.AUTH.login.email(page).fill(forceEmail);
             await SEL.AUTH.login.password(page).fill(SEED_PASSWORD);
 
             await Promise.all([
@@ -358,18 +375,21 @@ test.describe('Auth — Change Password', () => {
                 SEL.AUTH.login.submit(page).click(),
             ]);
 
-            // Peringatan wajib ganti password muncul
             await expect(
-                page.getByRole('note').filter({ hasText: /Wajib Ganti Password/i }),
+                page
+                    .getByRole('note')
+                    .filter({ hasText: /Wajib Ganti Password/i }),
             ).toBeVisible();
         });
 
         test('ganti password mode force berhasil → logout paksa', async ({
             page,
+            asGuest,
         }) => {
-            // Login manual sebagai user force change
+            await asGuest();
             await page.goto('/login');
-            await SEL.AUTH.login.email(page).fill(SEED_USERS.client.email);
+
+            await SEL.AUTH.login.email(page).fill(forceEmail);
             await SEL.AUTH.login.password(page).fill(SEED_PASSWORD);
 
             await Promise.all([
@@ -377,16 +397,14 @@ test.describe('Auth — Change Password', () => {
                 SEL.AUTH.login.submit(page).click(),
             ]);
 
-            const forceNewPassword = 'ForceBaru123!';
-
-            // Tidak isi old_password (karena force)
             await page.fill('input#password', forceNewPassword);
             await page.fill('input#password_confirmation', forceNewPassword);
 
             await Promise.all([
-                // Mode force → redirect ke /login
                 page.waitForURL('/login', { timeout: 15_000 }),
-                page.getByRole('button', { name: /Simpan Password Baru/i }).click(),
+                page
+                    .getByRole('button', { name: /Simpan Password Baru/i })
+                    .click(),
             ]);
 
             await expect(page).toHaveURL('/login');
@@ -402,8 +420,8 @@ test.describe('Auth — Change Password', () => {
             await asGuest();
             await page.goto('/login');
 
-            await SEL.AUTH.login.email(page).fill(SEED_USERS.client.email);
-            await SEL.AUTH.login.password(page).fill('ForceBaru123!');
+            await SEL.AUTH.login.email(page).fill(forceEmail);
+            await SEL.AUTH.login.password(page).fill(forceNewPassword);
 
             await Promise.all([
                 page.waitForURL('/client/dashboard', { timeout: 15_000 }),
@@ -411,16 +429,6 @@ test.describe('Auth — Change Password', () => {
             ]);
 
             await expect(page).toHaveURL('/client/dashboard');
-        });
-
-        test('cleanup: reset password & must_change_password', async ({
-            page,
-            seed,
-        }) => {
-            await seed.resetUser(page, SEED_USERS.client.email, {
-                password: SEED_PASSWORD,
-                must_change_password: false,
-            });
         });
     });
 });

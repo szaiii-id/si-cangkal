@@ -197,7 +197,11 @@ describe('DashboardLayout Component', () => {
                 props: { title: 'Test', menuItems: [], children: mockChildren },
             });
 
-            expect(screen.getByLabelText('5 notifikasi belum dibaca')).toHaveTextContent('5');
+            const notifLink = screen.getByRole('link', {
+                name: /Notifikasi 5 belum dibaca/i,
+            });
+            expect(notifLink).toBeInTheDocument();
+            expect(notifLink).toHaveTextContent('5');
         });
 
         it('TIDAK menampilkan badge jika unread_notifications = 0', () => {
@@ -206,7 +210,10 @@ describe('DashboardLayout Component', () => {
                 props: { title: 'Test', menuItems: [], children: mockChildren },
             });
 
-            expect(screen.queryByLabelText(/notifikasi belum dibaca/i)).not.toBeInTheDocument();
+            const notifLink = screen.getByRole('link', { name: 'Notifikasi' });
+            expect(notifLink).toBeInTheDocument();
+            expect(notifLink.querySelector('.bg-red-600')).not.toBeInTheDocument();
+            expect(notifLink).not.toHaveTextContent(/belum dibaca/i);
         });
     });
 });
