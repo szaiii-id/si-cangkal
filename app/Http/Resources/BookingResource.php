@@ -53,6 +53,7 @@ final class BookingResource extends JsonResource
             'jumlah_peserta' => $this->jumlah_peserta,
             'total_harga' => (string) $this->total_harga,
             'has_payment_proof' => $this->payment_proof_path !== null && $this->payment_proof_path !== '',
+            'payment_reject_reason' => $this->payment_reject_reason,
             'expired_at' => $this->expired_at?->toIso8601String(),
             'catatan' => $this->catatan,
             'created_at' => $this->created_at?->toIso8601String(),

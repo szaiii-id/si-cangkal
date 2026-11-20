@@ -28,6 +28,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -78,12 +79,16 @@ final class AppServiceProvider extends ServiceProvider
     {
         Date::use(CarbonImmutable::class);
 
+        if (app()->isProduction()) {
+            URL::forceScheme('https');
+        }
+
         DB::prohibitDestructiveCommands(
             app()->isProduction(),
         );
 
         Password::defaults(fn (): ?Password => app()->isProduction()
-            ? Password::min(12)->mixedCase()->letters()->numbers()->symbols()->uncompromised()
+            ? Password::min(8)->mixedCase()->letters()->numbers()->symbols()->uncompromised()
             : null,
         );
     }

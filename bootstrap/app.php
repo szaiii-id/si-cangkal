@@ -5,12 +5,14 @@ use App\Http\Middleware\CheckRole;
 use App\Http\Middleware\EnsureMitraProfileCompleted;
 use App\Http\Middleware\EnsurePasswordChanged;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\TrustProxies;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -26,15 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Trust proxy (ngrok, load balancer, dll)
-        $middleware->trustProxies(
-            at: '*',
-            headers: Request::HEADER_X_FORWARDED_FOR
-                | Request::HEADER_X_FORWARDED_HOST
-                | Request::HEADER_X_FORWARDED_PORT
-                | Request::HEADER_X_FORWARDED_PROTO
-                | Request::HEADER_X_FORWARDED_AWS_ELB,
-        );
+        $middleware->prepend(TrustProxies::class);
 
         $middleware->web(append: [
             HandleInertiaRequests::class,
@@ -76,17 +70,31 @@ return Application::configure(basePath: dirname(__DIR__))
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
 
-        // Tangani Session Expired (419) dan Unauthorized (401) untuk request Inertia
+        // Tangani Session Expired (419), Unauthorized (401), dan halaman Error Inertia
         $exceptions->respond(function (Response $response, Throwable $e, Request $request) {
             $status = $response->getStatusCode();
 
-            // Hanya tangani jika request berasal dari Inertia (XHR)
+            // 1. Tangani jika request berasal dari Inertia (XHR) saat sesi habis
             if ($request->header('X-Inertia')) {
                 if ($status === 419 || $status === 401) {
                     return redirect()
                         ->route('login')
                         ->with('error', 'Sesi Anda telah berakhir. Silakan login kembali.');
                 }
+            }
+
+            // 2. Render halaman Error.svelte untuk kunjungan halaman biasa (non-JSON, non-local)
+            if (
+                ! app()->environment('local') &&
+                ! $request->is('api/*') &&
+                ! $request->expectsJson() &&
+                in_array($status, [403, 404, 419, 429, 500, 503], true)
+            ) {
+                return Inertia::render('Error', [
+                    'status' => $status,
+                ])
+                    ->toResponse($request)
+                    ->setStatusCode($status);
             }
 
             return $response;

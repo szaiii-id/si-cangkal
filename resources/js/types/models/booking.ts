@@ -40,6 +40,7 @@ export type BookingResource = {
     jumlah_peserta: number;
     total_harga: string;
     has_payment_proof: boolean;
+    payment_reject_reason: string | null;
     expired_at: string | null;
     catatan: string | null;
     created_at: string;

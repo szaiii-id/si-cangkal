@@ -39,6 +39,7 @@
     let canCancel = $derived(canClientCancelBooking(booking.status));
     let needsMitraCancel = $derived(needsMitraCancelFn(booking.status));
     let hasProof = $derived(booking.has_payment_proof);
+    let rejectReason = $derived(booking.payment_reject_reason ?? null);
     let latestRefund = $derived(refunds.length > 0 ? refunds[0] : null);
     let statusDescription = $derived(getBookingStatusDescription(booking.status));
 
@@ -247,8 +248,17 @@
                         <div class="bg-white rounded-[2rem] border border-gray-100 shadow-sm p-5 sm:p-6 flex flex-col justify-center">
                             <h3 class="text-sm font-extrabold text-dark mb-1">Konfirmasi Pembayaran</h3>
                             <p class="text-[11px] text-gray-500 mb-4">Unggah bukti transfer Anda.</p>
+
+                            {#if rejectReason}
+                                <div class="mb-4 p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-700">
+                                    <p class="text-xs font-extrabold mb-0.5">Bukti Transfer Ditolak Mitra</p>
+                                    <p class="text-xs leading-relaxed">Alasan: {rejectReason}</p>
+                                    <p class="text-[11px] text-red-600/80 mt-1">Silakan unggah ulang bukti transfer yang sesuai.</p>
+                                </div>
+                            {/if}
+
                             <UploadProofForm
-                                {hasProof}
+                                hasProof={hasProof && !rejectReason}
                                 uploadUrl={`/client/bookings/${booking.id}/upload-proof`}
                             />
                         </div>

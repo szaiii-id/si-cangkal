@@ -23,6 +23,7 @@
 
     let isPending = $derived(isPendingPayment(booking.status));
     let hasProof = $derived(booking.has_payment_proof);
+    let existingRejectReason = $derived(booking.payment_reject_reason ?? null);
     let canCancel = $derived(!isFinalBooking(booking.status));
     let latestRefund = $derived(booking.refunds.length > 0 ? booking.refunds[0] : null);
 
@@ -31,7 +32,7 @@
     // ==========================================
     let verifyProcessing = $state(false);
     let showVerifyModal = $state(false);
-    let canVerify = $derived(canVerifyPayment(booking.status) && hasProof && !verifyProcessing);
+    let canVerify = $derived(canVerifyPayment(booking.status) && hasProof && !existingRejectReason && !verifyProcessing);
 
     function openVerifyModal() {
         if (!canVerify) return;
@@ -62,7 +63,7 @@
     let rejectReason = $state('');
     let rejectProcessing = $state(false);
     let rejectError = $state('');
-    let canReject = $derived(canVerifyPayment(booking.status) && hasProof && !rejectProcessing);
+    let canReject = $derived(canVerifyPayment(booking.status) && hasProof && !existingRejectReason && !rejectProcessing);
 
     function openRejectModal() {
         if (!canReject) return;
@@ -195,8 +196,32 @@
                 <UploadPaymentProofCard bookingId={booking.id} />
             {/if}
 
-            <!-- VERIFIKASI (Jika pending dengan bukti) -->
-            {#if isPending && hasProof}
+            <!-- BUKTI DITOLAK (Jika pending dengan bukti yang ditolak) -->
+            {#if isPending && hasProof && existingRejectReason}
+                <div class="bg-white rounded-3xl border border-red-200 shadow-sm overflow-hidden">
+                    <div class="p-5 border-b border-red-100 bg-red-50/50">
+                        <h2 class="text-base font-extrabold text-red-800">Bukti Transfer Ditolak</h2>
+                        <p class="text-xs text-red-700 mt-1">Menunggu Client mengunggah ulang bukti transfer.</p>
+                    </div>
+                    <div class="p-5 space-y-4">
+                        <div class="p-3.5 rounded-2xl bg-red-50 border border-red-200">
+                            <p class="text-[10px] font-extrabold text-red-800 uppercase tracking-widest mb-1">Alasan Penolakan</p>
+                            <p class="text-sm text-red-700">{existingRejectReason}</p>
+                        </div>
+
+                        <PaymentProofPreview
+                            bookingId={booking.id}
+                            role="mitra"
+                            {hasProof}
+                            maxWidth="max-w-sm"
+                            emptyMessage="Bukti transfer belum diunggah."
+                        />
+                    </div>
+                </div>
+            {/if}
+
+            <!-- VERIFIKASI (Jika pending dengan bukti & belum ditolak) -->
+            {#if isPending && hasProof && !existingRejectReason}
                 <VerifyPaymentCard
                     bookingId={booking.id}
                     {hasProof}

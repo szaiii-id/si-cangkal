@@ -138,4 +138,23 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    'admin_prod' => [
+        'name' => env('ADMIN_PROD_NAME', 'Administrator SI-CANGKAL'),
+        'email' => env('ADMIN_PROD_EMAIL', 'admin.sicangkal@kalselprov.go.id'),
+        'password' => env('ADMIN_PROD_PASSWORD'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Trusted Proxies
+    |--------------------------------------------------------------------------
+    |
+    | Daftar IP reverse proxy/load balancer yang dipercaya di production
+    | (pisahkan dengan koma, atau '*' untuk Cloudflare/shared hosting).
+    | Jika dikosongkan, otomatis mempercayai IP proxy upstream langsung.
+    |
+    */
+
+    'trusted_proxies' => env('TRUSTED_PROXIES'),
+
 ];
