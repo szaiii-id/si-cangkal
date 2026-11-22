@@ -232,17 +232,11 @@ final class TripRepository implements TripRepositoryInterface
     /**
      * {@inheritDoc}
      *
-     * FIX: pakai whereDate bukan where.
-     * Kolom tanggal_mulai di SQLite disimpan sebagai string datetime
-     * ('2026-01-15 00:00:00') oleh cast date Laravel, sehingga
-     * perbandingan string where('tanggal_mulai', '<=', '2026-01-15')
-     * GAGAL (karena '2026-01-15 00:00:00' > '2026-01-15' secara string).
-     * whereDate membandingkan tanggal saja (ignoring jam) - benar.
+     * Tanpa pemotongan tanggal global — lihat interface untuk alasannya.
      */
-    public function findScheduledDueToday(string $tanggal): Collection
+    public function findDueScheduled(): Collection
     {
         return Trip::scheduled()
-            ->whereDate('tanggal_mulai', '<=', $tanggal)
             ->with(['mitra', 'booking', 'package'])
             ->get();
     }

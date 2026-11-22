@@ -77,13 +77,18 @@ interface TripRepositoryInterface
     public function generateKode(int $tahun): string;
 
     /**
-     * Ambil trip scheduled yang tanggal_mulai <= tanggal tertentu.
+     * Ambil semua trip scheduled sebagai kandidat auto-activate — tanpa
+     * pemotongan tanggal global (cutoff UTC harian bisa keliru: trip yang
+     * tanggalnya sudah datang di timezone trip tertinggal saat UTC hari ini
+     * masih hari kemarin, misalnya UTC 22.00 → Makassar sudah 00.00
+     * tanggal berikutnya).
      *
-     * Untuk scheduler auto-active (pre-filter kasar; timezone-aware di Service).
+     * Pemeriksaan "waktunya" (tanggal_mulai <= Timezone::today(trip.timezone))
+     * dilakukan per trip di Service — timezone-aware.
      *
      * @return Collection<int, Trip>
      */
-    public function findScheduledDueToday(string $tanggal): Collection;
+    public function findDueScheduled(): Collection;
 
     /**
      * Hitung jumlah trip per status (untuk dashboard admin).

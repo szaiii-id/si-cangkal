@@ -302,7 +302,7 @@ describe('cancel', function () {
 
 describe('activateDueTrips', function () {
     it('tidak ada candidates → activated 0', function () {
-        $this->tripRepo->shouldReceive('findScheduledDueToday')
+        $this->tripRepo->shouldReceive('findDueScheduled')
             ->once()->andReturn(new Collection);
 
         $result = $this->service->activateDueTrips();
@@ -319,7 +319,7 @@ describe('activateDueTrips', function () {
         ]);
         $trip1->shouldReceive('timezoneOrDefault')->andReturn('Asia/Makassar');
 
-        $this->tripRepo->shouldReceive('findScheduledDueToday')
+        $this->tripRepo->shouldReceive('findDueScheduled')
             ->once()->andReturn(new Collection([$trip1]));
 
         $this->tripRepo->shouldReceive('update')

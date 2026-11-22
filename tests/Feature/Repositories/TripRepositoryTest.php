@@ -134,21 +134,36 @@ describe('Contract — findById / findByKode / findByBookingId', function () {
     });
 });
 
-describe('Contract — findScheduledDueToday', function () {
+describe('Contract — findDueScheduled', function () {
     it('mengembalikan Collection', function () {
-        expect($this->repo->findScheduledDueToday('2026-01-15'))
+        expect($this->repo->findDueScheduled())
             ->toBeInstanceOf(Collection::class);
     });
 
-    it('meng-eager-load mitra, booking, package', function () {
+    it('mengembalikan semua trip scheduled tanpa pemotongan tanggal global', function () {
         // Carbon sudah frozen di beforeEach ke 2026-01-15.
-        // Gunakan scheduled() lalu override tanggal_mulai ke hari ini.
+        // Pemeriksaan "waktunya" (per trip, timezone-aware) dilakukan di Service.
+        Trip::factory()->create([
+            'status' => TripStatus::SCHEDULED->value,
+            'tanggal_mulai' => '2026-01-15',
+        ]);
+        Trip::factory()->create([
+            'status' => TripStatus::SCHEDULED->value,
+            'tanggal_mulai' => '2026-01-20',
+        ]);
+
+        $result = $this->repo->findDueScheduled();
+
+        expect($result)->toHaveCount(2);
+    });
+
+    it('meng-eager-load mitra, booking, package', function () {
         Trip::factory()->create([
             'status' => TripStatus::SCHEDULED->value,
             'tanggal_mulai' => '2026-01-15',
         ]);
 
-        $result = $this->repo->findScheduledDueToday('2026-01-15');
+        $result = $this->repo->findDueScheduled();
 
         expect($result)->toHaveCount(1)
             ->and($result->first()?->relationLoaded('mitra'))->toBeTrue()
@@ -459,8 +474,8 @@ describe('Data Integrity — countByStatus', function () {
     });
 });
 
-describe('Data Integrity — findScheduledDueToday', function () {
-    it('hanya mengembalikan scheduled dengan tanggal_mulai <= tanggal', function () {
+describe('Data Integrity — findDueScheduled', function () {
+    it('mengembalikan trip scheduled (tanpa pemotongan tanggal global)', function () {
         $due = Trip::factory()->create([
             'status' => TripStatus::SCHEDULED->value,
             'tanggal_mulai' => '2026-01-15',
@@ -474,21 +489,10 @@ describe('Data Integrity — findScheduledDueToday', function () {
             'tanggal_mulai' => '2026-01-15',
         ]);
 
-        $result = $this->repo->findScheduledDueToday('2026-01-15');
+        $result = $this->repo->findDueScheduled();
 
-        expect($result)->toHaveCount(1)
-            ->and($result->first()?->id)->toBe($due->id);
-    });
-
-    it('TIDAK mengembalikan trip yang tanggal_mulai > tanggal', function () {
-        Trip::factory()->create([
-            'status' => TripStatus::SCHEDULED->value,
-            'tanggal_mulai' => '2026-01-20',
-        ]);
-
-        $result = $this->repo->findScheduledDueToday('2026-01-15');
-
-        expect($result)->toHaveCount(0);
+        expect($result)->toHaveCount(2)
+            ->and($result->pluck('id')->contains($due->id))->toBeTrue();
     });
 });
 
