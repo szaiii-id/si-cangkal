@@ -30,7 +30,7 @@ final class TripController extends Controller
             'direction' => $request->input('direction', 'desc'),
         ];
 
-        $perPage = (int) $request->input('per_page', 10);
+        $perPage = min(max((int) $request->input('per_page', 10), 1), 100);
 
         return Inertia::render('Mitra/Trips/Index', [
             'trips' => $this->tripService->paginateForMitra($mitra, $filters, $perPage),

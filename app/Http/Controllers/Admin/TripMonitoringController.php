@@ -35,7 +35,7 @@ final class TripMonitoringController extends Controller
             'direction' => $request->input('direction', 'desc'),
         ];
 
-        $perPage = (int) $request->input('per_page', 15);
+        $perPage = min(max((int) $request->input('per_page', 15), 1), 100);
 
         return Inertia::render('Admin/Trips/Index', [
             'trips' => $this->tripService->paginate($filters, $perPage),

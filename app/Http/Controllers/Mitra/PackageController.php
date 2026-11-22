@@ -29,7 +29,7 @@ final class PackageController extends Controller
             'mitra_id' => $request->user()->id,
         ];
 
-        $perPage = (int) $request->input('per_page', 15);
+        $perPage = min(max((int) $request->input('per_page', 15), 1), 100);
 
         return Inertia::render('Mitra/Packages/Index', [
             'packages' => $this->packageService->paginate($filters, $perPage),
