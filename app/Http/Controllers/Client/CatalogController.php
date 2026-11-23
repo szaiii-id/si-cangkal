@@ -28,7 +28,7 @@ class CatalogController extends Controller
             'direction' => $request->input('direction', 'asc'),
         ];
 
-        $perPage = (int) $request->input('per_page', 12);
+        $perPage = min(max((int) $request->input('per_page', 12), 1), 100);
         $packages = $this->packageService->paginate($filters, $perPage);
 
         return Inertia::render('Client/Catalog/Index', [

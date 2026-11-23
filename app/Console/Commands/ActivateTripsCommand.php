@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Trip;
+use App\Repositories\Contracts\TripRepositoryInterface;
 use App\Services\Trip\TripService;
 use App\Support\Timezone;
 use Illuminate\Console\Command;
@@ -28,12 +28,12 @@ class ActivateTripsCommand extends Command
     /**
      * Execute the console command.
      */
-    public function handle(TripService $tripService): int
+    public function handle(TripService $tripService, TripRepositoryInterface $tripRepository): int
     {
         $this->info('Mencari trip yang siap diaktifkan...');
 
         if ($this->option('dry-run')) {
-            return $this->dryRun($tripService);
+            return $this->dryRun($tripRepository);
         }
 
         $result = $tripService->activateDueTrips();
@@ -58,13 +58,9 @@ class ActivateTripsCommand extends Command
     /**
      * Dry-run: tampilkan trip yang akan diaktifkan tanpa eksekusi.
      */
-    protected function dryRun(TripService $tripService): int
+    protected function dryRun(TripRepositoryInterface $tripRepository): int
     {
-        $today = now()->format('Y-m-d');
-        $candidates = Trip::scheduled()
-            ->where('tanggal_mulai', '<=', $today)
-            ->with(['package', 'mitra'])
-            ->get();
+        $candidates = $tripRepository->findDueScheduled();
 
         $willActivate = 0;
         $skippedNoMitra = 0;

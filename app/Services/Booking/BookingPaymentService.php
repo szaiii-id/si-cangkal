@@ -169,7 +169,7 @@ class BookingPaymentService
 
     private function storeProofFile(Booking $booking, UploadedFile $file): string
     {
-        $extension = strtolower((string) $file->getClientOriginalExtension());
+        $extension = strtolower($file->guessExtension() ?: 'jpg');
         $filename = sprintf(
             '%s_%s.%s',
             $booking->kode,

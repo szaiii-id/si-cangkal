@@ -354,6 +354,30 @@ describe('activateDueTrips — persistence', function () {
         ]);
     });
 
+    it('activateDueTrips → mengaktifkan trip yang tanggalnya hari ini di timezone trip (UTC hari ini kemarin)', function () {
+        // Simulasi kasus khusus: UTC 22:30 tanggal 22 → timezone trip (Makassar)
+        // sudah tanggal 23. Trip dibuat dengan tanggal hari ini di timezone trip
+        // — harus aktif (sebelumnya gagal karena cutoff UTC harian tertinggal).
+        Carbon::setTestNow('2026-11-22 23:30 UTC');
+
+        $package = makePackageWithDays($this->mitra, 1);
+        $booking = makeConfirmedBooking($this->client, $this->mitra, $package, [
+            'tanggal_keberangkatan' => '2026-11-23',
+        ]);
+        $trip = $this->service->createFromBooking($booking);
+
+        $result = $this->service->activateDueTrips();
+
+        expect($result['activated'])->toBe(1);
+
+        $this->assertDatabaseHas('trips', [
+            'id' => $trip->id,
+            'status' => TripStatus::ACTIVE->value,
+        ]);
+
+        Carbon::setTestNow();
+    });
+
     it('activateDueTrips → TripDay status IN_PROGRESS', function () {
         $package = makePackageWithDays($this->mitra, 2);
         $booking = makeConfirmedBooking($this->client, $this->mitra, $package, [

@@ -50,6 +50,24 @@
         }
         return linkLabel;
     }
+
+    // Laravel paginator generates labels containing HTML entities
+    // (e.g. `&laquo; Previous` / `Next &raquo;`). Render them as plain
+    // text so the sink stays `{@html}`-free (defense-in-depth: no raw
+    // HTML sink even though the current labels are server-generated).
+    function decodeEntities(text: string): string {
+        return text
+            .replace(/&laquo;/g, '«')
+            .replace(/&raquo;/g, '»')
+            .replace(/&lsaquo;/g, '‹')
+            .replace(/&rsaquo;/g, '›')
+            .replace(/&quot;/g, '"')
+            .replace(/&#0?39;/g, "'")
+            .replace(/&nbsp;/g, ' ')
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>');
+    }
 </script>
 
 {#if visible}
@@ -72,7 +90,7 @@
                         aria-disabled="true"
                         aria-label={getAriaLabel(link.label, i)}
                     >
-                        {@html formatLabel(link.label)}
+                        {formatLabel(decodeEntities(link.label))}
                     </span>
                 {:else}
                     <a
@@ -85,7 +103,7 @@
                         aria-current={link.active ? 'page' : undefined}
                         aria-label={getAriaLabel(link.label, i)}
                     >
-                        {@html formatLabel(link.label)}
+                        {formatLabel(decodeEntities(link.label))}
                     </a>
                 {/if}
             {/each}

@@ -258,8 +258,7 @@ class TripService
      */
     public function activateDueTrips(): array
     {
-        $today = now()->format('Y-m-d');
-        $candidates = $this->tripRepository->findScheduledDueToday($today);
+        $candidates = $this->tripRepository->findDueScheduled();
 
         $activated = 0;
         $skippedNoMitra = 0;
