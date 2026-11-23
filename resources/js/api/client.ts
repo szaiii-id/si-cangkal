@@ -48,6 +48,19 @@ export const uploadProof = (
     options?: ClientOptions,
 ) => router.post(`/client/bookings/${bookingId}/upload-proof`, data, options);
 
+// ==========================================
+// REVIEW
+// ==========================================
+/**
+ * Kirim review untuk booking yang trip-nya sudah selesai.
+ * Backend: `Client\ReviewController@store`.
+ */
+export const createReview = (
+    bookingId: number,
+    data: RequestPayload,
+    options?: ClientOptions,
+) => router.post(`/client/bookings/${bookingId}/review`, data, options);
+
 /**
  * URL untuk mengunduh bukti transfer (digunakan di PaymentProofPreview).
  * Backend: `Client\BookingController@downloadProof`.

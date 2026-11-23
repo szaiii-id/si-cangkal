@@ -2,10 +2,12 @@
 
 use App\Enums\PackageKategori;
 use App\Enums\PackageStatus;
+use App\Models\Booking;
 use App\Models\Package;
 use App\Models\PackageDay;
 use App\Models\PackageFacility;
 use App\Models\Profile;
+use App\Models\Review;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -349,6 +351,63 @@ describe('Edge Cases — per_page default 12', function () {
             ->assertInertia(fn (Assert $page) => $page
                 ->where('packages.per_page', 12)
                 ->has('packages.data', 12)
+            );
+    });
+});
+
+/*
+|==========================================================================
+| REVIEW — RINGKASAN & DAFTAR ULASAN
+|==========================================================================
+*/
+
+describe('Review — katalog', function () {
+    it('prop reviewStats dan reviews ada di Client/Catalog/Show', function () {
+        $package = makePackageForCatalog($this->mitra);
+
+        $this->actingAs($this->client)
+            ->get("/client/catalog/{$package->slug}")
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Client/Catalog/Show')
+                ->has('reviewStats')
+                ->has('reviews')
+                ->where('reviewStats.rata_rata', 0)
+                ->where('reviewStats.jumlah', 0)
+            );
+    });
+
+    it('rating agregat sesuai review yang dibuat factory', function () {
+        $package = makePackageForCatalog($this->mitra);
+        $booking1 = Booking::factory()->forPackage($package)->forClient($this->client)->confirmed()->create();
+        $booking2 = Booking::factory()->forPackage($package)->forClient($this->client)->confirmed()->create();
+
+        Review::factory()->forBooking($booking1)->rating(5)->create();
+        Review::factory()->forBooking($booking2)->rating(4)->create();
+
+        $this->actingAs($this->client)
+            ->get("/client/catalog/{$package->slug}")
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('reviewStats.rata_rata', 4.5)
+                ->where('reviewStats.jumlah', 2)
+                ->has('reviews.data', 2)
+                ->where('reviews.data.0.rating', 4)
+                ->where('reviews.data.1.rating', 5)
+            );
+    });
+
+    it('nama reviewer hanya nama depan (AC-10)', function () {
+        $package = makePackageForCatalog($this->mitra);
+        $reviewer = User::factory()->client()->create(['name' => 'Budi Santoso']);
+        $booking = Booking::factory()->forPackage($package)->forClient($reviewer)->confirmed()->create();
+        Review::factory()->forBooking($booking)->rating(5)->create();
+
+        $this->actingAs($this->client)
+            ->get("/client/catalog/{$package->slug}")
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('reviews.data.0.client.nama', 'Budi')
             );
     });
 });

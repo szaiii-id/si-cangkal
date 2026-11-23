@@ -15,6 +15,7 @@ import type {
     PackageDay,
     Profile,
     RefundEloquent,
+    Review,
     TripDay,
     TripEloquent,
     User,
@@ -117,6 +118,8 @@ export type MitraBookingShowProps = {
         mitra: NonNullable<BookingResource['mitra']>;
         refunds: NonNullable<BookingResource['refunds']>;
     };
+    /** Review client untuk booking ini, atau null. */
+    review?: Review | null;
 };
 
 /**

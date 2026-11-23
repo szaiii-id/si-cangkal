@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\ReviewResource;
 use App\Models\Package;
+use App\Repositories\Contracts\ReviewRepositoryInterface;
 use App\Services\Package\PackageService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -13,6 +15,7 @@ class CatalogController extends Controller
 {
     public function __construct(
         protected PackageService $packageService,
+        protected ReviewRepositoryInterface $reviewRepository,
     ) {}
 
     /**
@@ -60,6 +63,10 @@ class CatalogController extends Controller
 
         return Inertia::render('Client/Catalog/Show', [
             'package' => $package,
+            'reviewStats' => $this->reviewRepository->statistikForPackage($package),
+            'reviews' => ReviewResource::collection(
+                $this->reviewRepository->paginateForPackage($package)
+            )->response()->getData(true),
         ]);
     }
 }

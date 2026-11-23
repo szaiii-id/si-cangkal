@@ -11,6 +11,7 @@ use App\Models\Package;
 use App\Models\PackageDay;
 use App\Models\PackageFacility;
 use App\Models\Profile;
+use App\Models\Review;
 use App\Models\Trip;
 use App\Models\TripDay;
 use App\Models\User;
@@ -32,6 +33,7 @@ class TestSeeder extends Seeder
         if (app()->environment('testing')) {
             $tables = [
                 'e_tickets', 'refunds', 'payments',
+                'reviews', 'notifications',
                 'daily_report_media', 'daily_reports',
                 'trip_days', 'trips',
                 'booking_participants', 'bookings',
@@ -276,6 +278,39 @@ class TestSeeder extends Seeder
             'status' => TripDay::STATUS_PENDING,
         ]);
 
+        // Booking + trip yang sudah selesai — dipakai E2E/axe untuk
+        // menguji halaman form review dan ulasan di katalog.
+        // Sengaja dibuat terpisah supaya BK-TEST-002/TRP-TEST-001
+        // yang dipakai fixture E2E tetap scheduled.
+        /** @var Booking $booking3 */
+        $booking3 = Booking::factory()
+            ->forPackage($package1)
+            ->forClient($client)
+            ->completed()
+            ->create([
+                'kode' => 'BK-TEST-003',
+                'tanggal_keberangkatan' => now()->subDays(7)->format('Y-m-d'),
+                'jumlah_peserta' => 2,
+                'total_harga' => '1000000.00',
+                'expired_at' => null,
+                'mitra_id' => $mitra->id,
+            ]);
+
+        Trip::factory()
+            ->forBooking($booking3)
+            ->completed()
+            ->create([
+                'kode' => 'TRP-TEST-002',
+                'tanggal_mulai' => now()->subDays(7)->format('Y-m-d'),
+                'tanggal_selesai' => now()->subDays(5)->format('Y-m-d'),
+                'status' => TripStatus::COMPLETED,
+                'timezone' => 'Asia/Makassar',
+            ]);
+
+        // Review contoh — lewat ReviewSeeder agar aturannya identik
+        // dengan ReviewService (trip COMPLETED + notifikasi mitra).
+        $this->call(ReviewSeeder::class);
+
         // ==========================================
         // 7. RINGKASAN
         // ==========================================
@@ -294,6 +329,7 @@ class TestSeeder extends Seeder
                 ['Booking Participants', BookingParticipant::count()],
                 ['Trips', Trip::count()],
                 ['Trip Days', TripDay::count()],
+                ['Reviews', Review::count()],
             ],
         );
     }

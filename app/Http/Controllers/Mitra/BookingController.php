@@ -8,7 +8,9 @@ use App\Http\Requests\Mitra\ListBookingRequest;
 use App\Http\Requests\Mitra\RejectPaymentRequest;
 use App\Http\Requests\Mitra\UploadPaymentProofRequest;
 use App\Http\Resources\BookingResource;
+use App\Http\Resources\ReviewResource;
 use App\Models\Booking;
+use App\Repositories\Contracts\ReviewRepositoryInterface;
 use App\Services\Booking\BookingCancellationService;
 use App\Services\Booking\BookingPaymentService;
 use App\Services\Booking\BookingQueryService;
@@ -25,6 +27,7 @@ final class BookingController extends Controller
         private readonly BookingQueryService $bookingQueryService,
         private readonly BookingPaymentService $bookingPaymentService,
         private readonly BookingCancellationService $bookingCancellationService,
+        private readonly ReviewRepositoryInterface $reviewRepository,
     ) {}
 
     public function index(ListBookingRequest $request): InertiaResponse
@@ -66,8 +69,13 @@ final class BookingController extends Controller
             'refunds',
         ]);
 
+        $review = $this->reviewRepository->findByBooking($booking);
+
         return Inertia::render('Mitra/Bookings/Show', [
             'booking' => (new BookingResource($booking))->resolve(),
+            'review' => $review !== null
+                ? (new ReviewResource($review->loadMissing('client:id,name')))->resolve()
+                : null,
         ]);
     }
 

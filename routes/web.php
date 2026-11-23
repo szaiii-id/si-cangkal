@@ -16,6 +16,7 @@ use App\Http\Controllers\Client\CatalogController;
 use App\Http\Controllers\Client\DashboardController as ClientDashboardController;
 use App\Http\Controllers\Client\ETicketController;
 use App\Http\Controllers\Client\ProfileController as ClientProfileController;
+use App\Http\Controllers\Client\ReviewController as ClientReviewController;
 use App\Http\Controllers\LandingPage\ContactController;
 use App\Http\Controllers\LegalController;
 use App\Http\Controllers\Mitra\BookingController as MitraBookingController;
@@ -267,6 +268,8 @@ Route::middleware('auth')->group(function () {
                 Route::post('/{booking}/cancel', [ClientBookingController::class, 'cancel'])->name('cancel');
                 Route::post('/{booking}/upload-proof', [ClientBookingController::class, 'uploadProof'])->middleware('auth.throttle:upload-proof')->name('upload-proof');
                 Route::get('/{booking}/payment-proof', [ClientBookingController::class, 'downloadProof'])->middleware('throttle:10,1')->name('payment-proof');
+                Route::get('/{booking}/review', [ClientReviewController::class, 'create'])->name('review.create');
+                Route::post('/{booking}/review', [ClientReviewController::class, 'store'])->name('review.store');
             });
 
             Route::get('/e-tickets/{uuid}/download', [ETicketController::class, 'download'])

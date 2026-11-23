@@ -40,6 +40,7 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, PackageDay> $days
  * @property-read Collection<int, PackageFacility> $facilities
  * @property-read Collection<int, Booking> $bookings
+ * @property-read Collection<int, Review> $reviews
  *
  * @use HasFactory<PackageFactory>
  */
@@ -121,6 +122,33 @@ class Package extends Model
     public function bookings(): HasMany
     {
         return $this->hasMany(Booking::class);
+    }
+
+    /**
+     * @return HasMany<Review, $this>
+     */
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(Review::class);
+    }
+
+    /**
+     * Rata-rata rating paket (0 kalau belum ada review).
+     *
+     * Catatan: helper ini nyaman untuk pemakaian tunggal. Untuk halaman
+     * katalog yang menampilkan banyak paket, pakai query agregat di
+     * ReviewRepositoryInterface::statistikForPackage() agar tidak N+1.
+     */
+    public function ratingRataRata(): float
+    {
+        return (float) ($this->reviews()
+            ->selectRaw('AVG(rating) as avg_rating')
+            ->value('avg_rating') ?? 0);
+    }
+
+    public function jumlahReview(): int
+    {
+        return (int) $this->reviews()->count();
     }
 
     // ==========================================

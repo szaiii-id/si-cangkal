@@ -8,6 +8,7 @@
     import PaymentProofPreview from '@/components/shared/PaymentProofPreview.svelte'; 
     import UploadPaymentProofCard from '@/components/mitra/bookings/UploadPaymentProofCard.svelte';
     import VerifyPaymentCard from '@/components/mitra/bookings/VerifyPaymentCard.svelte';
+    import StarRating from '@/components/review/StarRating.svelte';
 
     import { verifyPayment, rejectPayment, cancelBooking } from '@/api/mitra';
 
@@ -19,7 +20,7 @@
     import { showToast } from '@/utils/toast.svelte';
     import { mitraMenu } from '@/utils/menus';
 
-    let { booking }: MitraBookingShowProps = $props();
+    let { booking, review = null }: MitraBookingShowProps = $props();
 
     let isPending = $derived(isPendingPayment(booking.status));
     let hasProof = $derived(booking.has_payment_proof);
@@ -187,6 +188,20 @@
             </div>
         </div>
     </div>
+
+    <!-- REVIEW CLIENT -->
+    {#if review}
+        <section class="bg-white rounded-3xl border border-gray-200 shadow-sm p-5 sm:p-6 mb-6" aria-labelledby="review-client-heading">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <h2 id="review-client-heading" class="text-base font-extrabold text-dark">Review Client</h2>
+                <StarRating value={review.rating} readonly size="sm" />
+            </div>
+            <p class="text-xs text-gray-600 whitespace-pre-line leading-relaxed">{review.komentar}</p>
+            <p class="text-[10px] text-gray-500 mt-3">
+                Oleh {review.client?.nama ?? 'Client'} · {formatDateTime(review.created_at)}
+            </p>
+        </section>
+    {/if}
 
     <!-- MAIN -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">

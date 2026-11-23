@@ -6,6 +6,7 @@ use App\Models\ETicket;
 use App\Models\MitraBankAccount;
 use App\Models\Package;
 use App\Models\Profile;
+use App\Models\Trip;
 use App\Models\User;
 use App\Services\Booking\BookingCancellationService;
 use App\Services\Booking\BookingCreationService;
@@ -204,6 +205,29 @@ describe('Contract — show', function () {
                 ->has('booking')
                 ->has('refunds')
                 ->where('booking.id', $booking->id)
+            );
+    });
+
+    it('canReview true untuk trip selesai, false untuk trip active', function () {
+        $booking = makeBookingForClient($this->client, $this->mitra);
+        $trip = Trip::factory()->forBooking($booking)->active()->create();
+
+        $this->actingAs($this->client)
+            ->get("/client/bookings/{$booking->id}")
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('canReview', false)
+                ->where('review', null)
+            );
+
+        $trip->update(['status' => 'completed']);
+
+        $this->actingAs($this->client)
+            ->get("/client/bookings/{$booking->id}")
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('canReview', true)
+                ->where('review', null)
             );
     });
 

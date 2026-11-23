@@ -17,6 +17,7 @@ import {
     getBookings,
     createBooking,
     cancelBooking,
+    createReview,
     uploadProof,
     getPaymentProofUrl,
     getETicketDownloadUrl,
@@ -60,6 +61,12 @@ describe('Client API Wrapper', () => {
             const data = { reason: 'Berubah pikiran' };
             cancelBooking(42, data);
             expect(router.post).toHaveBeenCalledWith('/client/bookings/42/cancel', data, undefined);
+        });
+
+        it('createReview() memanggil POST /client/bookings/{id}/review', () => {
+            const data = { rating: 4, komentar: 'Perjalanan menyenangkan.' };
+            createReview(42, data);
+            expect(router.post).toHaveBeenCalledWith('/client/bookings/42/review', data, undefined);
         });
 
         it('uploadProof() memanggil POST /client/bookings/{id}/upload-proof', () => {
