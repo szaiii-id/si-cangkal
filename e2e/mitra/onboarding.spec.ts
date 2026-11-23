@@ -27,10 +27,13 @@ import { test, expect } from '../fixtures/base';
 // ==========================================
 
 /**
- * Mendaftarkan akun Mitra baru yang belum memiliki rekening bank/e-wallet
- * sehingga diarahkan ke /mitra/onboarding.
+ * Menyiapkan akun Mitra terverifikasi yang belum punya rekening, lalu
+ * masuk dan diarahkan middleware ke /mitra/onboarding.
  */
-async function registerFreshMitra(page: Page): Promise<{
+async function registerFreshMitra(
+    page: Page,
+    seed: import('../fixtures/seed').SeedHelpers,
+): Promise<{
     name: string;
     email: string;
 }> {
@@ -38,25 +41,21 @@ async function registerFreshMitra(page: Page): Promise<{
     const name = `Mitra Onboarding ${unique}`;
     const email = `mitra_onboard_${unique}@test.com`;
 
-    await page.goto('/register/mitra');
-    await page.locator('#name').fill(name);
-    await page.locator('#username').fill(`mitra_${unique}`);
-    await page.locator('#email').fill(email);
-    await page.locator('#password').fill('Password123!');
-    await page.locator('#password_confirmation').fill('Password123!');
+    // Setup via fixture testing, bukan lewat UI registrasi. Suite ini menguji
+    // onboarding, bukan alur verifikasi email (yang sudah diuji di auth).
+    await seed.createUser(page, {
+        email,
+        name,
+        role: 'mitra',
+        password: 'password',
+        username: `mitra_${unique}`,
+        email_verified_at: true,
+        with_bank_account: false, // → middleware mitra.complete ke onboarding
+    });
+    await seed.login(page, email, 'password');
 
-    // Centang checkbox persetujuan syarat & ketentuan / aturan mitra
-    const checkboxes = await page.locator('input[type="checkbox"]').all();
-    for (const checkbox of checkboxes) {
-        if (!(await checkbox.isChecked())) {
-            await checkbox.check();
-        }
-    }
-
-    await Promise.all([
-        page.waitForURL(/\/mitra\/onboarding$/, { timeout: 15_000 }),
-        page.locator('button[type="submit"]').click(),
-    ]);
+    await page.goto('/mitra/dashboard');
+    await expect(page).toHaveURL(/\/mitra\/onboarding$/);
 
     return { name, email };
 }
@@ -124,9 +123,10 @@ test.describe('Mitra Onboarding', () => {
         test('mitra baru yang belum onboarding diarahkan dari /mitra/dashboard ke /mitra/onboarding', async ({
             page,
             asGuest,
+            seed,
         }) => {
             await asGuest();
-            await registerFreshMitra(page);
+            await registerFreshMitra(page, seed);
 
             // Coba akses dashboard atau paket sebelum onboarding selesai
             await page.goto('/mitra/dashboard');
@@ -139,9 +139,10 @@ test.describe('Mitra Onboarding', () => {
         test('tombol Keluar melakukan logout dan mengarahkan ke halaman utama', async ({
             page,
             asGuest,
+            seed,
         }) => {
             await asGuest();
-            await registerFreshMitra(page);
+            await registerFreshMitra(page, seed);
 
             await Promise.all([
                 page.waitForURL(/\/$/, { timeout: 15_000 }),
@@ -157,9 +158,9 @@ test.describe('Mitra Onboarding', () => {
     // ==========================================
 
     test.describe('Contract — Elemen Halaman & Form', () => {
-        test.beforeEach(async ({ page, asGuest }) => {
+        test.beforeEach(async ({ page, asGuest, seed }) => {
             await asGuest();
-            await registerFreshMitra(page);
+            await registerFreshMitra(page, seed);
         });
 
         test('menampilkan judul halaman, heading utama, dan subjudul onboarding', async ({
@@ -223,9 +224,9 @@ test.describe('Mitra Onboarding', () => {
     // ==========================================
 
     test.describe('Interaksi Dinamis — Bank & E-Wallet Manager', () => {
-        test.beforeEach(async ({ page, asGuest }) => {
+        test.beforeEach(async ({ page, asGuest, seed }) => {
             await asGuest();
-            await registerFreshMitra(page);
+            await registerFreshMitra(page, seed);
         });
 
         test('mengubah tipe rekening ke E-Wallet memperbarui label, opsi penyedia, dan mereset input', async ({
@@ -308,9 +309,9 @@ test.describe('Mitra Onboarding', () => {
     // ==========================================
 
     test.describe('Validasi Browser & Client-Side', () => {
-        test.beforeEach(async ({ page, asGuest }) => {
+        test.beforeEach(async ({ page, asGuest, seed }) => {
             await asGuest();
-            await registerFreshMitra(page);
+            await registerFreshMitra(page, seed);
         });
 
         test('input nama usaha dan no HP memiliki atribut required dan memblokir submit kosong', async ({
@@ -385,9 +386,10 @@ test.describe('Mitra Onboarding', () => {
         test('input tidak memenuhi aturan StoreOnboardingRequest menampilkan pesan error 422 di UI', async ({
             page,
             asGuest,
+            seed,
         }) => {
             await asGuest();
-            await registerFreshMitra(page);
+            await registerFreshMitra(page, seed);
 
             // Lolos cek non-empty client-side, namun gagal aturan min/regex backend:
             // - nama_penyedia_usaha: min:2 ('A')
@@ -449,9 +451,10 @@ test.describe('Mitra Onboarding', () => {
         test('mitra baru melengkapi profil usaha & rekening berhasil masuk ke /mitra/dashboard', async ({
             page,
             asGuest,
+            seed,
         }) => {
             await asGuest();
-            await registerFreshMitra(page);
+            await registerFreshMitra(page, seed);
 
             // 1. Isi Profil Usaha
             await page.locator('#nama_usaha').fill('PT Pesona Meratus Tour');
@@ -508,9 +511,10 @@ test.describe('Mitra Onboarding', () => {
         test('halaman onboarding dapat digunakan pada viewport mobile tanpa overflow', async ({
             page,
             asGuest,
+            seed,
         }) => {
             await asGuest();
-            await registerFreshMitra(page);
+            await registerFreshMitra(page, seed);
 
             await expect(page.locator('#nama_usaha')).toBeVisible();
             await expect(page.locator('#no_hp')).toBeVisible();
@@ -536,9 +540,10 @@ test.describe('Mitra Onboarding', () => {
         test('halaman onboarding lolos audit WCAG 2.0 AA (tanpa pelanggaran critical/serious)', async ({
             page,
             asGuest,
+            seed,
         }) => {
             await asGuest();
-            await registerFreshMitra(page);
+            await registerFreshMitra(page, seed);
 
             const results = await new AxeBuilder({ page })
                 .withTags(['wcag2a', 'wcag2aa'])
@@ -555,9 +560,10 @@ test.describe('Mitra Onboarding', () => {
         test('form profil usaha dapat dinavigasi menggunakan keyboard (Tab)', async ({
             page,
             asGuest,
+            seed,
         }) => {
             await asGuest();
-            await registerFreshMitra(page);
+            await registerFreshMitra(page, seed);
 
             const namaUsahaInput = page.locator('#nama_usaha');
             await namaUsahaInput.focus();

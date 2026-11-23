@@ -9,7 +9,9 @@ use App\Http\Middleware\TrustProxies;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
+use Illuminate\Http\Middleware\TrustProxies as FrameworkTrustProxies;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -28,6 +30,11 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Hapus TrustProxies bawaan framework sebelum memasang versi kustom.
+        // Jika keduanya aktif, yang framework akan menimpa trusted proxies
+        // yang sudah di-set versi kustom → X-Forwarded-Proto dari ngrok
+        // diabaikan dan asset() menghasilkan URL http:// di halaman https://.
+        $middleware->remove(FrameworkTrustProxies::class);
         $middleware->prepend(TrustProxies::class);
 
         $middleware->web(append: [
@@ -52,6 +59,12 @@ return Application::configure(basePath: dirname(__DIR__))
         // Redirect user yang sudah login ke dashboard yang sesuai
         $middleware->redirectUsersTo(function (Request $request) {
             $user = $request->user();
+
+            // User belum terverifikasi selalu diarahkan ke halaman verifikasi
+            // (PRD-AUTH-002 §5), termasuk saat membuka route `guest`.
+            if ($user !== null && ! $user->hasVerifiedEmail()) {
+                return '/verify-email';
+            }
 
             if ($user?->role === 'admin') {
                 return '/admin/dashboard';
@@ -90,11 +103,27 @@ return Application::configure(basePath: dirname(__DIR__))
                 ! $request->expectsJson() &&
                 in_array($status, [403, 404, 419, 429, 500, 503], true)
             ) {
-                return Inertia::render('Error', [
+                // PRD-AUTH-002 §6.3 / TC-06: header Retry-After dari
+                // ThrottleRequestsException harus tetap ada meskipun
+                // response diganti menjadi halaman Inertia.
+                $retryAfter = $response->headers->get('Retry-After');
+
+                if ($retryAfter === null && $e instanceof ThrottleRequestsException) {
+                    $retryAfter = $e->getHeaders()['Retry-After'] ?? null;
+                }
+
+                $errorResponse = Inertia::render('Error', [
                     'status' => $status,
+                    'retry_after' => $retryAfter !== null ? (int) $retryAfter : null,
                 ])
                     ->toResponse($request)
                     ->setStatusCode($status);
+
+                if ($retryAfter !== null) {
+                    $errorResponse->headers->set('Retry-After', (string) $retryAfter);
+                }
+
+                return $errorResponse;
             }
 
             return $response;

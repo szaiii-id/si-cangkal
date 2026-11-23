@@ -22,7 +22,12 @@ if (! function_exists('makeUser')) {
     function makeUser(array $attributes = []): User
     {
         $user = new User;
-        $user->forceFill($attributes);
+        // Default verified, konsisten dengan UserFactory. Kirim
+        // ['email_verified_at' => null] secara eksplisit untuk
+        // mensimulasikan user yang belum terverifikasi.
+        $user->forceFill(array_merge([
+            'email_verified_at' => now(),
+        ], $attributes));
 
         return $user;
     }

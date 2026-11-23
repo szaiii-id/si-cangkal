@@ -27,3 +27,6 @@ export const resetPassword = (data: RequestPayload, options?: RouterOptions) =>
 
 export const changePassword = (data: RequestPayload, options?: RouterOptions) =>
     router.put('/change-password', data, options);
+
+export const resendVerificationEmail = (options?: RouterOptions) =>
+    router.post('/email/verification-notification', {}, options);

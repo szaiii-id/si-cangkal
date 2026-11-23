@@ -487,14 +487,22 @@ describe('Data Integrity — createClient', function () {
         expect($user->must_change_password)->toBeFalse();
     });
 
-    it('menetapkan email_verified_at = now (auto-verified untuk saat ini)', function () {
-        // Catatan: di masa depan akan diubah saat fitur verifikasi email aktif.
-        // Saat itu tiba, test ini akan gagal — sinyal untuk review.
+    it('email_verified_at NULL secara default (wajib verifikasi)', function () {
         $user = $this->repo->createClient([
             'name' => 'Budi',
             'email' => 'budi@example.com',
             'password' => 'rahasia123',
         ]);
+
+        expect($user->email_verified_at)->toBeNull();
+    });
+
+    it('email_verified_at terisi jika verified = true', function () {
+        $user = $this->repo->createClient([
+            'name' => 'Budi',
+            'email' => 'budi@example.com',
+            'password' => 'rahasia123',
+        ], verified: true);
 
         expect($user->email_verified_at)->not->toBeNull();
     });
@@ -566,7 +574,7 @@ describe('Data Integrity — createUser', function () {
         expect($user->must_change_password)->toBeFalse();
     });
 
-    it('menetapkan email_verified_at = now', function () {
+    it('email_verified_at NULL secara default', function () {
         $user = $this->repo->createUser([
             'name' => 'Admin',
             'email' => 'admin@example.com',
@@ -574,7 +582,39 @@ describe('Data Integrity — createUser', function () {
             'role' => 'admin',
         ]);
 
+        expect($user->email_verified_at)->toBeNull();
+    });
+
+    it('email_verified_at terisi jika verified = true', function () {
+        $user = $this->repo->createUser([
+            'name' => 'Admin',
+            'email' => 'admin@example.com',
+            'password' => 'rahasia123',
+            'role' => 'admin',
+        ], verified: true);
+
         expect($user->email_verified_at)->not->toBeNull();
+    });
+});
+
+describe('Data Integrity — markEmailAsVerified', function () {
+    it('mengisi email_verified_at untuk user yang belum verified', function () {
+        $user = User::factory()->unverified()->create();
+
+        $result = $this->repo->markEmailAsVerified($user);
+
+        expect($result->email_verified_at)->not->toBeNull()
+            ->and($result->hasVerifiedEmail())->toBeTrue();
+    });
+
+    it('idempotent untuk user yang sudah verified', function () {
+        $user = User::factory()->create();
+        $verifiedAt = $user->email_verified_at;
+
+        $result = $this->repo->markEmailAsVerified($user);
+
+        expect($result->email_verified_at?->toIso8601String())
+            ->toBe($verifiedAt?->toIso8601String());
     });
 });
 

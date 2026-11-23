@@ -92,6 +92,13 @@ class AuthService
 
     /**
      * Logika untuk Login menggunakan Google (SSO).
+     *
+     * PRD-AUTH-002 §US-05: email pengguna Google dianggap sudah
+     * terverifikasi karena validitasnya dijamin Identity Provider.
+     * Karena itu:
+     * - akun baru dibuat dengan $verified = true;
+     * - akun lama yang cocok via google_id / email juga ditandai
+     *   terverifikasi jika sebelumnya masih NULL.
      */
     public function handleGoogleLogin(SocialiteUser $googleUser): User
     {
@@ -102,6 +109,10 @@ class AuthService
 
             if ($user) {
                 $user->update(['google_id' => $googleUser->getId()]);
+
+                if (! $user->hasVerifiedEmail()) {
+                    $user = $this->userRepository->markEmailAsVerified($user);
+                }
             } else {
                 $email = (string) $googleUser->getEmail();
                 $usernameLokal = explode('@', $email)[0].rand(100, 999);
@@ -112,7 +123,7 @@ class AuthService
                     'username' => $usernameLokal,
                     'google_id' => $googleUser->getId(),
                     'password' => null,
-                ]);
+                ], verified: true);
             }
         }
 
@@ -128,7 +139,17 @@ class AuthService
      */
     public function resolveRedirectAfterLogin(User $user): array
     {
-        // Prioritas: wajib ganti password
+        // Prioritas 1: email belum terverifikasi (PRD-AUTH-002 §5).
+        // User tetap boleh login, tetapi hanya boleh mengakses
+        // halaman /verify-email, profil dasar, dan logout.
+        if (! $user->hasVerifiedEmail()) {
+            return [
+                'url' => route('verification.notice'),
+                'must_change_password' => false,
+            ];
+        }
+
+        // Prioritas 2: wajib ganti password
         if ($user->must_change_password) {
             return [
                 'url' => route('password.change'),
@@ -154,7 +175,7 @@ class AuthService
      *    union literal `'admin'|'mitra'|'client'`, sehingga `match`
      *    tanpa `default` tidak dianggap "always true" oleh PHPStan.
      */
-    private function resolveDashboardUrl(User $user): string
+    public function resolveDashboardUrl(User $user): string
     {
         if (! in_array($user->role, ['admin', 'mitra', 'client'], true)) {
             Log::warning('=== AUTH: UNKNOWN ROLE ===', [

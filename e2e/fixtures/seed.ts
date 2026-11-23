@@ -48,6 +48,7 @@ export type ResetUserResponse = {
         email: string;
         role: string;
         timezone: string;
+        email_verified_at: string | null;
         must_change_password: boolean;
     };
 };
@@ -61,9 +62,15 @@ export type CreateUserResponse = {
         email: string;
         role: string;
         timezone: string;
+        email_verified_at: string | null;
         must_change_password: boolean;
     };
     user_id: number;
+};
+
+export type VerificationUrlResponse = {
+    ok: boolean;
+    url: string;
 };
 
 export type LoginResponse = {
@@ -219,6 +226,7 @@ export const seed = {
             username?: string;
             timezone?: string;
             must_change_password?: boolean;
+            email_verified_at?: boolean;
             fcm_token?: string | null;
             profile?: {
                 nama_penyedia_usaha?: string;
@@ -268,6 +276,7 @@ export const seed = {
             username?: string;
             timezone?: string;
             must_change_password?: boolean;
+            email_verified_at?: boolean;
             with_bank_account?: boolean;
         },
     ): Promise<CreateUserResponse> {
@@ -282,6 +291,9 @@ export const seed = {
         if (options.timezone !== undefined) data.timezone = options.timezone;
         if (options.must_change_password !== undefined) {
             data.must_change_password = options.must_change_password;
+        }
+        if (options.email_verified_at !== undefined) {
+            data.email_verified_at = options.email_verified_at;
         }
         if (options.with_bank_account !== undefined) {
             data.with_bank_account = options.with_bank_account;
@@ -312,6 +324,25 @@ export const seed = {
      */
     async logout(page: Page): Promise<{ ok: boolean }> {
         return apiPost<{ ok: boolean }>(page, '/_test/logout');
+    },
+
+    /**
+     * Buat signed URL verifikasi email untuk user (khusus E2E).
+     *
+     * @example
+     *   const { url } = await seed.verificationUrl(page, 'client@test.com');
+     *   await page.goto(url);
+     */
+    async verificationUrl(
+        page: Page,
+        email: string,
+        expiresIn = 60,
+    ): Promise<VerificationUrlResponse> {
+        return apiPost<VerificationUrlResponse>(
+            page,
+            '/_test/verification-url',
+            { email, expires_in: expiresIn },
+        );
     },
 
     // ==========================================

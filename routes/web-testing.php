@@ -46,6 +46,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -68,6 +69,7 @@ $userPayload = static fn (User $user): array => [
     'email' => $user->email,
     'role' => $user->role,
     'timezone' => $user->timezone,
+    'email_verified_at' => $user->email_verified_at?->toIso8601String(),
     'must_change_password' => (bool) $user->must_change_password,
 ];
 
@@ -174,6 +176,7 @@ Route::prefix('_test')
                 'username' => ['nullable', 'string', 'max:255'],
                 'timezone' => ['nullable', 'string', 'max:50'],
                 'must_change_password' => ['nullable', 'boolean'],
+                'email_verified_at' => ['nullable', 'boolean'],
                 'fcm_token' => ['nullable', 'string', 'max:255'],
                 'profile' => ['nullable', 'array'],
                 'profile.nama_penyedia_usaha' => ['nullable', 'string', 'max:255'],
@@ -207,6 +210,13 @@ Route::prefix('_test')
             }
             if ($userData !== []) {
                 $user->update($userData);
+            }
+
+            // email_verified_at tidak ada di $fillable — set via forceFill.
+            if (array_key_exists('email_verified_at', $validated)) {
+                $user->forceFill([
+                    'email_verified_at' => $validated['email_verified_at'] ? now() : null,
+                ])->save();
             }
 
             // Update profile.
@@ -253,6 +263,7 @@ Route::prefix('_test')
                 'username' => ['nullable', 'string', 'max:255'],
                 'timezone' => ['nullable', 'string', 'max:50'],
                 'must_change_password' => ['nullable', 'boolean'],
+                'email_verified_at' => ['nullable', 'boolean'],
                 'with_bank_account' => ['nullable', 'boolean'],
             ]);
 
@@ -273,7 +284,11 @@ Route::prefix('_test')
                     'timezone' => $validated['timezone'] ?? User::DEFAULT_TIMEZONE,
                     'must_change_password' => (bool) ($validated['must_change_password'] ?? false),
                 ]);
-                $user->forceFill(['email_verified_at' => now()])->save();
+                // Default true agar E2E lama tetap berjalan; test verifikasi
+                // bisa mengirim email_verified_at: false.
+                if ($validated['email_verified_at'] ?? true) {
+                    $user->forceFill(['email_verified_at' => now()])->save();
+                }
 
                 Profile::create([
                     'user_id' => $user->id,
@@ -299,6 +314,42 @@ Route::prefix('_test')
                 'ok' => true,
                 'user' => $userPayload($user),
                 'user_id' => $user->id,
+            ]);
+        });
+
+        /**
+         * POST /_test/verification-url
+         *
+         * Buat signed URL verifikasi email untuk user (khusus E2E).
+         *
+         * Request: { email: string, expires_in?: int (menit, default 60) }
+         * Response: { ok: true, url: string }
+         */
+        Route::post('/verification-url', function (Request $request): JsonResponse {
+            $validated = $request->validate([
+                'email' => ['required', 'string', 'email'],
+                'expires_in' => ['nullable', 'integer', 'min:1', 'max:1440'],
+            ]);
+
+            $user = User::where('email', $validated['email'])->first();
+
+            if ($user === null) {
+                return response()->json([
+                    'ok' => false,
+                    'error' => 'User tidak ditemukan.',
+                ], 404);
+            }
+
+            return response()->json([
+                'ok' => true,
+                'url' => URL::temporarySignedRoute(
+                    'verification.verify',
+                    now()->addMinutes((int) ($validated['expires_in'] ?? 60)),
+                    [
+                        'id' => $user->id,
+                        'hash' => sha1($user->getEmailForVerification()),
+                    ],
+                ),
             ]);
         });
 

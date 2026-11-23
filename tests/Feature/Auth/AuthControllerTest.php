@@ -99,14 +99,24 @@ describe('Contract — Login redirect', function () {
 });
 
 describe('Contract — Register redirect', function () {
-    it('POST /register client → redirect ke /client/dashboard', function () {
+    it('POST /register client → redirect ke /verify-email', function () {
         $this->post('/register', [
             'name' => 'Budi Santoso',
             'username' => 'budisantoso',
             'email' => 'budi@example.com',
             'password' => 'password123',
             'password_confirmation' => 'password123',
-        ])->assertRedirect(route('client.dashboard'));
+        ])->assertRedirect(route('verification.notice'));
+    });
+
+    it('POST /register/mitra → redirect ke /verify-email', function () {
+        $this->post('/register/mitra', [
+            'name' => 'Mitra Baru',
+            'username' => 'mitrabaru',
+            'email' => 'mitra@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ])->assertRedirect(route('verification.notice'));
     });
 });
 
@@ -252,6 +262,7 @@ describe('Data Integrity — register', function () {
         $this->assertDatabaseHas('users', [
             'email' => 'budi@example.com',
             'role' => 'client',
+            'email_verified_at' => null,
         ]);
     });
 

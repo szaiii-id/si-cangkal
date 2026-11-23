@@ -80,6 +80,30 @@ test.describe('Accessibility Audit (WCAG 2.1 AA — Axe-Core)', () => {
                 { url: '/forgot-password', label: 'Forgot Password (/forgot-password)' },
             ]);
         });
+
+        test('halaman verifikasi email bebas pelanggaran critical/serious', async ({
+            page,
+            asGuest,
+            seed,
+        }) => {
+            test.setTimeout(120_000);
+            await asGuest();
+
+            const email = `a11y-verify-${Date.now()}@test.com`;
+            await seed.createUser(page, {
+                email,
+                name: 'Verifikasi A11y',
+                role: 'client',
+                password: 'password',
+                email_verified_at: false,
+            });
+            await seed.login(page, email, 'password');
+            await dismissNotificationPrompt(page);
+
+            await auditRoutes(page, [
+                { url: '/verify-email', label: 'Verify Email (/verify-email)' },
+            ]);
+        });
     });
 
     // ==========================================

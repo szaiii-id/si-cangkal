@@ -275,7 +275,7 @@ describe('Edge Cases — handleGoogleLogin username generation', function () {
             ->with(Mockery::on(fn ($data) => preg_match('/^budi\.santoso\d{3}$/', $data['username']) === 1
                 && $data['email'] === 'budi.santoso@example.com'
                 && $data['google_id'] === 'google-new'
-                && $data['password'] === null))
+                && $data['password'] === null), true)
             ->andReturn(makeUser(['id' => 10]));
 
         Auth::shouldReceive('login')->once();
@@ -482,6 +482,12 @@ describe('Happy Path — handleGoogleLogin', function () {
             ->with('budi@example.com')
             ->andReturn($user);
 
+        // User lama belum verified → harus ditandai verified via repository.
+        $this->userRepo->shouldReceive('markEmailAsVerified')
+            ->once()
+            ->with($user)
+            ->andReturn($user);
+
         $this->userRepo->shouldNotReceive('createClient');
 
         Auth::shouldReceive('login')->once()->with($user);
@@ -500,7 +506,7 @@ describe('Happy Path — handleGoogleLogin', function () {
             ->with(Mockery::on(fn ($data) => $data['email'] === 'baru@example.com'
                 && $data['name'] === 'User Baru'
                 && $data['google_id'] === 'google-789'
-                && $data['password'] === null))
+                && $data['password'] === null), true)
             ->andReturn(makeUser(['id' => 99]));
 
         Auth::shouldReceive('login')->once();
@@ -542,6 +548,31 @@ describe('Happy Path — resolveRedirectAfterLogin (known roles)', function () {
 
         expect($result['url'])->toBe(route('password.change'))
             ->and($result['must_change_password'])->toBeTrue();
+    });
+
+    it('email belum terverifikasi → verification.notice', function () {
+        $user = makeUser([
+            'role' => 'client',
+            'must_change_password' => false,
+            'email_verified_at' => null,
+        ]);
+
+        $result = $this->service->resolveRedirectAfterLogin($user);
+
+        expect($result['url'])->toBe(route('verification.notice'))
+            ->and($result['must_change_password'])->toBeFalse();
+    });
+
+    it('email belum terverifikasi menang atas must_change_password', function () {
+        $user = makeUser([
+            'role' => 'admin',
+            'must_change_password' => true,
+            'email_verified_at' => null,
+        ]);
+
+        $result = $this->service->resolveRedirectAfterLogin($user);
+
+        expect($result['url'])->toBe(route('verification.notice'));
     });
 });
 

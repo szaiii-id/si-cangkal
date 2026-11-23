@@ -32,15 +32,28 @@ interface UserRepositoryInterface
      * Membuat akun baru khusus dengan role 'client'.
      *
      * @param  array<string, mixed>  $data
+     * @param  bool  $verified  True untuk akun yang emailnya sudah dijamin
+     *                          valid (mis. Google SSO). Pendaftaran manual
+     *                          WAJIB memakai default false.
      */
-    public function createClient(array $data): User;
+    public function createClient(array $data, bool $verified = false): User;
 
     /**
      * Membuat akun baru dengan role bebas (admin / mitra).
      *
      * @param  array<string, mixed>  $data
+     * @param  bool  $verified  True untuk akun yang dibuat admin / email
+     *                          sudah dijamin valid. Default false.
      */
-    public function createUser(array $data): User;
+    public function createUser(array $data, bool $verified = false): User;
+
+    /**
+     * Tandai email user sebagai terverifikasi.
+     *
+     * Memakai forceFill agar kolom `email_verified_at` (yang sengaja
+     * tidak ada di $fillable) tidak bisa diisi lewat mass-assignment.
+     */
+    public function markEmailAsVerified(User $user): User;
 
     /**
      * Update data user.

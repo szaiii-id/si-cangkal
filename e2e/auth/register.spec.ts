@@ -7,7 +7,7 @@
  * - Contract (form register lengkap)
  * - Validasi browser (required, email format, password mismatch, terms)
  * - Validasi server (email/username duplikat)
- * - Mutation (register valid → auto-login → /client/dashboard)
+ * - Mutation (register valid → auto-login → /verify-email)
  * - Password strength indicator
  * - Toggle password & toggle konfirmasi
  *
@@ -15,7 +15,7 @@
  * - Role otomatis = client
  * - must_change_password = false (password dipilih sendiri)
  * - Auto-login setelah register
- * - Redirect ke /client/dashboard
+ * - Redirect ke /verify-email (PRD-AUTH-002)
  *
  * Seed user (dari TestSeeder):
  * - admin@test.com / password
@@ -421,7 +421,7 @@ test.describe('Auth — Register (Client)', () => {
     // ==========================================
 
     test.describe.serial('Mutation — Register Valid', () => {
-        test('register valid → auto-login → redirect /client/dashboard', async ({
+        test('register valid → auto-login → redirect /verify-email', async ({
             page,
             asGuest,
         }) => {
@@ -442,16 +442,18 @@ test.describe('Auth — Register (Client)', () => {
             await SEL.AUTH.register.termsCheckbox(page).check();
 
             await Promise.all([
-                page.waitForURL('/client/dashboard', { timeout: 15_000 }),
+                page.waitForURL('/verify-email', { timeout: 15_000 }),
                 SEL.AUTH.register.submit(page).click(),
             ]);
 
-            await expect(page).toHaveURL('/client/dashboard');
+            await expect(page).toHaveURL('/verify-email');
+            await expect(page.getByText(email)).toBeVisible();
         });
 
-        test('register client → user role=client, must_change_password=false', async ({
+        test('register client → verifikasi → dashboard client', async ({
             page,
             asGuest,
+            seed,
         }) => {
             const suffix = Date.now();
             const email = `newclient2-${suffix}@test.com`;
@@ -470,21 +472,27 @@ test.describe('Auth — Register (Client)', () => {
             await SEL.AUTH.register.termsCheckbox(page).check();
 
             await Promise.all([
-                page.waitForURL('/client/dashboard', { timeout: 15_000 }),
+                page.waitForURL('/verify-email', { timeout: 15_000 }),
                 SEL.AUTH.register.submit(page).click(),
             ]);
 
-            // User baru tidak kena force change password
+            // User baru tidak kena force change password.
             await expect(page).not.toHaveURL('/change-password');
 
-            // Bisa akses dashboard langsung (tidak redirect)
+            // Belum terverifikasi → dashboard diblokir.
             await page.goto('/client/dashboard');
+            await expect(page).toHaveURL('/verify-email');
+
+            // Verifikasi via signed URL, lalu dashboard boleh diakses.
+            const { url } = await seed.verificationUrl(page, email);
+            await page.goto(url);
             await expect(page).toHaveURL('/client/dashboard');
         });
 
-        test('user baru bisa logout dan login ulang', async ({
+        test('user baru bisa verifikasi, logout, dan login ulang', async ({
             page,
             asGuest,
+            seed,
         }) => {
             const suffix = Date.now();
             const email = `newclient3-${suffix}@test.com`;
@@ -503,9 +511,13 @@ test.describe('Auth — Register (Client)', () => {
             await SEL.AUTH.register.termsCheckbox(page).check();
 
             await Promise.all([
-                page.waitForURL('/client/dashboard', { timeout: 15_000 }),
+                page.waitForURL('/verify-email', { timeout: 15_000 }),
                 SEL.AUTH.register.submit(page).click(),
             ]);
+
+            const { url } = await seed.verificationUrl(page, email);
+            await page.goto(url);
+            await expect(page).toHaveURL('/client/dashboard');
 
             // Logout
             await asGuest();

@@ -103,6 +103,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Email Verification
+    |--------------------------------------------------------------------------
+    |
+    | Masa berlaku tautan verifikasi email (menit). PRD-AUTH-002 §6.2
+    | menetapkan TTL 60 menit. Nilai ini dibaca oleh
+    | VerifyEmailNotification saat membuat signed URL.
+    |
+    */
+
+    'verification' => [
+        'expire' => (int) env('AUTH_VERIFICATION_EXPIRE', 60),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Password Confirmation Timeout
     |--------------------------------------------------------------------------
     |

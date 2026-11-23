@@ -39,6 +39,8 @@ class HandleInertiaRequests extends Middleware
                     'email' => $user->email,
                     'role' => $user->role,
                     'timezone' => $user->timezone,
+                    'email_verified_at' => $user->email_verified_at?->toIso8601String(),
+                    'has_verified_email' => $user->hasVerifiedEmail(),
                     //  Boolean flag — jangan expose token asli!
                     'has_fcm_token' => (bool) $user->fcm_token,
                 ] : null,

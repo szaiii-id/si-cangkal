@@ -37,27 +37,30 @@ test.describe.serial('E2E Cross-Role — Mitra Onboarding, Publikasi Paket & Kat
         return stateByProject[projectName];
     }
 
-    test('Flow 1: Register Mitra baru → Lengkapi Onboarding → Buat Paket (Fase 1 & 2) → Terbit', async ({
+    test('Flow 1: Mitra terverifikasi → Lengkapi Onboarding → Buat Paket (Fase 1 & 2) → Terbit', async ({
         page,
         asGuest,
+        seed,
     }, testInfo) => {
         const state = getState(testInfo.project.name);
         const pkgPage = new MitraPackagePage(page);
 
         // --------------------------------------------------
-        // 1. Register Mitra Baru (/register/mitra)
+        // 1. Mitra baru (setup via fixture, alur register+verifikasi
+        //    sudah diuji di e2e/auth/register-mitra.spec.ts)
         // --------------------------------------------------
         await asGuest();
-        await page.goto('/register/mitra', { waitUntil: 'domcontentloaded' });
-
-        await SEL.AUTH.registerMitra.name(page).fill(`Owner ${state.namaUsaha}`);
-        await SEL.AUTH.registerMitra.username(page).fill(state.mitraUsername);
-        await SEL.AUTH.registerMitra.email(page).fill(state.mitraEmail);
-        await SEL.AUTH.registerMitra.password(page).fill(state.mitraPassword);
-        await SEL.AUTH.registerMitra.passwordConfirmation(page).fill(state.mitraPassword);
-        await SEL.AUTH.registerMitra.termsCheckbox(page).check();
-
-        await SEL.AUTH.registerMitra.submit(page).click();
+        await seed.createUser(page, {
+            email: state.mitraEmail,
+            name: `Owner ${state.namaUsaha}`,
+            username: state.mitraUsername,
+            role: 'mitra',
+            password: state.mitraPassword,
+            email_verified_at: true,
+            with_bank_account: false,
+        });
+        await seed.login(page, state.mitraEmail, state.mitraPassword);
+        await page.goto('/mitra/dashboard');
         await expect(page).toHaveURL('/mitra/onboarding', { timeout: 20_000 });
 
         // --------------------------------------------------

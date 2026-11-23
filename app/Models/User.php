@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Notifications\VerifyEmailNotification;
 use Database\Factories\UserFactory;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -38,7 +40,7 @@ use Laravel\Sanctum\HasApiTokens;
  *
  * @use HasFactory<UserFactory>
  */
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     use HasApiTokens, HasFactory, Notifiable;
 
@@ -65,6 +67,18 @@ class User extends Authenticatable
             'password' => 'hashed',
             'must_change_password' => 'boolean',
         ];
+    }
+
+    /**
+     * Kirim notifikasi verifikasi email memakai template kustom SI-CANGKAL.
+     *
+     * Override method dari trait `Illuminate\Auth\MustVerifyEmail` agar
+     * tidak memakai notifikasi bawaan Laravel (copy Inggris & tanpa
+     * branding aplikasi).
+     */
+    public function sendEmailVerificationNotification(): void
+    {
+        $this->notify(new VerifyEmailNotification);
     }
 
     public function isAdmin(): bool

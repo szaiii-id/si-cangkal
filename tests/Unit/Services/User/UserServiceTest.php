@@ -123,7 +123,7 @@ describe('Equivalence — createAdmin', function () {
 
                 return $payload['role'] === 'admin'
                     && $payload['must_change_password'] === true;
-            }))
+            }), true)
             ->andReturn($user);
 
         $this->profileRepo->shouldReceive('createForUser')->once();
@@ -154,7 +154,7 @@ describe('Equivalence — createAdmin', function () {
 
                 return is_string($payload['password'])
                     && strlen($payload['password']) >= 12;
-            }))
+            }), true)
             ->andReturn($user);
 
         $this->profileRepo->shouldReceive('createForUser')->once();
@@ -322,7 +322,7 @@ describe('Happy Path — createAdmin', function () {
         $this->userRepo->shouldReceive('createUser')
             ->once()
             ->with(Mockery::on(fn ($p) => $p['role'] === 'admin'
-                && $p['must_change_password'] === true))
+                && $p['must_change_password'] === true), true)
             ->andReturn($user);
 
         $this->profileRepo->shouldReceive('createForUser')

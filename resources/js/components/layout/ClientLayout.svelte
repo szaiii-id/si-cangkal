@@ -152,6 +152,27 @@
         </header>
     {/if}
 
+    <!-- FLASH: notifikasi sukses/error lintas halaman (mis. verifikasi email) -->
+    {#if page.props.flash?.status || page.props.flash?.error}
+        <div class="relative z-20 w-full max-w-6xl mx-auto px-5 sm:px-8 mt-4">
+            <div
+                class="p-4 rounded-2xl border {page.props.flash?.error
+                    ? 'bg-red-50 border-red-200'
+                    : 'bg-green/10 border-green-200'}"
+                role={page.props.flash?.error ? 'alert' : 'status'}
+                aria-live="polite"
+            >
+                <p
+                    class="text-sm font-bold {page.props.flash?.error
+                        ? 'text-red-700'
+                        : 'text-green-text'}"
+                >
+                    {page.props.flash?.error ?? page.props.flash?.status}
+                </p>
+            </div>
+        </div>
+    {/if}
+
     <!-- KONTEN UTAMA -->
     <main class="relative z-10 flex-1 w-full max-w-6xl mx-auto px-5 sm:px-8 py-4 sm:py-6">
         {@render children()}
