@@ -92,7 +92,8 @@ final class NotificationDispatcher implements NotificationDispatcherInterface
             'booking_created',
             'booking_cancelled',
             'booking_in_progress',
-            'booking_completed' => $bookingId
+            'booking_completed',
+            'review_baru' => $bookingId
                 ? "/{$role}/bookings/{$bookingId}"
                 : "/{$role}/bookings",
 

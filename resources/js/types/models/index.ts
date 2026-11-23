@@ -5,6 +5,7 @@ export * from './booking';
 export * from './trip';
 export * from './refund';
 export * from './notification';
+export * from './review';
 
 // ==========================================
 // ALIAS BACKWARD COMPAT

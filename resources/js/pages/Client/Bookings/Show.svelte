@@ -7,6 +7,7 @@
     import PaymentHistory from '@/components/booking/PaymentHistory.svelte';
     import RefundStatusCard from '@/components/booking/RefundStatusCard.svelte';
     import ETicketDownloadButton from '@/components/shared/ETicketDownloadButton.svelte';
+    import StarRating from '@/components/review/StarRating.svelte';
 
     import { router, inertia } from '@inertiajs/svelte';
     import type { ClientBookingShowProps } from '@/types/props';
@@ -29,6 +30,8 @@
         booking,
         eticket = null,
         refunds = [],
+        canReview = false,
+        review = null,
     }: ClientBookingShowProps = $props();
 
     // ==========================================
@@ -425,6 +428,33 @@
                         </a>
                     {/if}
                 </div>
+
+                <!-- REVIEW CLIENT -->
+                {#if canReview || review}
+                    <div class="bg-white rounded-[2rem] border border-gray-100 shadow-sm p-5">
+                        <h3 class="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest mb-3">Review Kamu</h3>
+
+                        {#if canReview && !review}
+                            <p class="text-[11px] text-gray-600 leading-relaxed mb-3">
+                                Perjalanan kamu sudah selesai. Yuk, bagikan pengalamanmu tentang paket ini.
+                            </p>
+                            <a
+                                href={`/client/bookings/${booking.id}/review`}
+                                use:inertia
+                                class="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-pink-dark text-white font-bold text-sm hover:bg-sun-dark transition-all shadow-sm"
+                            >
+                                <span aria-hidden="true">★</span> Beri Review
+                            </a>
+                        {:else if review}
+                            <div class="flex items-center gap-2 mb-2">
+                                <StarRating value={review.rating} readonly size="sm" />
+                                <span class="text-sm font-extrabold text-dark">{review.rating}/5</span>
+                            </div>
+                            <p class="text-[11px] text-gray-600 leading-relaxed line-clamp-3">{review.komentar}</p>
+                            <p class="text-[10px] text-green-text font-bold mt-2">Review terkirim</p>
+                        {/if}
+                    </div>
+                {/if}
 
                 <!-- AKSI CEPAT (Cancel) -->
                 <div class="bg-white rounded-[2rem] border border-gray-100 shadow-sm p-5">

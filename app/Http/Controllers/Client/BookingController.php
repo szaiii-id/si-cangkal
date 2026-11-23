@@ -7,12 +7,16 @@ use App\Http\Requests\Client\ListBookingRequest;
 use App\Http\Requests\Client\StoreBookingRequest;
 use App\Http\Requests\Client\UploadPaymentProofRequest;
 use App\Http\Resources\BookingResource;
+use App\Http\Resources\ReviewResource;
 use App\Models\Booking;
 use App\Models\Package;
+use App\Models\User;
+use App\Repositories\Contracts\ReviewRepositoryInterface;
 use App\Services\Booking\BookingCancellationService;
 use App\Services\Booking\BookingCreationService;
 use App\Services\Booking\BookingPaymentService;
 use App\Services\Booking\BookingQueryService;
+use App\Services\Review\ReviewService;
 use App\Support\Storage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Log;
@@ -47,6 +51,8 @@ final class BookingController extends Controller
         private readonly BookingCreationService $bookingCreationService,
         private readonly BookingPaymentService $bookingPaymentService,
         private readonly BookingCancellationService $bookingCancellationService,
+        private readonly ReviewService $reviewService,
+        private readonly ReviewRepositoryInterface $reviewRepository,
     ) {}
 
     public function index(ListBookingRequest $request): InertiaResponse
@@ -114,6 +120,7 @@ final class BookingController extends Controller
 
         $booking->load([
             'package:id,nama,kode,slug,timezone,harga_per_orang,harga_per_rombongan,durasi_hari,durasi_malam,cover_image',
+            'trip:id,booking_id,status',
             'participants',
             'payments.verifier:id,name,email',
             'mitra:id,name',
@@ -124,8 +131,14 @@ final class BookingController extends Controller
 
         $eticket = $this->bookingQueryService->getETicketForBooking($booking);
 
+        /** @var User $user */
+        $user = auth()->user();
+        $review = $this->reviewRepository->findByBooking($booking);
+
         return Inertia::render('Client/Bookings/Show', [
             'booking' => (new BookingResource($booking))->resolve(),
+            'canReview' => $this->reviewService->canReview($user, $booking),
+            'review' => $review !== null ? (new ReviewResource($review))->resolve() : null,
             'eticket' => $eticket !== null
                 ? [
                     'uuid' => trim($eticket->uuid),

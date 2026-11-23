@@ -6,12 +6,14 @@ use App\Repositories\Contracts\BookingRepositoryInterface;
 use App\Repositories\Contracts\PackageRepositoryInterface;
 use App\Repositories\Contracts\ProfileRepositoryInterface;
 use App\Repositories\Contracts\RefundRepositoryInterface;
+use App\Repositories\Contracts\ReviewRepositoryInterface;
 use App\Repositories\Contracts\TripRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
 use App\Repositories\Eloquent\BookingRepository;
 use App\Repositories\Eloquent\PackageRepository;
 use App\Repositories\Eloquent\ProfileRepository;
 use App\Repositories\Eloquent\RefundRepository;
+use App\Repositories\Eloquent\ReviewRepository;
 use App\Repositories\Eloquent\TripRepository;
 use App\Repositories\Eloquent\UserRepository;
 use App\Services\ETicket\Contracts\ETicketServiceInterface;
@@ -45,6 +47,7 @@ final class AppServiceProvider extends ServiceProvider
         $this->app->bind(BookingRepositoryInterface::class, BookingRepository::class);
         $this->app->bind(TripRepositoryInterface::class, TripRepository::class);
         $this->app->bind(RefundRepositoryInterface::class, RefundRepository::class);
+        $this->app->bind(ReviewRepositoryInterface::class, ReviewRepository::class);
 
         // ==========================================
         // NOTIFICATION BINDINGS

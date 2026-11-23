@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\AppNotification;
+use App\Models\Review;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 
@@ -18,6 +19,14 @@ class NotificationSeeder extends Seeder
         $clientDewi = User::where('email', 'dewi.lestari@gmail.com')->first();
         $clientMaya = User::where('email', 'maya.anggraini@gmail.com')->first();
 
+        // Notifikasi review_baru diambil dari review yang dibuat ReviewSeeder,
+        // bukan ID hardcode — aman kalau data demo dijalankan ulang.
+        $review = Review::whereHas(
+            'booking',
+            fn ($query) => $query->where('kode', 'BKG-'.now()->year.'-008'),
+        )->first();
+        $mitraReview = $review?->booking?->mitra;
+
         $notifications = [
             // Untuk Mitra PT ABC
             ['user' => $mitraABC, 'tipe' => 'payment_proof_uploaded', 'judul' => 'Bukti Transfer Baru', 'pesan' => 'Andi Pratama telah mengunggah bukti transfer untuk booking BKG-'.now()->year.'-002. Silakan verifikasi.', 'data' => ['booking_kode' => 'BKG-'.now()->year.'-002'], 'read_at' => null],
@@ -25,6 +34,9 @@ class NotificationSeeder extends Seeder
 
             // Untuk Mitra Ani
             ['user' => $mitraAni, 'tipe' => 'payment_proof_uploaded', 'judul' => 'Bukti Transfer Baru', 'pesan' => 'Siti Nurhaliza telah mengunggah bukti transfer untuk booking BKG-'.now()->year.'-003.', 'data' => ['booking_kode' => 'BKG-'.now()->year.'-003'], 'read_at' => null],
+
+            // Review baru (dari ReviewSeeder)
+            ['user' => $mitraReview, 'tipe' => 'review_baru', 'judul' => 'Review baru untuk paket Anda', 'pesan' => $review !== null ? "Paket {$review->package->nama} mendapat review {$review->rating} bintang." : '', 'data' => $review !== null ? ['review_id' => $review->id, 'booking_id' => $review->booking_id, 'url' => "/mitra/bookings/{$review->booking_id}"] : [], 'read_at' => null],
 
             // Untuk Client
             ['user' => $clientDewi, 'tipe' => 'booking_confirmed', 'judul' => 'Booking Dikonfirmasi', 'pesan' => 'Pembayaran Anda untuk booking BKG-'.now()->year.'-005 telah diverifikasi. E-ticket siap diunduh.', 'data' => ['booking_kode' => 'BKG-'.now()->year.'-005'], 'read_at' => null],

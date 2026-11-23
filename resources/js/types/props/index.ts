@@ -97,6 +97,7 @@ export type {
     ClientCatalogIndexProps,
     ClientCatalogShowProps,
     ClientProfileProps,
+    ClientReviewCreateProps,
 } from './client';
 
 export type {
@@ -147,6 +148,7 @@ import type {
     ClientCatalogIndexProps,
     ClientCatalogShowProps,
     ClientProfileProps,
+    ClientReviewCreateProps,
 } from './client';
 
 import type {
@@ -194,6 +196,7 @@ export type PageProps = {
     ClientCatalogIndex: ClientCatalogIndexProps;
     ClientCatalogShow: ClientCatalogShowProps;
     ClientProfile: ClientProfileProps;
+    ClientReviewCreate: ClientReviewCreateProps;
     AuthResetPassword: AuthResetPasswordProps;
     AuthChangePassword: AuthChangePasswordProps;
     NotificationsIndex: NotificationsIndexProps;

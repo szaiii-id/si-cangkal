@@ -13,6 +13,9 @@ import type {
     PackageFacility,
     PackageDay,
     Profile,
+    Review,
+    ReviewPaginated,
+    ReviewStats,
     User,
 } from '../models';
 import type { CommonListFilters } from './index';
@@ -73,6 +76,24 @@ export type ClientBookingShowProps = {
         status: string;
         created_at: string | null;
     }>;
+    /** Satu sumber aturan dengan `ReviewService::canReview()`. */
+    canReview?: boolean;
+    /** Review milik booking ini, atau null kalau belum ada. */
+    review?: Review | null;
+};
+
+/**
+ * `Client\ReviewController@create`.
+ *
+ * Prop booking sengaja diperkecil: hanya id, kode, dan nama paket
+ * yang dibutuhkan form review.
+ */
+export type ClientReviewCreateProps = {
+    booking: {
+        id: number;
+        kode: string;
+        paket: string | null;
+    };
 };
 
 /**
@@ -145,6 +166,8 @@ export type ClientCatalogShowProps = {
         days: PackageDay[];
         facilities: PackageFacility[];
     };
+    reviewStats?: ReviewStats;
+    reviews?: ReviewPaginated;
 };
 
 // ==========================================

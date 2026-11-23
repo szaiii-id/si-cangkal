@@ -119,9 +119,10 @@ test.describe('Accessibility Audit (WCAG 2.1 AA — Axe-Core)', () => {
             test.setTimeout(180_000);
             await dismissNotificationPrompt(page);
 
+            const suffix = Date.now();
             const pkg = await seed.createPackage(page, {
                 mitra_email: SEED_USERS.mitra.email,
-                nama: `Paket A11y Client ${Date.now()}`,
+                nama: `Paket A11y Client ${suffix}`,
                 status: 'aktif',
                 durasi_hari: 2,
                 durasi_malam: 1,
@@ -139,15 +140,72 @@ test.describe('Accessibility Audit (WCAG 2.1 AA — Axe-Core)', () => {
                 participants: [{ nama: 'Peserta A11y', umur: 25 }],
             });
 
+            // Booking + trip selesai untuk mengaudit halaman form review.
+            const formBooking = await seed.createBooking(page, {
+                client_email: SEED_USERS.client.email,
+                package_kode: pkg.kode,
+                status: 'confirmed',
+                tanggal_keberangkatan: getDateOffset(14),
+                jumlah_peserta: 1,
+                participants: [{ nama: 'Peserta Review A11y', umur: 25 }],
+            });
+            const formTrip = await seed.createTrip(page, formBooking.kode);
+            await seed.resetTrip(page, formTrip.trip_id, 'completed');
+
+            // Booking kedua dipakai untuk mengisi review yang tampil di katalog.
+            const catalogBooking = await seed.createBooking(page, {
+                client_email: SEED_USERS.client.email,
+                package_kode: pkg.kode,
+                status: 'confirmed',
+                tanggal_keberangkatan: getDateOffset(21),
+                jumlah_peserta: 1,
+                participants: [{ nama: 'Peserta Ulasan A11y', umur: 27 }],
+            });
+            const catalogTrip = await seed.createTrip(page, catalogBooking.kode);
+            await seed.resetTrip(page, catalogTrip.trip_id, 'completed');
+
             await asClient();
+
+            // Isi satu review supaya katalog juga dirender dalam state ada ulasan.
+            const csrf = await page.evaluate(() =>
+                decodeURIComponent(
+                    document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? '',
+                ),
+            );
+            const submitReview = await page.request.post(
+                `/client/bookings/${catalogBooking.booking_id}/review`,
+                {
+                    data: {
+                        rating: 5,
+                        komentar: 'Perjalanan sangat nyaman dan tepat waktu.',
+                    },
+                    headers: { 'X-XSRF-TOKEN': csrf },
+                },
+            );
+            expect(submitReview.ok()).toBeTruthy();
+
+            // Slug paket di-generate dengan suffix acak, jadi ambil dari link katalog.
+            await page.goto('/client/catalog');
+            const katalogHref = await page
+                .getByRole('link', { name: new RegExp(`Paket A11y Client ${suffix}`) })
+                .first()
+                .getAttribute('href');
 
             await auditRoutes(page, [
                 { url: '/client/dashboard', label: 'Client Dashboard' },
                 { url: '/client/catalog', label: 'Client Catalog Index' },
+                {
+                    url: katalogHref ?? '/client/catalog',
+                    label: 'Client Catalog Show (dengan review)',
+                },
                 { url: '/client/bookings', label: 'Client Bookings Index' },
                 {
                     url: `/client/bookings/${booking.booking_id}`,
                     label: 'Client Booking Show',
+                },
+                {
+                    url: `/client/bookings/${formBooking.booking_id}/review`,
+                    label: 'Client Review Create',
                 },
                 { url: '/client/profile', label: 'Client Profile' },
             ]);
