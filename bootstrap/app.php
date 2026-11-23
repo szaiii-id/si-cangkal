@@ -9,6 +9,7 @@ use App\Http\Middleware\TrustProxies;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -53,6 +54,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectUsersTo(function (Request $request) {
             $user = $request->user();
 
+            // User belum terverifikasi selalu diarahkan ke halaman verifikasi
+            // (PRD-AUTH-002 §5), termasuk saat membuka route `guest`.
+            if ($user !== null && ! $user->hasVerifiedEmail()) {
+                return '/verify-email';
+            }
+
             if ($user?->role === 'admin') {
                 return '/admin/dashboard';
             }
@@ -90,11 +97,27 @@ return Application::configure(basePath: dirname(__DIR__))
                 ! $request->expectsJson() &&
                 in_array($status, [403, 404, 419, 429, 500, 503], true)
             ) {
-                return Inertia::render('Error', [
+                // PRD-AUTH-002 §6.3 / TC-06: header Retry-After dari
+                // ThrottleRequestsException harus tetap ada meskipun
+                // response diganti menjadi halaman Inertia.
+                $retryAfter = $response->headers->get('Retry-After');
+
+                if ($retryAfter === null && $e instanceof ThrottleRequestsException) {
+                    $retryAfter = $e->getHeaders()['Retry-After'] ?? null;
+                }
+
+                $errorResponse = Inertia::render('Error', [
                     'status' => $status,
+                    'retry_after' => $retryAfter !== null ? (int) $retryAfter : null,
                 ])
                     ->toResponse($request)
                     ->setStatusCode($status);
+
+                if ($retryAfter !== null) {
+                    $errorResponse->headers->set('Retry-After', (string) $retryAfter);
+                }
+
+                return $errorResponse;
             }
 
             return $response;

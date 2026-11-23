@@ -7,19 +7,20 @@
  * - Contract (form register mitra lengkap)
  * - Validasi browser (required, email format, password mismatch, terms)
  * - Validasi server (email/username duplikat)
- * - Mutation (register mitra valid → auto-login → /mitra/onboarding karena
- *   middleware EnsureMitraProfileCompleted redirect mitra tanpa rekening)
+ * - Mutation (register mitra valid → auto-login → /verify-email → verifikasi
+ *   → /mitra/dashboard → /mitra/onboarding)
  *
  * Backend: AuthController@registerMitra → AuthService::registerMitra
  * - Role otomatis = mitra
  * - Profile kosong dibuat (tipe='mitra')
  * - must_change_password = false
  * - Auto-login setelah register
- * - Redirect ke /mitra/dashboard → ditangkap middleware
- *   EnsureMitraProfileCompleted → redirect /mitra/onboarding
+ * - Redirect ke /verify-email (PRD-AUTH-002). Mitra belum terverifikasi
+ *   diblokir total, termasuk /mitra/onboarding.
  *
  * CATATAN PENTING:
- * - Mitra baru BELUM punya rekening, jadi PASTI redirect ke /mitra/onboarding.
+ * - Mitra baru BELUM punya rekening, jadi PASTI redirect ke /mitra/onboarding
+ *   SETELAH email terverifikasi.
  * - Seed user `mitra@test.com` SUDAH punya rekening (dari MitraBankAccountSeeder),
  *   jadi tidak kena redirect onboarding.
  * - Test mutation harus `describe.serial` karena menambah user baru ke DB.
@@ -430,9 +431,10 @@ test.describe('Auth — Register Mitra', () => {
     // ==========================================
 
     test.describe.serial('Mutation — Register Mitra Valid', () => {
-        test('register mitra valid → redirect /mitra/onboarding', async ({
+        test('register mitra valid → verifikasi → /mitra/onboarding', async ({
             page,
             asGuest,
+            seed,
         }) => {
             const suffix = Date.now();
             const email = `newmitra-${suffix}@test.com`;
@@ -450,19 +452,26 @@ test.describe('Auth — Register Mitra', () => {
                 .fill(VALID_PASSWORD);
             await SEL.AUTH.registerMitra.termsCheckbox(page).check();
 
-            // Mitra baru → /mitra/dashboard → middleware EnsureMitraProfileCompleted
-            // redirect ke /mitra/onboarding (belum punya rekening)
             await Promise.all([
-                page.waitForURL('/mitra/onboarding', { timeout: 15_000 }),
+                page.waitForURL('/verify-email', { timeout: 15_000 }),
                 SEL.AUTH.registerMitra.submit(page).click(),
             ]);
 
-            await expect(page).toHaveURL('/mitra/onboarding');
+            await expect(page).toHaveURL('/verify-email');
+
+            // Mitra belum terverifikasi tidak boleh masuk onboarding.
+            await page.goto('/mitra/onboarding');
+            await expect(page).toHaveURL('/verify-email');
+
+            const { url } = await seed.verificationUrl(page, email);
+            await page.goto(url);
+            await expect(page).toHaveURL(/\/mitra\/(dashboard|onboarding)/);
         });
 
         test('register mitra → user role=mitra (akses /mitra/* tidak redirect role)', async ({
             page,
             asGuest,
+            seed,
         }) => {
             const suffix = Date.now();
             const email = `newmitra2-${suffix}@test.com`;
@@ -481,9 +490,12 @@ test.describe('Auth — Register Mitra', () => {
             await SEL.AUTH.registerMitra.termsCheckbox(page).check();
 
             await Promise.all([
-                page.waitForURL('/mitra/onboarding', { timeout: 15_000 }),
+                page.waitForURL('/verify-email', { timeout: 15_000 }),
                 SEL.AUTH.registerMitra.submit(page).click(),
             ]);
+
+            const { url } = await seed.verificationUrl(page, email);
+            await page.goto(url);
 
             // Sudah login sebagai mitra → akses /client/dashboard → redirect ke
             // /mitra/onboarding (karena role mitra & belum punya rekening)
@@ -512,7 +524,7 @@ test.describe('Auth — Register Mitra', () => {
             await SEL.AUTH.registerMitra.termsCheckbox(page).check();
 
             await Promise.all([
-                page.waitForURL('/mitra/onboarding', { timeout: 15_000 }),
+                page.waitForURL('/verify-email', { timeout: 15_000 }),
                 SEL.AUTH.registerMitra.submit(page).click(),
             ]);
 

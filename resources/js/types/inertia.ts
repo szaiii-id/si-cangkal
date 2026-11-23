@@ -39,10 +39,10 @@ export type Credentials = {
  *   Ini BUKAN `User` model lengkap — hanya subset yang dikirim
  * oleh `HandleInertiaRequests::share()['auth']['user']`.
  *
- * Field yang TIDAK ada di sini (mis. `email_verified_at`,
- * `created_at`, `updated_at`, `profile`) sengaja tidak disertakan
- * karena backend tidak mengirimnya via shared props. Kalau butuh
- * data itu, ambil dari endpoint lain (mis. `/profile`).
+ * Field yang TIDAK ada di sini (mis. `created_at`, `updated_at`,
+ * `profile`) sengaja tidak disertakan karena backend tidak mengirimnya
+ * via shared props. Kalau butuh data itu, ambil dari endpoint lain
+ * (mis. `/profile`).
  */
 export type AuthUser = {
     id: number;
@@ -51,6 +51,8 @@ export type AuthUser = {
     email: string;
     role: 'admin' | 'mitra' | 'client';
     timezone: string;
+    email_verified_at: string | null;
+    has_verified_email: boolean;
     has_fcm_token: boolean;
 };
 

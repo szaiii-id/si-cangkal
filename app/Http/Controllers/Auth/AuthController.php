@@ -7,6 +7,7 @@ use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Models\User;
 use App\Services\Auth\AuthService;
+use App\Services\Auth\EmailVerificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -19,8 +20,10 @@ class AuthController extends Controller
 {
     protected AuthService $authService;
 
-    public function __construct(AuthService $authService)
-    {
+    public function __construct(
+        AuthService $authService,
+        protected EmailVerificationService $verificationService,
+    ) {
         $this->authService = $authService;
     }
 
@@ -58,9 +61,7 @@ class AuthController extends Controller
     {
         $user = $this->authService->registerClient($request->validated());
 
-        $redirect = $this->authService->resolveRedirectAfterLogin($user);
-
-        return redirect()->to($redirect['url']);
+        return $this->redirectAfterRegistration($user);
     }
 
     /**
@@ -74,9 +75,7 @@ class AuthController extends Controller
     {
         $user = $this->authService->registerMitra($request->validated());
 
-        $redirect = $this->authService->resolveRedirectAfterLogin($user);
-
-        return redirect()->to($redirect['url']);
+        return $this->redirectAfterRegistration($user);
     }
 
     /**
@@ -127,6 +126,23 @@ class AuthController extends Controller
         $this->authService->logout();
 
         return redirect('/');
+    }
+
+    /**
+     * Redirect setelah registrasi: kirim email verifikasi lalu arahkan
+     * ke halaman yang sesuai (verifikasi email / ganti password / dashboard).
+     */
+    private function redirectAfterRegistration(User $user): RedirectResponse
+    {
+        $sent = $this->verificationService->send($user);
+
+        $redirect = $this->authService->resolveRedirectAfterLogin($user);
+
+        $response = redirect()->to($redirect['url']);
+
+        return $sent
+            ? $response->with('status', 'Akun berhasil dibuat. Silakan verifikasi email Anda.')
+            : $response->with('error', 'Akun berhasil dibuat, tetapi email verifikasi gagal dikirim. Silakan gunakan tombol kirim ulang.');
     }
 
     /**

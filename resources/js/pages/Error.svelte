@@ -1,7 +1,28 @@
 <script lang="ts">
     import { inertia } from '@inertiajs/svelte';
 
-    let { status = 500 }: { status?: number } = $props();
+    let {
+        status = 500,
+        retry_after = null,
+    }: { status?: number; retry_after?: number | null } = $props();
+
+    let remaining = $state(0);
+
+    $effect(() => {
+        remaining = retry_after ?? 0;
+
+        if (remaining <= 0) return;
+
+        const timer = setInterval(() => {
+            remaining -= 1;
+
+            if (remaining <= 0) {
+                clearInterval(timer);
+            }
+        }, 1000);
+
+        return () => clearInterval(timer);
+    });
 
     const errorMap: Record<
         number,
@@ -110,6 +131,16 @@
             <p class="text-sm sm:text-base text-gray-600 mt-3 leading-relaxed">
                 {current.description}
             </p>
+
+            {#if status === 429 && remaining > 0}
+                <p
+                    class="text-sm font-bold text-pink-text mt-3"
+                    role="status"
+                    aria-live="polite"
+                >
+                    Coba lagi dalam {remaining} detik.
+                </p>
+            {/if}
 
             <!-- Tombol Aksi -->
             <div

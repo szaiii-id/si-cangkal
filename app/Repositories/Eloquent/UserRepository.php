@@ -20,9 +20,12 @@ use Illuminate\Support\Facades\DB;
  * - Semua query pencarian kini memakai whereRaw(... ESCAPE '\') agar
  *   karakter %, _, \ benar-benar di-escape - bukan dianggap
  *   wildcard oleh database (BUG FIX).
- * - createClient() dan createUser() men-set email_verified_at
- *   via forceFill() karena kolom tersebut tidak ada di $fillable
- *   dan akan dibuang silent oleh mass-assignment (BUG FIX).
+ * - createClient() dan createUser() TIDAK lagi otomatis menandai email
+ *   terverifikasi. Gunakan parameter $verified = true hanya untuk akun
+ *   yang emailnya sudah dijamin valid (Google SSO / dibuat admin).
+ *   Pendaftaran manual wajib melewati alur verifikasi email.
+ * - markEmailAsVerified() memakai forceFill karena kolom tersebut
+ *   tidak ada di $fillable (mencegah mass-assignment).
  */
 final class UserRepository implements UserRepositoryInterface
 {
@@ -64,14 +67,14 @@ final class UserRepository implements UserRepositoryInterface
      * {@inheritDoc}
      *
      * Catatan:
-     * email_verified_at tidak ada di $fillable sehingga harus
-     * di-set via forceFill(). Ini mencegah mass-assignment dari
-     * input user (celah keamanan jika user bisa set field ini
-     * sendiri untuk bypass verifikasi email).
+     * email_verified_at tidak ada di $fillable sehingga hanya diisi
+     * lewat markEmailAsVerified() (forceFill). Ini mencegah
+     * mass-assignment dari input user (celah keamanan jika user bisa
+     * set field ini sendiri untuk bypass verifikasi email).
      *
      * @param  array<string, mixed>  $data
      */
-    public function createClient(array $data): User
+    public function createClient(array $data, bool $verified = false): User
     {
         $user = User::create([
             'name' => $data['name'],
@@ -83,7 +86,9 @@ final class UserRepository implements UserRepositoryInterface
             'must_change_password' => false,
         ]);
 
-        $user->forceFill(['email_verified_at' => now()])->save();
+        if ($verified) {
+            $user->markEmailAsVerified();
+        }
 
         return $user;
     }
@@ -91,12 +96,12 @@ final class UserRepository implements UserRepositoryInterface
     /**
      * {@inheritDoc}
      *
-     * Catatan: lihat createClient() - email_verified_at di-set
-     * via forceFill() untuk alasan keamanan.
+     * Catatan: lihat createClient() - email_verified_at hanya diisi
+     * via markEmailAsVerified() untuk alasan keamanan.
      *
      * @param  array<string, mixed>  $data
      */
-    public function createUser(array $data): User
+    public function createUser(array $data, bool $verified = false): User
     {
         $user = User::create([
             'name' => $data['name'],
@@ -107,9 +112,23 @@ final class UserRepository implements UserRepositoryInterface
             'must_change_password' => $data['must_change_password'] ?? true,
         ]);
 
-        $user->forceFill(['email_verified_at' => now()])->save();
+        if ($verified) {
+            $user->markEmailAsVerified();
+        }
 
         return $user;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function markEmailAsVerified(User $user): User
+    {
+        if (! $user->hasVerifiedEmail()) {
+            $user->markEmailAsVerified();
+        }
+
+        return $user->refresh();
     }
 
     /**

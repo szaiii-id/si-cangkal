@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\TripMonitoringController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\ChangePasswordController;
+use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Client\BookingController as ClientBookingController;
 use App\Http\Controllers\Client\CatalogController;
@@ -95,6 +96,22 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
+    // ======================================
+    // EMAIL VERIFICATION (PRD-AUTH-002)
+    // ======================================
+    // Nama route `verification.*` WAJIB dipertahankan karena middleware
+    // `verified` bawaan Laravel melakukan redirect ke `verification.notice`.
+    Route::get('/verify-email', [EmailVerificationController::class, 'notice'])
+        ->name('verification.notice');
+
+    Route::get('/verify-email/{id}/{hash}', [EmailVerificationController::class, 'verify'])
+        ->middleware(['signed', 'throttle:6,1'])
+        ->name('verification.verify');
+
+    Route::post('/email/verification-notification', [EmailVerificationController::class, 'send'])
+        ->middleware('throttle:6,1')
+        ->name('verification.send');
+
     Route::get('/change-password', [ChangePasswordController::class, 'edit'])->name('password.change');
     Route::put('/change-password', [ChangePasswordController::class, 'update'])->name('password.change.update');
 
@@ -108,7 +125,7 @@ Route::middleware('auth')->group(function () {
     // ======================================
     // ADMIN
     // ======================================
-    Route::middleware(['password.changed', 'role:admin'])
+    Route::middleware(['verified', 'password.changed', 'role:admin'])
         ->prefix('admin')
         ->name('admin.')
         ->group(function () {
@@ -161,7 +178,9 @@ Route::middleware('auth')->group(function () {
     // ======================================
     // MITRA
     // ======================================
-    Route::middleware(['password.changed', 'role:mitra'])
+    // `verified` dipasang di outer group agar mitra belum terverifikasi
+    // tidak bisa mengakses onboarding maupun dashboard (keputusan #2).
+    Route::middleware(['verified', 'password.changed', 'role:mitra'])
         ->prefix('mitra')
         ->name('mitra.')
         ->group(function () {
@@ -229,14 +248,18 @@ Route::middleware('auth')->group(function () {
 
             Route::get('/notifications', [NotificationController::class, 'clientIndex'])->name('notifications.index');
 
-            Route::get('/dashboard', [ClientDashboardController::class, 'index'])->name('dashboard');
+            // Fitur transaksi & dashboard diblokir sampai email terverifikasi.
+            // Profil, katalog, dan notifikasi tetap boleh (PRD §6.5).
+            Route::get('/dashboard', [ClientDashboardController::class, 'index'])
+                ->middleware('verified')
+                ->name('dashboard');
             Route::get('/profile', [ClientProfileController::class, 'edit'])->name('profile');
             Route::put('/profile', [ClientProfileController::class, 'update'])->name('profile.update');
 
             Route::get('/catalog', [CatalogController::class, 'index'])->name('catalog.index');
             Route::get('/catalog/{package:slug}', [CatalogController::class, 'show'])->name('catalog.show');
 
-            Route::prefix('bookings')->name('bookings.')->group(function () {
+            Route::prefix('bookings')->name('bookings.')->middleware('verified')->group(function () {
                 Route::get('/', [ClientBookingController::class, 'index'])->name('index');
                 Route::get('/create/{package}', [ClientBookingController::class, 'create'])->name('create');
                 Route::post('/{package}', [ClientBookingController::class, 'store'])->name('store');
@@ -246,6 +269,8 @@ Route::middleware('auth')->group(function () {
                 Route::get('/{booking}/payment-proof', [ClientBookingController::class, 'downloadProof'])->middleware('throttle:10,1')->name('payment-proof');
             });
 
-            Route::get('/e-tickets/{uuid}/download', [ETicketController::class, 'download'])->middleware('auth.throttle:e-ticket-download')->name('e-tickets.download');
+            Route::get('/e-tickets/{uuid}/download', [ETicketController::class, 'download'])
+                ->middleware(['verified', 'auth.throttle:e-ticket-download'])
+                ->name('e-tickets.download');
         });
 });

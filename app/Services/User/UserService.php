@@ -43,7 +43,7 @@ class UserService
                 'password' => $plainPassword,
                 'role' => 'admin',
                 'must_change_password' => true,
-            ]);
+            ], verified: true);
 
             $this->profileRepository->createForUser($user, [
                 'tipe' => 'admin',
