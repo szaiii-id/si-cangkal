@@ -288,6 +288,61 @@ describe('TC-07 — Google SSO otomatis terverifikasi', function () {
 
 /*
 |==========================================================================
+| IDEMPOTENCY, CONSISTENCY & RECOVERY
+|==========================================================================
+*/
+
+describe('Idempotency & consistency', function () {
+    it('verifikasi dua kali tidak mengubah email_verified_at', function () {
+        $user = User::factory()->unverified()->client()->create();
+        $url = verificationUrlFor($user);
+
+        $this->actingAs($user)->get($url)->assertRedirect(route('client.dashboard'));
+        $verifiedAt = $user->refresh()->email_verified_at?->toIso8601String();
+
+        expect($verifiedAt)->not->toBeNull();
+
+        $this->actingAs($user)->get($url)->assertRedirect(route('client.dashboard'));
+
+        expect($user->refresh()->email_verified_at?->toIso8601String())
+            ->toBe($verifiedAt);
+    });
+
+    it('dua permintaan kirim ulang berurutan cepat mengirim dua email, bukan duplikat status', function () {
+        Notification::fake();
+
+        $user = User::factory()->unverified()->client()->create();
+
+        $this->actingAs($user)->post(route('verification.send'))->assertRedirect();
+        $this->actingAs($user)->post(route('verification.send'))->assertRedirect();
+
+        Notification::assertSentToTimes($user, VerifyEmailNotification::class, 2);
+        expect($user->refresh()->hasVerifiedEmail())->toBeFalse();
+    });
+
+    it('kegagalan SMTP tidak membuat registrasi 500 dan user tetap unverified', function () {
+        Notification::shouldReceive('send')
+            ->andThrow(new RuntimeException('SMTP sedang gangguan'));
+
+        $response = $this->post('/register', [
+            'name' => 'Gagal Kirim',
+            'username' => 'gagalkirim',
+            'email' => 'gagal@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ]);
+
+        $response->assertRedirect(route('verification.notice'))
+            ->assertSessionHas('error');
+
+        $user = User::where('email', 'gagal@example.com')->firstOrFail();
+
+        expect($user->hasVerifiedEmail())->toBeFalse();
+    });
+});
+
+/*
+|==========================================================================
 | EMAIL CONTENT
 |==========================================================================
 */

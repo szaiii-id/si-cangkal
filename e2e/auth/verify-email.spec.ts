@@ -84,6 +84,37 @@ test.describe('Auth — Verifikasi Email', () => {
         await expect(resendButton).toBeDisabled();
     });
 
+    test('kirim ulang ke-7 ditolak 429 dan menyertakan Retry-After', async ({
+        page,
+        asGuest,
+        seed,
+    }) => {
+        await asGuest();
+        await makeUnverified(page, seed, 'client');
+        await page.goto('/verify-email');
+
+        const csrfToken = await page
+            .locator('meta[name="csrf-token"]')
+            .getAttribute('content');
+        const headers = { 'X-CSRF-TOKEN': csrfToken ?? '' };
+
+        for (let attempt = 1; attempt <= 6; attempt++) {
+            const response = await page.request.post(
+                '/email/verification-notification',
+                { headers, maxRedirects: 0 },
+            );
+            expect(response.status(), `attempt ${attempt}`).toBe(302);
+        }
+
+        const response = await page.request.post(
+            '/email/verification-notification',
+            { headers, maxRedirects: 0 },
+        );
+
+        expect(response.status()).toBe(429);
+        expect(response.headers()['retry-after']).toBeTruthy();
+    });
+
     test('signed URL valid → terverifikasi → dashboard', async ({
         page,
         asGuest,

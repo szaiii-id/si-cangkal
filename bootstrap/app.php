@@ -11,6 +11,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
+use Illuminate\Http\Middleware\TrustProxies as FrameworkTrustProxies;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -29,6 +30,11 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Hapus TrustProxies bawaan framework sebelum memasang versi kustom.
+        // Jika keduanya aktif, yang framework akan menimpa trusted proxies
+        // yang sudah di-set versi kustom → X-Forwarded-Proto dari ngrok
+        // diabaikan dan asset() menghasilkan URL http:// di halaman https://.
+        $middleware->remove(FrameworkTrustProxies::class);
         $middleware->prepend(TrustProxies::class);
 
         $middleware->web(append: [
