@@ -44,7 +44,11 @@ test.describe('Client Review — submit ulasan paket', () => {
         await expect(page.getByText('Review terkirim')).toBeVisible();
 
         // Ulasan otomatis tayang di katalog tanpa approval.
-        await page.goto('/client/catalog');
+        // Pakai filter search: di suite penuh katalog terpaginated, jadi
+        // paket yang baru dibuat belum tentu ada di halaman pertama.
+        await page.goto(
+            `/client/catalog?search=${encodeURIComponent(namaPaket)}`,
+        );
         await page
             .getByRole('link', { name: new RegExp(namaPaket) })
             .first()
