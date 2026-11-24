@@ -77,6 +77,11 @@ export const DOKU = {
     sandboxEnabled: process.env.DOKU_SANDBOX_ENABLED === 'true',
     settlementBankAccountId:
         process.env.DOKU_E2E_SETTLEMENT_BANK_ACCOUNT_ID ?? 'SBA-E2E-001',
+    /**
+     * Sub Account V2 butuh private key RSA yang public key-nya sudah
+     * didaftarkan di dashboard DOKU. Spec 1b dilewati sampai flag ini aktif.
+     */
+    subAccountEnabled: process.env.DOKU_SUB_ACCOUNT_E2E === 'true',
 } as const;
 
 // ==========================================

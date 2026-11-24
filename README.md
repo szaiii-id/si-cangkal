@@ -130,6 +130,30 @@ Alur sandbox Fase 1:
 
 E2E `e2e/payment/doku-sandbox.spec.ts` otomatis **skip** kecuali `DOKU_SANDBOX_ENABLED=true`. Pastikan `.env.testing`/shell juga memiliki kredensial sandbox, tunnel aktif, dan `DOKU_E2E_SETTLEMENT_BANK_ACCOUNT_ID` sesuai rekening yang didaftarkan di dashboard sandbox.
 
+### Fase 1b — Sub Account V2 (opsional)
+
+`fc-h2h-api` tidak menerima kredensial sandbox, sehingga otomatisasi rekening mitra di sandbox memakai **Sub Account V2**:
+
+```bash
+# 1. Buat keypair RSA (private key tidak akan di-commit)
+php artisan doku:generate-keypair
+
+# 2. Upload storage/app/doku/public.pem ke DOKU dashboard > Integrations > API Keys
+# 3. Isi .env
+#    DOKU_PRIVATE_KEY_PATH=storage/app/doku/private.pem
+```
+
+Alur otomatisnya:
+
+1. Onboarding mitra menyimpan rekening utama lalu `RegisterDokuSubAccountJob` mendaftarkan sub-account.
+2. Service menyimpan `doku_profile_id`, `doku_account_no`, dan `doku_split_rule_id` (split 100% ke mitra).
+3. Checkout mengirim `additionalInfo.account.id` + `split_rule_id`. Bila belum ada, aplikasi fallback ke `additional_info.settlement` dari Fase 1.
+4. Webhook Sub Account dibalas `200` dengan `{"responseCode":"2000000","responseMessage":"Successful"}`.
+
+Job dilewati dengan aman bila private key belum dikonfigurasi, sehingga onboarding mitra tetap berhasil di lokal.
+
+E2E `e2e/payment/doku-sub-account.spec.ts` otomatis **skip** kecuali `DOKU_SUB_ACCOUNT_E2E=true` dan public key sudah terdaftar. Perhatikan juga dua perilaku DOKU: split berjalan saat **settlement** (bukan saat bayar), dan `account.id`/`split_rule_id` yang salah **tidak mengembalikan error**—karena itu kode memvalidasi keduanya sebelum mengirim.
+
 ## Testing & quality gate
 
 ```bash

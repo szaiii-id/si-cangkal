@@ -445,6 +445,36 @@ export const seed = {
     },
 
     /**
+     * Daftarkan sub-account DOKU untuk mitra (Fase 1b).
+     */
+    async registerDokuSubAccount(
+        page: Page,
+        email: string,
+    ): Promise<{
+        ok: boolean;
+        profile_id: string | null;
+        account_no: string | null;
+        split_rule_id: string | null;
+    }> {
+        return apiPost(page, '/_test/register-doku-sub-account', { email });
+    },
+
+    /**
+     * Ambil status sub-account DOKU mitra.
+     */
+    async dokuSubAccount(
+        page: Page,
+        email: string,
+    ): Promise<{
+        ok: boolean;
+        profile_id: string | null;
+        account_no: string | null;
+        split_rule_id: string | null;
+    }> {
+        return apiPost(page, '/_test/doku-sub-account', { email });
+    },
+
+    /**
      * Tandai rekening mitra sebagai tujuan settlement DOKU sandbox.
      *
      * @example
