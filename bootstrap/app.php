@@ -47,6 +47,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // Tidak berpengaruh di production (route _test/* tidak pernah ada).
         $middleware->validateCsrfTokens(except: [
             '_test/*',
+            // Webhook DOKU tidak punya session/CSRF token; keamanan
+            // dijamin lewat verifikasi Signature HMAC-SHA256.
+            'payments/doku/webhook',
         ]);
 
         $middleware->alias([

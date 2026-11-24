@@ -32,6 +32,7 @@ use App\Http\Controllers\Mitra\RefundController as MitraRefundController;
 use App\Http\Controllers\Mitra\TripController as MitraTripController;
 use App\Http\Controllers\Notification\FcmTokenController;
 use App\Http\Controllers\Notification\NotificationController;
+use App\Http\Controllers\PaymentWebhookController;
 use App\Http\Controllers\PublicETicketController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -54,6 +55,12 @@ Route::get('/e-tickets/{uuid}', [PublicETicketController::class, 'show'])
     ->whereUuid('uuid')
     ->middleware('throttle:e-ticket-verify')
     ->name('e-tickets.verify');
+
+// Webhook publik DOKU. CSRF dikecualikan di bootstrap/app.php; signature
+// diverifikasi di controller dan notifikasi diproses lewat queue.
+Route::post('/payments/doku/webhook', [PaymentWebhookController::class, 'store'])
+    ->middleware('throttle:60,1')
+    ->name('payments.doku.webhook');
 
 Route::prefix('legal')->name('legal.')->group(function () {
     Route::get('/privacy', [LegalController::class, 'privacy'])->name('privacy');
