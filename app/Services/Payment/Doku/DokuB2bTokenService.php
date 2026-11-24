@@ -2,6 +2,7 @@
 
 namespace App\Services\Payment\Doku;
 
+use App\Services\Payment\Doku\Contracts\DokuB2bTokenServiceInterface;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
@@ -13,7 +14,7 @@ use RuntimeException;
  * access token OAuth2 dengan tanda tangan SHA256withRSA. Token disimpan
  * di cache sampai 60 detik sebelum kedaluwarsa.
  */
-final class DokuB2bTokenService
+final class DokuB2bTokenService implements DokuB2bTokenServiceInterface
 {
     public function token(): string
     {

@@ -18,6 +18,10 @@ use Illuminate\Support\Carbon;
  * @property bool $is_primary
  * @property string|null $settlement_bank_account_id
  * @property Carbon|null $settlement_verified_at
+ * @property string|null $doku_profile_id
+ * @property string|null $doku_account_no
+ * @property string|null $doku_split_rule_id
+ * @property Carbon|null $doku_registered_at
  * @property-read User|null $user
  *
  * @use HasFactory<MitraBankAccountFactory>
@@ -36,6 +40,10 @@ class MitraBankAccount extends Model
         'is_primary',
         'settlement_bank_account_id',
         'settlement_verified_at',
+        'doku_profile_id',
+        'doku_account_no',
+        'doku_split_rule_id',
+        'doku_registered_at',
     ];
 
     protected function casts(): array
@@ -44,6 +52,7 @@ class MitraBankAccount extends Model
             'is_primary' => 'boolean',
             'nomor_rekening' => 'encrypted',
             'settlement_verified_at' => 'datetime',
+            'doku_registered_at' => 'datetime',
         ];
     }
 

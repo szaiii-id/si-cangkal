@@ -25,6 +25,8 @@ use App\Services\Notification\FirebaseNotificationService;
 use App\Services\Notification\NotificationDispatcher;
 use App\Services\Notification\NotificationService;
 use App\Services\Payment\Contracts\PaymentGatewayServiceInterface;
+use App\Services\Payment\Doku\Contracts\DokuB2bTokenServiceInterface;
+use App\Services\Payment\Doku\DokuB2bTokenService;
 use App\Services\Payment\Doku\DokuGatewayService;
 use App\Services\Trip\Contracts\TripStatusSynchronizerInterface;
 use App\Services\Trip\TripStatusSynchronizer;
@@ -77,6 +79,11 @@ final class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             PaymentGatewayServiceInterface::class,
             DokuGatewayService::class,
+        );
+
+        $this->app->bind(
+            DokuB2bTokenServiceInterface::class,
+            DokuB2bTokenService::class,
         );
 
         // ==========================================
