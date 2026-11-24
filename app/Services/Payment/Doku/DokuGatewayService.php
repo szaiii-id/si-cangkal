@@ -4,6 +4,7 @@ namespace App\Services\Payment\Doku;
 
 use App\Data\Doku\DokuChargeResult;
 use App\Data\Doku\DokuNotification;
+use App\Data\Doku\DokuRefundResult;
 use App\Data\Doku\DokuReleaseResult;
 use App\Data\Doku\DokuStatus;
 use App\Enums\PaymentGateway;
@@ -188,9 +189,62 @@ final class DokuGatewayService implements PaymentGatewayServiceInterface
         );
     }
 
-    public function refund(Payment $payment, Refund $refund): void
+    public function refund(Payment $payment, Refund $refund): DokuRefundResult
     {
-        throw new LogicException('Refund DOKU diimplementasikan pada task berikutnya.');
+        $booking = $refund->booking;
+
+        if ($booking === null) {
+            throw new RuntimeException('Refund tidak memiliki booking.');
+        }
+
+        $requestId = DokuIdempotencyKey::forRefund($refund);
+        $timestamp = now()->utc()->format('Y-m-d\TH:i:s\Z');
+        $refundPath = (string) config('payment.doku.refund_path');
+        $url = rtrim((string) config('payment.doku.base_url'), '/').$refundPath;
+
+        $payload = [
+            'order' => [
+                'invoice_number' => $booking->kode,
+            ],
+            'payment' => [
+                'original_request_id' => (string) $payment->gateway_request_id,
+            ],
+            'refund' => [
+                'amount' => (int) $refund->amount,
+            ],
+        ];
+
+        $bodyJson = json_encode($payload, JSON_THROW_ON_ERROR);
+
+        $response = Http::withHeaders([
+            'Client-Id' => (string) config('payment.doku.client_id'),
+            'Request-Id' => $requestId,
+            'Request-Timestamp' => $timestamp,
+            'Signature' => DokuSignature::forRequest(
+                targetPath: $refundPath,
+                body: $bodyJson,
+                requestId: $requestId,
+                timestamp: $timestamp,
+            ),
+        ])->withBody($bodyJson, 'application/json')->post($url);
+
+        if (! $response->successful()) {
+            throw new RuntimeException(
+                'Gagal mengajukan refund DOKU: HTTP '.$response->status().' '.$response->body(),
+            );
+        }
+
+        /** @var array<string, mixed> $body */
+        $body = $response->json() ?? [];
+        $status = (string) data_get($body, 'refund.status', '');
+        $message = data_get($body, 'refund.message');
+
+        return new DokuRefundResult(
+            success: strtoupper($status) === 'SUCCESS',
+            status: $status,
+            refundNo: data_get($body, 'refund.approval_code'),
+            message: is_scalar($message) ? (string) $message : null,
+        );
     }
 
     public function verifyNotification(string $rawBody, array $headers, string $targetPath): DokuNotification

@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Repositories\Contracts\BookingRepositoryInterface;
 use App\Repositories\Contracts\RefundRepositoryInterface;
 use App\Services\Notification\Contracts\NotificationDispatcherInterface;
+use App\Services\Payment\Contracts\PaymentGatewayServiceInterface;
 use App\Services\Refund\RefundApprovalService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -34,10 +35,13 @@ beforeEach(function () {
     $this->refundRepo = Mockery::mock(RefundRepositoryInterface::class);
     $this->bookingRepo = Mockery::mock(BookingRepositoryInterface::class);
 
+    $this->gateway = Mockery::mock(PaymentGatewayServiceInterface::class);
+
     $this->service = new RefundApprovalService(
         $this->refundRepo,
         $this->bookingRepo,
         $this->notifier,
+        $this->gateway,
     );
 
     // Lock baris: default null => service memakai model yang diberikan.

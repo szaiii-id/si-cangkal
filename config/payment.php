@@ -38,6 +38,8 @@ return [
 
         'release_path' => '/finance/v1/release',
 
+        'refund_path' => '/cancellation/credit-card/refund',
+
         'sandbox_enabled' => env('DOKU_SANDBOX_ENABLED', false),
     ],
 ];

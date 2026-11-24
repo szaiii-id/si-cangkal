@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Repositories\Contracts\BookingRepositoryInterface;
 use App\Repositories\Contracts\RefundRepositoryInterface;
 use App\Services\Notification\Contracts\NotificationDispatcherInterface;
+use App\Services\Payment\Contracts\PaymentGatewayServiceInterface;
 use App\Services\Refund\RefundApprovalService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Log;
@@ -49,6 +50,7 @@ beforeEach(function () {
         app(RefundRepositoryInterface::class),
         app(BookingRepositoryInterface::class),
         $this->notifier,
+        app(PaymentGatewayServiceInterface::class),
     );
 
     // Mock Log::channel('audit') — AuditLogger::writer()
