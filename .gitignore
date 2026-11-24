@@ -32,6 +32,7 @@
 /storage/shard-*/
 /storage/app/firebase/*.json
 !/storage/app/firebase/.gitkeep
+/storage/app/doku/*.pem
 /.phpunit.cache
 /.phpunit.result.cache
 

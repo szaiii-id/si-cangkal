@@ -40,6 +40,11 @@ return [
 
         'refund_path' => '/cancellation/credit-card/refund',
 
+        // Fase 1b — Sub Account V2
+        'b2b_token_path' => '/authorization/v1/access-token/b2b',
+
+        'private_key_path' => env('DOKU_PRIVATE_KEY_PATH'),
+
         'sandbox_enabled' => env('DOKU_SANDBOX_ENABLED', false),
     ],
 ];
