@@ -13,10 +13,13 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
 beforeEach(function () {
+    Queue::fake();
+
     $this->tripRepo = Mockery::mock(TripRepositoryInterface::class);
     $this->synchronizer = Mockery::mock(TripStatusSynchronizerInterface::class);
     $this->notifier = Mockery::mock(NotificationDispatcherInterface::class);

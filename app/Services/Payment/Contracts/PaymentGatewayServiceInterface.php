@@ -4,6 +4,7 @@ namespace App\Services\Payment\Contracts;
 
 use App\Data\Doku\DokuChargeResult;
 use App\Data\Doku\DokuNotification;
+use App\Data\Doku\DokuReleaseResult;
 use App\Data\Doku\DokuStatus;
 use App\Models\Booking;
 use App\Models\Payment;
@@ -19,7 +20,7 @@ interface PaymentGatewayServiceInterface
 
     public function checkStatus(Booking $booking): DokuStatus;
 
-    public function release(Booking $booking): void;
+    public function release(Booking $booking): DokuReleaseResult;
 
     public function refund(Payment $payment, Refund $refund): void;
 

@@ -4,7 +4,9 @@ namespace App\Services\Payment\Doku;
 
 use App\Data\Doku\DokuChargeResult;
 use App\Data\Doku\DokuNotification;
+use App\Data\Doku\DokuReleaseResult;
 use App\Data\Doku\DokuStatus;
+use App\Enums\PaymentGateway;
 use App\Models\Booking;
 use App\Models\MitraBankAccount;
 use App\Models\Payment;
@@ -118,9 +120,72 @@ final class DokuGatewayService implements PaymentGatewayServiceInterface
         throw new LogicException('Check Status DOKU diimplementasikan pada task berikutnya.');
     }
 
-    public function release(Booking $booking): void
+    public function release(Booking $booking): DokuReleaseResult
     {
-        throw new LogicException('Release Settlement DOKU diimplementasikan pada task berikutnya.');
+        $payment = Payment::query()
+            ->where('booking_id', $booking->id)
+            ->where('gateway', PaymentGateway::DOKU)
+            ->latest()
+            ->first();
+
+        if ($payment === null) {
+            throw new RuntimeException('Tidak ada pembayaran DOKU untuk dilepas settlement-nya.');
+        }
+
+        $bankAccount = $this->settlementAccountFor($booking);
+        $requestId = DokuIdempotencyKey::forRelease($booking);
+        $timestamp = now()->utc()->format('Y-m-d\TH:i:s\Z');
+        $releasePath = (string) config('payment.doku.release_path');
+        $url = rtrim((string) config('payment.doku.base_url'), '/').$releasePath;
+
+        $payload = [
+            'order' => [
+                'invoice_number' => $booking->kode,
+                'amount' => (int) $booking->total_harga,
+                'currency' => 'IDR',
+            ],
+            'transaction' => [
+                'original_request_id' => (string) $payment->gateway_request_id,
+            ],
+            'override_settlement' => [[
+                'bank_account_settlement_id' => (string) $bankAccount->settlement_bank_account_id,
+                'value' => 100,
+                'type' => 'PERCENTAGE',
+            ]],
+        ];
+
+        $bodyJson = json_encode($payload, JSON_THROW_ON_ERROR);
+
+        $response = Http::withHeaders([
+            'Client-Id' => (string) config('payment.doku.client_id'),
+            'Request-Id' => $requestId,
+            'Request-Timestamp' => $timestamp,
+            'Signature' => DokuSignature::forRequest(
+                targetPath: $releasePath,
+                body: $bodyJson,
+                requestId: $requestId,
+                timestamp: $timestamp,
+            ),
+        ])->withBody($bodyJson, 'application/json')->post($url);
+
+        if (! $response->successful()) {
+            throw new RuntimeException(
+                'Gagal melepas settlement DOKU: HTTP '.$response->status().' '.$response->body(),
+            );
+        }
+
+        /** @var array<string, mixed> $body */
+        $body = $response->json() ?? [];
+        $settlementDate = (string) data_get($body, 'transaction.settlement_date', '');
+
+        if ($settlementDate === '') {
+            throw new RuntimeException('DOKU tidak mengembalikan tanggal settlement.');
+        }
+
+        return new DokuReleaseResult(
+            settlementDate: $settlementDate,
+            settlementAmount: (float) data_get($body, 'transaction.settlement_amount', 0),
+        );
     }
 
     public function refund(Payment $payment, Refund $refund): void

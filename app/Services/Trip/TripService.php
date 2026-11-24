@@ -5,9 +5,11 @@ namespace App\Services\Trip;
 use App\Enums\BookingStatus;
 use App\Enums\PackageFacilityTipe;
 use App\Enums\TripStatus;
+use App\Jobs\ReleaseDokuSettlementJob;
 use App\Models\Booking;
 use App\Models\Package;
 use App\Models\PackageDay;
+use App\Models\Payment;
 use App\Models\Trip;
 use App\Models\TripDay;
 use App\Models\User;
@@ -257,6 +259,10 @@ class TripService
                 pesan: "Perjalanan {$updated->kode} untuk booking {$booking->kode} telah selesai. Terima kasih telah mempercayakan perjalanan Anda kepada kami.",
             );
         }
+
+        // Dana gateway baru dilepas setelah trip benar-benar selesai.
+        // Job akan mengabaikan booking tanpa payment DOKU.
+        ReleaseDokuSettlementJob::dispatch($updated->booking_id);
 
         return $updated;
     }
