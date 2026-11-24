@@ -283,6 +283,7 @@ Route::middleware('auth')->group(function () {
                 Route::get('/{booking}', [ClientBookingController::class, 'show'])->name('show');
                 Route::post('/{booking}/cancel', [ClientBookingController::class, 'cancel'])->name('cancel');
                 Route::post('/{booking}/upload-proof', [ClientBookingController::class, 'uploadProof'])->middleware('auth.throttle:upload-proof')->name('upload-proof');
+                Route::post('/{booking}/pay', [ClientBookingController::class, 'pay'])->middleware('throttle:10,1')->name('pay');
                 Route::get('/{booking}/payment-proof', [ClientBookingController::class, 'downloadProof'])->middleware('throttle:10,1')->name('payment-proof');
                 Route::get('/{booking}/review', [ClientReviewController::class, 'create'])->name('review.create');
                 Route::post('/{booking}/review', [ClientReviewController::class, 'store'])->name('review.store');

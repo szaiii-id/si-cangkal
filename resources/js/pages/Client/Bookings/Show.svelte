@@ -3,6 +3,7 @@
     import ConfirmModal from '@/global/ConfirmModal.svelte';
     import BookingStatusBanner from '@/components/booking/BookingStatusBanner.svelte';
     import UploadProofForm from '@/components/booking/UploadProofForm.svelte';
+    import PaymentOptionsCard from '@/components/booking/PaymentOptionsCard.svelte';
     import ParticipantList from '@/components/booking/ParticipantList.svelte';
     import PaymentHistory from '@/components/booking/PaymentHistory.svelte';
     import RefundStatusCard from '@/components/booking/RefundStatusCard.svelte';
@@ -237,6 +238,11 @@
 
                 <!-- PEMBAYARAN & UPLOAD -->
                 {#if isPendingPayment}
+                    <PaymentOptionsCard
+                        bookingId={booking.id}
+                        canUseGateway={isPendingPayment}
+                    />
+
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
                         
                         <div class="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-blue-dark to-blue p-6 sm:p-8 text-white shadow-xl shadow-blue/20 flex flex-col justify-center">
@@ -268,7 +274,7 @@
                     </div>
 
                     <!-- Rekening Mitra -->
-                    <div class="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden">
+                    <div id="rekening-tujuan" class="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden">
                         <div class="p-5 sm:p-6 border-b border-gray-100 flex items-center justify-between">
                             <div>
                                 <h2 class="text-base font-extrabold text-dark">Rekening Tujuan Transfer</h2>

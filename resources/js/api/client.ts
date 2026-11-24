@@ -46,6 +46,14 @@ export const uploadProof = (
     options?: ClientOptions,
 ) => router.post(`/client/bookings/${bookingId}/upload-proof`, data, options);
 
+/**
+ * Buat link checkout DOKU untuk booking pending.
+ * Backend memakai Inertia::location sehingga router akan membuka URL
+ * eksternal secara otomatis sebagai hard redirect.
+ */
+export const createDokuCharge = (bookingId: number, options?: ClientOptions) =>
+    router.post(`/client/bookings/${bookingId}/pay`, {}, options);
+
 // ==========================================
 // REVIEW
 // ==========================================
