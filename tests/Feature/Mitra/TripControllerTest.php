@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\BookingStatus;
 use App\Enums\TripStatus;
 use App\Models\Booking;
 use App\Models\MitraBankAccount;
@@ -157,6 +158,47 @@ describe('Contract — show', function () {
                 ->has('trip')
                 ->where('trip.id', $trip->id)
             );
+    });
+});
+
+describe('Contract — complete', function () {
+    it('POST /mitra/trips/{id}/complete → trip & booking selesai', function () {
+        $trip = makeTripForMitra($this->mitra, $this->client, [
+            'status' => TripStatus::ACTIVE->value,
+        ]);
+
+        $response = $this->actingAs($this->mitra)
+            ->post("/mitra/trips/{$trip->id}/complete");
+
+        $response->assertRedirect(route('mitra.trips.show', $trip))
+            ->assertSessionHas('status', 'Perjalanan berhasil diselesaikan.');
+
+        $this->assertDatabaseHas('trips', [
+            'id' => $trip->id,
+            'status' => TripStatus::COMPLETED->value,
+        ]);
+        $this->assertDatabaseHas('bookings', [
+            'id' => $trip->booking_id,
+            'status' => BookingStatus::COMPLETED->value,
+        ]);
+    });
+
+    it('complete ditolak untuk trip milik mitra lain (403)', function () {
+        $trip = makeTripForMitra($this->mitra2, $this->client, [
+            'status' => TripStatus::ACTIVE->value,
+        ]);
+
+        $this->actingAs($this->mitra)
+            ->post("/mitra/trips/{$trip->id}/complete")
+            ->assertForbidden();
+    });
+
+    it('complete ditolak bila trip belum aktif', function () {
+        $trip = makeTripForMitra($this->mitra, $this->client);
+
+        $this->actingAs($this->mitra)
+            ->post("/mitra/trips/{$trip->id}/complete")
+            ->assertSessionHasErrors('status');
     });
 });
 

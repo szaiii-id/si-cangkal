@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Controller;
 use App\Models\Trip;
 use App\Services\Trip\TripService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
@@ -52,6 +53,23 @@ final class TripController extends Controller
         return Inertia::render('Mitra/Trips/Show', [
             'trip' => $trip,
         ]);
+    }
+
+    /**
+     * Tandai trip selesai (active -> completed).
+     *
+     * Sinkronisasi status booking + TripDay dilakukan di TripService
+     * agar fitur review client langsung terbuka setelah trip selesai.
+     */
+    public function complete(Trip $trip): RedirectResponse
+    {
+        $this->authorize('complete', $trip);
+
+        $this->tripService->complete($trip);
+
+        return redirect()
+            ->route('mitra.trips.show', $trip)
+            ->with('status', 'Perjalanan berhasil diselesaikan.');
     }
 
     /**

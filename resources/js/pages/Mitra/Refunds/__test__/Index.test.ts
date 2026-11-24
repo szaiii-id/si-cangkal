@@ -78,9 +78,16 @@ vi.mock('@/global/FilterBar.svelte', () => ({
                 <button type="button" data-action="status-pending">Pending</button>
             `;
 
-            (el.querySelector('input') as HTMLInputElement).oninput = (e) => props.onSearch((e.target as HTMLInputElement).value);
-            (el.querySelector('[data-action="clear"]') as HTMLButtonElement).onclick = () => props.onClear();
-            (el.querySelector('[data-action="status-pending"]') as HTMLButtonElement).onclick = () => props.onStatusChange('PENDING');
+            (el.querySelector('input') as HTMLInputElement).oninput = (e) =>
+                props.onSearch((e.target as HTMLInputElement).value);
+            (
+                el.querySelector('[data-action="clear"]') as HTMLButtonElement
+            ).onclick = () => props.onClear();
+            (
+                el.querySelector(
+                    '[data-action="status-pending"]',
+                ) as HTMLButtonElement
+            ).onclick = () => props.onStatusChange('PENDING');
         };
 
         update();
@@ -128,7 +135,8 @@ vi.mock('@/global/ConfirmModal.svelte', () => ({
                 <p>${props.description || ''}</p>
                 <button type="button" data-action="confirm">${props.confirmLabel}</button>
             `;
-            (el.querySelector('button') as HTMLButtonElement).onclick = () => props.onConfirm();
+            (el.querySelector('button') as HTMLButtonElement).onclick = () =>
+                props.onConfirm();
         };
 
         update();
@@ -150,8 +158,12 @@ vi.mock('@/components/mitra/refunds/RefundCard.svelte', () => ({
                 <button type="button" data-action="reject">Reject</button>
             `;
 
-            (el.querySelector('[data-action="approve"]') as HTMLButtonElement).onclick = () => props.onApprove(props.refund);
-            (el.querySelector('[data-action="reject"]') as HTMLButtonElement).onclick = () => props.onReject(props.refund);
+            (
+                el.querySelector('[data-action="approve"]') as HTMLButtonElement
+            ).onclick = () => props.onApprove(props.refund);
+            (
+                el.querySelector('[data-action="reject"]') as HTMLButtonElement
+            ).onclick = () => props.onReject(props.refund);
         };
 
         update();
@@ -165,7 +177,7 @@ vi.mock('@/components/mitra/refunds/RefundCard.svelte', () => ({
 // ============================================================
 async function syncUI() {
     await tick();
-    mockUpdaters.forEach(fn => fn());
+    mockUpdaters.forEach((fn) => fn());
 }
 
 // ============================================================
@@ -195,7 +207,9 @@ const makeRefund = (overrides: Record<string, unknown> = {}) => ({
     ...overrides,
 });
 
-const makeProps = (overrides: Record<string, unknown> = {}): MitraRefundIndexProps =>
+const makeProps = (
+    overrides: Record<string, unknown> = {},
+): MitraRefundIndexProps =>
     ({
         refunds: {
             data: [makeRefund()],
@@ -229,14 +243,25 @@ describe('Mitra Refunds — Index Page', () => {
     describe('Rendering', () => {
         it('merender PageHeader dan FilterBar', () => {
             render(Index, { props: makeProps() });
-            expect(screen.getByTestId('page-header')).toHaveTextContent('Pengembalian Dana (Refund)');
+            expect(screen.getByTestId('page-header')).toHaveTextContent(
+                'Pengembalian Dana (Refund)',
+            );
             expect(screen.getByTestId('filter-bar')).toBeInTheDocument();
         });
 
         it('merender EmptyState jika data kosong', () => {
             render(Index, {
                 props: makeProps({
-                    refunds: { data: [], total: 0, current_page: 1, last_page: 1, per_page: 15, from: 0, to: 0, links: [] },
+                    refunds: {
+                        data: [],
+                        total: 0,
+                        current_page: 1,
+                        last_page: 1,
+                        per_page: 15,
+                        from: 0,
+                        to: 0,
+                        links: [],
+                    },
                 }),
             });
             expect(screen.getByTestId('empty-state')).toBeInTheDocument();
@@ -260,7 +285,7 @@ describe('Mitra Refunds — Index Page', () => {
             await vi.advanceTimersByTimeAsync(300);
             expect(mockApi.getRefunds).toHaveBeenCalledWith(
                 expect.objectContaining({ search: 'budi' }),
-                expect.any(Object)
+                expect.any(Object),
             );
         });
 
@@ -270,7 +295,7 @@ describe('Mitra Refunds — Index Page', () => {
 
             expect(mockApi.getRefunds).toHaveBeenCalledWith(
                 expect.objectContaining({ status: 'PENDING' }),
-                expect.any(Object)
+                expect.any(Object),
             );
         });
     });
@@ -302,7 +327,7 @@ describe('Mitra Refunds — Index Page', () => {
             expect(mockApi.approveRefund).toHaveBeenCalledWith(
                 1,
                 { catatan: null },
-                expect.any(Object)
+                expect.any(Object),
             );
         });
     });

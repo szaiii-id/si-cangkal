@@ -6,14 +6,25 @@ import type { PackageInfoFormData } from '@/types/models/package';
 // ==========================================
 // MOCK CHILD COMPONENTS (Mengarah ke file fisik)
 // ==========================================
-vi.mock('@/global/InputText.svelte', () => import('@/global/__mocks__/InputText.svelte'));
-vi.mock('@/global/RupiahInput.svelte', () => import('@/global/__mocks__/RupiahInput.svelte'));
-vi.mock('@/global/ImageUploader.svelte', () => import('@/global/__mocks__/ImageUploader.svelte'));
+vi.mock(
+    '@/global/InputText.svelte',
+    () => import('@/global/__mocks__/InputText.svelte'),
+);
+vi.mock(
+    '@/global/RupiahInput.svelte',
+    () => import('@/global/__mocks__/RupiahInput.svelte'),
+);
+vi.mock(
+    '@/global/ImageUploader.svelte',
+    () => import('@/global/__mocks__/ImageUploader.svelte'),
+);
 
 // ==========================================
 // MOCK DATA
 // ==========================================
-const createMockForm = (overrides: Partial<PackageInfoFormData> = {}): PackageInfoFormData => ({
+const createMockForm = (
+    overrides: Partial<PackageInfoFormData> = {},
+): PackageInfoFormData => ({
     nama: 'Paket Test',
     deskripsi: 'Deskripsi Test',
     kategori: 'wisata_alam',
@@ -50,7 +61,7 @@ describe('PackageInfoForm Component', () => {
             expect(screen.getByLabelText('Deskripsi')).toBeInTheDocument();
             expect(screen.getByLabelText('Kategori')).toBeInTheDocument();
             expect(screen.getByLabelText('Zona Waktu')).toBeInTheDocument();
-            
+
             // Cek label dari mock InputText (Nama Paket)
             expect(screen.getByLabelText('Nama Paket')).toBeInTheDocument();
         });
@@ -61,26 +72,32 @@ describe('PackageInfoForm Component', () => {
     // ==========================================
     describe('Conditional Rendering', () => {
         it('harus menampilkan "Harga per Orang" jika useRombongan=false', () => {
-            render(PackageInfoForm, { 
-                props: { form: createMockForm(), useRombongan: false } 
+            render(PackageInfoForm, {
+                props: { form: createMockForm(), useRombongan: false },
             });
 
             // Label dari mock RupiahInput
             expect(screen.getByText('Harga per Orang')).toBeInTheDocument();
-            expect(screen.queryByText('Harga Rombongan')).not.toBeInTheDocument();
+            expect(
+                screen.queryByText('Harga Rombongan'),
+            ).not.toBeInTheDocument();
         });
 
         it('harus menampilkan "Harga Rombongan" dan "Maksimal Peserta" jika useRombongan=true', () => {
-            render(PackageInfoForm, { 
-                props: { form: createMockForm(), useRombongan: true } 
+            render(PackageInfoForm, {
+                props: { form: createMockForm(), useRombongan: true },
             });
 
             // Label dari mock RupiahInput
             expect(screen.getByText('Harga Rombongan')).toBeInTheDocument();
-            
+
             // Label asli
-            expect(screen.getByLabelText('Maksimal Peserta')).toBeInTheDocument();
-            expect(screen.queryByText('Harga per Orang')).not.toBeInTheDocument();
+            expect(
+                screen.getByLabelText('Maksimal Peserta'),
+            ).toBeInTheDocument();
+            expect(
+                screen.queryByText('Harga per Orang'),
+            ).not.toBeInTheDocument();
         });
     });
 
@@ -89,18 +106,25 @@ describe('PackageInfoForm Component', () => {
     // ==========================================
     describe('Error State', () => {
         it('harus menampilkan pesan error jika ada', () => {
-            render(PackageInfoForm, { 
-                props: { 
-                    form: createMockForm(), 
-                    errors: { nama: 'Nama wajib diisi', deskripsi: 'Deskripsi wajib diisi' } 
-                } 
+            render(PackageInfoForm, {
+                props: {
+                    form: createMockForm(),
+                    errors: {
+                        nama: 'Nama wajib diisi',
+                        deskripsi: 'Deskripsi wajib diisi',
+                    },
+                },
             });
 
             // "Nama wajib diisi" dari mock InputText (data-testid="error-nama")
-            expect(screen.getByTestId('error-nama')).toHaveTextContent('Nama wajib diisi');
-            
+            expect(screen.getByTestId('error-nama')).toHaveTextContent(
+                'Nama wajib diisi',
+            );
+
             // "Deskripsi wajib diisi" dari komponen asli (role="alert")
-            expect(screen.getByText('Deskripsi wajib diisi')).toBeInTheDocument();
+            expect(
+                screen.getByText('Deskripsi wajib diisi'),
+            ).toBeInTheDocument();
         });
     });
 
@@ -109,8 +133,8 @@ describe('PackageInfoForm Component', () => {
     // ==========================================
     describe('Disabled Mode', () => {
         it('harus menonaktifkan input jika disabled=true', () => {
-            render(PackageInfoForm, { 
-                props: { form: createMockForm(), disabled: true } 
+            render(PackageInfoForm, {
+                props: { form: createMockForm(), disabled: true },
             });
 
             const deskripsiInput = screen.getByLabelText('Deskripsi');
@@ -126,11 +150,11 @@ describe('PackageInfoForm Component', () => {
     // ==========================================
     describe('User Interaction', () => {
         it('harus merender ImageUploader (meskipun di-mock)', () => {
-            render(PackageInfoForm, { 
-                props: { 
-                    form: createMockForm(), 
+            render(PackageInfoForm, {
+                props: {
+                    form: createMockForm(),
                     existingCover: ['url1'],
-                } 
+                },
             });
 
             expect(screen.getByTestId('image-uploader')).toBeInTheDocument();

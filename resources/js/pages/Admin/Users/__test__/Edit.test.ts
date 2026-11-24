@@ -107,7 +107,9 @@ vi.mock('@/components/admin/users/UserAccountFields.svelte', () => ({
                 input.setAttribute('aria-label', label);
                 input.value = (props.form as any)[key] ?? '';
                 input.oninput = (e) => {
-                    (props.form as any)[key] = (e.target as HTMLInputElement).value;
+                    (props.form as any)[key] = (
+                        e.target as HTMLInputElement
+                    ).value;
                 };
                 wrapper.appendChild(input);
 
@@ -172,7 +174,9 @@ vi.mock('@/components/admin/users/UserProfileFields.svelte', () => ({
                 input.setAttribute('aria-label', label);
                 input.value = props.form.profile?.[key] ?? '';
                 input.oninput = (e) => {
-                    (props.form.profile as any)[key] = (e.target as HTMLInputElement).value;
+                    (props.form.profile as any)[key] = (
+                        e.target as HTMLInputElement
+                    ).value;
                 };
                 wrapper.appendChild(input);
             });
@@ -290,7 +294,9 @@ describe('Admin Users — Edit Page', () => {
 
             expect(screen.getByText('Data Akun')).toBeInTheDocument();
             expect(screen.queryByText('Data Usaha')).not.toBeInTheDocument();
-            expect(screen.queryByTestId('user-profile-fields')).not.toBeInTheDocument();
+            expect(
+                screen.queryByTestId('user-profile-fields'),
+            ).not.toBeInTheDocument();
         });
 
         it('merender section Data Usaha untuk role mitra', () => {
@@ -298,7 +304,9 @@ describe('Admin Users — Edit Page', () => {
 
             expect(screen.getByText('Data Akun')).toBeInTheDocument();
             expect(screen.getByText('Data Usaha')).toBeInTheDocument();
-            expect(screen.getByTestId('user-profile-fields')).toBeInTheDocument();
+            expect(
+                screen.getByTestId('user-profile-fields'),
+            ).toBeInTheDocument();
         });
 
         it('mengisi field akun dengan data user', () => {
@@ -306,14 +314,20 @@ describe('Admin Users — Edit Page', () => {
 
             expect(screen.getByLabelText('Nama')).toHaveValue('Super Admin');
             expect(screen.getByLabelText('Username')).toHaveValue('superadmin');
-            expect(screen.getByLabelText('Email')).toHaveValue('admin@test.com');
+            expect(screen.getByLabelText('Email')).toHaveValue(
+                'admin@test.com',
+            );
         });
 
         it('mengisi field profil dengan data user mitra', () => {
             render(Edit, { user: makeMitra() });
 
-            expect(screen.getByLabelText('Nama Usaha')).toHaveValue('PT Mitra Jaya');
-            expect(screen.getByLabelText('Nomor Identitas')).toHaveValue('1234567890');
+            expect(screen.getByLabelText('Nama Usaha')).toHaveValue(
+                'PT Mitra Jaya',
+            );
+            expect(screen.getByLabelText('Nomor Identitas')).toHaveValue(
+                '1234567890',
+            );
             expect(screen.getByLabelText('Kota')).toHaveValue('Bandung');
             expect(screen.getByLabelText('Kode Pos')).toHaveValue('40111');
         });
@@ -340,7 +354,9 @@ describe('Admin Users — Edit Page', () => {
 
             vi.mocked(updateUser).mockImplementation(() => {});
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Simpan Perubahan' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Simpan Perubahan' }),
+            );
 
             expect(updateUser).toHaveBeenCalledTimes(1);
             expect(updateUser).toHaveBeenCalledWith(
@@ -361,7 +377,9 @@ describe('Admin Users — Edit Page', () => {
 
             vi.mocked(updateUser).mockImplementation(() => {});
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Simpan Perubahan' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Simpan Perubahan' }),
+            );
 
             expect(updateUser).toHaveBeenCalledWith(
                 2,
@@ -387,10 +405,14 @@ describe('Admin Users — Edit Page', () => {
 
             render(Edit, { user: makeAdmin() });
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Simpan Perubahan' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Simpan Perubahan' }),
+            );
             await syncUI();
 
-            expect(screen.getByRole('button', { name: /menyimpan/i })).toBeDisabled();
+            expect(
+                screen.getByRole('button', { name: /menyimpan/i }),
+            ).toBeDisabled();
         });
 
         it('mengaktifkan tombol kembali setelah onFinish', async () => {
@@ -401,14 +423,20 @@ describe('Admin Users — Edit Page', () => {
 
             render(Edit, { user: makeAdmin() });
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Simpan Perubahan' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Simpan Perubahan' }),
+            );
             await syncUI();
-            expect(screen.getByRole('button', { name: /menyimpan/i })).toBeDisabled();
+            expect(
+                screen.getByRole('button', { name: /menyimpan/i }),
+            ).toBeDisabled();
 
             finishCallback?.();
             await syncUI();
 
-            expect(screen.getByRole('button', { name: 'Simpan Perubahan' })).not.toBeDisabled();
+            expect(
+                screen.getByRole('button', { name: 'Simpan Perubahan' }),
+            ).not.toBeDisabled();
         });
     });
 
@@ -427,7 +455,9 @@ describe('Admin Users — Edit Page', () => {
 
             render(Edit, { user: makeAdmin() });
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Simpan Perubahan' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Simpan Perubahan' }),
+            );
             await syncUI();
 
             expect(screen.getByText('Nama wajib diisi')).toBeInTheDocument();
@@ -442,10 +472,14 @@ describe('Admin Users — Edit Page', () => {
 
             render(Edit, { user: makeAdmin() });
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Simpan Perubahan' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Simpan Perubahan' }),
+            );
             await syncUI();
 
-            expect(screen.getByRole('button', { name: 'Simpan Perubahan' })).not.toBeDisabled();
+            expect(
+                screen.getByRole('button', { name: 'Simpan Perubahan' }),
+            ).not.toBeDisabled();
         });
 
         it('menghapus error lama saat submit ulang', async () => {
@@ -461,12 +495,16 @@ describe('Admin Users — Edit Page', () => {
             render(Edit, { user: makeAdmin() });
 
             // Submit 1 → error muncul
-            await fireEvent.click(screen.getByRole('button', { name: 'Simpan Perubahan' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Simpan Perubahan' }),
+            );
             await syncUI();
             expect(screen.getByText('Required')).toBeInTheDocument();
 
             // Submit 2 → errors reset
-            await fireEvent.click(screen.getByRole('button', { name: 'Simpan Perubahan' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Simpan Perubahan' }),
+            );
             await syncUI();
             expect(screen.queryByText('Required')).not.toBeInTheDocument();
         });
@@ -493,7 +531,9 @@ describe('Admin Users — Edit Page', () => {
 
             render(Edit, { user: makeAdmin() });
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Simpan Perubahan' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Simpan Perubahan' }),
+            );
             await syncUI();
 
             // error message

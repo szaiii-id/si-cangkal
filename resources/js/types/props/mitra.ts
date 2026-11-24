@@ -163,10 +163,7 @@ export type MitraPackageIndexProps = {
     packages: PaginationMeta & {
         data: Array<
             PackageEloquent & {
-                mitra: Pick<
-                    User,
-                    'id' | 'name' | 'email'
-                > | null;
+                mitra: Pick<User, 'id' | 'name' | 'email'> | null;
             }
         >;
     };
@@ -225,14 +222,8 @@ export type MitraTripIndexProps = {
                     'id' | 'nama' | 'kode' | 'timezone'
                 > | null;
                 booking:
-                    | (Pick<
-                          BookingEloquent,
-                          'id' | 'kode' | 'user_id'
-                      > & {
-                          client: Pick<
-                              User,
-                              'id' | 'name' | 'email'
-                          > | null;
+                    | (Pick<BookingEloquent, 'id' | 'kode' | 'user_id'> & {
+                          client: Pick<User, 'id' | 'name' | 'email'> | null;
                       })
                     | null;
                 mitra: Pick<User, 'id' | 'name'> | null;
@@ -260,16 +251,10 @@ export type MitraTripShowProps = {
         > | null;
         booking:
             | (Pick<BookingEloquent, 'id' | 'kode'> & {
-                  client: Pick<
-                      User,
-                      'id' | 'name' | 'email'
-                  > | null;
+                  client: Pick<User, 'id' | 'name' | 'email'> | null;
               })
             | null;
-        mitra: Pick<
-            User,
-            'id' | 'name' | 'email' | 'username'
-        > | null;
+        mitra: Pick<User, 'id' | 'name' | 'email' | 'username'> | null;
         days: TripDay[];
     };
 };
@@ -297,10 +282,7 @@ export type MitraRefundIndexProps = {
                           BookingEloquent,
                           'id' | 'kode' | 'total_harga' | 'status'
                       > & {
-                          client: Pick<
-                              User,
-                              'id' | 'name' | 'email'
-                          > | null;
+                          client: Pick<User, 'id' | 'name' | 'email'> | null;
                       })
                     | null;
             }

@@ -85,21 +85,29 @@ test.describe('Mitra — Dashboard', () => {
 
             // 1. Heading Sapaan & Deskripsi
             await expect(
-                mainArea.getByRole('heading', { name: new RegExp(`Halo, ${SEED_USERS.mitra.name}`) }),
+                mainArea.getByRole('heading', {
+                    name: new RegExp(`Halo, ${SEED_USERS.mitra.name}`),
+                }),
             ).toBeVisible();
             await expect(
-                mainArea.getByText('Ini ringkasan performa bisnis wisata Anda.'),
+                mainArea.getByText(
+                    'Ini ringkasan performa bisnis wisata Anda.',
+                ),
             ).toBeVisible();
 
             // 2. Kartu Statistik Utama (StatsCards)
-            await expect(mainArea.getByText(/Pendapatan/i).first()).toBeVisible();
+            await expect(
+                mainArea.getByText(/Pendapatan/i).first(),
+            ).toBeVisible();
             await expect(mainArea.getByText(/Paket/i).first()).toBeVisible();
             await expect(mainArea.getByText(/Trip/i).first()).toBeVisible();
             await expect(mainArea.getByText(/Booking/i).first()).toBeVisible();
 
             // 3. Booking Terbaru (RecentBookingsList)
             await expect(mainArea.getByText(packageNama).first()).toBeVisible();
-            await expect(mainArea.getByText(SEED_USERS.client.name).first()).toBeVisible();
+            await expect(
+                mainArea.getByText(SEED_USERS.client.name).first(),
+            ).toBeVisible();
         });
     });
 });

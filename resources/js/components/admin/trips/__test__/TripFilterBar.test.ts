@@ -5,8 +5,14 @@ import TripFilterBar from '../TripFilterBar.svelte';
 // ==========================================
 // MOCK CHILD COMPONENTS
 // ==========================================
-vi.mock('@/global/SearchInput.svelte', () => import('@/global/__mocks__/SearchInput.svelte'));
-vi.mock('@/global/StatusTabs.svelte', () => import('@/global/__mocks__/StatusTabs.svelte'));
+vi.mock(
+    '@/global/SearchInput.svelte',
+    () => import('@/global/__mocks__/SearchInput.svelte'),
+);
+vi.mock(
+    '@/global/StatusTabs.svelte',
+    () => import('@/global/__mocks__/StatusTabs.svelte'),
+);
 
 describe('TripFilterBar Component', () => {
     const defaultProps = {
@@ -58,8 +64,8 @@ describe('TripFilterBar Component', () => {
         });
 
         it('harus menampilkan indikator "!" jika ada tanggal yang dipilih', () => {
-            render(TripFilterBar, { 
-                props: { ...defaultProps, dateFrom: '2026-10-01' } 
+            render(TripFilterBar, {
+                props: { ...defaultProps, dateFrom: '2026-10-01' },
             });
 
             const indicator = screen.getByText('!');
@@ -73,8 +79,8 @@ describe('TripFilterBar Component', () => {
     describe('Clear Filters', () => {
         it('harus memanggil onClear saat tombol "Hapus Semua Filter" diklik', async () => {
             const onClear = vi.fn();
-            render(TripFilterBar, { 
-                props: { ...defaultProps, hasActiveFilters: true, onClear } 
+            render(TripFilterBar, {
+                props: { ...defaultProps, hasActiveFilters: true, onClear },
             });
 
             const clearBtn = screen.getByLabelText('Hapus semua filter');
@@ -84,8 +90,12 @@ describe('TripFilterBar Component', () => {
         });
 
         it('TIDAK boleh merender tombol "Hapus Semua Filter" jika hasActiveFilters=false', () => {
-            render(TripFilterBar, { props: { ...defaultProps, hasActiveFilters: false } });
-            expect(screen.queryByText('Hapus Semua Filter')).not.toBeInTheDocument();
+            render(TripFilterBar, {
+                props: { ...defaultProps, hasActiveFilters: false },
+            });
+            expect(
+                screen.queryByText('Hapus Semua Filter'),
+            ).not.toBeInTheDocument();
         });
     });
 
@@ -95,14 +105,18 @@ describe('TripFilterBar Component', () => {
     describe('Accessibility', () => {
         it('tombol "Filter Tanggal" harus memiliki aria-expanded', () => {
             render(TripFilterBar, { props: defaultProps });
-            
-            const filterBtn = screen.getByText('Filter Tanggal').closest('button');
+
+            const filterBtn = screen
+                .getByText('Filter Tanggal')
+                .closest('button');
             expect(filterBtn).toHaveAttribute('aria-expanded', 'false');
         });
 
         it('ikon SVG harus disembunyikan dari screen reader', () => {
-            const { container } = render(TripFilterBar, { props: defaultProps });
-            
+            const { container } = render(TripFilterBar, {
+                props: defaultProps,
+            });
+
             const svgs = container.querySelectorAll('svg');
             svgs.forEach((svg) => {
                 expect(svg).toHaveAttribute('aria-hidden', 'true');

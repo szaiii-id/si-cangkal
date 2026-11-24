@@ -18,11 +18,7 @@
  */
 
 import type { Page } from '@playwright/test';
-import {
-    apiGet,
-    apiPost,
-    type ApiData,
-} from './api';
+import { apiGet, apiPost, type ApiData } from './api';
 
 // ==========================================
 // TIPE RESPONSE
@@ -195,11 +191,12 @@ export const seed = {
      *   await seed.seedDatabase(page);  // pakai TestSeeder
      *   await seed.seedDatabase(page, 'Database\\Seeders\\DatabaseSeeder');
      */
-    async seedDatabase(
-        page: Page,
-        seeder?: string,
-    ): Promise<SeedResponse> {
-        return apiPost<SeedResponse>(page, '/_test/seed', seeder ? { seeder } : {});
+    async seedDatabase(page: Page, seeder?: string): Promise<SeedResponse> {
+        return apiPost<SeedResponse>(
+            page,
+            '/_test/seed',
+            seeder ? { seeder } : {},
+        );
     },
 
     // ==========================================
@@ -355,10 +352,7 @@ export const seed = {
      *   const pkg = await seed.findPackage(page, 'PKG-2026-001');
      *   console.log(pkg.id);  // package ID
      */
-    async findPackage(
-        page: Page,
-        kode: string,
-    ): Promise<FindPackageResponse> {
+    async findPackage(page: Page, kode: string): Promise<FindPackageResponse> {
         return apiPost<FindPackageResponse>(page, '/_test/find-package', {
             kode,
         });
@@ -470,7 +464,11 @@ export const seed = {
     async resetTrip(
         page: Page,
         tripId: number,
-        status: 'scheduled' | 'active' | 'completed' | 'cancelled' = 'scheduled',
+        status:
+            | 'scheduled'
+            | 'active'
+            | 'completed'
+            | 'cancelled' = 'scheduled',
     ): Promise<ResetTripResponse> {
         return apiPost<ResetTripResponse>(page, '/_test/reset-trip', {
             trip_id: tripId,
@@ -564,11 +562,9 @@ export const seed = {
         page: Page,
         key: string,
     ): Promise<ClearThrottleResponse> {
-        return apiPost<ClearThrottleResponse>(
-            page,
-            '/_test/clear-throttle',
-            { key },
-        );
+        return apiPost<ClearThrottleResponse>(page, '/_test/clear-throttle', {
+            key,
+        });
     },
 
     // ==========================================
@@ -604,10 +600,7 @@ export const seed = {
      *   await seed.truncate(page);  // truncate semua tabel default
      *   await seed.truncate(page, ['bookings', 'payments']);  // sebagian
      */
-    async truncate(
-        page: Page,
-        tables?: string[],
-    ): Promise<TruncateResponse> {
+    async truncate(page: Page, tables?: string[]): Promise<TruncateResponse> {
         return apiPost<TruncateResponse>(
             page,
             '/_test/truncate',

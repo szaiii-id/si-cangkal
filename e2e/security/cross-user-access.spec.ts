@@ -49,7 +49,14 @@ test.describe('Security — Cross-User Data Isolation (IDOR Protection)', () => 
             durasi_hari: 1,
             durasi_malam: 0,
             harga_per_orang: 250_000,
-            days: [{ judul: 'Hari 1', jam_mulai: '08:00', jam_selesai: '15:00', lokasi: 'Banjarmasin' }],
+            days: [
+                {
+                    judul: 'Hari 1',
+                    jam_mulai: '08:00',
+                    jam_selesai: '15:00',
+                    lokasi: 'Banjarmasin',
+                },
+            ],
             facilities: [
                 { tipe: 'include', nama: 'Guide' },
                 { tipe: 'exclude', nama: 'Tiket Pesawat' },
@@ -87,7 +94,9 @@ test.describe('Security — Cross-User Data Isolation (IDOR Protection)', () => 
         seed,
     }) => {
         await seed.login(page, otherClientEmail, 'password123');
-        const response = await page.goto(`/client/bookings/${bookingClient1Id}`);
+        const response = await page.goto(
+            `/client/bookings/${bookingClient1Id}`,
+        );
         expect(response?.status()).toBe(403);
     });
 
@@ -96,7 +105,9 @@ test.describe('Security — Cross-User Data Isolation (IDOR Protection)', () => 
         seed,
     }) => {
         await seed.login(page, otherClientEmail, 'password123');
-        const response = await page.goto(`/client/e-tickets/${eTicketUuid}/download`);
+        const response = await page.goto(
+            `/client/e-tickets/${eTicketUuid}/download`,
+        );
         expect(response?.status()).toBe(403);
     });
 
@@ -130,7 +141,9 @@ test.describe('Security — Cross-User Data Isolation (IDOR Protection)', () => 
         const showRes = await page.goto(`/mitra/packages/${packageMitra1Id}`);
         expect(showRes?.status()).toBe(403);
 
-        const editRes = await page.goto(`/mitra/packages/${packageMitra1Id}/edit`);
+        const editRes = await page.goto(
+            `/mitra/packages/${packageMitra1Id}/edit`,
+        );
         expect(editRes?.status()).toBe(403);
     });
 
@@ -163,7 +176,9 @@ test.describe('Security — Cross-User Data Isolation (IDOR Protection)', () => 
         const showRes = await page.goto(`/mitra/trips/${tripMitra1Id}`);
         expect(showRes?.status()).toBe(403);
 
-        const manifestRes = await page.goto(`/mitra/trips/${tripMitra1Id}/manifest`);
+        const manifestRes = await page.goto(
+            `/mitra/trips/${tripMitra1Id}/manifest`,
+        );
         expect(manifestRes?.status()).toBe(403);
     });
 });

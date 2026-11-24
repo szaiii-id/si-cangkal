@@ -6,5 +6,7 @@ export type ContactPayload = {
     pesan: string;
 };
 
-export const submitContactForm = (data: ContactPayload, options?: Parameters<typeof router.post>[2]) =>
-    router.post('/contact', data, options);
+export const submitContactForm = (
+    data: ContactPayload,
+    options?: Parameters<typeof router.post>[2],
+) => router.post('/contact', data, options);

@@ -106,12 +106,8 @@ export function formatBookingCountdown(
  */
 function formatRemainingTime(remainingMs: number): string {
     const hours = Math.floor(remainingMs / MS_PER_HOUR);
-    const minutes = Math.floor(
-        (remainingMs % MS_PER_HOUR) / MS_PER_MINUTE,
-    );
-    const seconds = Math.floor(
-        (remainingMs % MS_PER_MINUTE) / MS_PER_SECOND,
-    );
+    const minutes = Math.floor((remainingMs % MS_PER_HOUR) / MS_PER_MINUTE);
+    const seconds = Math.floor((remainingMs % MS_PER_MINUTE) / MS_PER_SECOND);
 
     if (hours > 0) {
         return `${hours} jam ${minutes} menit`;

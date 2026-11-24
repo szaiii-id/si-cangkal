@@ -29,7 +29,9 @@ describe('PackageItinerary Component', () => {
     describe('Empty State', () => {
         it('harus menampilkan pesan kosong jika days kosong', () => {
             render(PackageItinerary, { props: { days: [] } });
-            expect(screen.getByText('Rencana perjalanan belum tersedia.')).toBeInTheDocument();
+            expect(
+                screen.getByText('Rencana perjalanan belum tersedia.'),
+            ).toBeInTheDocument();
         });
     });
 
@@ -56,8 +58,8 @@ describe('PackageItinerary Component', () => {
             const timeSpan = screen.getByText((_content, element) => {
                 return Boolean(
                     element?.tagName === 'SPAN' &&
-                        element.textContent?.includes('08:00') &&
-                        element.textContent?.includes('09:00'),
+                    element.textContent?.includes('08:00') &&
+                    element.textContent?.includes('09:00'),
                 );
             });
             expect(timeSpan).toBeInTheDocument();
@@ -100,7 +102,9 @@ describe('PackageItinerary Component', () => {
             render(PackageItinerary, { props: { days: [] } });
 
             const emptyState = screen.getByRole('status');
-            expect(emptyState).toHaveTextContent('Rencana perjalanan belum tersedia.');
+            expect(emptyState).toHaveTextContent(
+                'Rencana perjalanan belum tersedia.',
+            );
         });
     });
 });

@@ -35,17 +35,14 @@ export const resetUserPassword = (id: number, options?: AdminOptions) =>
 export const getClients = (params: RequestPayload, options?: AdminOptions) =>
     router.get('/admin/clients', params, options);
 
-
 // ==========================================
 // BOOKINGS
 // ==========================================
 export const getBookings = (params: RequestPayload, options?: AdminOptions) =>
     router.get('/admin/bookings', params, options);
 
-export const regenerateETicket = (
-    bookingId: number,
-    options?: AdminOptions,
-) => router.post(`/admin/bookings/${bookingId}/regenerate-eticket`, {}, options);
+export const regenerateETicket = (bookingId: number, options?: AdminOptions) =>
+    router.post(`/admin/bookings/${bookingId}/regenerate-eticket`, {}, options);
 
 // ==========================================
 // TRIPS

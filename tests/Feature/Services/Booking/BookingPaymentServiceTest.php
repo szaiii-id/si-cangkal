@@ -122,6 +122,23 @@ describe('verifyPayment — persistence', function () {
         expect($result->status)->toBe(BookingStatus::CONFIRMED);
     });
 
+    it('verifyPayment 2x dengan instance booking lama → Payment & event hanya 1', function () {
+        $booking = makeBookingForPayment($this->client, $this->mitra);
+
+        Event::fake([BookingConfirmed::class]);
+
+        $this->service->verifyPayment($booking, $this->mitra);
+
+        // Instance lama masih berstatus PENDING_PAYMENT. Guard dibaca ulang
+        // dari baris terkunci sehingga verifikasi kedua harus ditolak.
+        expect(fn () => $this->service->verifyPayment($booking, $this->mitra))
+            ->toThrow(ValidationException::class);
+
+        expect(Payment::where('booking_id', $booking->id)->where('jumlah', '>', 0)->count())->toBe(1);
+
+        Event::assertDispatchedTimes(BookingConfirmed::class, 1);
+    });
+
     it('verifyPayment → BookingConfirmed event dispatched', function () {
         $booking = makeBookingForPayment($this->client, $this->mitra);
 

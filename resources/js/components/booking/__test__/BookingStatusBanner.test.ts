@@ -17,16 +17,24 @@ describe('BookingStatusBanner Component', () => {
             });
 
             expect(screen.getByText('BK-123')).toBeInTheDocument();
-            expect(screen.getByText('Silakan transfer ke rekening mitra.')).toBeInTheDocument();
+            expect(
+                screen.getByText('Silakan transfer ke rekening mitra.'),
+            ).toBeInTheDocument();
         });
 
         it('harus merender label status yang sesuai (menggunakan bookingStatusLabel)', () => {
             render(BookingStatusBanner, {
-                props: { status: 'confirmed', kode: 'BK-123', description: 'OK' },
+                props: {
+                    status: 'confirmed',
+                    kode: 'BK-123',
+                    description: 'OK',
+                },
             });
 
             // Label dari helper (bisa "Terkonfirmasi" atau "Dikonfirmasi")
-            expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
+            expect(
+                screen.getByRole('heading', { level: 1 }),
+            ).toBeInTheDocument();
         });
     });
 
@@ -36,7 +44,11 @@ describe('BookingStatusBanner Component', () => {
     describe('Icon & Styling', () => {
         it('harus menerapkan class border yang sesuai untuk status', () => {
             const { container } = render(BookingStatusBanner, {
-                props: { status: 'completed', kode: 'BK-123', description: 'OK' },
+                props: {
+                    status: 'completed',
+                    kode: 'BK-123',
+                    description: 'OK',
+                },
             });
 
             const banner = container.firstElementChild;
@@ -59,7 +71,9 @@ describe('BookingStatusBanner Component', () => {
                 },
             });
 
-            expect(screen.getByText(/Sisa waktu: 2 jam 30 menit/)).toBeInTheDocument();
+            expect(
+                screen.getByText(/Sisa waktu: 2 jam 30 menit/),
+            ).toBeInTheDocument();
         });
 
         it('TIDAK boleh menampilkan countdown jika status bukan pending_payment', () => {
@@ -97,7 +111,11 @@ describe('BookingStatusBanner Component', () => {
     describe('Accessibility', () => {
         it('ikon SVG harus disembunyikan dari screen reader', () => {
             const { container } = render(BookingStatusBanner, {
-                props: { status: 'confirmed', kode: 'BK-123', description: 'OK' },
+                props: {
+                    status: 'confirmed',
+                    kode: 'BK-123',
+                    description: 'OK',
+                },
             });
 
             const svgs = container.querySelectorAll('svg');

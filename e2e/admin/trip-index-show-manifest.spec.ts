@@ -60,7 +60,12 @@ test.describe('Admin — Monitoring Trip & Manifest Peserta', () => {
                 durasi_hari: 1,
                 durasi_malam: 0,
                 harga_per_orang: 350_000,
-                days: [{ judul: 'Hari 1: Eksplorasi Lokasi', lokasi: 'Banjarbaru' }],
+                days: [
+                    {
+                        judul: 'Hari 1: Eksplorasi Lokasi',
+                        lokasi: 'Banjarbaru',
+                    },
+                ],
                 facilities: [{ tipe: 'include', nama: 'Dokumentasi & Snack' }],
             });
 
@@ -71,8 +76,16 @@ test.describe('Admin — Monitoring Trip & Manifest Peserta', () => {
                 tanggal_keberangkatan: getDateOffset(5),
                 jumlah_peserta: 2,
                 participants: [
-                    { nama: 'Peserta Manifest Satu', umur: 25, no_hp: '081233334444' },
-                    { nama: 'Peserta Manifest Dua', umur: 27, no_hp: '081255556666' },
+                    {
+                        nama: 'Peserta Manifest Satu',
+                        umur: 25,
+                        no_hp: '081233334444',
+                    },
+                    {
+                        nama: 'Peserta Manifest Dua',
+                        umur: 27,
+                        no_hp: '081255556666',
+                    },
                 ],
             });
 
@@ -82,7 +95,9 @@ test.describe('Admin — Monitoring Trip & Manifest Peserta', () => {
             await page.waitForLoadState('networkidle');
 
             await expect(
-                page.getByRole('heading', { name: /Jadwal Perjalanan/i }).first(),
+                page
+                    .getByRole('heading', { name: /Jadwal Perjalanan/i })
+                    .first(),
             ).toBeVisible();
 
             const table = page.getByRole('table').first();
@@ -116,7 +131,12 @@ test.describe('Admin — Monitoring Trip & Manifest Peserta', () => {
                 durasi_hari: 1,
                 durasi_malam: 0,
                 harga_per_orang: 350_000,
-                days: [{ judul: 'Hari 1: Eksplorasi Lokasi', lokasi: 'Banjarbaru' }],
+                days: [
+                    {
+                        judul: 'Hari 1: Eksplorasi Lokasi',
+                        lokasi: 'Banjarbaru',
+                    },
+                ],
                 facilities: [{ tipe: 'include', nama: 'Dokumentasi & Snack' }],
             });
 
@@ -127,8 +147,16 @@ test.describe('Admin — Monitoring Trip & Manifest Peserta', () => {
                 tanggal_keberangkatan: getDateOffset(5),
                 jumlah_peserta: 2,
                 participants: [
-                    { nama: 'Peserta Manifest Satu', umur: 25, no_hp: '081233334444' },
-                    { nama: 'Peserta Manifest Dua', umur: 27, no_hp: '081255556666' },
+                    {
+                        nama: 'Peserta Manifest Satu',
+                        umur: 25,
+                        no_hp: '081233334444',
+                    },
+                    {
+                        nama: 'Peserta Manifest Dua',
+                        umur: 27,
+                        no_hp: '081255556666',
+                    },
                 ],
             });
 
@@ -137,13 +165,13 @@ test.describe('Admin — Monitoring Trip & Manifest Peserta', () => {
             await page.goto(`/admin/trips/${trip.trip_id}`);
             await page.waitForLoadState('networkidle');
 
-            await expect(
-                page.getByText(trip.kode).first(),
-            ).toBeVisible();
+            await expect(page.getByText(trip.kode).first()).toBeVisible();
 
             await expect(page.getByText('Info Pesanan')).toBeVisible();
             await expect(page.getByText(booking.kode)).toBeVisible();
-            await expect(page.getByText(SEED_USERS.client.name).first()).toBeVisible();
+            await expect(
+                page.getByText(SEED_USERS.client.name).first(),
+            ).toBeVisible();
         });
     });
 });

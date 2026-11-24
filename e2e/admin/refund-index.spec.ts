@@ -85,18 +85,24 @@ test.describe('Admin — Monitoring Pengembalian Dana (Read-Only)', () => {
             await page.goto(`/mitra/bookings/${booking.booking_id}`);
             await page.waitForLoadState('networkidle');
 
-            await page.getByRole('button', { name: 'Batalkan & Refund' }).click();
+            await page
+                .getByRole('button', { name: 'Batalkan & Refund' })
+                .click();
 
             const dialog = page.getByRole('dialog');
             await expect(dialog).toBeVisible();
 
-            const textInput = dialog.locator('textarea, input[type="text"]').first();
+            const textInput = dialog
+                .locator('textarea, input[type="text"]')
+                .first();
             if (await textInput.isVisible()) {
                 await textInput.fill('Cuaca ekstrem di lokasi wisata');
             }
 
             await dialog
-                .getByRole('button', { name: /Batalkan|Konfirmasi|Ya|Kirim|Proses/i })
+                .getByRole('button', {
+                    name: /Batalkan|Konfirmasi|Ya|Kirim|Proses/i,
+                })
                 .last()
                 .click();
             await page.waitForLoadState('networkidle');
@@ -108,7 +114,9 @@ test.describe('Admin — Monitoring Pengembalian Dana (Read-Only)', () => {
 
             // Heading utama di dalam <main>
             await expect(
-                page.getByRole('main').getByRole('heading', { name: 'Pengembalian Dana' }),
+                page
+                    .getByRole('main')
+                    .getByRole('heading', { name: 'Pengembalian Dana' }),
             ).toBeVisible();
 
             // Pastikan card refund dengan kode booking tersebut tampil
@@ -117,12 +125,16 @@ test.describe('Admin — Monitoring Pengembalian Dana (Read-Only)', () => {
                 .filter({ hasText: booking.kode })
                 .first();
             await expect(refundCard).toBeVisible();
-            await expect(refundCard.getByText('Butuh Tindakan Mitra')).toBeVisible();
+            await expect(
+                refundCard.getByText('Butuh Tindakan Mitra'),
+            ).toBeVisible();
 
             // Verifikasi strict read-only: tidak ada tombol Setujui / Tolak / Approve / Reject
             const mainArea = page.getByRole('main');
             await expect(
-                mainArea.getByRole('button', { name: /Setujui|Tolak|Approve|Reject/i }),
+                mainArea.getByRole('button', {
+                    name: /Setujui|Tolak|Approve|Reject/i,
+                }),
             ).toHaveCount(0);
 
             // Uji link ke detail pesanan (/admin/bookings/{id}) tersedia di card
@@ -143,7 +155,9 @@ test.describe('Admin — Monitoring Pengembalian Dana (Read-Only)', () => {
             await expect(refundCard).toBeVisible();
 
             // Uji Hapus Semua Filter
-            await page.getByRole('button', { name: 'Hapus semua filter' }).click();
+            await page
+                .getByRole('button', { name: 'Hapus semua filter' })
+                .click();
             await expect(searchInput).toHaveValue('');
         });
     });

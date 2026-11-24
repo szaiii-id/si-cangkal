@@ -5,8 +5,14 @@ import FilterBar from '../FilterBar.svelte';
 // ==========================================
 // MOCK CHILD COMPONENTS (Mengarah ke folder __mocks__)
 // ==========================================
-vi.mock('@/global/SearchInput.svelte', () => import('../__mocks__/SearchInput.svelte'));
-vi.mock('@/global/StatusTabs.svelte', () => import('../__mocks__/StatusTabs.svelte'));
+vi.mock(
+    '@/global/SearchInput.svelte',
+    () => import('../__mocks__/SearchInput.svelte'),
+);
+vi.mock(
+    '@/global/StatusTabs.svelte',
+    () => import('../__mocks__/StatusTabs.svelte'),
+);
 
 describe('FilterBar Component', () => {
     beforeEach(() => {
@@ -18,13 +24,18 @@ describe('FilterBar Component', () => {
     // ==========================================
     describe('Rendering', () => {
         it('harus merender SearchInput jika onSearch diberikan', () => {
-            render(FilterBar, { props: { onClear: vi.fn(), onSearch: vi.fn() } });
+            render(FilterBar, {
+                props: { onClear: vi.fn(), onSearch: vi.fn() },
+            });
             expect(screen.getByTestId('search-input')).toBeInTheDocument();
         });
 
         it('harus merender StatusTabs jika statusTabs diberikan', () => {
             render(FilterBar, {
-                props: { onClear: vi.fn(), statusTabs: [{ value: '', label: 'Semua' }] },
+                props: {
+                    onClear: vi.fn(),
+                    statusTabs: [{ value: '', label: 'Semua' }],
+                },
             });
             expect(screen.getByTestId('status-tabs')).toBeInTheDocument();
         });
@@ -40,7 +51,9 @@ describe('FilterBar Component', () => {
         });
 
         it('harus menampilkan tombol "Filter Tanggal" jika showDateRange=true', () => {
-            render(FilterBar, { props: { onClear: vi.fn(), showDateRange: true } });
+            render(FilterBar, {
+                props: { onClear: vi.fn(), showDateRange: true },
+            });
             expect(screen.getByText('Filter Tanggal')).toBeInTheDocument();
         });
     });
@@ -74,12 +87,14 @@ describe('FilterBar Component', () => {
     // ==========================================
     describe('Date Range', () => {
         it('harus membuka panel tanggal saat tombol "Filter Tanggal" diklik', async () => {
-            render(FilterBar, { props: { onClear: vi.fn(), showDateRange: true } });
+            render(FilterBar, {
+                props: { onClear: vi.fn(), showDateRange: true },
+            });
 
             expect(screen.queryByLabelText('Dari')).not.toBeInTheDocument();
 
             await fireEvent.click(screen.getByText('Filter Tanggal'));
-            
+
             expect(screen.getByLabelText('Dari')).toBeInTheDocument();
             expect(screen.getByLabelText('Sampai')).toBeInTheDocument();
         });
@@ -99,7 +114,9 @@ describe('FilterBar Component', () => {
 
             const applyBtn = screen.getByText('Terapkan');
             expect(applyBtn).toBeDisabled();
-            expect(screen.getByText(/tidak boleh lebih besar/i)).toBeInTheDocument();
+            expect(
+                screen.getByText(/tidak boleh lebih besar/i),
+            ).toBeInTheDocument();
         });
 
         it('harus memanggil onApplyDate jika rentang valid', async () => {
@@ -126,8 +143,12 @@ describe('FilterBar Component', () => {
     // ==========================================
     describe('Clear All Filters', () => {
         it('TIDAK boleh merender tombol "Hapus Semua" jika hasActiveFilters=false', () => {
-            render(FilterBar, { props: { onClear: vi.fn(), hasActiveFilters: false } });
-            expect(screen.queryByText('Hapus Semua Filter')).not.toBeInTheDocument();
+            render(FilterBar, {
+                props: { onClear: vi.fn(), hasActiveFilters: false },
+            });
+            expect(
+                screen.queryByText('Hapus Semua Filter'),
+            ).not.toBeInTheDocument();
         });
 
         it('harus memanggil onClear saat tombol "Hapus Semua" diklik', async () => {

@@ -58,7 +58,13 @@ vi.mock('@/utils/enums', () => ({
 // 4. MOCK — BOOKING RULES & COUNTDOWN
 // ============================================================
 vi.mock('@/utils/bookingRules', () => ({
-    BOOKING_STATUS_ORDER: ['pending_payment', 'payment_verified', 'confirmed', 'completed', 'cancelled'],
+    BOOKING_STATUS_ORDER: [
+        'pending_payment',
+        'payment_verified',
+        'confirmed',
+        'completed',
+        'cancelled',
+    ],
     isPendingPayment: vi.fn((s: string) => s === 'pending_payment'),
 }));
 
@@ -77,7 +83,9 @@ vi.mock('@/utils/countdown', () => ({
 // 5. MOCK — FORMAT HELPERS
 // ============================================================
 vi.mock('@/utils/formatCurrency', () => ({
-    formatCurrency: vi.fn((v: string | number) => `Rp ${Number(v).toLocaleString('id-ID')}`),
+    formatCurrency: vi.fn(
+        (v: string | number) => `Rp ${Number(v).toLocaleString('id-ID')}`,
+    ),
 }));
 
 vi.mock('@/utils/formatDate', () => ({
@@ -95,7 +103,10 @@ vi.mock('@/components/layout/ClientLayout.svelte', () => ({
 }));
 
 vi.mock('@/global/Pagination.svelte', () => ({
-    default: (anchor: Node, props: { meta: { total: number }; label: string }) => {
+    default: (
+        anchor: Node,
+        props: { meta: { total: number }; label: string },
+    ) => {
         const el = document.createElement('div');
         el.setAttribute('data-testid', 'pagination');
         el.textContent = `Total ${props.meta.total} ${props.label}`;
@@ -116,7 +127,12 @@ const makeBooking = (overrides = {}) => ({
     total_harga: '1500000',
     expired_at: '2026-01-20T12:00:00Z',
     created_at: '2026-01-15T10:00:00Z',
-    package: { id: 1, nama: 'Paket Bali', kode: 'PKT-001', timezone: 'Asia/Jakarta' },
+    package: {
+        id: 1,
+        nama: 'Paket Bali',
+        kode: 'PKT-001',
+        timezone: 'Asia/Jakarta',
+    },
     client: { id: 1, name: 'Budi', email: 'budi@test.com' },
     ...overrides,
 });
@@ -177,9 +193,13 @@ describe('Client Bookings — Index Page', () => {
     describe('Rendering — Header', () => {
         it('menampilkan judul & deskripsi', () => {
             renderPage();
-            expect(screen.getByRole('heading', { level: 1, name: 'Pesanan Saya' })).toBeInTheDocument();
             expect(
-                screen.getByText('Pantau status perjalanan dan unduh e-ticket Anda di sini.'),
+                screen.getByRole('heading', { level: 1, name: 'Pesanan Saya' }),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByText(
+                    'Pantau status perjalanan dan unduh e-ticket Anda di sini.',
+                ),
             ).toBeInTheDocument();
         });
     });
@@ -194,7 +214,7 @@ describe('Client Bookings — Index Page', () => {
                 pending_payment: 2,
                 confirmed: 1,
             });
-            
+
             const allTab = screen.getByRole('button', { name: /Semua 3/i });
             expect(allTab).toBeInTheDocument();
         });
@@ -204,19 +224,27 @@ describe('Client Bookings — Index Page', () => {
                 ...DEFAULT_STATUS_COUNTS,
                 pending_payment: 1,
             });
-            expect(screen.getByRole('button', { name: /Menunggu 1/i })).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: /Menunggu 1/i }),
+            ).toBeInTheDocument();
         });
 
         it('tab status aktif diberi class bg-dark', () => {
-            renderPage(makeBookings([makeBooking()]), {
-                ...DEFAULT_FILTERS,
-                status: 'pending_payment',
-            }, {
-                ...DEFAULT_STATUS_COUNTS,
-                pending_payment: 1,
+            renderPage(
+                makeBookings([makeBooking()]),
+                {
+                    ...DEFAULT_FILTERS,
+                    status: 'pending_payment',
+                },
+                {
+                    ...DEFAULT_STATUS_COUNTS,
+                    pending_payment: 1,
+                },
+            );
+
+            const activeTab = screen.getByRole('button', {
+                name: /Menunggu 1/i,
             });
-            
-            const activeTab = screen.getByRole('button', { name: /Menunggu 1/i });
             expect(activeTab).toHaveClass('bg-dark');
         });
     });
@@ -228,7 +256,9 @@ describe('Client Bookings — Index Page', () => {
         it('menampilkan input search dengan placeholder', () => {
             renderPage();
             expect(
-                screen.getByPlaceholderText('Cari kode pesanan atau nama paket...'),
+                screen.getByPlaceholderText(
+                    'Cari kode pesanan atau nama paket...',
+                ),
             ).toBeInTheDocument();
         });
 
@@ -237,12 +267,16 @@ describe('Client Bookings — Index Page', () => {
                 ...DEFAULT_FILTERS,
                 search: 'bali',
             });
-            expect(screen.getByLabelText('Hapus pencarian')).toBeInTheDocument();
+            expect(
+                screen.getByLabelText('Hapus pencarian'),
+            ).toBeInTheDocument();
         });
 
         it('TIDAK menampilkan tombol "Hapus pencarian" jika search kosong', () => {
             renderPage();
-            expect(screen.queryByLabelText('Hapus pencarian')).not.toBeInTheDocument();
+            expect(
+                screen.queryByLabelText('Hapus pencarian'),
+            ).not.toBeInTheDocument();
         });
     });
 
@@ -252,7 +286,7 @@ describe('Client Bookings — Index Page', () => {
     describe('Rendering — Booking Card', () => {
         it('menampilkan data booking di card', () => {
             renderPage();
-            
+
             expect(screen.getByText('BK-001')).toBeInTheDocument();
             expect(screen.getByText('Paket Bali')).toBeInTheDocument();
             expect(screen.getByText('2 orang')).toBeInTheDocument();
@@ -271,7 +305,9 @@ describe('Client Bookings — Index Page', () => {
 
         it('menampilkan countdown jika status pending_payment & expired_at ada', () => {
             renderPage();
-            expect(screen.getByText(/Sisa waktu: 1 jam 30 menit/i)).toBeInTheDocument();
+            expect(
+                screen.getByText(/Sisa waktu: 1 jam 30 menit/i),
+            ).toBeInTheDocument();
         });
 
         it('TIDAK menampilkan countdown jika status bukan pending_payment', () => {
@@ -286,19 +322,27 @@ describe('Client Bookings — Index Page', () => {
     describe('Rendering — Empty State', () => {
         it('menampilkan empty state default saat data kosong', () => {
             renderPage(makeBookings([]));
-            
+
             expect(screen.getByText('Belum ada pesanan')).toBeInTheDocument();
             expect(
-                screen.getByText('Mulai jelajahi paket wisata dan buat pesanan pertama Anda.'),
+                screen.getByText(
+                    'Mulai jelajahi paket wisata dan buat pesanan pertama Anda.',
+                ),
             ).toBeInTheDocument();
-            expect(screen.getByRole('link', { name: /Cari Paket Wisata/i })).toBeInTheDocument();
+            expect(
+                screen.getByRole('link', { name: /Cari Paket Wisata/i }),
+            ).toBeInTheDocument();
         });
 
         it('menampilkan empty state filter saat ada active filters', () => {
             renderPage(makeBookings([]), { ...DEFAULT_FILTERS, search: 'xyz' });
-            
-            expect(screen.getByText('Tidak ada pesanan ditemukan')).toBeInTheDocument();
-            expect(screen.getByRole('button', { name: 'Hapus Filter' })).toBeInTheDocument();
+
+            expect(
+                screen.getByText('Tidak ada pesanan ditemukan'),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: 'Hapus Filter' }),
+            ).toBeInTheDocument();
         });
     });
 
@@ -308,21 +352,25 @@ describe('Client Bookings — Index Page', () => {
     describe('Interaction — Search Debounce', () => {
         it('tidak memanggil router.get sebelum 300ms', async () => {
             renderPage();
-            
-            const input = screen.getByPlaceholderText('Cari kode pesanan atau nama paket...');
+
+            const input = screen.getByPlaceholderText(
+                'Cari kode pesanan atau nama paket...',
+            );
             await fireEvent.input(input, { target: { value: 'bali' } });
-            
+
             expect(mockRouterGet).not.toHaveBeenCalled();
         });
 
         it('memanggil router.get setelah 300ms dengan payload benar', async () => {
             renderPage();
-            
-            const input = screen.getByPlaceholderText('Cari kode pesanan atau nama paket...');
+
+            const input = screen.getByPlaceholderText(
+                'Cari kode pesanan atau nama paket...',
+            );
             await fireEvent.input(input, { target: { value: 'bali' } });
-            
+
             await vi.advanceTimersByTimeAsync(300);
-            
+
             expect(mockRouterGet).toHaveBeenCalledOnce();
             expect(mockRouterGet).toHaveBeenCalledWith(
                 '/client/bookings',
@@ -338,9 +386,11 @@ describe('Client Bookings — Index Page', () => {
     describe('Interaction — Status Change', () => {
         it('klik tab status memanggil router.get dengan status', async () => {
             renderPage();
-            
-            await fireEvent.click(screen.getByRole('button', { name: /Menunggu 1/i }));
-            
+
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Menunggu 1/i }),
+            );
+
             expect(mockRouterGet).toHaveBeenCalledWith(
                 '/client/bookings',
                 expect.objectContaining({ status: 'pending_payment' }),
@@ -354,13 +404,16 @@ describe('Client Bookings — Index Page', () => {
     // ----------------------------------------------------------
     describe('Interaction — Clear Filters', () => {
         it('klik "Hapus pencarian" mereset search', async () => {
-            renderPage(makeBookings([makeBooking()]), { ...DEFAULT_FILTERS, search: 'bali' });
-            
+            renderPage(makeBookings([makeBooking()]), {
+                ...DEFAULT_FILTERS,
+                search: 'bali',
+            });
+
             await fireEvent.click(screen.getByLabelText('Hapus pencarian'));
-            
+
             // Memicu handleSearch('') → debounce 300ms
             await vi.advanceTimersByTimeAsync(300);
-            
+
             expect(mockRouterGet).toHaveBeenCalledWith(
                 '/client/bookings',
                 expect.objectContaining({ search: '' }),
@@ -370,9 +423,11 @@ describe('Client Bookings — Index Page', () => {
 
         it('klik "Hapus Filter" memanggil router.get dengan payload kosong', async () => {
             renderPage(makeBookings([]), { ...DEFAULT_FILTERS, search: 'xyz' });
-            
-            await fireEvent.click(screen.getByRole('button', { name: 'Hapus Filter' }));
-            
+
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Hapus Filter' }),
+            );
+
             expect(mockRouterGet).toHaveBeenCalledWith(
                 '/client/bookings',
                 {},
@@ -387,7 +442,9 @@ describe('Client Bookings — Index Page', () => {
     describe('Rendering — Pagination', () => {
         it('merender pagination saat data ada', () => {
             renderPage();
-            expect(screen.getByTestId('pagination')).toHaveTextContent('Total 1 pesanan');
+            expect(screen.getByTestId('pagination')).toHaveTextContent(
+                'Total 1 pesanan',
+            );
         });
 
         it('TIDAK merender pagination saat data kosong', () => {

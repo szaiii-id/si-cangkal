@@ -141,7 +141,9 @@ describe('isTodayInTimezone', () => {
         vi.useFakeTimers();
         vi.setSystemTime(new Date('2026-10-17T10:00:00Z'));
 
-        expect(isTodayInTimezone('2026-10-17T00:00:00.000Z', 'Asia/Makassar')).toBe(true);
+        expect(
+            isTodayInTimezone('2026-10-17T00:00:00.000Z', 'Asia/Makassar'),
+        ).toBe(true);
     });
 });
 
@@ -203,19 +205,29 @@ describe('isDateInRange', () => {
     });
 
     it('mengembalikan true jika tanggal di dalam range', () => {
-        expect(isDateInRange('2026-10-18', '2026-10-17', '2026-10-20')).toBe(true);
+        expect(isDateInRange('2026-10-18', '2026-10-17', '2026-10-20')).toBe(
+            true,
+        );
     });
 
     it('mengembalikan true jika tanggal = start (inklusif)', () => {
-        expect(isDateInRange('2026-10-17', '2026-10-17', '2026-10-20')).toBe(true);
+        expect(isDateInRange('2026-10-17', '2026-10-17', '2026-10-20')).toBe(
+            true,
+        );
     });
 
     it('mengembalikan true jika tanggal = end (inklusif)', () => {
-        expect(isDateInRange('2026-10-20', '2026-10-17', '2026-10-20')).toBe(true);
+        expect(isDateInRange('2026-10-20', '2026-10-17', '2026-10-20')).toBe(
+            true,
+        );
     });
 
     it('mengembalikan false jika tanggal di luar range', () => {
-        expect(isDateInRange('2026-10-16', '2026-10-17', '2026-10-20')).toBe(false);
-        expect(isDateInRange('2026-10-21', '2026-10-17', '2026-10-20')).toBe(false);
+        expect(isDateInRange('2026-10-16', '2026-10-17', '2026-10-20')).toBe(
+            false,
+        );
+        expect(isDateInRange('2026-10-21', '2026-10-17', '2026-10-20')).toBe(
+            false,
+        );
     });
 });

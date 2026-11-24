@@ -48,15 +48,21 @@ describe('ForgotPassword Page', () => {
         it('harus merender judul "Pemulihan" dan form email', () => {
             render(ForgotPassword);
 
-            expect(screen.getByRole('heading', { name: /Pemulihan/i })).toBeInTheDocument();
+            expect(
+                screen.getByRole('heading', { name: /Pemulihan/i }),
+            ).toBeInTheDocument();
             expect(screen.getByLabelText('Alamat Email')).toBeInTheDocument();
-            expect(screen.getByRole('button', { name: /Kirim Tautan Pemulihan/i })).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: /Kirim Tautan Pemulihan/i }),
+            ).toBeInTheDocument();
         });
 
         it('harus merender tautan "Kembali ke Login"', () => {
             render(ForgotPassword);
 
-            expect(screen.getByRole('link', { name: /Kembali ke Login/i })).toHaveAttribute('href', '/login');
+            expect(
+                screen.getByRole('link', { name: /Kembali ke Login/i }),
+            ).toHaveAttribute('href', '/login');
         });
     });
 
@@ -75,7 +81,7 @@ describe('ForgotPassword Page', () => {
 
             expect(forgotPassword).toHaveBeenCalledWith(
                 { email: 'budi@test.com' },
-                expect.any(Object)
+                expect.any(Object),
             );
         });
     });
@@ -98,7 +104,9 @@ describe('ForgotPassword Page', () => {
             await fireEvent.submit(document.querySelector('form')!);
 
             await waitFor(() => {
-                expect(screen.getByText('Email tidak terdaftar')).toBeInTheDocument();
+                expect(
+                    screen.getByText('Email tidak terdaftar'),
+                ).toBeInTheDocument();
             });
         });
 
@@ -122,10 +130,16 @@ describe('ForgotPassword Page', () => {
         });
 
         it('harus menampilkan flash error global', () => {
-            mockPage.props.flash = { status: null, error: 'Terlalu banyak percobaan', retry_after: null };
+            mockPage.props.flash = {
+                status: null,
+                error: 'Terlalu banyak percobaan',
+                retry_after: null,
+            };
             render(ForgotPassword);
 
-            expect(screen.getByRole('alert')).toHaveTextContent('Terlalu banyak percobaan');
+            expect(screen.getByRole('alert')).toHaveTextContent(
+                'Terlalu banyak percobaan',
+            );
         });
     });
 
@@ -134,10 +148,16 @@ describe('ForgotPassword Page', () => {
     // ==========================================
     describe('Flash Success', () => {
         it('harus menampilkan flash status sukses', () => {
-            mockPage.props.flash = { status: 'Tautan pemulihan telah dikirim', error: null, retry_after: null };
+            mockPage.props.flash = {
+                status: 'Tautan pemulihan telah dikirim',
+                error: null,
+                retry_after: null,
+            };
             render(ForgotPassword);
 
-            expect(screen.getByRole('status')).toHaveTextContent('Tautan pemulihan telah dikirim');
+            expect(screen.getByRole('status')).toHaveTextContent(
+                'Tautan pemulihan telah dikirim',
+            );
         });
     });
 
@@ -155,7 +175,9 @@ describe('ForgotPassword Page', () => {
             });
             await fireEvent.submit(document.querySelector('form')!);
 
-            expect(screen.getByRole('button', { name: /Mengirim Tautan/i })).toBeDisabled();
+            expect(
+                screen.getByRole('button', { name: /Mengirim Tautan/i }),
+            ).toBeDisabled();
         });
     });
 
@@ -164,11 +186,17 @@ describe('ForgotPassword Page', () => {
     // ==========================================
     describe('Countdown (Rate Limit)', () => {
         it('harus mengunci tombol selama hitung mundur', async () => {
-            mockPage.props.flash = { status: null, error: null, retry_after: 3 };
+            mockPage.props.flash = {
+                status: null,
+                error: null,
+                retry_after: 3,
+            };
             render(ForgotPassword);
             await tick();
 
-            const submitBtn = screen.getByRole('button', { name: /Tunggu 3 detik/i });
+            const submitBtn = screen.getByRole('button', {
+                name: /Tunggu 3 detik/i,
+            });
             expect(submitBtn).toBeDisabled();
 
             await vi.advanceTimersByTimeAsync(1000);
@@ -195,7 +223,11 @@ describe('ForgotPassword Page', () => {
         });
 
         it('flash status sukses harus memiliki role="status"', () => {
-            mockPage.props.flash = { status: 'Sukses', error: null, retry_after: null };
+            mockPage.props.flash = {
+                status: 'Sukses',
+                error: null,
+                retry_after: null,
+            };
             render(ForgotPassword);
 
             const status = screen.getByRole('status');
@@ -203,7 +235,11 @@ describe('ForgotPassword Page', () => {
         });
 
         it('flash error harus memiliki role="alert"', () => {
-            mockPage.props.flash = { status: null, error: 'Gagal', retry_after: null };
+            mockPage.props.flash = {
+                status: null,
+                error: 'Gagal',
+                retry_after: null,
+            };
             render(ForgotPassword);
 
             const alert = screen.getByRole('alert');
@@ -225,7 +261,11 @@ describe('ForgotPassword Page', () => {
 
             await waitFor(() => {
                 const alerts = screen.getAllByRole('alert');
-                expect(alerts.some(alert => alert.textContent?.includes('Error validasi'))).toBe(true);
+                expect(
+                    alerts.some((alert) =>
+                        alert.textContent?.includes('Error validasi'),
+                    ),
+                ).toBe(true);
             });
         });
     });

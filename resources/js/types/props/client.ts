@@ -139,10 +139,7 @@ export type ClientCatalogIndexProps = {
     packages: PaginationMeta & {
         data: Array<
             PackageEloquent & {
-                mitra: Pick<
-                    User,
-                    'id' | 'name' | 'email'
-                > | null;
+                mitra: Pick<User, 'id' | 'name' | 'email'> | null;
             }
         >;
     };
@@ -160,9 +157,11 @@ export type ClientCatalogIndexProps = {
  */
 export type ClientCatalogShowProps = {
     package: PackageEloquent & {
-        mitra: (Pick<User, 'id' | 'name' | 'email'> & {
-            profile?: Profile | null;
-        }) | null;
+        mitra:
+            | (Pick<User, 'id' | 'name' | 'email'> & {
+                  profile?: Profile | null;
+              })
+            | null;
         days: PackageDay[];
         facilities: PackageFacility[];
     };

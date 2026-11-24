@@ -2,20 +2,23 @@
 
 namespace App\Services\Notification;
 
+use App\Jobs\SendPushNotificationJob;
 use App\Models\User;
-use App\Services\Notification\Contracts\FirebaseNotificationServiceInterface;
 use App\Services\Notification\Contracts\NotificationDispatcherInterface;
 use App\Services\Notification\Contracts\NotificationServiceInterface;
-use Illuminate\Support\Facades\Log;
 
 final class NotificationDispatcher implements NotificationDispatcherInterface
 {
     public function __construct(
         private readonly NotificationServiceInterface $notificationService,
-        private readonly FirebaseNotificationServiceInterface $firebaseNotificationService,
     ) {}
 
     /**
+     * Buat notifikasi in-app (sinkron) lalu antrekan push FCM.
+     *
+     * Push sengaja dijadikan job agar request user tidak menunggu I/O
+     * Firebase. Transaksi pemanggil juga tidak ikut gagal bila FCM down.
+     *
      * @param  array<string, mixed>  $data
      */
     public function send(
@@ -53,22 +56,13 @@ final class NotificationDispatcher implements NotificationDispatcherInterface
             $fcmData[$keyString] = (string) $value;
         }
 
-        $fcmData['tipe'] = $tipe;
-
-        try {
-            $this->firebaseNotificationService->sendToDevice(
-                deviceToken: $user->fcm_token,
-                title: $judul,
-                body: $pesan,
-                data: $fcmData,
-            );
-        } catch (\Throwable $e) {
-            Log::warning('NotificationDispatcher: gagal push FCM', [
-                'user_id' => $user->id,
-                'tipe' => $tipe,
-                'error' => $e->getMessage(),
-            ]);
-        }
+        SendPushNotificationJob::dispatch(
+            userId: $user->id,
+            tipe: $tipe,
+            judul: $judul,
+            pesan: $pesan,
+            data: $fcmData,
+        );
     }
 
     /**
@@ -104,11 +98,13 @@ final class NotificationDispatcher implements NotificationDispatcherInterface
                 ? "/{$role}/refunds"
                 : "/{$role}/refunds",
 
+            // Trip tidak punya halaman detail untuk semua role. Bila ada
+            // booking_id, arahkan ke detail booking yang pasti ada.
             'trip_started',
             'trip_completed',
             'trip_reminder' => $bookingId
-                ? "/{$role}/trips"
-                : "/{$role}/trips",
+                ? "/{$role}/bookings/{$bookingId}"
+                : ($role === 'client' ? '/client/bookings' : "/{$role}/trips"),
 
             'mitra_registered' => '/admin/mitras',
 

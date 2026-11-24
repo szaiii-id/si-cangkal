@@ -16,7 +16,9 @@ describe('Alert Component (Refactored)', () => {
             });
 
             expect(screen.getByText('Berhasil!')).toBeInTheDocument();
-            expect(screen.getByText('Data Anda telah disimpan.')).toBeInTheDocument();
+            expect(
+                screen.getByText('Data Anda telah disimpan.'),
+            ).toBeInTheDocument();
         });
 
         it('harus menerapkan warna (variant) error dengan benar', () => {
@@ -65,7 +67,9 @@ describe('Alert Component (Refactored)', () => {
     describe('User Interaction', () => {
         it('TIDAK boleh menampilkan tombol tutup jika dismissible=false', () => {
             render(Alert, { props: { message: 'Pesan', dismissible: false } });
-            const closeButton = screen.queryByRole('button', { name: /tutup/i });
+            const closeButton = screen.queryByRole('button', {
+                name: /tutup/i,
+            });
             expect(closeButton).not.toBeInTheDocument();
         });
 
@@ -99,7 +103,7 @@ describe('Alert Component (Refactored)', () => {
             expect(alertDiv).toHaveClass('bg-blue-50');
 
             await rerender({ variant: 'warning', message: 'Info' });
-            
+
             alertDiv = screen.getByRole('alert');
             expect(alertDiv).toHaveClass('bg-yellow-50');
         });

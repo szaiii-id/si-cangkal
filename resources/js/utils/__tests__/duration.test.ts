@@ -75,10 +75,10 @@ describe('hitungDurasiHari', () => {
     it('menghitung durasi inklusif dengan benar', () => {
         // 1 hari (tanggal sama)
         expect(hitungDurasiHari('2026-10-17', '2026-10-17')).toBe(1);
-        
+
         // 2 hari (selisih 1 hari)
         expect(hitungDurasiHari('2026-10-17', '2026-10-18')).toBe(2);
-        
+
         // 3 hari (selisih 2 hari)
         expect(hitungDurasiHari('2026-10-17', '2026-10-19')).toBe(3);
     });
@@ -86,10 +86,10 @@ describe('hitungDurasiHari', () => {
     it('menghitung lintas bulan dan tahun dengan benar', () => {
         // Lintas bulan: 31 Okt - 2 Nov = 3 hari (31 Okt, 1 Nov, 2 Nov)
         expect(hitungDurasiHari('2026-10-31', '2026-11-02')).toBe(3);
-        
+
         // Lintas tahun: 31 Des 2026 - 2 Jan 2027 = 3 hari
         expect(hitungDurasiHari('2026-12-31', '2027-01-02')).toBe(3);
-        
+
         // Tahun kabisat: 28 Feb - 1 Mar 2028 (2028 kabisat) = 3 hari
         expect(hitungDurasiHari('2028-02-28', '2028-03-01')).toBe(3);
     });
@@ -127,7 +127,9 @@ describe('formatDurasiFromRange', () => {
     });
 
     it('menghasilkan format ringkas yang benar', () => {
-        expect(formatDurasiFromRange('2026-10-17', '2026-10-17')).toBe('1 Hari');
+        expect(formatDurasiFromRange('2026-10-17', '2026-10-17')).toBe(
+            '1 Hari',
+        );
         expect(formatDurasiFromRange('2026-10-17', '2026-10-18')).toBe('2D1N');
         expect(formatDurasiFromRange('2026-10-17', '2026-10-19')).toBe('3D2N');
     });
@@ -135,12 +137,12 @@ describe('formatDurasiFromRange', () => {
     it('konsisten dengan kombinasi hitungDurasiHari & hitungDurasiMalam', () => {
         const mulai = '2026-10-17';
         const selesai = '2026-10-20';
-        
+
         const hari = hitungDurasiHari(mulai, selesai);
         const malam = hitungDurasiMalam(mulai, selesai);
-        
+
         expect(formatDurasiFromRange(mulai, selesai)).toBe(
-            formatDurasi(hari, malam)
+            formatDurasi(hari, malam),
         );
     });
 });

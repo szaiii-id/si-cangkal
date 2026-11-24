@@ -142,6 +142,17 @@ final class TripRepository implements TripRepositoryInterface
     /**
      * {@inheritDoc}
      */
+    public function findByIdForUpdate(int $id): ?Trip
+    {
+        return Trip::query()
+            ->whereKey($id)
+            ->lockForUpdate()
+            ->first();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     public function findByKode(string $kode): ?Trip
     {
         return Trip::with(['package', 'booking.client', 'mitra', 'days.trip'])

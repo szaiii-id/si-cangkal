@@ -11,7 +11,7 @@ describe('Toast Notification System', () => {
     beforeEach(() => {
         // 1. Gunakan Fake Timers agar bisa mengontrol setTimeout()
         vi.useFakeTimers();
-        
+
         // 2. Bersihkan state sebelum setiap test
         dismissAllToasts();
     });
@@ -30,7 +30,7 @@ describe('Toast Notification System', () => {
             expect(getToasts()).toHaveLength(0);
 
             const id = showToast('Berhasil disimpan', 'success');
-            
+
             const toasts = getToasts();
             expect(toasts).toHaveLength(1);
             expect(toasts[0].id).toBe(id);
@@ -47,12 +47,12 @@ describe('Toast Notification System', () => {
 
             // Tambah toast
             showToast('Halo', 'info');
-            
+
             // Callback harus dipanggil dengan 1 toast
             expect(callback).toHaveBeenCalledWith(
                 expect.arrayContaining([
                     expect.objectContaining({ message: 'Halo' }),
-                ])
+                ]),
             );
 
             unsubscribe();
@@ -79,9 +79,9 @@ describe('Toast Notification System', () => {
             showToast('Toast 2', 'info');
 
             expect(getToasts()).toHaveLength(2);
-            
+
             dismissToast(id1);
-            
+
             expect(getToasts()).toHaveLength(1);
             expect(getToasts()[0].message).toBe('Toast 2');
         });
@@ -139,15 +139,15 @@ describe('Toast Notification System', () => {
             showToast('Toast 1', 'info');
             showToast('Toast 2', 'info');
             showToast('Toast 3', 'info');
-            
+
             expect(getToasts()).toHaveLength(3);
 
             // Tambah toast ke-4
             showToast('Toast 4', 'info');
-            
+
             const toasts = getToasts();
-            expect(toasts).toHaveLength(3); 
-            
+            expect(toasts).toHaveLength(3);
+
             // Toast terlama (Toast 1) harus terhapus, digantikan Toast 4
             expect(toasts[0].message).toBe('Toast 2');
             expect(toasts[2].message).toBe('Toast 4');

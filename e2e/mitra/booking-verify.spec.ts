@@ -27,8 +27,18 @@ test.describe('Mitra — Verifikasi Pembayaran Booking', () => {
             durasi_malam: 1,
             harga_per_orang: 500_000,
             days: [
-                { judul: 'Hari 1 Eksplorasi', jam_mulai: '08:00', jam_selesai: '16:00', lokasi: 'Loksado' },
-                { judul: 'Hari 2 Kepulangan', jam_mulai: '09:00', jam_selesai: '14:00', lokasi: 'Banjarmasin' },
+                {
+                    judul: 'Hari 1 Eksplorasi',
+                    jam_mulai: '08:00',
+                    jam_selesai: '16:00',
+                    lokasi: 'Loksado',
+                },
+                {
+                    judul: 'Hari 2 Kepulangan',
+                    jam_mulai: '09:00',
+                    jam_selesai: '14:00',
+                    lokasi: 'Banjarmasin',
+                },
             ],
             facilities: [
                 { tipe: 'include', nama: 'Transportasi & Makan' },
@@ -80,14 +90,21 @@ test.describe('Mitra — Verifikasi Pembayaran Booking', () => {
         await expect(mitraPage.rejectButton).toBeHidden();
 
         // Verifikasi notifikasi masuk ke client
-        const notifRes = await seed.latestNotification(page, SEED_USERS.client.email);
+        const notifRes = await seed.latestNotification(
+            page,
+            SEED_USERS.client.email,
+        );
         expect(notifRes.notification).not.toBeNull();
-        expect(notifRes.notification?.judul).toMatch(/Pembayaran.*Diterima|Booking.*Dikonfirmasi|Terverifikasi/i);
+        expect(notifRes.notification?.judul).toMatch(
+            /Pembayaran.*Diterima|Booking.*Dikonfirmasi|Terverifikasi/i,
+        );
 
         // Verifikasi E-Ticket sudah terbuat & dapat diunduh client
         await asClient();
         await clientPage.gotoShow(booking.booking_id);
-        await expect(SEL.CLIENT.booking.downloadETicket(page)).toBeVisible({ timeout: 10_000 });
+        await expect(SEL.CLIENT.booking.downloadETicket(page)).toBeVisible({
+            timeout: 10_000,
+        });
     });
 
     test('Booking pending tanpa proof → tombol Verify tidak muncul', async ({
@@ -157,7 +174,9 @@ test.describe('Mitra — Verifikasi Pembayaran Booking', () => {
         });
 
         await seed.login(page, otherMitraEmail, 'password123');
-        const response = await page.goto(`/mitra/bookings/${booking.booking_id}`);
+        const response = await page.goto(
+            `/mitra/bookings/${booking.booking_id}`,
+        );
         expect([403, 404]).toContain(response?.status());
     });
 });

@@ -71,22 +71,56 @@ vi.mock('@/components/mitra/bookings/ManualCustomerFields.svelte', () => ({
             `;
 
             // Bind input events ke props.form langsung
-            (el.querySelector('[aria-label="Nama Pelanggan"]') as HTMLInputElement).oninput = (e) => {
-                props.form.nama_pelanggan = (e.target as HTMLInputElement).value;
+            (
+                el.querySelector(
+                    '[aria-label="Nama Pelanggan"]',
+                ) as HTMLInputElement
+            ).oninput = (e) => {
+                props.form.nama_pelanggan = (
+                    e.target as HTMLInputElement
+                ).value;
             };
-            (el.querySelector('[aria-label="Email Pelanggan"]') as HTMLInputElement).oninput = (e) => {
-                props.form.email_pelanggan = (e.target as HTMLInputElement).value;
+            (
+                el.querySelector(
+                    '[aria-label="Email Pelanggan"]',
+                ) as HTMLInputElement
+            ).oninput = (e) => {
+                props.form.email_pelanggan = (
+                    e.target as HTMLInputElement
+                ).value;
             };
-            (el.querySelector('[aria-label="No HP Pelanggan"]') as HTMLInputElement).oninput = (e) => {
-                props.form.no_hp_pelanggan = (e.target as HTMLInputElement).value;
+            (
+                el.querySelector(
+                    '[aria-label="No HP Pelanggan"]',
+                ) as HTMLInputElement
+            ).oninput = (e) => {
+                props.form.no_hp_pelanggan = (
+                    e.target as HTMLInputElement
+                ).value;
             };
-            (el.querySelector('[aria-label="Tanggal Keberangkatan"]') as HTMLInputElement).oninput = (e) => {
-                props.form.tanggal_keberangkatan = (e.target as HTMLInputElement).value;
+            (
+                el.querySelector(
+                    '[aria-label="Tanggal Keberangkatan"]',
+                ) as HTMLInputElement
+            ).oninput = (e) => {
+                props.form.tanggal_keberangkatan = (
+                    e.target as HTMLInputElement
+                ).value;
             };
-            (el.querySelector('[aria-label="Jumlah Peserta"]') as HTMLInputElement).oninput = (e) => {
-                props.form.jumlah_peserta = Number((e.target as HTMLInputElement).value);
+            (
+                el.querySelector(
+                    '[aria-label="Jumlah Peserta"]',
+                ) as HTMLInputElement
+            ).oninput = (e) => {
+                props.form.jumlah_peserta = Number(
+                    (e.target as HTMLInputElement).value,
+                );
             };
-            (el.querySelector('[aria-label="Catatan"]') as HTMLTextAreaElement).oninput = (e) => {
+            (
+                el.querySelector(
+                    '[aria-label="Catatan"]',
+                ) as HTMLTextAreaElement
+            ).oninput = (e) => {
                 props.form.catatan = (e.target as HTMLTextAreaElement).value;
             };
         };
@@ -160,20 +194,26 @@ describe('Mitra Bookings — Create Manual Page', () => {
     describe('Rendering', () => {
         it('merender info paket di banner', () => {
             renderPage();
-            expect(screen.getByRole('heading', { name: 'Paket Bali' })).toBeInTheDocument();
+            expect(
+                screen.getByRole('heading', { name: 'Paket Bali' }),
+            ).toBeInTheDocument();
             expect(screen.getByText('Rp 750000 / orang')).toBeInTheDocument();
         });
 
         it('merender child components', () => {
             renderPage();
             expect(screen.getByTestId('customer-fields')).toBeInTheDocument();
-            expect(screen.getByTestId('participants-editor')).toBeInTheDocument();
+            expect(
+                screen.getByTestId('participants-editor'),
+            ).toBeInTheDocument();
             expect(screen.getByTestId('booking-summary')).toBeInTheDocument();
         });
 
         it('menampilkan harga rombongan jika tersedia', () => {
             renderPage(makePackage({ harga_per_rombongan: '5000000' }));
-            expect(screen.getByText('Rp 5000000 / rombongan')).toBeInTheDocument();
+            expect(
+                screen.getByText('Rp 5000000 / rombongan'),
+            ).toBeInTheDocument();
         });
     });
 
@@ -190,7 +230,9 @@ describe('Mitra Bookings — Create Manual Page', () => {
 
             await syncUI();
 
-            const submitBtn = screen.getByRole('button', { name: /Buat Pesanan Manual/i });
+            const submitBtn = screen.getByRole('button', {
+                name: /Buat Pesanan Manual/i,
+            });
             await fireEvent.click(submitBtn);
 
             expect(mockApi.createManualBooking).toHaveBeenCalledOnce();
@@ -204,7 +246,7 @@ describe('Mitra Bookings — Create Manual Page', () => {
                         expect.objectContaining({ nama: '' }),
                     ]),
                 }),
-                expect.any(Object)
+                expect.any(Object),
             );
         });
 
@@ -212,22 +254,30 @@ describe('Mitra Bookings — Create Manual Page', () => {
             mockApi.createManualBooking.mockImplementation(() => {});
             renderPage();
 
-            const submitBtn = screen.getByRole('button', { name: /Buat Pesanan Manual/i });
+            const submitBtn = screen.getByRole('button', {
+                name: /Buat Pesanan Manual/i,
+            });
             await fireEvent.click(submitBtn);
 
             await Promise.resolve();
-            expect(screen.getByRole('button', { name: /Menyimpan.../i })).toBeDisabled();
+            expect(
+                screen.getByRole('button', { name: /Menyimpan.../i }),
+            ).toBeDisabled();
         });
 
         it('menampilkan error jika onError dipanggil', async () => {
-            mockApi.createManualBooking.mockImplementation((_id, _data, opts) => {
-                opts.onError?.({ nama_pelanggan: 'Nama wajib diisi' });
-                opts.onFinish?.();
-            });
+            mockApi.createManualBooking.mockImplementation(
+                (_id, _data, opts) => {
+                    opts.onError?.({ nama_pelanggan: 'Nama wajib diisi' });
+                    opts.onFinish?.();
+                },
+            );
 
             renderPage();
 
-            const submitBtn = screen.getByRole('button', { name: /Buat Pesanan Manual/i });
+            const submitBtn = screen.getByRole('button', {
+                name: /Buat Pesanan Manual/i,
+            });
             await fireEvent.click(submitBtn);
             await syncUI();
 

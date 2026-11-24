@@ -82,7 +82,10 @@ vi.mock('@/global/BackButton.svelte', () => ({
 vi.mock('@/components/admin/trips/TripHeader.svelte', () => ({
     default: (
         anchor: Node,
-        props: { trip: { kode: string; status: string }; snapshot?: { nama?: string } },
+        props: {
+            trip: { kode: string; status: string };
+            snapshot?: { nama?: string };
+        },
     ) => {
         const el = document.createElement('div');
         el.setAttribute('data-testid', 'trip-header');
@@ -112,10 +115,7 @@ vi.mock('@/components/admin/trips/TripMitraCard.svelte', () => ({
     ) => {
         const el = document.createElement('div');
         el.setAttribute('data-testid', 'trip-mitra-card');
-        el.setAttribute(
-            'data-has-mitra',
-            props.mitra ? 'true' : 'false',
-        );
+        el.setAttribute('data-has-mitra', props.mitra ? 'true' : 'false');
         if (props.mitra) {
             el.textContent = `Mitra: ${props.mitra.name}`;
         } else {
@@ -196,9 +196,30 @@ const makeTrip = (overrides: Record<string, unknown> = {}) =>
             timezone: 'Asia/Jakarta',
         },
         days: [
-            { id: 1, hari_ke: 1, judul: 'Kedatangan', deskripsi: 'Arrive di Bali', tanggal: '2026-02-01', status: 'pending' },
-            { id: 2, hari_ke: 2, judul: 'Explore Ubud', deskripsi: 'Tour', tanggal: '2026-02-02', status: 'pending' },
-            { id: 3, hari_ke: 3, judul: 'Kembali', deskripsi: 'Check out', tanggal: '2026-02-03', status: 'pending' },
+            {
+                id: 1,
+                hari_ke: 1,
+                judul: 'Kedatangan',
+                deskripsi: 'Arrive di Bali',
+                tanggal: '2026-02-01',
+                status: 'pending',
+            },
+            {
+                id: 2,
+                hari_ke: 2,
+                judul: 'Explore Ubud',
+                deskripsi: 'Tour',
+                tanggal: '2026-02-02',
+                status: 'pending',
+            },
+            {
+                id: 3,
+                hari_ke: 3,
+                judul: 'Kembali',
+                deskripsi: 'Check out',
+                tanggal: '2026-02-03',
+                status: 'pending',
+            },
         ],
         ...overrides,
     }) as any;
@@ -379,7 +400,9 @@ describe('Admin Trips — Show Page', () => {
             const link = screen.getByRole('link', {
                 name: 'Lihat Detail Pesanan',
             });
-            expect(link.getAttribute('href')).toMatch(/^\/admin\/bookings\/\d+$/);
+            expect(link.getAttribute('href')).toMatch(
+                /^\/admin\/bookings\/\d+$/,
+            );
         });
     });
 

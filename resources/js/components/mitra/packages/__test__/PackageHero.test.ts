@@ -28,20 +28,24 @@ describe('PackageHero Component', () => {
 
         it('harus merender deskripsi jika ada', () => {
             render(PackageHero, { props: defaultProps });
-            expect(screen.getByText('Liburan seru di Bali')).toBeInTheDocument();
+            expect(
+                screen.getByText('Liburan seru di Bali'),
+            ).toBeInTheDocument();
         });
 
         it('harus merender gambar jika coverImage ada', () => {
             render(PackageHero, { props: defaultProps });
-            
+
             const img = screen.getByAltText('Sampul paket Paket Bali');
             expect(img).toBeInTheDocument();
             expect(img).toHaveAttribute('src', '/storage/cover.jpg');
         });
 
         it('TIDAK boleh merender gambar jika coverImage null', () => {
-            render(PackageHero, { props: { ...defaultProps, coverImage: null } });
-            
+            render(PackageHero, {
+                props: { ...defaultProps, coverImage: null },
+            });
+
             expect(screen.queryByRole('img')).not.toBeInTheDocument();
         });
     });
@@ -51,12 +55,16 @@ describe('PackageHero Component', () => {
     // ==========================================
     describe('Badges', () => {
         it('harus merender badge status', () => {
-            render(PackageHero, { props: { ...defaultProps, status: 'aktif' } });
+            render(PackageHero, {
+                props: { ...defaultProps, status: 'aktif' },
+            });
             expect(screen.getByText('Aktif')).toBeInTheDocument();
         });
 
         it('harus merender badge kategori', () => {
-            render(PackageHero, { props: { ...defaultProps, kategori: 'wisata_alam' } });
+            render(PackageHero, {
+                props: { ...defaultProps, kategori: 'wisata_alam' },
+            });
             expect(screen.getByText('Wisata Alam')).toBeInTheDocument();
         });
 
@@ -72,7 +80,7 @@ describe('PackageHero Component', () => {
     describe('Accessibility', () => {
         it('ikon SVG dekoratif harus disembunyikan dari screen reader', () => {
             const { container } = render(PackageHero, { props: defaultProps });
-            
+
             const svgs = container.querySelectorAll('svg');
             svgs.forEach((svg) => {
                 expect(svg).toHaveAttribute('aria-hidden', 'true');

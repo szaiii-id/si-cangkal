@@ -77,9 +77,15 @@ describe('DashboardLayout Component', () => {
     describe('Rendering', () => {
         it('harus merender judul halaman (title)', () => {
             render(DashboardLayout, {
-                props: { title: 'Dashboard Admin', menuItems: [], children: mockChildren },
+                props: {
+                    title: 'Dashboard Admin',
+                    menuItems: [],
+                    children: mockChildren,
+                },
             });
-            expect(screen.getByRole('heading', { name: 'Dashboard Admin' })).toBeInTheDocument();
+            expect(
+                screen.getByRole('heading', { name: 'Dashboard Admin' }),
+            ).toBeInTheDocument();
         });
 
         it('harus merender children (konten utama)', () => {
@@ -96,7 +102,9 @@ describe('DashboardLayout Component', () => {
             });
             expect(screen.getAllByText(/Budi/).length).toBeGreaterThan(0);
             expect(screen.getByText('@budi')).toBeInTheDocument();
-            expect(screen.getAllByText('budi@test.com').length).toBeGreaterThan(0);
+            expect(screen.getAllByText('budi@test.com').length).toBeGreaterThan(
+                0,
+            );
         });
 
         it('harus merender menu items di sidebar dan menandai menu aktif', () => {
@@ -121,12 +129,17 @@ describe('DashboardLayout Component', () => {
     // ==========================================
     describe('Flash Messages', () => {
         it('harus menampilkan flash status (sukses) jika ada', () => {
-            mockPage.props.flash = { status: 'Data berhasil disimpan', error: null };
+            mockPage.props.flash = {
+                status: 'Data berhasil disimpan',
+                error: null,
+            };
             render(DashboardLayout, {
                 props: { title: 'Test', menuItems: [], children: mockChildren },
             });
 
-            expect(screen.getByRole('status')).toHaveTextContent('Data berhasil disimpan');
+            expect(screen.getByRole('status')).toHaveTextContent(
+                'Data berhasil disimpan',
+            );
         });
 
         it('harus menampilkan flash error jika ada', () => {
@@ -135,7 +148,9 @@ describe('DashboardLayout Component', () => {
                 props: { title: 'Test', menuItems: [], children: mockChildren },
             });
 
-            expect(screen.getByRole('alert')).toHaveTextContent('Terjadi kesalahan');
+            expect(screen.getByRole('alert')).toHaveTextContent(
+                'Terjadi kesalahan',
+            );
         });
     });
 
@@ -148,7 +163,9 @@ describe('DashboardLayout Component', () => {
                 props: { title: 'Test', menuItems: [], children: mockChildren },
             });
 
-            const logoutBtn = screen.getByRole('button', { name: /Keluar dari akun/i });
+            const logoutBtn = screen.getByRole('button', {
+                name: /Keluar dari akun/i,
+            });
             await fireEvent.click(logoutBtn);
 
             expect(logout).toHaveBeenCalledTimes(1);
@@ -177,13 +194,17 @@ describe('DashboardLayout Component', () => {
             await fireEvent.click(openBtn);
 
             expect(openBtn).toHaveAttribute('aria-expanded', 'true');
-            const backdropBtn = screen.getByRole('button', { name: /Tutup sidebar/i });
+            const backdropBtn = screen.getByRole('button', {
+                name: /Tutup sidebar/i,
+            });
             expect(backdropBtn).toBeInTheDocument();
 
             await fireEvent.click(backdropBtn);
 
             expect(openBtn).toHaveAttribute('aria-expanded', 'false');
-            expect(screen.queryByRole('button', { name: /Tutup sidebar/i })).not.toBeInTheDocument();
+            expect(
+                screen.queryByRole('button', { name: /Tutup sidebar/i }),
+            ).not.toBeInTheDocument();
         });
     });
 
@@ -212,7 +233,9 @@ describe('DashboardLayout Component', () => {
 
             const notifLink = screen.getByRole('link', { name: 'Notifikasi' });
             expect(notifLink).toBeInTheDocument();
-            expect(notifLink.querySelector('.bg-red-600')).not.toBeInTheDocument();
+            expect(
+                notifLink.querySelector('.bg-red-600'),
+            ).not.toBeInTheDocument();
             expect(notifLink).not.toHaveTextContent(/belum dibaca/i);
         });
     });

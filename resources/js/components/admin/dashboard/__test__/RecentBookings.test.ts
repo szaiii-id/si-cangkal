@@ -31,12 +31,16 @@ describe('RecentBookings Component', () => {
     // ==========================================
     describe('Rendering', () => {
         it('harus merender judul "Pesanan Terbaru"', () => {
-            render(RecentBookings, { props: { bookings: [createMockBooking()] } });
+            render(RecentBookings, {
+                props: { bookings: [createMockBooking()] },
+            });
             expect(screen.getByText('Pesanan Terbaru')).toBeInTheDocument();
         });
 
         it('harus merender tautan "Lihat Semua"', () => {
-            render(RecentBookings, { props: { bookings: [createMockBooking()] } });
+            render(RecentBookings, {
+                props: { bookings: [createMockBooking()] },
+            });
 
             const link = screen.getByLabelText('Lihat semua pesanan');
             expect(link).toBeInTheDocument();
@@ -44,7 +48,9 @@ describe('RecentBookings Component', () => {
         });
 
         it('harus merender data pesanan (paket, client, status, total)', () => {
-            render(RecentBookings, { props: { bookings: [createMockBooking()] } });
+            render(RecentBookings, {
+                props: { bookings: [createMockBooking()] },
+            });
 
             expect(screen.getByText('Paket Bali')).toBeInTheDocument();
             expect(screen.getByText('Budi')).toBeInTheDocument();
@@ -58,7 +64,9 @@ describe('RecentBookings Component', () => {
     describe('Empty State', () => {
         it('harus menampilkan pesan kosong jika bookings kosong', () => {
             render(RecentBookings, { props: { bookings: [] } });
-            expect(screen.getByText('Belum ada pesanan terbaru saat ini.')).toBeInTheDocument();
+            expect(
+                screen.getByText('Belum ada pesanan terbaru saat ini.'),
+            ).toBeInTheDocument();
         });
     });
 
@@ -93,7 +101,9 @@ describe('RecentBookings Component', () => {
             render(RecentBookings, { props: { bookings: [] } });
 
             const emptyState = screen.getByRole('status');
-            expect(emptyState).toHaveTextContent('Belum ada pesanan terbaru saat ini.');
+            expect(emptyState).toHaveTextContent(
+                'Belum ada pesanan terbaru saat ini.',
+            );
         });
     });
 });

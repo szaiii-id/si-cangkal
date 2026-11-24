@@ -104,9 +104,13 @@ describe('CredentialsModal', () => {
             render(CredentialsModal, {
                 props: { open: true, credentials: makeCredentials() },
             });
-            expect(screen.getByText('Password hanya muncul 1x')).toBeInTheDocument();
             expect(
-                screen.getByText(/Jika hilang, Anda harus reset password lagi/i),
+                screen.getByText('Password hanya muncul 1x'),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByText(
+                    /Jika hilang, Anda harus reset password lagi/i,
+                ),
             ).toBeInTheDocument();
         });
 
@@ -151,9 +155,13 @@ describe('CredentialsModal', () => {
                 props: { open: true, credentials: makeCredentials() },
             });
 
-            expect(screen.getByRole('button', { name: /Salin Semua/i })).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: /Salin Semua/i }),
+            ).toBeInTheDocument();
             // ✅ FIX: Exact match — hindari bentrok dengan `aria-label="Tutup modal"` di backdrop
-            expect(screen.getByRole('button', { name: 'Tutup' })).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: 'Tutup' }),
+            ).toBeInTheDocument();
             expect(screen.getByLabelText('Salin email')).toBeInTheDocument();
             expect(screen.getByLabelText('Salin username')).toBeInTheDocument();
             expect(screen.getByLabelText('Salin password')).toBeInTheDocument();
@@ -172,7 +180,9 @@ describe('CredentialsModal', () => {
                 },
             });
             expect(screen.queryByText('Username')).not.toBeInTheDocument();
-            expect(screen.queryByLabelText('Salin username')).not.toBeInTheDocument();
+            expect(
+                screen.queryByLabelText('Salin username'),
+            ).not.toBeInTheDocument();
         });
 
         it('TIDAK render section username saat username="" (falsy)', () => {
@@ -230,7 +240,9 @@ describe('CredentialsModal', () => {
             render(CredentialsModal, {
                 props: { open: true, credentials: makeCredentials() },
             });
-            await fireEvent.click(screen.getByRole('button', { name: /Salin Semua/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Salin Semua/i }),
+            );
 
             const expectedText = [
                 'Role: admin',
@@ -250,7 +262,9 @@ describe('CredentialsModal', () => {
                     credentials: makeCredentials({ username: null }),
                 },
             });
-            await fireEvent.click(screen.getByRole('button', { name: /Salin Semua/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Salin Semua/i }),
+            );
 
             const expectedText = [
                 'Role: admin',
@@ -279,11 +293,15 @@ describe('CredentialsModal', () => {
             await fireEvent.click(copyBtn);
             await vi.advanceTimersByTimeAsync(0);
 
-            const checkmark = copyBtn.querySelector('svg path[d="M5 13l4 4L19 7"]');
+            const checkmark = copyBtn.querySelector(
+                'svg path[d="M5 13l4 4L19 7"]',
+            );
             expect(checkmark).toBeInTheDocument();
 
             await vi.advanceTimersByTimeAsync(2000);
-            expect(copyBtn.querySelector('svg path[d="M5 13l4 4L19 7"]')).not.toBeInTheDocument();
+            expect(
+                copyBtn.querySelector('svg path[d="M5 13l4 4L19 7"]'),
+            ).not.toBeInTheDocument();
         });
 
         it('setelah copy all, tombol berubah teks menjadi "Tersalin!"', async () => {
@@ -293,13 +311,19 @@ describe('CredentialsModal', () => {
                 props: { open: true, credentials: makeCredentials() },
             });
 
-            await fireEvent.click(screen.getByRole('button', { name: /Salin Semua/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Salin Semua/i }),
+            );
             await vi.advanceTimersByTimeAsync(0);
 
-            expect(screen.getByRole('button', { name: /Tersalin!/i })).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: /Tersalin!/i }),
+            ).toBeInTheDocument();
 
             await vi.advanceTimersByTimeAsync(2000);
-            expect(screen.getByRole('button', { name: /Salin Semua/i })).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: /Salin Semua/i }),
+            ).toBeInTheDocument();
         });
 
         it('copy field A lalu field B → hanya field B yang berubah', async () => {
@@ -318,8 +342,12 @@ describe('CredentialsModal', () => {
             const emailBtn = screen.getByLabelText('Salin email');
             const passwordBtn = screen.getByLabelText('Salin password');
 
-            expect(emailBtn.querySelector('svg path[d="M5 13l4 4L19 7"]')).not.toBeInTheDocument();
-            expect(passwordBtn.querySelector('svg path[d="M5 13l4 4L19 7"]')).toBeInTheDocument();
+            expect(
+                emailBtn.querySelector('svg path[d="M5 13l4 4L19 7"]'),
+            ).not.toBeInTheDocument();
+            expect(
+                passwordBtn.querySelector('svg path[d="M5 13l4 4L19 7"]'),
+            ).toBeInTheDocument();
         });
     });
 
@@ -333,7 +361,9 @@ describe('CredentialsModal', () => {
             });
 
             // ✅ FIX: exact match
-            await fireEvent.click(screen.getByRole('button', { name: 'Tutup' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Tutup' }),
+            );
 
             expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
         });
@@ -368,7 +398,9 @@ describe('CredentialsModal', () => {
             const dialog = screen.getByRole('dialog');
             const labelledBy = dialog.getAttribute('aria-labelledby');
             expect(labelledBy).toBe('credentials-modal-title');
-            expect(document.getElementById(labelledBy!)).toHaveTextContent('Kredensial User');
+            expect(document.getElementById(labelledBy!)).toHaveTextContent(
+                'Kredensial User',
+            );
         });
 
         it('backdrop punya aria-label "Tutup modal"', () => {
@@ -385,8 +417,12 @@ describe('CredentialsModal', () => {
             expect(screen.getByLabelText('Salin email')).toBeInTheDocument();
             expect(screen.getByLabelText('Salin username')).toBeInTheDocument();
             expect(screen.getByLabelText('Salin password')).toBeInTheDocument();
-            expect(screen.getByRole('button', { name: /Salin Semua/i })).toBeInTheDocument();
-            expect(screen.getByRole('button', { name: 'Tutup' })).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: /Salin Semua/i }),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: 'Tutup' }),
+            ).toBeInTheDocument();
         });
     });
 
@@ -423,22 +459,30 @@ describe('CredentialsModal', () => {
                     }),
                 },
             });
-            expect(screen.getByText(/Nama Yang Sangat Panjang/i)).toHaveClass('truncate');
+            expect(screen.getByText(/Nama Yang Sangat Panjang/i)).toHaveClass(
+                'truncate',
+            );
         });
 
         it('handle email dengan karakter khusus', () => {
             render(CredentialsModal, {
                 props: {
                     open: true,
-                    credentials: makeCredentials({ email: 'user+tag@sub.domain.co.id' }),
+                    credentials: makeCredentials({
+                        email: 'user+tag@sub.domain.co.id',
+                    }),
                 },
             });
-            expect(screen.getByText('user+tag@sub.domain.co.id')).toBeInTheDocument();
+            expect(
+                screen.getByText('user+tag@sub.domain.co.id'),
+            ).toBeInTheDocument();
         });
 
         // ✅ FIX: Handle unhandled rejection dengan try/catch + flush
         it('copyToClipboard error tidak crash UI', async () => {
-            writeTextMock.mockRejectedValueOnce(new Error('Clipboard unavailable'));
+            writeTextMock.mockRejectedValueOnce(
+                new Error('Clipboard unavailable'),
+            );
 
             render(CredentialsModal, {
                 props: { open: true, credentials: makeCredentials() },

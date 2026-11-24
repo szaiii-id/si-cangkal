@@ -6,7 +6,9 @@ import type { PaymentEloquent, PaymentResource } from '@/types/models';
 // ==========================================
 // MOCK DATA
 // ==========================================
-const createMockPaymentEloquent = (overrides: Partial<PaymentEloquent> = {}): PaymentEloquent => ({
+const createMockPaymentEloquent = (
+    overrides: Partial<PaymentEloquent> = {},
+): PaymentEloquent => ({
     id: 1,
     booking_id: 1,
     jumlah: '500000',
@@ -20,7 +22,9 @@ const createMockPaymentEloquent = (overrides: Partial<PaymentEloquent> = {}): Pa
     ...overrides,
 });
 
-const createMockPaymentResource = (overrides: Partial<PaymentResource> = {}): PaymentResource => ({
+const createMockPaymentResource = (
+    overrides: Partial<PaymentResource> = {},
+): PaymentResource => ({
     id: 1,
     jumlah: '500000',
     jumlahRupiah: 'Rp 500.000',
@@ -39,17 +43,23 @@ describe('PaymentHistory Component', () => {
     describe('Empty State', () => {
         it('harus menampilkan pesan default jika payments kosong', () => {
             render(PaymentHistory, { props: { payments: [] } });
-            
-            expect(screen.getByText('Belum ada pembayaran')).toBeInTheDocument();
-            expect(screen.getByText(/Status akan otomatis terupdate/i)).toBeInTheDocument();
+
+            expect(
+                screen.getByText('Belum ada pembayaran'),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByText(/Status akan otomatis terupdate/i),
+            ).toBeInTheDocument();
         });
 
         it('harus menampilkan pesan kustom jika emptyMessage diberikan', () => {
-            render(PaymentHistory, { 
-                props: { payments: [], emptyMessage: 'Tidak ada pembayaran.' } 
+            render(PaymentHistory, {
+                props: { payments: [], emptyMessage: 'Tidak ada pembayaran.' },
             });
-            
-            expect(screen.getByText('Tidak ada pembayaran.')).toBeInTheDocument();
+
+            expect(
+                screen.getByText('Tidak ada pembayaran.'),
+            ).toBeInTheDocument();
         });
     });
 
@@ -72,9 +82,11 @@ describe('PaymentHistory Component', () => {
         });
 
         it('harus menampilkan status "Terverifikasi" jika sudah diverifikasi', () => {
-            const payments = [createMockPaymentEloquent({ 
-                verified_at: '2026-10-16T11:00:00Z',
-            })];
+            const payments = [
+                createMockPaymentEloquent({
+                    verified_at: '2026-10-16T11:00:00Z',
+                }),
+            ];
             render(PaymentHistory, { props: { payments } });
 
             expect(screen.getByText('Terverifikasi')).toBeInTheDocument();
@@ -94,10 +106,12 @@ describe('PaymentHistory Component', () => {
         });
 
         it('harus menampilkan verifier jika ada', () => {
-            const payments = [createMockPaymentResource({ 
-                verified_at: '2026-10-16T11:00:00Z',
-                verifier: { id: 1, name: 'Admin', email: 'admin@test.com' }
-            })];
+            const payments = [
+                createMockPaymentResource({
+                    verified_at: '2026-10-16T11:00:00Z',
+                    verifier: { id: 1, name: 'Admin', email: 'admin@test.com' },
+                }),
+            ];
             render(PaymentHistory, { props: { payments } });
 
             expect(screen.getByText(/Diverifikasi oleh:/)).toBeInTheDocument();
@@ -111,7 +125,7 @@ describe('PaymentHistory Component', () => {
     describe('Accessibility', () => {
         it('pesan kosong harus memiliki role="status"', () => {
             render(PaymentHistory, { props: { payments: [] } });
-            
+
             const emptyMessage = screen.getByRole('status');
             expect(emptyMessage).toHaveTextContent('Belum ada pembayaran');
         });

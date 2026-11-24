@@ -53,8 +53,10 @@ describe('RevenueSummary Component', () => {
     // ==========================================
     describe('Accessibility', () => {
         it('ikon SVG dekoratif harus disembunyikan dari screen reader', () => {
-            const { container } = render(RevenueSummary, { props: { totalRevenue: 1500000 } });
-            
+            const { container } = render(RevenueSummary, {
+                props: { totalRevenue: 1500000 },
+            });
+
             const svg = container.querySelector('svg');
             expect(svg?.closest('[aria-hidden="true"]')).toBeInTheDocument();
         });

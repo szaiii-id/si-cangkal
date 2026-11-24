@@ -47,9 +47,13 @@ test.describe('Auth — Reset Password', () => {
         }) => {
             await asGuest();
 
-            await page.goto(`/reset-password/${FAKE_TOKEN}?email=test@test.com`);
+            await page.goto(
+                `/reset-password/${FAKE_TOKEN}?email=test@test.com`,
+            );
 
-            await expect(page).toHaveURL(new RegExp(`/reset-password/${FAKE_TOKEN}`));
+            await expect(page).toHaveURL(
+                new RegExp(`/reset-password/${FAKE_TOKEN}`),
+            );
             await expect(
                 page.getByRole('heading', { name: /Reset Sandi/i }),
             ).toBeVisible();
@@ -61,7 +65,9 @@ test.describe('Auth — Reset Password', () => {
         }) => {
             await asClient();
 
-            await page.goto(`/reset-password/${FAKE_TOKEN}?email=test@test.com`);
+            await page.goto(
+                `/reset-password/${FAKE_TOKEN}?email=test@test.com`,
+            );
 
             // Middleware `guest` redirect ke dashboard
             await expect(page).toHaveURL('/client/dashboard');
@@ -93,15 +99,13 @@ test.describe('Auth — Reset Password', () => {
         });
 
         test('field email terisi dari query string', async ({ page }) => {
-            await expect(
-                SEL.AUTH.resetPassword.email(page),
-            ).toHaveValue('client@test.com');
+            await expect(SEL.AUTH.resetPassword.email(page)).toHaveValue(
+                'client@test.com',
+            );
         });
 
         test('menampilkan field password baru', async ({ page }) => {
-            await expect(
-                SEL.AUTH.resetPassword.password(page),
-            ).toBeVisible();
+            await expect(SEL.AUTH.resetPassword.password(page)).toBeVisible();
         });
 
         test('menampilkan field konfirmasi password', async ({ page }) => {
@@ -111,9 +115,7 @@ test.describe('Auth — Reset Password', () => {
         });
 
         test('menampilkan tombol "Simpan Password Baru"', async ({ page }) => {
-            await expect(
-                SEL.AUTH.resetPassword.submit(page),
-            ).toBeVisible();
+            await expect(SEL.AUTH.resetPassword.submit(page)).toBeVisible();
         });
     });
 
@@ -130,15 +132,17 @@ test.describe('Auth — Reset Password', () => {
         });
 
         test('input password bertipe password', async ({ page }) => {
-            await expect(
-                SEL.AUTH.resetPassword.password(page),
-            ).toHaveAttribute('type', 'password');
+            await expect(SEL.AUTH.resetPassword.password(page)).toHaveAttribute(
+                'type',
+                'password',
+            );
         });
 
         test('input password required', async ({ page }) => {
-            await expect(
-                SEL.AUTH.resetPassword.password(page),
-            ).toHaveAttribute('required', '');
+            await expect(SEL.AUTH.resetPassword.password(page)).toHaveAttribute(
+                'required',
+                '',
+            );
         });
 
         test('input konfirmasi required', async ({ page }) => {
@@ -172,16 +176,16 @@ test.describe('Auth — Reset Password', () => {
             ).toBeVisible();
 
             // Tombol disabled
-            await expect(
-                SEL.AUTH.resetPassword.submit(page),
-            ).toBeDisabled();
+            await expect(SEL.AUTH.resetPassword.submit(page)).toBeDisabled();
         });
 
         test('submit tanpa password → HTML5 validation', async ({ page }) => {
             await SEL.AUTH.resetPassword.submit(page).click();
 
             // Tetap di halaman
-            await expect(page).toHaveURL(new RegExp(`/reset-password/${FAKE_TOKEN}`));
+            await expect(page).toHaveURL(
+                new RegExp(`/reset-password/${FAKE_TOKEN}`),
+            );
         });
     });
 
@@ -214,18 +218,24 @@ test.describe('Auth — Reset Password', () => {
             await page.waitForLoadState('networkidle', { timeout: 15_000 });
 
             // Tetap di halaman reset password (tidak redirect ke login)
-            await expect(page).toHaveURL(new RegExp(`/reset-password/${FAKE_TOKEN}`));
-            
+            await expect(page).toHaveURL(
+                new RegExp(`/reset-password/${FAKE_TOKEN}`),
+            );
+
             // Cek apakah ada pesan error yang muncul (bisa error password, atau error token dari backend)
             // Karena token palsu, backend mungkin mengembalikan error token.
             // Yang penting: form TIDAK berhasil (tidak redirect ke login).
-            const errorAlert = page.locator('p.text-red-500, .text-red-600, .text-pink');
+            const errorAlert = page.locator(
+                'p.text-red-500, .text-red-600, .text-pink',
+            );
             await expect(errorAlert.first()).toBeVisible({ timeout: 10_000 });
         });
 
         test('token invalid → error', async ({ page }) => {
             await SEL.AUTH.resetPassword.password(page).fill(VALID_PASSWORD);
-            await SEL.AUTH.resetPassword.passwordConfirmation(page).fill(VALID_PASSWORD);
+            await SEL.AUTH.resetPassword
+                .passwordConfirmation(page)
+                .fill(VALID_PASSWORD);
 
             await Promise.all([
                 page.waitForResponse(
@@ -239,8 +249,10 @@ test.describe('Auth — Reset Password', () => {
 
             await page.waitForLoadState('networkidle', { timeout: 15_000 });
 
-            await expect(page).toHaveURL(new RegExp(`/reset-password/${FAKE_TOKEN}`));
-            
+            await expect(page).toHaveURL(
+                new RegExp(`/reset-password/${FAKE_TOKEN}`),
+            );
+
             // Assert error spesifik token (biasanya "This password reset token is invalid.")
             await expect(
                 page.getByText(/token.*invalid|token.*tidak valid|gagal/i),
@@ -248,19 +260,15 @@ test.describe('Auth — Reset Password', () => {
         });
     });
 
-
     // ==========================================
     // HAPPY PATH (SKIP - Butuh Token Valid)
     // ==========================================
 
     test.describe('Mutation — Reset Password Sukses', () => {
-        test.skip(
-            'reset password sukses dengan token valid',
-            async () => {
-                // Butuh token valid dari database/email.
-                // Tidak reachable dari E2E tanpa endpoint testing khusus.
-                // Bisa di-cover di feature test (Pest) atau integration test.
-            },
-        );
+        test.skip('reset password sukses dengan token valid', async () => {
+            // Butuh token valid dari database/email.
+            // Tidak reachable dari E2E tanpa endpoint testing khusus.
+            // Bisa di-cover di feature test (Pest) atau integration test.
+        });
     });
 });

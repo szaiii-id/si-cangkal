@@ -9,10 +9,8 @@ type ClientOptions = Parameters<typeof router.post>[2];
 // ==========================================
 // PROFILE
 // ==========================================
-export const updateProfile = (
-    data: RequestPayload,
-    options?: ClientOptions,
-) => router.put('/client/profile', data, options);
+export const updateProfile = (data: RequestPayload, options?: ClientOptions) =>
+    router.put('/client/profile', data, options);
 
 // ==========================================
 // CATALOG

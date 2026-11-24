@@ -88,7 +88,9 @@ test.describe('Auth — Login', () => {
             await page.goto('/login');
 
             await SEL.AUTH.login.email(page).fill(SEED_USERS.client.email);
-            await SEL.AUTH.login.password(page).fill(SEED_USERS.client.password);
+            await SEL.AUTH.login
+                .password(page)
+                .fill(SEED_USERS.client.password);
 
             await Promise.all([
                 page.waitForURL('/client/dashboard'),
@@ -142,7 +144,9 @@ test.describe('Auth — Login', () => {
             await page.goto('/login');
 
             await SEL.AUTH.login.email(page).fill(SEED_USERS.client.username);
-            await SEL.AUTH.login.password(page).fill(SEED_USERS.client.password);
+            await SEL.AUTH.login
+                .password(page)
+                .fill(SEED_USERS.client.password);
 
             await Promise.all([
                 page.waitForURL('/client/dashboard'),
@@ -214,7 +218,9 @@ test.describe('Auth — Login', () => {
             await page.goto('/login');
 
             await SEL.AUTH.login.email(page).fill(SEED_USERS.client.email);
-            await SEL.AUTH.login.password(page).fill(SEED_USERS.client.password);
+            await SEL.AUTH.login
+                .password(page)
+                .fill(SEED_USERS.client.password);
 
             await Promise.all([
                 page.waitForURL('/change-password'),
@@ -222,7 +228,9 @@ test.describe('Auth — Login', () => {
             ]);
 
             await expect(page).toHaveURL('/change-password');
-            await expect(SEL.AUTH.changePassword.forceWarning(page)).toBeVisible();
+            await expect(
+                SEL.AUTH.changePassword.forceWarning(page),
+            ).toBeVisible();
         });
 
         test.afterEach(async ({ page, seed }) => {

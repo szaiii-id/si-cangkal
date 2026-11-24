@@ -79,7 +79,9 @@ test.describe.serial('E2E Flow — Refund Approval (PENDING → SUCCEEDED)', () 
 
         const reasonInput = dialog.locator('#confirm-reason');
         if (await reasonInput.isVisible()) {
-            await reasonInput.fill('Cuaca ekstrem, perjalanan dibatalkan oleh mitra');
+            await reasonInput.fill(
+                'Cuaca ekstrem, perjalanan dibatalkan oleh mitra',
+            );
         }
 
         const confirmBtn = dialog.getByRole('button', {
@@ -149,9 +151,7 @@ test.describe.serial('E2E Flow — Refund Approval (PENDING → SUCCEEDED)', () 
                     /\/mitra\/refunds\/\d+\/approve/.test(res.url()) &&
                     res.request().method() === 'POST',
             ),
-            approveDialog
-                .getByRole('button', { name: /Ya, Setujui/i })
-                .click(),
+            approveDialog.getByRole('button', { name: /Ya, Setujui/i }).click(),
         ]);
 
         // --- Assert: card refund berubah status menjadi dana telah dikembalikan ---
@@ -190,7 +190,8 @@ test.describe.serial('E2E Flow — Refund Approval (PENDING → SUCCEEDED)', () 
 // FLOW B — REJECT REFUND
 // ==========================================
 
-test.describe.serial('E2E Flow — Refund Rejection (PENDING → CANCELLED)', () => {
+test.describe
+    .serial('E2E Flow — Refund Rejection (PENDING → CANCELLED)', () => {
     let bookingId: number;
     let bookingKode: string;
 
@@ -242,7 +243,9 @@ test.describe.serial('E2E Flow — Refund Rejection (PENDING → CANCELLED)', ()
 
         const reasonInput = dialog.locator('#confirm-reason');
         if (await reasonInput.isVisible()) {
-            await reasonInput.fill('Pembatalan jadwal operasional paket wisata');
+            await reasonInput.fill(
+                'Pembatalan jadwal operasional paket wisata',
+            );
         }
 
         await Promise.all([

@@ -37,7 +37,9 @@ describe('BankAccountForm Component', () => {
 
         it('harus merender input password', () => {
             render(BankAccountForm);
-            expect(screen.getByLabelText(/Konfirmasi Password/i)).toBeInTheDocument();
+            expect(
+                screen.getByLabelText(/Konfirmasi Password/i),
+            ).toBeInTheDocument();
         });
     });
 
@@ -47,7 +49,7 @@ describe('BankAccountForm Component', () => {
     describe('Add/Remove Account', () => {
         it('harus menambah form rekening baru saat tombol "+ Tambah Rekening Lain" diklik', async () => {
             render(BankAccountForm);
-            
+
             const addBtn = screen.getByLabelText('Tambah rekening lain');
             await fireEvent.click(addBtn);
 
@@ -56,9 +58,11 @@ describe('BankAccountForm Component', () => {
 
         it('harus menghapus form rekening saat tombol "Hapus" diklik', async () => {
             render(BankAccountForm);
-            
+
             // Tambah dulu
-            await fireEvent.click(screen.getByLabelText('Tambah rekening lain'));
+            await fireEvent.click(
+                screen.getByLabelText('Tambah rekening lain'),
+            );
             expect(screen.getByText('Rekening 2')).toBeInTheDocument();
 
             // Hapus rekening kedua
@@ -70,9 +74,11 @@ describe('BankAccountForm Component', () => {
 
         it('TIDAK boleh menghapus rekening jika hanya tersisa 1', async () => {
             render(BankAccountForm);
-            
+
             // Tombol hapus tidak muncul saat hanya 1 rekening
-            expect(screen.queryByLabelText(/Hapus rekening/)).not.toBeInTheDocument();
+            expect(
+                screen.queryByLabelText(/Hapus rekening/),
+            ).not.toBeInTheDocument();
         });
     });
 
@@ -82,16 +88,18 @@ describe('BankAccountForm Component', () => {
     describe('Form Submission', () => {
         it('harus memanggil updateBankAccounts saat form disubmit', async () => {
             render(BankAccountForm);
-            
+
             const passwordInput = screen.getByLabelText(/Konfirmasi Password/i);
-            await fireEvent.input(passwordInput, { target: { value: 'password123' } });
+            await fireEvent.input(passwordInput, {
+                target: { value: 'password123' },
+            });
 
             const form = document.querySelector('form');
             await fireEvent.submit(form!);
 
             expect(updateBankAccounts).toHaveBeenCalledWith(
                 expect.objectContaining({ password: 'password123' }),
-                expect.any(Object)
+                expect.any(Object),
             );
         });
     });
@@ -102,7 +110,7 @@ describe('BankAccountForm Component', () => {
     describe('Accessibility', () => {
         it('ikon SVG dekoratif harus disembunyikan dari screen reader', () => {
             const { container } = render(BankAccountForm);
-            
+
             const svgs = container.querySelectorAll('svg');
             svgs.forEach((svg) => {
                 expect(svg).toHaveAttribute('aria-hidden', 'true');

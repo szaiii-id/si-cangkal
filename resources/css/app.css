@@ -17,11 +17,11 @@ html {
      | Palet Warna Brand sicangkal
      | Warna asli untuk aksen dekoratif.
      | ========================================== */
-    --color-sun: #FBAA27;
-    --color-pink: #F3278C;
-    --color-purple: #91278F;
-    --color-blue: #0B6FB8;
-    --color-green: #8DC63F;
+    --color-sun: #fbaa27;
+    --color-pink: #f3278c;
+    --color-purple: #91278f;
+    --color-blue: #0b6fb8;
+    --color-green: #8dc63f;
     --color-dark: #232323;
 
     /* ==========================================
@@ -47,11 +47,11 @@ html {
      |  Untuk pola tersebut, gunakan --color-X-text
      |    di bawah ini.
      | ========================================== */
-    --color-sun-dark: #B87A00;      /* bg-sun-dark + text-white: 4.6:1  */
-    --color-pink-dark: #B81A6A;     /* bg-pink-dark + text-white: 5.4:1  */
-    --color-purple-dark: #6B1B6B;   /* bg-purple-dark + text-white: 7.2:1  */
-    --color-blue-dark: #08518A;     /* bg-blue-dark + text-white: 6.3:1  */
-    --color-green-dark: #5C8A1E;    /* bg-green-dark + text-white: 4.7:1  */
+    --color-sun-dark: #b87a00; /* bg-sun-dark + text-white: 4.6:1  */
+    --color-pink-dark: #b81a6a; /* bg-pink-dark + text-white: 5.4:1  */
+    --color-purple-dark: #6b1b6b; /* bg-purple-dark + text-white: 7.2:1  */
+    --color-blue-dark: #08518a; /* bg-blue-dark + text-white: 6.3:1  */
+    --color-green-dark: #5c8a1e; /* bg-green-dark + text-white: 4.7:1  */
 
     /* ==========================================
      | Varian Teks — untuk LATAR TRANSPARAN / PUTIH
@@ -70,9 +70,9 @@ html {
      |   purple-text ~8.3:1 ✅
      |   blue-text   ~7.8:1 ✅
      | ========================================== */
-    --color-sun-text: #7A4F00;  /* kontras 5.9:1 di bg-sun/10 */
-    --color-green-text: #3D5C14;    /* bg-green/10 + text-green-text: ~5.4:1  */
-    --color-pink-text: #8A1450;     /* bg-pink/10 + text-pink-text: ~7.1:1  */
-    --color-purple-text: #4A1249;   /* bg-purple/10 + text-purple-text: ~8.3:1  */
-    --color-blue-text: #063D6B;     /* bg-blue/10 + text-blue-text: ~7.8:1  */
+    --color-sun-text: #7a4f00; /* kontras 5.9:1 di bg-sun/10 */
+    --color-green-text: #3d5c14; /* bg-green/10 + text-green-text: ~5.4:1  */
+    --color-pink-text: #8a1450; /* bg-pink/10 + text-pink-text: ~7.1:1  */
+    --color-purple-text: #4a1249; /* bg-purple/10 + text-purple-text: ~8.3:1  */
+    --color-blue-text: #063d6b; /* bg-blue/10 + text-blue-text: ~7.8:1  */
 }

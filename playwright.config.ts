@@ -1,24 +1,12 @@
 // playwright.config.ts
 import { defineConfig, devices } from '@playwright/test';
-import {
-    APP,
-    CI,
-    PATHS,
-    TIMEOUTS,
-    ARTISAN_ENV,
-} from './e2e/config';
+import { APP, CI, PATHS, TIMEOUTS, ARTISAN_ENV } from './e2e/config';
 
 export default defineConfig({
-
     testDir: './e2e',
     testMatch: /(.+\.)?(test|spec)\.[jt]s/,
-    testIgnore: [
-        '**/_legacy/**',
-        '**/node_modules/**',
-        '**/dist/**',
-        '**/build/**',
-    ],
-    
+    testIgnore: ['**/node_modules/**', '**/dist/**', '**/build/**'],
+
     // ==========================================
     // 1. GLOBAL SETUP & TEARDOWN
     // ==========================================
@@ -34,7 +22,7 @@ export default defineConfig({
         timeout: TIMEOUTS.expect,
     },
 
-// ==========================================
+    // ==========================================
     // 3. EXECUTION
     // ==========================================
     fullyParallel: false,
@@ -80,7 +68,7 @@ export default defineConfig({
     // ==========================================
     outputDir: PATHS.outputDir,
 
-// ==========================================
+    // ==========================================
     // 6. GLOBAL USE
     // ==========================================
     use: {

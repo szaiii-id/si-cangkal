@@ -265,9 +265,7 @@ test.describe('Landing Page & Contact', () => {
 
             await Promise.all([
                 page.waitForURL('/legal/privacy', { timeout: 15_000 }),
-                footer
-                    .getByRole('link', { name: 'Kebijakan Privasi' })
-                    .click(),
+                footer.getByRole('link', { name: 'Kebijakan Privasi' }).click(),
             ]);
 
             await expect(page).toHaveURL('/legal/privacy');

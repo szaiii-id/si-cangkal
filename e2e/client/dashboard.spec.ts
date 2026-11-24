@@ -76,11 +76,18 @@ test.describe('Client — Dashboard (Beranda)', () => {
 
             // 1. Hero Section
             await expect(
-                mainArea.getByRole('heading', { name: new RegExp(`Halo, ${SEED_USERS.client.name}`) }),
+                mainArea.getByRole('heading', {
+                    name: new RegExp(`Halo, ${SEED_USERS.client.name}`),
+                }),
             ).toBeVisible();
-            const exploreLink = mainArea.getByRole('link', { name: 'Jelajahi Katalog' });
+            const exploreLink = mainArea.getByRole('link', {
+                name: 'Jelajahi Katalog',
+            });
             await expect(exploreLink).toBeVisible();
-            await expect(exploreLink).toHaveAttribute('href', /\/client\/catalog$/);
+            await expect(exploreLink).toHaveAttribute(
+                'href',
+                /\/client\/catalog$/,
+            );
 
             // 2. Section Paket Terbaru & Paling Laku (Best Seller)
             await expect(
@@ -91,7 +98,9 @@ test.describe('Client — Dashboard (Beranda)', () => {
             ).toBeVisible();
 
             // 3. Klik kartu paket yang baru dibuat -> navigasi ke halaman detail katalog paket
-            const pkgLink = mainArea.getByRole('link', { name: new RegExp(packageNama) }).first();
+            const pkgLink = mainArea
+                .getByRole('link', { name: new RegExp(packageNama) })
+                .first();
             await expect(pkgLink).toBeVisible();
 
             await Promise.all([
@@ -99,7 +108,9 @@ test.describe('Client — Dashboard (Beranda)', () => {
                 pkgLink.click(),
             ]);
 
-            await expect(page.getByRole('heading', { name: packageNama })).toBeVisible();
+            await expect(
+                page.getByRole('heading', { name: packageNama }),
+            ).toBeVisible();
         });
     });
 });

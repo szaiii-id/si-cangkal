@@ -120,10 +120,14 @@ describe('Mitra Onboarding — Index Page', () => {
         await syncUI();
 
         // Banner error count (dari parent)
-        expect(screen.getByText(/Terdapat 5 kesalahan pada form/i)).toBeInTheDocument();
+        expect(
+            screen.getByText(/Terdapat 5 kesalahan pada form/i),
+        ).toBeInTheDocument();
 
         // Error per-field (dari mock child)
-        expect(screen.getByText('Nama penyedia usaha wajib diisi.')).toBeInTheDocument();
+        expect(
+            screen.getByText('Nama penyedia usaha wajib diisi.'),
+        ).toBeInTheDocument();
         expect(screen.getByText('Nomor HP wajib diisi.')).toBeInTheDocument();
 
         // API tidak terpanggil

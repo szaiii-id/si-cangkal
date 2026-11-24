@@ -73,7 +73,10 @@ vi.mock('@/components/mitra/BankAccountManager.svelte', () => ({
     default: (anchor: Node, props: { bankAccounts: any[] }) => {
         const el = document.createElement('div');
         el.setAttribute('data-testid', 'bank-account-manager');
-        el.setAttribute('data-accounts-count', String(props.bankAccounts?.length ?? 0));
+        el.setAttribute(
+            'data-accounts-count',
+            String(props.bankAccounts?.length ?? 0),
+        );
         el.textContent = `${props.bankAccounts?.length ?? 0} rekening`;
         anchor.parentNode?.insertBefore(el, anchor);
         return {};
@@ -101,7 +104,13 @@ const makeProfile = (overrides = {}) => ({
 });
 
 const makeBankAccounts = () => [
-    { id: 1, tipe: 'bank', nama_penyedia: 'BCA', nomor_rekening: '123456789', nama_pemilik: 'PT Mitra Jaya' },
+    {
+        id: 1,
+        tipe: 'bank',
+        nama_penyedia: 'BCA',
+        nomor_rekening: '123456789',
+        nama_pemilik: 'PT Mitra Jaya',
+    },
 ];
 
 const renderPage = (props: any = {}) =>
@@ -128,8 +137,14 @@ describe('Mitra Profile Page', () => {
         it('menampilkan judul & deskripsi halaman', () => {
             renderPage();
 
-            expect(screen.getByTestId('page-header')).toHaveTextContent('Profil Usaha');
-            expect(screen.getByText('Kelola informasi usaha dan rekening pembayaran Anda.')).toBeInTheDocument();
+            expect(screen.getByTestId('page-header')).toHaveTextContent(
+                'Profil Usaha',
+            );
+            expect(
+                screen.getByText(
+                    'Kelola informasi usaha dan rekening pembayaran Anda.',
+                ),
+            ).toBeInTheDocument();
         });
     });
 
@@ -151,7 +166,9 @@ describe('Mitra Profile Page', () => {
 
         it('merender BankAccountManager', () => {
             renderPage();
-            expect(screen.getByTestId('bank-account-manager')).toBeInTheDocument();
+            expect(
+                screen.getByTestId('bank-account-manager'),
+            ).toBeInTheDocument();
         });
 
         it('meneruskan bankAccounts ke BankAccountManager', () => {

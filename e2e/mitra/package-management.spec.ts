@@ -18,7 +18,8 @@ test.describe('Mitra - Manajemen Paket Wisata (E2E)', () => {
 
             await pkgPage.fillStep1({
                 nama: 'Paket Wisata Loksado 2D1N',
-                deskripsi: 'Menyusuri Sungai Amandit menggunakan lanting bambu tradisional.',
+                deskripsi:
+                    'Menyusuri Sungai Amandit menggunakan lanting bambu tradisional.',
                 kategori: 'petualangan',
                 timezone: 'Asia/Makassar',
             });
@@ -51,8 +52,12 @@ test.describe('Mitra - Manajemen Paket Wisata (E2E)', () => {
 
         await test.step('Step 3: Ringkasan Review Awal menampilkan data sesuai input wizard', async () => {
             await expect(page.getByText('Review Paket Anda')).toBeVisible();
-            await expect(page.getByText('Paket Wisata Loksado 2D1N')).toBeVisible();
-            await expect(page.getByText(/petualangan · Makassar/i)).toBeVisible();
+            await expect(
+                page.getByText('Paket Wisata Loksado 2D1N'),
+            ).toBeVisible();
+            await expect(
+                page.getByText(/petualangan · Makassar/i),
+            ).toBeVisible();
             await expect(page.getByText('2 Hari 1 Malam')).toBeVisible();
             await expect(page.getByText(/4\.500\.000.*\/ grup/i)).toBeVisible();
         });
@@ -97,7 +102,9 @@ test.describe('Mitra - Manajemen Paket Wisata (E2E)', () => {
             // --- STEP 1: RENCANA PERJALANAN (DaysEditor) ---
             await pkgPage.addDayButton.click();
             await expect(
-                page.getByRole('alert').filter({ hasText: 'Judul kegiatan wajib diisi.' })
+                page
+                    .getByRole('alert')
+                    .filter({ hasText: 'Judul kegiatan wajib diisi.' }),
             ).toBeVisible();
 
             await pkgPage.addItineraryDay({
@@ -113,13 +120,19 @@ test.describe('Mitra - Manajemen Paket Wisata (E2E)', () => {
                 jamSelesai: '09:00',
                 lokasi: 'Sungai Martapura',
             });
-            await expect(page.getByText('Tambahkan kegiatan per hari (2 hari)')).toBeVisible();
+            await expect(
+                page.getByText('Tambahkan kegiatan per hari (2 hari)'),
+            ).toBeVisible();
 
             // Hapus hari ke-1 untuk memastikan penomoran ulang otomatis berjalan
             await pkgPage.removeItineraryDay(1);
-            await expect(page.getByText('Penjemputan Bandara Syamsudin Noor')).toBeHidden();
+            await expect(
+                page.getByText('Penjemputan Bandara Syamsudin Noor'),
+            ).toBeHidden();
             await expect(page.getByText('Hari ke-1')).toBeVisible();
-            await expect(page.getByText('Susur Sungai Pasar Terapung Lok Baintan')).toBeVisible();
+            await expect(
+                page.getByText('Susur Sungai Pasar Terapung Lok Baintan'),
+            ).toBeVisible();
 
             // Lengkapi kembali menjadi 2 hari sesuai durasi_hari = 2 agar tombol Lanjut aktif
             await pkgPage.addItineraryDay({
@@ -128,7 +141,9 @@ test.describe('Mitra - Manajemen Paket Wisata (E2E)', () => {
                 jamSelesai: '15:00',
                 lokasi: 'Banjarmasin',
             });
-            await expect(page.getByText('Tambahkan kegiatan per hari (2 hari)')).toBeVisible();
+            await expect(
+                page.getByText('Tambahkan kegiatan per hari (2 hari)'),
+            ).toBeVisible();
 
             // Pindah ke Step 2 CompletePhase2 (Fasilitas)
             await expect(pkgPage.nextStepButton).toBeEnabled();
@@ -138,18 +153,44 @@ test.describe('Mitra - Manajemen Paket Wisata (E2E)', () => {
             // --- STEP 2: FASILITAS PAKET (FacilitiesEditor) ---
             await pkgPage.addFacilityButton.click();
             await expect(
-                page.getByRole('alert').filter({ hasText: 'Nama fasilitas wajib diisi.' })
+                page
+                    .getByRole('alert')
+                    .filter({ hasText: 'Nama fasilitas wajib diisi.' }),
             ).toBeVisible();
 
-            await pkgPage.addFacility({ tipe: 'include', nama: 'Klotok Wisata PP' });
-            await pkgPage.addFacility({ tipe: 'include', nama: 'Sarapan Soto Banjar' });
-            await pkgPage.addFacility({ tipe: 'exclude', nama: 'Asuransi Perjalanan' });
+            await pkgPage.addFacility({
+                tipe: 'include',
+                nama: 'Klotok Wisata PP',
+            });
+            await pkgPage.addFacility({
+                tipe: 'include',
+                nama: 'Sarapan Soto Banjar',
+            });
+            await pkgPage.addFacility({
+                tipe: 'exclude',
+                nama: 'Asuransi Perjalanan',
+            });
 
-            await expect(page.getByRole('heading', { name: 'Termasuk (2)', exact: true })).toBeVisible();
-            await expect(page.getByRole('heading', { name: 'Tidak Termasuk (1)', exact: true })).toBeVisible();
+            await expect(
+                page.getByRole('heading', {
+                    name: 'Termasuk (2)',
+                    exact: true,
+                }),
+            ).toBeVisible();
+            await expect(
+                page.getByRole('heading', {
+                    name: 'Tidak Termasuk (1)',
+                    exact: true,
+                }),
+            ).toBeVisible();
 
             await pkgPage.removeFacility('Sarapan Soto Banjar');
-            await expect(page.getByRole('heading', { name: 'Termasuk (1)', exact: true })).toBeVisible();
+            await expect(
+                page.getByRole('heading', {
+                    name: 'Termasuk (1)',
+                    exact: true,
+                }),
+            ).toBeVisible();
         });
 
         await test.step('3. Menghapus paket draft dari halaman detail melalui ConfirmModal', async () => {
@@ -201,7 +242,9 @@ test.describe('Mitra - Manajemen Paket Wisata (E2E)', () => {
         });
 
         await test.step('Arsipkan paket aktif melalui ConfirmModal', async () => {
-            await expect(pkgPage.archivePackageButton).toBeVisible({ timeout: 10_000 });
+            await expect(pkgPage.archivePackageButton).toBeVisible({
+                timeout: 10_000,
+            });
             await expect(pkgPage.manualBookingLink).toBeVisible();
 
             await pkgPage.archivePackageButton.click();
@@ -253,7 +296,10 @@ test.describe('Mitra - Manajemen Paket Wisata (E2E)', () => {
         // Create.svelte otomatis mengembalikan user ke Step 1 dan menampilkan pesan error dari backend
         await expect(pkgPage.namaInput).toBeVisible();
         await expect(
-            page.locator('form p, form span, [role="alert"]').filter({ hasText: /nama|wajib|diisi/i }).first()
+            page
+                .locator('form p, form span, [role="alert"]')
+                .filter({ hasText: /nama|wajib|diisi/i })
+                .first(),
         ).toBeVisible();
     });
 
@@ -309,10 +355,15 @@ test.describe('Mitra - Manajemen Paket Wisata (E2E)', () => {
         // Pastikan tombol aksi utama tampil utuh baik pada status 'aktif' maupun 'draft'
         await expect(pkgPage.editPackageLink).toBeVisible({ timeout: 10_000 });
         await expect(pkgPage.manualBookingLink).toBeVisible();
-        await expect(pkgPage.archivePackageButton.or(pkgPage.continueDraftLink)).toBeVisible();
+        await expect(
+            pkgPage.archivePackageButton.or(pkgPage.continueDraftLink),
+        ).toBeVisible();
 
         const hasHorizontalOverflow = await page.evaluate(() => {
-            return document.documentElement.scrollWidth > document.documentElement.clientWidth;
+            return (
+                document.documentElement.scrollWidth >
+                document.documentElement.clientWidth
+            );
         });
         expect(hasHorizontalOverflow).toBe(false);
     });

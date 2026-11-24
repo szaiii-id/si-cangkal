@@ -26,7 +26,9 @@ vi.mock('@/api/mitra', () => mockApi);
 
 vi.mock('@/utils/bookingRules', () => ({
     isPendingPayment: vi.fn((s: string) => s === 'pending_payment'),
-    isFinalBooking: vi.fn((s: string) => ['completed', 'cancelled'].includes(s)),
+    isFinalBooking: vi.fn((s: string) =>
+        ['completed', 'cancelled'].includes(s),
+    ),
     canVerifyPayment: vi.fn((s: string) => s === 'pending_payment'),
 }));
 
@@ -89,9 +91,12 @@ vi.mock('@/global/ConfirmModal.svelte', () => ({
                 el.removeAttribute('data-testid');
                 return;
             }
-            
-            el.setAttribute('data-testid', `modal-${props.title.replace(/\s+/g, '-')}`);
-            
+
+            el.setAttribute(
+                'data-testid',
+                `modal-${props.title.replace(/\s+/g, '-')}`,
+            );
+
             // Render reason input jika diperlukan
             const reasonHtml = props.requiresReason
                 ? `<textarea data-action="reason" placeholder="${props.reasonPlaceholder || ''}">${props.reasonValue || ''}</textarea>
@@ -106,14 +111,19 @@ vi.mock('@/global/ConfirmModal.svelte', () => ({
             `;
 
             // Sync textarea ke props.reasonValue
-            const textarea = el.querySelector('[data-action="reason"]') as HTMLTextAreaElement | null;
+            const textarea = el.querySelector(
+                '[data-action="reason"]',
+            ) as HTMLTextAreaElement | null;
             if (textarea) {
                 textarea.oninput = (e) => {
                     props.reasonValue = (e.target as HTMLTextAreaElement).value;
                 };
             }
 
-            el.querySelector('[data-action="confirm"]')!.addEventListener('click', () => props.onConfirm());
+            el.querySelector('[data-action="confirm"]')!.addEventListener(
+                'click',
+                () => props.onConfirm(),
+            );
         };
 
         update();
@@ -181,8 +191,14 @@ vi.mock('@/components/mitra/bookings/VerifyPaymentCard.svelte', () => ({
         `;
         anchor.parentNode?.insertBefore(el, anchor);
 
-        el.querySelector('[data-action="verify"]')!.addEventListener('click', () => props.onVerify());
-        el.querySelector('[data-action="reject"]')!.addEventListener('click', () => props.onReject());
+        el.querySelector('[data-action="verify"]')!.addEventListener(
+            'click',
+            () => props.onVerify(),
+        );
+        el.querySelector('[data-action="reject"]')!.addEventListener(
+            'click',
+            () => props.onReject(),
+        );
         return {};
     },
 }));
@@ -192,7 +208,7 @@ vi.mock('@/components/mitra/bookings/VerifyPaymentCard.svelte', () => ({
 // ============================================================
 async function syncUI() {
     await tick();
-    mockUpdaters.forEach(fn => fn());
+    mockUpdaters.forEach((fn) => fn());
 }
 
 // ============================================================
@@ -219,7 +235,7 @@ const makeBooking = (overrides: Record<string, unknown> = {}) =>
         ...overrides,
     }) as any;
 
-const renderPage = (booking = makeBooking()) => 
+const renderPage = (booking = makeBooking()) =>
     render(Show, { props: { booking } });
 
 // ============================================================
@@ -234,7 +250,9 @@ describe('Mitra Bookings — Show Page', () => {
     describe('Rendering', () => {
         it('merender header dengan data booking', () => {
             renderPage();
-            expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Paket Bali');
+            expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+                'Paket Bali',
+            );
             expect(screen.getByText('BK-01')).toBeInTheDocument();
             expect(screen.getByText('Rp 1500000')).toBeInTheDocument();
             expect(screen.getByText('2 orang')).toBeInTheDocument();
@@ -244,39 +262,64 @@ describe('Mitra Bookings — Show Page', () => {
             renderPage();
             expect(screen.getByText('Budi')).toBeInTheDocument();
             expect(screen.getByText('budi@test.com')).toBeInTheDocument();
-            expect(screen.getByTestId('participant-list')).toHaveTextContent('1 peserta');
+            expect(screen.getByTestId('participant-list')).toHaveTextContent(
+                '1 peserta',
+            );
         });
     });
 
     describe('Conditional Rendering — Payment Proof', () => {
         it('merender UploadPaymentProofCard jika pending & belum ada bukti', () => {
-            renderPage(makeBooking({ status: 'pending_payment', has_payment_proof: false }));
+            renderPage(
+                makeBooking({
+                    status: 'pending_payment',
+                    has_payment_proof: false,
+                }),
+            );
             expect(screen.getByTestId('upload-proof-card')).toBeInTheDocument();
             expect(screen.queryByTestId('verify-card')).not.toBeInTheDocument();
         });
 
         it('merender VerifyPaymentCard jika pending & sudah ada bukti', () => {
-            renderPage(makeBooking({ status: 'pending_payment', has_payment_proof: true }));
+            renderPage(
+                makeBooking({
+                    status: 'pending_payment',
+                    has_payment_proof: true,
+                }),
+            );
             expect(screen.getByTestId('verify-card')).toBeInTheDocument();
-            expect(screen.queryByTestId('upload-proof-card')).not.toBeInTheDocument();
+            expect(
+                screen.queryByTestId('upload-proof-card'),
+            ).not.toBeInTheDocument();
         });
 
         it('merender PaymentProofPreview jika status bukan pending & sudah ada bukti', () => {
-            renderPage(makeBooking({ status: 'confirmed', has_payment_proof: true }));
+            renderPage(
+                makeBooking({ status: 'confirmed', has_payment_proof: true }),
+            );
             expect(screen.getByTestId('payment-proof')).toBeInTheDocument();
             expect(screen.queryByTestId('verify-card')).not.toBeInTheDocument();
-            expect(screen.queryByTestId('upload-proof-card')).not.toBeInTheDocument();
+            expect(
+                screen.queryByTestId('upload-proof-card'),
+            ).not.toBeInTheDocument();
         });
     });
 
     describe('Interaction — Verify Payment Flow', () => {
         it('membuka modal verifikasi saat tombol verify diklik', async () => {
-            renderPage(makeBooking({ status: 'pending_payment', has_payment_proof: true }));
-            
+            renderPage(
+                makeBooking({
+                    status: 'pending_payment',
+                    has_payment_proof: true,
+                }),
+            );
+
             await fireEvent.click(screen.getByText('Verify'));
             await syncUI();
 
-            expect(screen.getByTestId('modal-Verifikasi-Pembayaran?')).toBeInTheDocument();
+            expect(
+                screen.getByTestId('modal-Verifikasi-Pembayaran?'),
+            ).toBeInTheDocument();
         });
 
         it('memanggil verifyPayment saat modal dikonfirmasi', async () => {
@@ -285,7 +328,12 @@ describe('Mitra Bookings — Show Page', () => {
                 opts.onFinish();
             });
 
-            renderPage(makeBooking({ status: 'pending_payment', has_payment_proof: true }));
+            renderPage(
+                makeBooking({
+                    status: 'pending_payment',
+                    has_payment_proof: true,
+                }),
+            );
             await fireEvent.click(screen.getByText('Verify'));
             await syncUI();
 
@@ -293,7 +341,10 @@ describe('Mitra Bookings — Show Page', () => {
             await fireEvent.click(within(modal).getByText('Ya, Verifikasi'));
             await syncUI();
 
-            expect(mockApi.verifyPayment).toHaveBeenCalledWith(1, expect.any(Object));
+            expect(mockApi.verifyPayment).toHaveBeenCalledWith(
+                1,
+                expect.any(Object),
+            );
         });
     });
 
@@ -313,7 +364,9 @@ describe('Mitra Bookings — Show Page', () => {
             await fireEvent.click(screen.getByText('Batalkan Pesanan'));
             await syncUI();
 
-            expect(screen.getByTestId('modal-Batalkan-Booking?')).toBeInTheDocument();
+            expect(
+                screen.getByTestId('modal-Batalkan-Booking?'),
+            ).toBeInTheDocument();
         });
 
         it('memanggil cancelBooking saat modal dikonfirmasi (dengan alasan valid)', async () => {
@@ -328,8 +381,12 @@ describe('Mitra Bookings — Show Page', () => {
 
             // Isi alasan terlebih dahulu (validasi min 5 karakter)
             const modal = screen.getByTestId('modal-Batalkan-Booking?');
-            const textarea = within(modal).getByPlaceholderText(/Jelaskan alasan pembatalan/i) as HTMLTextAreaElement;
-            await fireEvent.input(textarea, { target: { value: 'Pelanggan minta batal' } });
+            const textarea = within(modal).getByPlaceholderText(
+                /Jelaskan alasan pembatalan/i,
+            ) as HTMLTextAreaElement;
+            await fireEvent.input(textarea, {
+                target: { value: 'Pelanggan minta batal' },
+            });
 
             // Klik konfirmasi
             await fireEvent.click(within(modal).getByText('Ya, Batalkan'));
@@ -338,7 +395,7 @@ describe('Mitra Bookings — Show Page', () => {
             expect(mockApi.cancelBooking).toHaveBeenCalledWith(
                 1,
                 { alasan: 'Pelanggan minta batal' },
-                expect.any(Object)
+                expect.any(Object),
             );
         });
 
@@ -348,7 +405,9 @@ describe('Mitra Bookings — Show Page', () => {
             await syncUI();
 
             const modal = screen.getByTestId('modal-Batalkan-Booking?');
-            const textarea = within(modal).getByPlaceholderText(/Jelaskan alasan pembatalan/i);
+            const textarea = within(modal).getByPlaceholderText(
+                /Jelaskan alasan pembatalan/i,
+            );
             await fireEvent.input(textarea, { target: { value: 'abc' } });
 
             await fireEvent.click(within(modal).getByText('Ya, Batalkan'));

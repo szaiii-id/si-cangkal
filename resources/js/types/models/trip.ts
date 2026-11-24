@@ -38,7 +38,10 @@ export type TripResource = {
     snapshot_nama: string;
     snapshot_durasi_hari: number;
     created_at: string;
-    package?: Pick<PackageResource, 'id' | 'nama' | 'kode' | 'slug' | 'timezone' | 'cover_image'> | null;
+    package?: Pick<
+        PackageResource,
+        'id' | 'nama' | 'kode' | 'slug' | 'timezone' | 'cover_image'
+    > | null;
     booking?: {
         id: number;
         kode: string;

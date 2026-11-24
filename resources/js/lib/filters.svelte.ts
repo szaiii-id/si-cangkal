@@ -75,11 +75,15 @@ export function createFilter<T extends Record<string, unknown>>(
             (values as Record<string, unknown>)[key] = '';
         }
 
-        router.get(options.url, {}, {
-            preserveState: true,
-            preserveScroll: true,
-            replace: true,
-        });
+        router.get(
+            options.url,
+            {},
+            {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+            },
+        );
     }
 
     function hasActive(): boolean {
@@ -112,5 +116,24 @@ export function createFilter<T extends Record<string, unknown>>(
 
 function normalize(value: unknown): string {
     if (value === null || value === undefined) return '';
-    return String(value).trim().toLowerCase();
+
+    // Batasi ke primitive: `String(object)` menghasilkan
+    // "[object Object]" dan memicu no-base-to-string.
+    if (typeof value === 'string') {
+        return value.trim().toLowerCase();
+    }
+
+    if (
+        typeof value === 'number' ||
+        typeof value === 'boolean' ||
+        typeof value === 'bigint'
+    ) {
+        return String(value).trim().toLowerCase();
+    }
+
+    if (typeof value === 'object') {
+        return JSON.stringify(value).trim().toLowerCase();
+    }
+
+    return '';
 }

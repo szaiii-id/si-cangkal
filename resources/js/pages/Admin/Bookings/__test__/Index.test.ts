@@ -81,7 +81,11 @@ vi.mock('@/components/layout/DashboardLayout.svelte', () => ({
 vi.mock('@/global/PageHeader.svelte', () => ({
     default: (
         anchor: Node,
-        props: { title: string; description?: string; actions?: (anchor: Node) => void },
+        props: {
+            title: string;
+            description?: string;
+            actions?: (anchor: Node) => void;
+        },
     ) => {
         const el = document.createElement('div');
         el.setAttribute('data-testid', 'page-header');
@@ -127,7 +131,10 @@ vi.mock('@/components/admin/bookings/BookingFilterBar.svelte', () => ({
                 const btn = document.createElement('button');
                 btn.type = 'button';
                 btn.setAttribute('role', 'tab');
-                btn.setAttribute('aria-selected', String(props.selectedStatus === tab.value));
+                btn.setAttribute(
+                    'aria-selected',
+                    String(props.selectedStatus === tab.value),
+                );
                 btn.textContent = `${tab.label} (${tab.count})`;
                 btn.onclick = () => props.onStatusChange(tab.value);
                 tabsEl.appendChild(btn);
@@ -201,7 +208,11 @@ vi.mock('@/components/admin/bookings/BookingFilterBar.svelte', () => ({
 vi.mock('@/components/admin/bookings/BookingTable.svelte', () => ({
     default: (
         anchor: Node,
-        props: { bookings: { data: Array<{ id: number; kode: string; status: string }> } },
+        props: {
+            bookings: {
+                data: Array<{ id: number; kode: string; status: string }>;
+            };
+        },
     ) => {
         const el = document.createElement('div');
         el.setAttribute('data-testid', 'booking-table');
@@ -265,7 +276,10 @@ vi.mock('@/global/EmptyState.svelte', () => ({
 // 12. MOCK — PAGINATION
 // ============================================================
 vi.mock('@/global/Pagination.svelte', () => ({
-    default: (anchor: Node, props: { meta: { total: number }; label: string }) => {
+    default: (
+        anchor: Node,
+        props: { meta: { total: number }; label: string },
+    ) => {
         const el = document.createElement('div');
         el.setAttribute('data-testid', 'pagination');
         el.textContent = `Total ${props.meta.total} ${props.label}`;
@@ -306,7 +320,10 @@ const makeBooking = (overrides: Record<string, unknown> = {}) =>
         ...overrides,
     }) as any;
 
-const makeBookings = (data = [makeBooking()], overrides: Record<string, unknown> = {}) =>
+const makeBookings = (
+    data = [makeBooking()],
+    overrides: Record<string, unknown> = {},
+) =>
     ({
         current_page: 1,
         last_page: 1,
@@ -374,10 +391,15 @@ describe('Admin Bookings — Index Page', () => {
             renderPage();
 
             expect(
-                screen.getByRole('heading', { level: 1, name: 'Daftar Pesanan' }),
+                screen.getByRole('heading', {
+                    level: 1,
+                    name: 'Daftar Pesanan',
+                }),
             ).toBeInTheDocument();
             expect(
-                screen.getByText('Pantau semua pesanan yang masuk dari pelanggan.'),
+                screen.getByText(
+                    'Pantau semua pesanan yang masuk dari pelanggan.',
+                ),
             ).toBeInTheDocument();
         });
 
@@ -412,7 +434,9 @@ describe('Admin Bookings — Index Page', () => {
                 confirmed: 3,
             });
 
-            expect(screen.getByRole('tab', { name: /^Semua \(5\)/ })).toBeInTheDocument();
+            expect(
+                screen.getByRole('tab', { name: /^Semua \(5\)/ }),
+            ).toBeInTheDocument();
         });
 
         it('TIDAK menampilkan tab status yang count-nya 0', () => {
@@ -431,10 +455,14 @@ describe('Admin Bookings — Index Page', () => {
         });
 
         it('menampilkan tab status yang count-nya 0 jika dia selected', () => {
-            renderPage(makeBookings(), { ...DEFAULT_FILTERS, status: 'confirmed' }, {
-                ...DEFAULT_STATUS_COUNTS,
-                // semua 0
-            });
+            renderPage(
+                makeBookings(),
+                { ...DEFAULT_FILTERS, status: 'confirmed' },
+                {
+                    ...DEFAULT_STATUS_COUNTS,
+                    // semua 0
+                },
+            );
 
             expect(
                 screen.getByRole('tab', { name: /Terkonfirmasi \(0\)/ }),
@@ -459,8 +487,12 @@ describe('Admin Bookings — Index Page', () => {
 
             const emptyState = screen.getByTestId('empty-state');
             expect(emptyState).toHaveTextContent('Belum ada pesanan');
-            expect(emptyState).toHaveTextContent('Pesanan dari pelanggan akan muncul di sini.');
-            expect(screen.queryByTestId('booking-table')).not.toBeInTheDocument();
+            expect(emptyState).toHaveTextContent(
+                'Pesanan dari pelanggan akan muncul di sini.',
+            );
+            expect(
+                screen.queryByTestId('booking-table'),
+            ).not.toBeInTheDocument();
             expect(screen.queryByTestId('pagination')).not.toBeInTheDocument();
         });
 
@@ -475,7 +507,9 @@ describe('Admin Bookings — Index Page', () => {
             expect(emptyState).toHaveTextContent(
                 'Coba ubah filter atau kata kunci pencarian Anda.',
             );
-            expect(screen.getByRole('button', { name: 'Reset Filter' })).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: 'Reset Filter' }),
+            ).toBeInTheDocument();
         });
     });
 
@@ -486,7 +520,9 @@ describe('Admin Bookings — Index Page', () => {
         it('tidak memanggil getBookings sebelum 300ms', async () => {
             renderPage();
 
-            const input = screen.getByPlaceholderText(/Cari kode pesanan, nama pelanggan/i);
+            const input = screen.getByPlaceholderText(
+                /Cari kode pesanan, nama pelanggan/i,
+            );
             await fireEvent.input(input, { target: { value: 'budi' } });
 
             expect(getBookings).not.toHaveBeenCalled();
@@ -495,7 +531,9 @@ describe('Admin Bookings — Index Page', () => {
         it('memanggil getBookings setelah 300ms dengan query search saja', async () => {
             renderPage();
 
-            const input = screen.getByPlaceholderText(/Cari kode pesanan, nama pelanggan/i);
+            const input = screen.getByPlaceholderText(
+                /Cari kode pesanan, nama pelanggan/i,
+            );
             await fireEvent.input(input, { target: { value: 'budi' } });
 
             await vi.advanceTimersByTimeAsync(300);
@@ -518,7 +556,9 @@ describe('Admin Bookings — Index Page', () => {
                 pending_payment: 2,
             });
 
-            await fireEvent.click(screen.getByRole('tab', { name: /Menunggu Bayar/ }));
+            await fireEvent.click(
+                screen.getByRole('tab', { name: /Menunggu Bayar/ }),
+            );
 
             expect(getBookings).toHaveBeenCalledWith(
                 { status: 'pending_payment', ...DEFAULT_SORT },
@@ -540,10 +580,16 @@ describe('Admin Bookings — Index Page', () => {
             await fireEvent.input(screen.getByLabelText('Sampai Tanggal'), {
                 target: { value: '2026-02-28' },
             });
-            await fireEvent.click(screen.getByRole('button', { name: 'Terapkan' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Terapkan' }),
+            );
 
             expect(getBookings).toHaveBeenCalledWith(
-                { tanggal_dari: '2026-02-01', tanggal_sampai: '2026-02-28', ...DEFAULT_SORT },
+                {
+                    tanggal_dari: '2026-02-01',
+                    tanggal_sampai: '2026-02-28',
+                    ...DEFAULT_SORT,
+                },
                 { preserveState: true, preserveScroll: true, replace: true },
             );
         });
@@ -556,7 +602,9 @@ describe('Admin Bookings — Index Page', () => {
         it('klik toggle today memanggil getBookings dengan is_today=1', async () => {
             renderPage();
 
-            await fireEvent.click(screen.getByRole('button', { name: /Pesanan Hari Ini/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Pesanan Hari Ini/i }),
+            );
 
             expect(getBookings).toHaveBeenCalledWith(
                 { is_today: 1, ...DEFAULT_SORT },
@@ -584,7 +632,9 @@ describe('Admin Bookings — Index Page', () => {
                 tanggal_sampai: '2026-02-28',
             });
 
-            await fireEvent.click(screen.getByRole('button', { name: /Pesanan Hari Ini/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Pesanan Hari Ini/i }),
+            );
 
             expect(getBookings).toHaveBeenCalledWith(
                 { is_today: 1, ...DEFAULT_SORT },
@@ -618,7 +668,9 @@ describe('Admin Bookings — Index Page', () => {
         it('klik "Reset Filter" di EmptyState memanggil clearFilters', async () => {
             renderPage(makeBookings([]), { ...DEFAULT_FILTERS, search: 'xyz' });
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Reset Filter' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Reset Filter' }),
+            );
 
             expect(getBookings).toHaveBeenCalledWith(
                 {},
@@ -654,10 +706,14 @@ describe('Admin Bookings — Index Page', () => {
     // ----------------------------------------------------------
     describe('Accessibility', () => {
         it('status tabs punya role="tablist" dan aria-selected', () => {
-            renderPage(makeBookings(), { ...DEFAULT_FILTERS, status: 'pending_payment' }, {
-                ...DEFAULT_STATUS_COUNTS,
-                pending_payment: 1,
-            });
+            renderPage(
+                makeBookings(),
+                { ...DEFAULT_FILTERS, status: 'pending_payment' },
+                {
+                    ...DEFAULT_STATUS_COUNTS,
+                    pending_payment: 1,
+                },
+            );
 
             const tablist = screen.getByRole('tablist');
             expect(tablist).toBeInTheDocument();

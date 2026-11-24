@@ -60,9 +60,7 @@ export class ClientBookingPage {
     async fillParticipants(participants: ParticipantInput[]): Promise<void> {
         for (let i = 0; i < participants.length; i++) {
             const p = participants[i];
-            await SEL.CLIENT.booking
-                .participantNama(this.page, i)
-                .fill(p.nama);
+            await SEL.CLIENT.booking.participantNama(this.page, i).fill(p.nama);
 
             if (p.umur !== undefined) {
                 await SEL.CLIENT.booking
@@ -97,9 +95,7 @@ export class ClientBookingPage {
     // ==========================================
 
     async expectParticipantVisible(nama: string): Promise<void> {
-        await expect(
-            this.page.getByRole('main').getByText(nama),
-        ).toBeVisible();
+        await expect(this.page.getByRole('main').getByText(nama)).toBeVisible();
     }
 
     async uploadPaymentProof(
@@ -111,7 +107,9 @@ export class ClientBookingPage {
 
         const responsePromise = this.page.waitForResponse(
             (res) =>
-                res.url().includes(`/client/bookings/${bookingId}/upload-proof`) &&
+                res
+                    .url()
+                    .includes(`/client/bookings/${bookingId}/upload-proof`) &&
                 res.request().method() === 'POST',
         );
         await SEL.CLIENT.booking.uploadProofButton(this.page).click();
@@ -127,7 +125,9 @@ export class ClientBookingPage {
                 res.url().includes(`/client/bookings/${bookingId}/cancel`) &&
                 res.request().method() === 'POST',
         );
-        await SEL.CLIENT.booking.confirmCancelButton(this.page).click({ force: true });
+        await SEL.CLIENT.booking
+            .confirmCancelButton(this.page)
+            .click({ force: true });
         await responsePromise;
     }
 }

@@ -142,7 +142,9 @@ export class MitraBookingPage {
         await Promise.all([
             this.page.waitForResponse(
                 (resp) =>
-                    resp.url().includes(`/mitra/bookings/${bookingId}/verify`) &&
+                    resp
+                        .url()
+                        .includes(`/mitra/bookings/${bookingId}/verify`) &&
                     resp.request().method() === 'POST',
                 { timeout: 15_000 },
             ),
@@ -170,7 +172,9 @@ export class MitraBookingPage {
         await Promise.all([
             this.page.waitForResponse(
                 (resp) =>
-                    resp.url().includes(`/mitra/bookings/${bookingId}/reject`) &&
+                    resp
+                        .url()
+                        .includes(`/mitra/bookings/${bookingId}/reject`) &&
                     resp.request().method() === 'POST',
                 { timeout: 15_000 },
             ),
@@ -197,7 +201,7 @@ export class MitraBookingPage {
 
         // Cukup klik tombol konfirmasi, lalu tunggu URL redirect ke index bookings
         await this.confirmCancelButton.click({ force: true });
-        
+
         await this.page.waitForURL('/mitra/bookings', { timeout: 15_000 });
         await this.page.waitForLoadState('networkidle', { timeout: 15_000 });
     }

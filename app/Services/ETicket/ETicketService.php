@@ -23,7 +23,9 @@ final class ETicketService implements ETicketServiceInterface
         $trip->loadMissing(['booking.client', 'package', 'booking.participants']);
 
         $uuid = (string) Str::uuid();
-        $qrUrl = url("/e-tickets/{$uuid}");
+        // URL publik untuk verifikasi tiket saat QR di-scan. Harus memakai
+        // nama route agar tetap sinkron bila path berubah.
+        $qrUrl = route('e-tickets.verify', ['uuid' => $uuid]);
 
         $qrContent = (string) QrCode::format('png')->size(300)->generate($qrUrl);
 

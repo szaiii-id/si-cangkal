@@ -26,8 +26,12 @@ describe('UserPasswordForm Component', () => {
             render(UserPasswordForm, { props: { password: '' } });
 
             // PERBAIKAN: Gunakan placeholder atau role, bukan label
-            expect(screen.getByPlaceholderText('Minimal 8 karakter')).toBeInTheDocument();
-            expect(screen.getByRole('button', { name: /Generate/i })).toBeInTheDocument();
+            expect(
+                screen.getByPlaceholderText('Minimal 8 karakter'),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: /Generate/i }),
+            ).toBeInTheDocument();
         });
 
         it('TIDAK boleh menampilkan strength meter jika password kosong', () => {
@@ -63,10 +67,14 @@ describe('UserPasswordForm Component', () => {
             render(UserPasswordForm, { props: { password: 'test' } });
 
             // PERBAIKAN: Gunakan placeholder atau role
-            const input = screen.getByPlaceholderText('Minimal 8 karakter') as HTMLInputElement;
+            const input = screen.getByPlaceholderText(
+                'Minimal 8 karakter',
+            ) as HTMLInputElement;
             expect(input.type).toBe('password');
 
-            const toggleBtn = screen.getByRole('button', { name: /Tampilkan password/i });
+            const toggleBtn = screen.getByRole('button', {
+                name: /Tampilkan password/i,
+            });
             await fireEvent.click(toggleBtn);
 
             expect(input.type).toBe('text');
@@ -80,11 +88,15 @@ describe('UserPasswordForm Component', () => {
         it('harus mengisi password dengan karakter acak saat tombol Generate diklik', async () => {
             render(UserPasswordForm, { props: { password: '' } });
 
-            const generateBtn = screen.getByRole('button', { name: /Generate/i });
+            const generateBtn = screen.getByRole('button', {
+                name: /Generate/i,
+            });
             await fireEvent.click(generateBtn);
 
             // PERBAIKAN: Gunakan placeholder atau role
-            const input = screen.getByPlaceholderText('Minimal 8 karakter') as HTMLInputElement;
+            const input = screen.getByPlaceholderText(
+                'Minimal 8 karakter',
+            ) as HTMLInputElement;
             expect(input.value.length).toBe(12);
         });
     });
@@ -94,13 +106,19 @@ describe('UserPasswordForm Component', () => {
     // ==========================================
     describe('Error State', () => {
         it('harus menampilkan pesan error jika ada', () => {
-            render(UserPasswordForm, { props: { password: '', error: 'Password wajib diisi' } });
+            render(UserPasswordForm, {
+                props: { password: '', error: 'Password wajib diisi' },
+            });
 
-            expect(screen.getByText('Password wajib diisi')).toBeInTheDocument();
+            expect(
+                screen.getByText('Password wajib diisi'),
+            ).toBeInTheDocument();
         });
 
         it('pesan error harus memiliki role="alert"', () => {
-            render(UserPasswordForm, { props: { password: '', error: 'Error' } });
+            render(UserPasswordForm, {
+                props: { password: '', error: 'Error' },
+            });
 
             const errorMessage = screen.getByRole('alert');
             expect(errorMessage).toBeInTheDocument();

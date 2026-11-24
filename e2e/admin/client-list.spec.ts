@@ -55,7 +55,9 @@ test.describe('Admin — Daftar Client (Read-Only)', () => {
 
             // Heading utama di dalam <main>
             await expect(
-                page.getByRole('main').getByRole('heading', { name: 'Daftar Client' }),
+                page
+                    .getByRole('main')
+                    .getByRole('heading', { name: 'Daftar Client' }),
             ).toBeVisible();
 
             // Indikator Mode Read-only & Total Client Terdaftar
@@ -65,16 +67,24 @@ test.describe('Admin — Daftar Client (Read-Only)', () => {
             // Pastikan user seed client tampil di tabel
             const table = page.getByRole('table');
             await expect(table).toBeVisible();
-            await expect(table.getByText(SEED_USERS.client.email)).toBeVisible();
+            await expect(
+                table.getByText(SEED_USERS.client.email),
+            ).toBeVisible();
 
             // Pastikan akun Admin dan Mitra tidak muncul di daftar client
-            await expect(table.getByText(SEED_USERS.admin.email)).toHaveCount(0);
-            await expect(table.getByText(SEED_USERS.mitra.email)).toHaveCount(0);
+            await expect(table.getByText(SEED_USERS.admin.email)).toHaveCount(
+                0,
+            );
+            await expect(table.getByText(SEED_USERS.mitra.email)).toHaveCount(
+                0,
+            );
 
             // Verifikasi strict read-only: tidak ada tombol Edit, Hapus, atau Tambah di area main
             const mainArea = page.getByRole('main');
             await expect(
-                mainArea.getByRole('button', { name: /Edit|Ubah|Hapus|Delete|Tambah/i }),
+                mainArea.getByRole('button', {
+                    name: /Edit|Ubah|Hapus|Delete|Tambah/i,
+                }),
             ).toHaveCount(0);
             await expect(
                 mainArea.getByRole('link', { name: /Edit|Ubah|Hapus|Tambah/i }),
@@ -91,28 +101,42 @@ test.describe('Admin — Daftar Client (Read-Only)', () => {
             await page.goto('/admin/clients');
             await page.waitForLoadState('networkidle');
 
-            const searchInput = page.getByPlaceholder('Cari nama, email, atau username...');
+            const searchInput = page.getByPlaceholder(
+                'Cari nama, email, atau username...',
+            );
             await expect(searchInput).toBeVisible();
 
             // Cari email client yang ada
             await searchInput.fill(SEED_USERS.client.email);
             await expect(page).toHaveURL(
-                new RegExp(`search=${encodeURIComponent(SEED_USERS.client.email)}`),
+                new RegExp(
+                    `search=${encodeURIComponent(SEED_USERS.client.email)}`,
+                ),
             );
-            await expect(page.getByRole('table').getByText(SEED_USERS.client.email)).toBeVisible();
+            await expect(
+                page.getByRole('table').getByText(SEED_USERS.client.email),
+            ).toBeVisible();
 
             // Cari kata kunci acak -> tampil EmptyState
             const nonExistentQuery = `tidak-ada-client-${Date.now()}`;
             await searchInput.fill(nonExistentQuery);
-            await expect(page.getByText('Tidak ada hasil ditemukan')).toBeVisible();
             await expect(
-                page.getByText(`Tidak ditemukan client dengan kata kunci "${nonExistentQuery}".`),
+                page.getByText('Tidak ada hasil ditemukan'),
+            ).toBeVisible();
+            await expect(
+                page.getByText(
+                    `Tidak ditemukan client dengan kata kunci "${nonExistentQuery}".`,
+                ),
             ).toBeVisible();
 
             // Reset pencarian melalui tombol clear pada EmptyState atau SearchInput
-            const resetBtn = page.getByRole('button', { name: /Reset|Hapus|Clear/i }).first();
+            const resetBtn = page
+                .getByRole('button', { name: /Reset|Hapus|Clear/i })
+                .first();
             await resetBtn.click();
-            await expect(page.getByRole('table').getByText(SEED_USERS.client.email)).toBeVisible();
+            await expect(
+                page.getByRole('table').getByText(SEED_USERS.client.email),
+            ).toBeVisible();
         });
     });
 });

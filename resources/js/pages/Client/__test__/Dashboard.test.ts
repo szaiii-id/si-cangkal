@@ -37,7 +37,9 @@ vi.mock('@inertiajs/svelte', () => ({
 // 2. MOCK — FORMAT HELPERS
 // ============================================================
 vi.mock('@/utils/formatCurrency', () => ({
-    formatCurrency: vi.fn((v: string | number) => `Rp ${Number(v).toLocaleString('id-ID')}`),
+    formatCurrency: vi.fn(
+        (v: string | number) => `Rp ${Number(v).toLocaleString('id-ID')}`,
+    ),
 }));
 
 vi.mock('@/utils/duration', () => ({
@@ -116,7 +118,9 @@ describe('Client Dashboard (Beranda)', () => {
 
         it('menampilkan link "Jelajahi Katalog" ke /client/catalog', () => {
             renderPage();
-            const link = screen.getByRole('link', { name: /Jelajahi Katalog/i });
+            const link = screen.getByRole('link', {
+                name: /Jelajahi Katalog/i,
+            });
             expect(link).toHaveAttribute('href', '/client/catalog');
         });
     });
@@ -157,7 +161,13 @@ describe('Client Dashboard (Beranda)', () => {
 
         it('memanggil formatCurrency dengan harga_per_orang (default)', () => {
             renderPage({
-                paket_baru: [makePackage({ id: 1, harga_per_orang: '750000', isRombongan: false })],
+                paket_baru: [
+                    makePackage({
+                        id: 1,
+                        harga_per_orang: '750000',
+                        isRombongan: false,
+                    }),
+                ],
             });
             expect(formatCurrency).toHaveBeenCalledWith('750000');
         });
@@ -190,7 +200,9 @@ describe('Client Dashboard (Beranda)', () => {
             renderPage({
                 paket_laris: [makePackage({ id: 1, nama: 'Paket Laris 1' })],
             });
-            expect(screen.getByText('Paling Laku (Best Seller)')).toBeInTheDocument();
+            expect(
+                screen.getByText('Paling Laku (Best Seller)'),
+            ).toBeInTheDocument();
             expect(screen.getByText('Paket Laris 1')).toBeInTheDocument();
         });
 
@@ -224,7 +236,12 @@ describe('Client Dashboard (Beranda)', () => {
         it('memanggil formatDurasi dengan durasi_hari & durasi_malam', () => {
             renderPage({
                 paket_laris: [
-                    makePackage({ id: 1, nama: 'P1', durasi_hari: 4, durasi_malam: 3 }),
+                    makePackage({
+                        id: 1,
+                        nama: 'P1',
+                        durasi_hari: 4,
+                        durasi_malam: 3,
+                    }),
                 ],
             });
             expect(formatDurasi).toHaveBeenCalledWith(4, 3);
@@ -239,10 +256,14 @@ describe('Client Dashboard (Beranda)', () => {
             renderPage({
                 paket_baru: [makePackage({ id: 1, slug: 'paket-keren' })],
             });
-            
+
             const cardLinks = screen
                 .getAllByRole('link')
-                .filter((el) => el.getAttribute('href') === '/client/catalog/paket-keren');
+                .filter(
+                    (el) =>
+                        el.getAttribute('href') ===
+                        '/client/catalog/paket-keren',
+                );
             expect(cardLinks.length).toBeGreaterThanOrEqual(1);
         });
 
@@ -253,7 +274,11 @@ describe('Client Dashboard (Beranda)', () => {
 
             const cardLink = screen
                 .getAllByRole('link')
-                .find((el) => el.getAttribute('href') === '/client/catalog/paket-laris');
+                .find(
+                    (el) =>
+                        el.getAttribute('href') ===
+                        '/client/catalog/paket-laris',
+                );
             expect(cardLink).toBeInTheDocument();
         });
 
@@ -261,7 +286,7 @@ describe('Client Dashboard (Beranda)', () => {
             renderPage({
                 paket_baru: [makePackage({ id: 1 })],
             });
-            
+
             // Ada minimal 2 link "Lihat Semua" (baru & laris) — pakai semua
             const links = screen.getAllByRole('link', { name: /Lihat Semua/i });
             expect(links.length).toBeGreaterThanOrEqual(1);
@@ -280,7 +305,9 @@ describe('Client Dashboard (Beranda)', () => {
             });
 
             expect(screen.getByText('Paket Terbaru')).toBeInTheDocument();
-            expect(screen.getByText('Paling Laku (Best Seller)')).toBeInTheDocument();
+            expect(
+                screen.getByText('Paling Laku (Best Seller)'),
+            ).toBeInTheDocument();
             expect(screen.getByText('Baru 1')).toBeInTheDocument();
             expect(screen.getByText('Laris 1')).toBeInTheDocument();
         });
@@ -289,7 +316,9 @@ describe('Client Dashboard (Beranda)', () => {
             renderPage({ paket_baru: [], paket_laris: [] });
 
             // Hero tetap ada
-            expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
+            expect(
+                screen.getByRole('heading', { level: 1 }),
+            ).toBeInTheDocument();
         });
     });
 });

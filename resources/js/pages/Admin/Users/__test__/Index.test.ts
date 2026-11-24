@@ -87,7 +87,11 @@ vi.mock('@/components/layout/DashboardLayout.svelte', () => ({
 vi.mock('@/global/PageHeader.svelte', () => ({
     default: (
         anchor: Node,
-        props: { title: string; description?: string; actions?: (anchor: Node) => void },
+        props: {
+            title: string;
+            description?: string;
+            actions?: (anchor: Node) => void;
+        },
     ) => {
         const el = document.createElement('div');
         el.setAttribute('data-testid', 'page-header');
@@ -120,7 +124,10 @@ vi.mock('@/global/StatusTabs.svelte', () => ({
                 const btn = document.createElement('button');
                 btn.type = 'button';
                 btn.setAttribute('role', 'tab');
-                btn.setAttribute('aria-selected', String(props.active === tab.value));
+                btn.setAttribute(
+                    'aria-selected',
+                    String(props.active === tab.value),
+                );
                 btn.textContent = `${tab.label} (${tab.count})`;
                 btn.onclick = () => {
                     props.active = tab.value;
@@ -186,7 +193,12 @@ vi.mock('@/components/admin/users/UserTable.svelte', () => ({
     default: (
         anchor: Node,
         props: {
-            users: Array<{ id: number; name: string; email: string; role: string }>;
+            users: Array<{
+                id: number;
+                name: string;
+                email: string;
+                role: string;
+            }>;
             authUserId?: number;
             onDelete?: (u: { id: number; name: string }) => void;
             onReset?: (u: { id: number; name: string; email: string }) => void;
@@ -198,7 +210,10 @@ vi.mock('@/components/admin/users/UserTable.svelte', () => ({
 
         const update = () => {
             el.innerHTML = '';
-            el.setAttribute('data-auth-user-id', String(props.authUserId ?? ''));
+            el.setAttribute(
+                'data-auth-user-id',
+                String(props.authUserId ?? ''),
+            );
             props.users.forEach((user) => {
                 const row = document.createElement('div');
                 row.setAttribute('data-testid', `user-row-${user.id}`);
@@ -276,7 +291,10 @@ vi.mock('@/global/Pagination.svelte', () => ({
 // 12. MOCK — CREDENTIALS MODAL (reactive via mockUpdaters)
 // ============================================================
 vi.mock('../CredentialsModal.svelte', () => ({
-    default: (anchor: Node, props: { open: boolean; credentials: Credentials | null }) => {
+    default: (
+        anchor: Node,
+        props: { open: boolean; credentials: Credentials | null },
+    ) => {
         const el = document.createElement('div');
         el.setAttribute('data-testid', 'credentials-modal');
         anchor.parentNode?.insertBefore(el, anchor);
@@ -445,7 +463,9 @@ describe('Admin Users Index Page', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mockUpdaters.clear();
-        mockPage.props.auth = { user: { id: 1, name: 'Super Admin', role: 'admin' } };
+        mockPage.props.auth = {
+            user: { id: 1, name: 'Super Admin', role: 'admin' },
+        };
         mockPage.props.flash = { credentials: null };
         vi.useFakeTimers();
     });
@@ -465,32 +485,46 @@ describe('Admin Users Index Page', () => {
             });
 
             // PageHeader
-            expect(screen.getByRole('heading', { name: 'Manajemen User' })).toBeInTheDocument();
-            expect(screen.getByText('Kelola akun admin dan mitra')).toBeInTheDocument();
+            expect(
+                screen.getByRole('heading', { name: 'Manajemen User' }),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByText('Kelola akun admin dan mitra'),
+            ).toBeInTheDocument();
 
             // Actions snippet
-            expect(screen.getByRole('link', { name: 'Tambah User' })).toHaveAttribute(
-                'href',
-                '/admin/users/create',
-            );
+            expect(
+                screen.getByRole('link', { name: 'Tambah User' }),
+            ).toHaveAttribute('href', '/admin/users/create');
 
             // StatusTabs — count derived akurat
-            expect(screen.getByRole('tab', { name: 'Semua (3)' })).toHaveAttribute(
-                'aria-selected',
-                'true',
-            );
-            expect(screen.getByRole('tab', { name: 'Admin (1)' })).toBeInTheDocument();
-            expect(screen.getByRole('tab', { name: 'Mitra (2)' })).toBeInTheDocument();
+            expect(
+                screen.getByRole('tab', { name: 'Semua (3)' }),
+            ).toHaveAttribute('aria-selected', 'true');
+            expect(
+                screen.getByRole('tab', { name: 'Admin (1)' }),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByRole('tab', { name: 'Mitra (2)' }),
+            ).toBeInTheDocument();
 
             // UserTable
             const table = screen.getByTestId('user-table');
             expect(table).toHaveAttribute('data-auth-user-id', '1');
-            expect(screen.getByTestId('user-row-1')).toHaveTextContent('Super Admin (admin)');
-            expect(screen.getByTestId('user-row-2')).toHaveTextContent('Mitra Satu (mitra)');
-            expect(screen.getByTestId('user-row-3')).toHaveTextContent('Mitra Dua (mitra)');
+            expect(screen.getByTestId('user-row-1')).toHaveTextContent(
+                'Super Admin (admin)',
+            );
+            expect(screen.getByTestId('user-row-2')).toHaveTextContent(
+                'Mitra Satu (mitra)',
+            );
+            expect(screen.getByTestId('user-row-3')).toHaveTextContent(
+                'Mitra Dua (mitra)',
+            );
 
             // Pagination
-            expect(screen.getByTestId('pagination')).toHaveTextContent('Total 3 user');
+            expect(screen.getByTestId('pagination')).toHaveTextContent(
+                'Total 3 user',
+            );
         });
     });
 
@@ -505,7 +539,9 @@ describe('Admin Users Index Page', () => {
             });
 
             // → Tab Admin
-            await fireEvent.click(screen.getByRole('tab', { name: 'Admin (1)' }));
+            await fireEvent.click(
+                screen.getByRole('tab', { name: 'Admin (1)' }),
+            );
             await syncUI();
 
             expect(screen.getByTestId('user-row-1')).toBeInTheDocument();
@@ -513,7 +549,9 @@ describe('Admin Users Index Page', () => {
             expect(screen.queryByTestId('user-row-3')).not.toBeInTheDocument();
 
             // → Tab Mitra
-            await fireEvent.click(screen.getByRole('tab', { name: 'Mitra (2)' }));
+            await fireEvent.click(
+                screen.getByRole('tab', { name: 'Mitra (2)' }),
+            );
             await syncUI();
 
             expect(screen.queryByTestId('user-row-1')).not.toBeInTheDocument();
@@ -532,7 +570,9 @@ describe('Admin Users Index Page', () => {
                 filters: { search: '', per_page: 15 },
             });
 
-            const searchInput = screen.getByPlaceholderText('Cari nama atau email...');
+            const searchInput = screen.getByPlaceholderText(
+                'Cari nama atau email...',
+            );
             await fireEvent.input(searchInput, { target: { value: 'mitra' } });
 
             expect(getUsers).not.toHaveBeenCalled();
@@ -555,7 +595,9 @@ describe('Admin Users Index Page', () => {
                 filters: { search: 'admin', per_page: 15 },
             });
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Hapus Pencarian' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Hapus Pencarian' }),
+            );
             await syncUI();
 
             expect(getUsers).toHaveBeenCalledTimes(1);
@@ -581,7 +623,9 @@ describe('Admin Users Index Page', () => {
             expect(emptyState).toHaveTextContent(
                 'Mulai dengan menambahkan user admin atau mitra pertama Anda.',
             );
-            expect(screen.queryByRole('button', { name: 'Reset Filter' })).not.toBeInTheDocument();
+            expect(
+                screen.queryByRole('button', { name: 'Reset Filter' }),
+            ).not.toBeInTheDocument();
         });
 
         it('menampilkan EmptyState hasil pencarian & reset filter saat diklik', async () => {
@@ -596,7 +640,9 @@ describe('Admin Users Index Page', () => {
                 'Tidak ditemukan user dengan kata kunci "tidakada".',
             );
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Reset Filter' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Reset Filter' }),
+            );
 
             expect(getUsers).toHaveBeenCalledWith(
                 { search: '', per_page: 15 },
@@ -647,22 +693,30 @@ describe('Admin Users Index Page', () => {
             });
 
             // 1. Klik "Hapus Mitra Satu" → modal terbuka
-            await fireEvent.click(screen.getByRole('button', { name: 'Hapus Mitra Satu' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Hapus Mitra Satu' }),
+            );
             await syncUI();
 
             const confirmModal = screen.getByTestId('confirm-modal');
             expect(confirmModal).toHaveAttribute('data-variant', 'danger');
             expect(confirmModal).toHaveTextContent('Hapus User?');
-            expect(confirmModal).toHaveTextContent('Yakin ingin menghapus "Mitra Satu"?');
+            expect(confirmModal).toHaveTextContent(
+                'Yakin ingin menghapus "Mitra Satu"?',
+            );
 
             // 2. Klik "Ya, Hapus" → deleteUser terpanggil
-            await fireEvent.click(screen.getByRole('button', { name: 'Ya, Hapus' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Ya, Hapus' }),
+            );
             await syncUI();
 
             expect(deleteUser).toHaveBeenCalledWith(2, expect.any(Object));
 
             // 3. ✅ Query ULANG tombol setelah re-render → assert disabled
-            expect(screen.getByRole('button', { name: 'Ya, Hapus' })).toBeDisabled();
+            expect(
+                screen.getByRole('button', { name: 'Ya, Hapus' }),
+            ).toBeDisabled();
 
             // 4. Panggil onFinish → processing = false & modal tertutup
             finishCallback?.();
@@ -683,7 +737,9 @@ describe('Admin Users Index Page', () => {
             });
 
             // 1. Klik "Reset Mitra Satu" → modal terbuka
-            await fireEvent.click(screen.getByRole('button', { name: 'Reset Mitra Satu' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Reset Mitra Satu' }),
+            );
             await syncUI();
 
             const resetModal = screen.getByTestId('reset-modal');
@@ -692,7 +748,9 @@ describe('Admin Users Index Page', () => {
             );
 
             // 2. Klik "Konfirmasi Reset" → API terpanggil
-            await fireEvent.click(screen.getByRole('button', { name: 'Konfirmasi Reset' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Konfirmasi Reset' }),
+            );
 
             expect(resetUserPassword).toHaveBeenCalledWith(2, {
                 preserveScroll: true,

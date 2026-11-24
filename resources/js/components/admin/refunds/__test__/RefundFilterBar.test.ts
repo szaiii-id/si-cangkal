@@ -5,8 +5,14 @@ import RefundFilterBar from '../RefundFilterBar.svelte';
 // ==========================================
 // MOCK CHILD COMPONENTS
 // ==========================================
-vi.mock('@/global/SearchInput.svelte', () => import('@/global/__mocks__/SearchInput.svelte'));
-vi.mock('@/global/StatusTabs.svelte', () => import('@/global/__mocks__/StatusTabs.svelte'));
+vi.mock(
+    '@/global/SearchInput.svelte',
+    () => import('@/global/__mocks__/SearchInput.svelte'),
+);
+vi.mock(
+    '@/global/StatusTabs.svelte',
+    () => import('@/global/__mocks__/StatusTabs.svelte'),
+);
 
 describe('RefundFilterBar Component', () => {
     const defaultProps = {
@@ -38,7 +44,10 @@ describe('RefundFilterBar Component', () => {
             render(RefundFilterBar, { props: defaultProps });
 
             const searchInput = screen.getByTestId('search-input');
-            expect(searchInput).toHaveAttribute('placeholder', 'Cari kode pesanan atau nama pelanggan...');
+            expect(searchInput).toHaveAttribute(
+                'placeholder',
+                'Cari kode pesanan atau nama pelanggan...',
+            );
         });
     });
 
@@ -47,25 +56,27 @@ describe('RefundFilterBar Component', () => {
     // ==========================================
     describe('Clear Filters', () => {
         it('harus menampilkan tombol "Hapus Semua Filter" jika hasActiveFilters=true', () => {
-            render(RefundFilterBar, { 
-                props: { ...defaultProps, hasActiveFilters: true } 
+            render(RefundFilterBar, {
+                props: { ...defaultProps, hasActiveFilters: true },
             });
 
             expect(screen.getByText('Hapus Semua Filter')).toBeInTheDocument();
         });
 
         it('TIDAK boleh menampilkan tombol "Hapus Semua Filter" jika hasActiveFilters=false', () => {
-            render(RefundFilterBar, { 
-                props: { ...defaultProps, hasActiveFilters: false } 
+            render(RefundFilterBar, {
+                props: { ...defaultProps, hasActiveFilters: false },
             });
 
-            expect(screen.queryByText('Hapus Semua Filter')).not.toBeInTheDocument();
+            expect(
+                screen.queryByText('Hapus Semua Filter'),
+            ).not.toBeInTheDocument();
         });
 
         it('harus memanggil onClear saat tombol "Hapus Semua Filter" diklik', async () => {
             const onClear = vi.fn();
-            render(RefundFilterBar, { 
-                props: { ...defaultProps, hasActiveFilters: true, onClear } 
+            render(RefundFilterBar, {
+                props: { ...defaultProps, hasActiveFilters: true, onClear },
             });
 
             const clearBtn = screen.getByLabelText('Hapus semua filter');
@@ -80,8 +91,8 @@ describe('RefundFilterBar Component', () => {
     // ==========================================
     describe('Accessibility', () => {
         it('tombol "Hapus Semua Filter" harus memiliki aria-label', () => {
-            render(RefundFilterBar, { 
-                props: { ...defaultProps, hasActiveFilters: true } 
+            render(RefundFilterBar, {
+                props: { ...defaultProps, hasActiveFilters: true },
             });
 
             const clearBtn = screen.getByLabelText('Hapus semua filter');
@@ -89,8 +100,8 @@ describe('RefundFilterBar Component', () => {
         });
 
         it('area filter harus memiliki aria-live="polite"', () => {
-            const { container } = render(RefundFilterBar, { 
-                props: { ...defaultProps, hasActiveFilters: true } 
+            const { container } = render(RefundFilterBar, {
+                props: { ...defaultProps, hasActiveFilters: true },
             });
 
             const filterArea = container.querySelector('[aria-live="polite"]');

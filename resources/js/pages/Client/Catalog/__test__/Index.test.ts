@@ -53,11 +53,15 @@ vi.mock('@/utils/enums', () => ({
 // 4. MOCK — FORMAT HELPERS
 // ============================================================
 vi.mock('@/utils/formatCurrency', () => ({
-    formatCurrency: vi.fn((v: string | number) => `Rp ${Number(v).toLocaleString('id-ID')}`),
+    formatCurrency: vi.fn(
+        (v: string | number) => `Rp ${Number(v).toLocaleString('id-ID')}`,
+    ),
 }));
 
 vi.mock('@/utils/duration', () => ({
-    formatDurasi: vi.fn((hari: number, malam: number) => `${hari}H / ${malam}M`),
+    formatDurasi: vi.fn(
+        (hari: number, malam: number) => `${hari}H / ${malam}M`,
+    ),
 }));
 
 // ============================================================
@@ -74,7 +78,10 @@ vi.mock('@/components/layout/ClientLayout.svelte', () => ({
 // 6. MOCK — PAGINATION
 // ============================================================
 vi.mock('@/global/Pagination.svelte', () => ({
-    default: (anchor: Node, props: { meta: { total: number }; label: string }) => {
+    default: (
+        anchor: Node,
+        props: { meta: { total: number }; label: string },
+    ) => {
         const el = document.createElement('div');
         el.setAttribute('data-testid', 'pagination');
         el.textContent = `Total ${props.meta.total} ${props.label}`;
@@ -178,7 +185,10 @@ describe('Client Catalog — Index Page', () => {
             renderPage();
 
             expect(
-                screen.getByRole('heading', { level: 1, name: 'Jelajahi Paket' }),
+                screen.getByRole('heading', {
+                    level: 1,
+                    name: 'Jelajahi Paket',
+                }),
             ).toBeInTheDocument();
         });
 
@@ -192,7 +202,9 @@ describe('Client Catalog — Index Page', () => {
         it('menampilkan select sort dengan semua opsi', () => {
             renderPage();
 
-            const select = screen.getByLabelText('Urutkan') as HTMLSelectElement;
+            const select = screen.getByLabelText(
+                'Urutkan',
+            ) as HTMLSelectElement;
             expect(select).toBeInTheDocument();
 
             const options = Array.from(select.options).map((o) => o.value);
@@ -212,17 +224,31 @@ describe('Client Catalog — Index Page', () => {
         it('merender 6 chip kategori (Semua + 5)', () => {
             renderPage();
 
-            expect(screen.getByRole('button', { name: 'Semua' })).toBeInTheDocument();
-            expect(screen.getByRole('button', { name: 'Alam' })).toBeInTheDocument();
-            expect(screen.getByRole('button', { name: 'Budaya' })).toBeInTheDocument();
-            expect(screen.getByRole('button', { name: 'Kuliner' })).toBeInTheDocument();
-            expect(screen.getByRole('button', { name: 'Petualangan' })).toBeInTheDocument();
-            expect(screen.getByRole('button', { name: 'Lainnya' })).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: 'Semua' }),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: 'Alam' }),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: 'Budaya' }),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: 'Kuliner' }),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: 'Petualangan' }),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: 'Lainnya' }),
+            ).toBeInTheDocument();
         });
 
         it('chip "Semua" aktif saat kategori=""', () => {
             renderPage();
-            expect(screen.getByRole('button', { name: 'Semua' })).toHaveClass('bg-dark');
+            expect(screen.getByRole('button', { name: 'Semua' })).toHaveClass(
+                'bg-dark',
+            );
         });
 
         it('chip kategori aktif saat kategori terpilih', () => {
@@ -230,8 +256,12 @@ describe('Client Catalog — Index Page', () => {
                 ...DEFAULT_FILTERS,
                 kategori: 'budaya',
             });
-            expect(screen.getByRole('button', { name: 'Budaya' })).toHaveClass('bg-dark');
-            expect(screen.getByRole('button', { name: 'Semua' })).not.toHaveClass('bg-dark');
+            expect(screen.getByRole('button', { name: 'Budaya' })).toHaveClass(
+                'bg-dark',
+            );
+            expect(
+                screen.getByRole('button', { name: 'Semua' }),
+            ).not.toHaveClass('bg-dark');
         });
     });
 
@@ -265,17 +295,21 @@ describe('Client Catalog — Index Page', () => {
             // Ambil card links (bukan chip filter)
             const cardLinks = screen
                 .getAllByRole('link')
-                .filter((el) => el.getAttribute('href')?.startsWith('/client/catalog/'));
+                .filter((el) =>
+                    el.getAttribute('href')?.startsWith('/client/catalog/'),
+                );
 
             // Card Bali (index 0) → kategori "Alam"
-            const baliCard = cardLinks.find((el) =>
-                el.getAttribute('href') === '/client/catalog/paket-bali'
+            const baliCard = cardLinks.find(
+                (el) =>
+                    el.getAttribute('href') === '/client/catalog/paket-bali',
             )!;
             expect(baliCard).toHaveTextContent('Alam');
 
             // Card Lombok (index 1) → kategori "Budaya"
-            const lombokCard = cardLinks.find((el) =>
-                el.getAttribute('href') === '/client/catalog/paket-lombok'
+            const lombokCard = cardLinks.find(
+                (el) =>
+                    el.getAttribute('href') === '/client/catalog/paket-lombok',
             )!;
             expect(lombokCard).toHaveTextContent('Budaya');
         });
@@ -321,13 +355,17 @@ describe('Client Catalog — Index Page', () => {
                 el.getAttribute('href')?.startsWith('/client/catalog/'),
             );
             expect(catalogLinks.length).toBeGreaterThan(0);
-            expect(catalogLinks[0].getAttribute('href')).toBe('/client/catalog/paket-bali');
+            expect(catalogLinks[0].getAttribute('href')).toBe(
+                '/client/catalog/paket-bali',
+            );
         });
 
         it('link "Lihat Detail" ada di setiap card', () => {
             renderPage();
 
-            const detailLinks = screen.getAllByRole('link', { name: /Lihat Detail/i });
+            const detailLinks = screen.getAllByRole('link', {
+                name: /Lihat Detail/i,
+            });
             expect(detailLinks.length).toBe(2);
         });
     });
@@ -340,14 +378,18 @@ describe('Client Catalog — Index Page', () => {
             renderPage(makePackages([]));
 
             expect(
-                screen.getByText('Tidak ada paket yang sesuai dengan pencarian Anda.'),
+                screen.getByText(
+                    'Tidak ada paket yang sesuai dengan pencarian Anda.',
+                ),
             ).toBeInTheDocument();
         });
 
         it('merender tombol "Hapus Filter" di empty state saat filter aktif', () => {
             renderPage(makePackages([]), { ...DEFAULT_FILTERS, search: 'xyz' });
 
-            expect(screen.getByRole('button', { name: 'Hapus Filter' })).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: 'Hapus Filter' }),
+            ).toBeInTheDocument();
         });
 
         it('TIDAK merender tombol "Hapus Filter" saat tidak ada filter aktif', () => {
@@ -359,7 +401,9 @@ describe('Client Catalog — Index Page', () => {
 
         it('merender Pagination saat data tersedia', () => {
             renderPage();
-            expect(screen.getByTestId('pagination')).toHaveTextContent('Total 2 paket');
+            expect(screen.getByTestId('pagination')).toHaveTextContent(
+                'Total 2 paket',
+            );
         });
 
         it('TIDAK merender Pagination saat data kosong', () => {
@@ -375,7 +419,9 @@ describe('Client Catalog — Index Page', () => {
         it('tidak memanggil router.get sebelum 300ms', async () => {
             renderPage();
 
-            const input = screen.getByPlaceholderText('Cari destinasi wisata...');
+            const input = screen.getByPlaceholderText(
+                'Cari destinasi wisata...',
+            );
             await fireEvent.input(input, { target: { value: 'bali' } });
 
             expect(mockRouterGet).not.toHaveBeenCalled();
@@ -384,7 +430,9 @@ describe('Client Catalog — Index Page', () => {
         it('memanggil router.get setelah 300ms dengan payload benar', async () => {
             renderPage();
 
-            const input = screen.getByPlaceholderText('Cari destinasi wisata...');
+            const input = screen.getByPlaceholderText(
+                'Cari destinasi wisata...',
+            );
             await fireEvent.input(input, { target: { value: 'bali' } });
 
             await vi.advanceTimersByTimeAsync(300);
@@ -405,7 +453,9 @@ describe('Client Catalog — Index Page', () => {
         it('klik chip kategori memanggil router.get dengan kategori baru', async () => {
             renderPage();
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Budaya' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Budaya' }),
+            );
 
             expect(mockRouterGet).toHaveBeenCalledWith(
                 '/client/catalog',
@@ -420,7 +470,9 @@ describe('Client Catalog — Index Page', () => {
                 kategori: 'budaya',
             });
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Semua' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Semua' }),
+            );
 
             expect(mockRouterGet).toHaveBeenCalledWith(
                 '/client/catalog',
@@ -437,8 +489,12 @@ describe('Client Catalog — Index Page', () => {
         it('ganti sort ke "harga_per_orang" → direction="asc"', async () => {
             renderPage();
 
-            const select = screen.getByLabelText('Urutkan') as HTMLSelectElement;
-            await fireEvent.change(select, { target: { value: 'harga_per_orang' } });
+            const select = screen.getByLabelText(
+                'Urutkan',
+            ) as HTMLSelectElement;
+            await fireEvent.change(select, {
+                target: { value: 'harga_per_orang' },
+            });
 
             expect(mockRouterGet).toHaveBeenCalledWith(
                 '/client/catalog',
@@ -453,7 +509,9 @@ describe('Client Catalog — Index Page', () => {
         it('ganti sort ke "created_at" → direction="desc"', async () => {
             renderPage();
 
-            const select = screen.getByLabelText('Urutkan') as HTMLSelectElement;
+            const select = screen.getByLabelText(
+                'Urutkan',
+            ) as HTMLSelectElement;
             await fireEvent.change(select, { target: { value: 'created_at' } });
 
             expect(mockRouterGet).toHaveBeenCalledWith(
@@ -474,7 +532,9 @@ describe('Client Catalog — Index Page', () => {
         it('klik "Hapus Filter" memanggil router.get dengan payload kosong', async () => {
             renderPage(makePackages([]), { ...DEFAULT_FILTERS, search: 'xyz' });
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Hapus Filter' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Hapus Filter' }),
+            );
 
             expect(mockRouterGet).toHaveBeenCalledWith(
                 '/client/catalog',

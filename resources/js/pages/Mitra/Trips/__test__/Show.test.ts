@@ -12,7 +12,9 @@ import Show from '../Show.svelte';
 // 1. HOISTED MOCK REGISTRY
 // ============================================================
 const mockApi = vi.hoisted(() => ({
-    getTripManifestUrl: vi.fn((id: number) => `https://manifest.test/trip/${id}`),
+    getTripManifestUrl: vi.fn(
+        (id: number) => `https://manifest.test/trip/${id}`,
+    ),
 }));
 
 // ============================================================
@@ -81,8 +83,14 @@ vi.mock('@/components/mitra/trips/TripFacilitiesCard.svelte', () => ({
     default: (anchor: Node, props: any) => {
         const el = document.createElement('div');
         el.setAttribute('data-testid', 'trip-facilities');
-        el.setAttribute('data-include-count', String(props.include?.length ?? 0));
-        el.setAttribute('data-exclude-count', String(props.exclude?.length ?? 0));
+        el.setAttribute(
+            'data-include-count',
+            String(props.include?.length ?? 0),
+        );
+        el.setAttribute(
+            'data-exclude-count',
+            String(props.exclude?.length ?? 0),
+        );
         anchor.parentNode?.insertBefore(el, anchor);
         return {};
     },
@@ -124,10 +132,35 @@ const makeTrip = (overrides = {}) => ({
         kode: 'BK-001',
         client: { id: 100, name: 'Budi', email: 'budi@test.com' },
     },
-    mitra: { id: 1, name: 'PT Mitra Jaya', email: 'mitra@test.com', username: 'mitrajaya' },
+    mitra: {
+        id: 1,
+        name: 'PT Mitra Jaya',
+        email: 'mitra@test.com',
+        username: 'mitrajaya',
+    },
     days: [
-        { id: 1, trip_id: 42, hari_ke: 1, judul: 'Hari 1', deskripsi: 'Hari pertama', tanggal: '2026-02-01', status: 'pending' as const, created_at: '2026-01-15T00:00:00Z', updated_at: '2026-01-15T00:00:00Z' },
-        { id: 2, trip_id: 42, hari_ke: 2, judul: 'Hari 2', deskripsi: 'Hari kedua', tanggal: '2026-02-02', status: 'pending' as const, created_at: '2026-01-15T00:00:00Z', updated_at: '2026-01-15T00:00:00Z' },
+        {
+            id: 1,
+            trip_id: 42,
+            hari_ke: 1,
+            judul: 'Hari 1',
+            deskripsi: 'Hari pertama',
+            tanggal: '2026-02-01',
+            status: 'pending' as const,
+            created_at: '2026-01-15T00:00:00Z',
+            updated_at: '2026-01-15T00:00:00Z',
+        },
+        {
+            id: 2,
+            trip_id: 42,
+            hari_ke: 2,
+            judul: 'Hari 2',
+            deskripsi: 'Hari kedua',
+            tanggal: '2026-02-02',
+            status: 'pending' as const,
+            created_at: '2026-01-15T00:00:00Z',
+            updated_at: '2026-01-15T00:00:00Z',
+        },
     ],
     ...overrides,
 });
@@ -145,7 +178,9 @@ describe('Mitra Trips — Show Page', () => {
     describe('Rendering', () => {
         it('menampilkan BackButton', () => {
             renderPage();
-            expect(screen.getByTestId('back-button')).toHaveTextContent('Kembali ke Jadwal Perjalanan');
+            expect(screen.getByTestId('back-button')).toHaveTextContent(
+                'Kembali ke Jadwal Perjalanan',
+            );
         });
 
         it('merender TripHeaderCard dengan data yang benar', () => {
@@ -153,7 +188,10 @@ describe('Mitra Trips — Show Page', () => {
             const header = screen.getByTestId('trip-header-card');
             expect(header).toHaveAttribute('data-kode', 'TRIP-001');
             expect(header).toHaveAttribute('data-status', 'scheduled');
-            expect(header).toHaveAttribute('data-paket', 'Paket Bali (Snapshot)');
+            expect(header).toHaveAttribute(
+                'data-paket',
+                'Paket Bali (Snapshot)',
+            );
             expect(header).toHaveAttribute('data-has-client', 'true');
         });
 
@@ -164,7 +202,10 @@ describe('Mitra Trips — Show Page', () => {
 
         it('merender TripItineraryList dengan days', () => {
             renderPage();
-            expect(screen.getByTestId('trip-itinerary')).toHaveAttribute('data-days-count', '2');
+            expect(screen.getByTestId('trip-itinerary')).toHaveAttribute(
+                'data-days-count',
+                '2',
+            );
         });
 
         it('merender TripFacilitiesCard dengan include & exclude dari snapshot', () => {
@@ -190,29 +231,41 @@ describe('Mitra Trips — Show Page', () => {
         });
 
         it('handle facilities snapshot kosong', () => {
-            renderPage(makeTrip({
-                snapshot_package: { nama: 'Test', facilities: null },
-            }));
+            renderPage(
+                makeTrip({
+                    snapshot_package: { nama: 'Test', facilities: null },
+                }),
+            );
             const facilities = screen.getByTestId('trip-facilities');
             expect(facilities).toHaveAttribute('data-include-count', '0');
             expect(facilities).toHaveAttribute('data-exclude-count', '0');
         });
 
         it('handle client null di booking', () => {
-            renderPage(makeTrip({
-                booking: { id: 10, kode: 'BK-001', client: null },
-            }));
-            expect(screen.getByTestId('trip-header-card')).toHaveAttribute('data-has-client', 'false');
+            renderPage(
+                makeTrip({
+                    booking: { id: 10, kode: 'BK-001', client: null },
+                }),
+            );
+            expect(screen.getByTestId('trip-header-card')).toHaveAttribute(
+                'data-has-client',
+                'false',
+            );
         });
 
         it('TIDAK menampilkan mitra jika trip.mitra null', () => {
             renderPage(makeTrip({ mitra: null }));
-            expect(screen.queryByText('Penyedia Perjalanan')).not.toBeInTheDocument();
+            expect(
+                screen.queryByText('Penyedia Perjalanan'),
+            ).not.toBeInTheDocument();
         });
 
         it('handle days kosong', () => {
             renderPage(makeTrip({ days: [] }));
-            expect(screen.getByTestId('trip-itinerary')).toHaveAttribute('data-days-count', '0');
+            expect(screen.getByTestId('trip-itinerary')).toHaveAttribute(
+                'data-days-count',
+                '0',
+            );
         });
     });
 });

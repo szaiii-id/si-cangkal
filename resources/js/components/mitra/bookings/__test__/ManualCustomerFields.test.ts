@@ -25,23 +25,39 @@ describe('ManualCustomerFields Component', () => {
     // ==========================================
     describe('Rendering', () => {
         it('harus merender semua field', () => {
-            render(ManualCustomerFields, { props: { form: createMockForm(), errors: {} } });
+            render(ManualCustomerFields, {
+                props: { form: createMockForm(), errors: {} },
+            });
 
-            expect(screen.getByLabelText(/Nama Pelanggan/i)).toBeInTheDocument();
-            expect(screen.getByLabelText(/Email Pelanggan/i)).toBeInTheDocument();
+            expect(
+                screen.getByLabelText(/Nama Pelanggan/i),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByLabelText(/Email Pelanggan/i),
+            ).toBeInTheDocument();
             expect(screen.getByLabelText(/No. HP/i)).toBeInTheDocument();
-            expect(screen.getByLabelText(/Tanggal Keberangkatan/i)).toBeInTheDocument();
-            expect(screen.getByLabelText(/Jumlah Peserta/i)).toBeInTheDocument();
+            expect(
+                screen.getByLabelText(/Tanggal Keberangkatan/i),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByLabelText(/Jumlah Peserta/i),
+            ).toBeInTheDocument();
             expect(screen.getByLabelText(/Catatan/i)).toBeInTheDocument();
         });
 
         it('harus menampilkan nilai awal dari props form', () => {
-            render(ManualCustomerFields, { props: { form: createMockForm(), errors: {} } });
+            render(ManualCustomerFields, {
+                props: { form: createMockForm(), errors: {} },
+            });
 
-            const namaInput = screen.getByLabelText(/Nama Pelanggan/i) as HTMLInputElement;
+            const namaInput = screen.getByLabelText(
+                /Nama Pelanggan/i,
+            ) as HTMLInputElement;
             expect(namaInput.value).toBe('Budi Santoso');
 
-            const emailInput = screen.getByLabelText(/Email Pelanggan/i) as HTMLInputElement;
+            const emailInput = screen.getByLabelText(
+                /Email Pelanggan/i,
+            ) as HTMLInputElement;
             expect(emailInput.value).toBe('budi@test.com');
         });
     });
@@ -90,10 +106,16 @@ describe('ManualCustomerFields Component', () => {
     // ==========================================
     describe('User Interaction', () => {
         it('harus memperbarui nilai input saat user mengetik', async () => {
-            render(ManualCustomerFields, { props: { form: createMockForm(), errors: {} } });
+            render(ManualCustomerFields, {
+                props: { form: createMockForm(), errors: {} },
+            });
 
-            const namaInput = screen.getByLabelText(/Nama Pelanggan/i) as HTMLInputElement;
-            await fireEvent.input(namaInput, { target: { value: 'Budi Baru' } });
+            const namaInput = screen.getByLabelText(
+                /Nama Pelanggan/i,
+            ) as HTMLInputElement;
+            await fireEvent.input(namaInput, {
+                target: { value: 'Budi Baru' },
+            });
 
             expect(namaInput.value).toBe('Budi Baru');
         });

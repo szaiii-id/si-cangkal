@@ -23,7 +23,14 @@ test.describe('Mitra — Pembatalan Booking oleh Mitra', () => {
             durasi_hari: 1,
             durasi_malam: 0,
             harga_per_orang: 400_000,
-            days: [{ judul: 'Tur Sehari', jam_mulai: '08:00', jam_selesai: '16:00', lokasi: 'Martapura' }],
+            days: [
+                {
+                    judul: 'Tur Sehari',
+                    jam_mulai: '08:00',
+                    jam_selesai: '16:00',
+                    lokasi: 'Martapura',
+                },
+            ],
             facilities: [
                 { tipe: 'include', nama: 'Transportasi AC' },
                 { tipe: 'exclude', nama: 'Makan Malam' },
@@ -38,7 +45,8 @@ test.describe('Mitra — Pembatalan Booking oleh Mitra', () => {
         asMitra,
         seed,
     }) => {
-        const cancelReason = 'Cuaca ekstrem di lokasi tujuan sehingga perjalanan tidak dapat dilaksanakan';
+        const cancelReason =
+            'Cuaca ekstrem di lokasi tujuan sehingga perjalanan tidak dapat dilaksanakan';
 
         const booking = await seed.createBooking(page, {
             client_email: SEED_USERS.client.email,
@@ -46,7 +54,10 @@ test.describe('Mitra — Pembatalan Booking oleh Mitra', () => {
             status: 'confirmed',
             tanggal_keberangkatan: futureDate(7),
             jumlah_peserta: 2,
-            participants: [{ nama: 'Peserta Cancel 1' }, { nama: 'Peserta Cancel 2' }],
+            participants: [
+                { nama: 'Peserta Cancel 1' },
+                { nama: 'Peserta Cancel 2' },
+            ],
         });
 
         await asMitra();
@@ -67,12 +78,19 @@ test.describe('Mitra — Pembatalan Booking oleh Mitra', () => {
 
         // Pastikan record Refund PENDING muncul di /mitra/refunds
         await page.goto('/mitra/refunds');
-        await expect(page.getByText(booking.kode)).toBeVisible({ timeout: 10_000 });
+        await expect(page.getByText(booking.kode)).toBeVisible({
+            timeout: 10_000,
+        });
 
         // Verifikasi notifikasi masuk ke client
-        const notifRes = await seed.latestNotification(page, SEED_USERS.client.email);
+        const notifRes = await seed.latestNotification(
+            page,
+            SEED_USERS.client.email,
+        );
         expect(notifRes.notification).not.toBeNull();
-        expect(notifRes.notification?.judul).toMatch(/Booking.*Dibatalkan|Pesanan.*Dibatalkan/i);
+        expect(notifRes.notification?.judul).toMatch(
+            /Booking.*Dibatalkan|Pesanan.*Dibatalkan/i,
+        );
     });
 
     test('Booking sudah cancelled → tombol Cancel tidak muncul', async ({
@@ -119,7 +137,9 @@ test.describe('Mitra — Pembatalan Booking oleh Mitra', () => {
         });
 
         await seed.login(page, otherMitraEmail, 'password123');
-        const response = await page.goto(`/mitra/bookings/${booking.booking_id}`);
+        const response = await page.goto(
+            `/mitra/bookings/${booking.booking_id}`,
+        );
         expect([403, 404]).toContain(response?.status());
     });
 });

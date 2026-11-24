@@ -5,7 +5,10 @@ import ProfileInfoForm from '../ProfileInfoForm.svelte';
 // ==========================================
 // MOCK CHILD COMPONENT (ImageUploader)
 // ==========================================
-vi.mock('@/global/ImageUploader.svelte', () => import('@/global/__mocks__/ImageUploader.svelte'));
+vi.mock(
+    '@/global/ImageUploader.svelte',
+    () => import('@/global/__mocks__/ImageUploader.svelte'),
+);
 
 // ==========================================
 // MOCK API & TOAST
@@ -67,19 +70,25 @@ describe('ProfileInfoForm Component', () => {
             render(ProfileInfoForm, { props: { profile: mockProfile } });
 
             expect(screen.getByLabelText('Nama Usaha')).toBeInTheDocument();
-            expect(screen.getByLabelText('Nomor Identitas')).toBeInTheDocument();
+            expect(
+                screen.getByLabelText('Nomor Identitas'),
+            ).toBeInTheDocument();
             expect(screen.getByLabelText('Telepon')).toBeInTheDocument();
             expect(screen.getByLabelText('Kode Pos')).toBeInTheDocument();
             expect(screen.getByLabelText('Alamat')).toBeInTheDocument();
             expect(screen.getByLabelText('Provinsi')).toBeInTheDocument();
             expect(screen.getByLabelText('Kota')).toBeInTheDocument();
-            expect(screen.getByLabelText('Deskripsi Usaha')).toBeInTheDocument();
+            expect(
+                screen.getByLabelText('Deskripsi Usaha'),
+            ).toBeInTheDocument();
         });
 
         it('harus menampilkan nilai awal dari props profile', () => {
             render(ProfileInfoForm, { props: { profile: mockProfile } });
 
-            const namaInput = screen.getByLabelText('Nama Usaha') as HTMLInputElement;
+            const namaInput = screen.getByLabelText(
+                'Nama Usaha',
+            ) as HTMLInputElement;
             expect(namaInput.value).toBe('PT Travel Indah');
         });
     });
@@ -90,10 +99,14 @@ describe('ProfileInfoForm Component', () => {
     describe('Error State', () => {
         it('harus menampilkan pesan error jika API mengembalikan error', async () => {
             // Mock updateProfile untuk memicu onError
-            (updateProfile as any).mockImplementation((_data: any, options: any) => {
-                options.onError?.({ nama_penyedia_usaha: 'Nama usaha wajib diisi' });
-                options.onFinish?.();
-            });
+            (updateProfile as any).mockImplementation(
+                (_data: any, options: any) => {
+                    options.onError?.({
+                        nama_penyedia_usaha: 'Nama usaha wajib diisi',
+                    });
+                    options.onFinish?.();
+                },
+            );
 
             render(ProfileInfoForm, { props: { profile: mockProfile } });
 
@@ -101,7 +114,9 @@ describe('ProfileInfoForm Component', () => {
             await fireEvent.submit(form!);
 
             await waitFor(() => {
-                expect(screen.getByText('Nama usaha wajib diisi')).toBeInTheDocument();
+                expect(
+                    screen.getByText('Nama usaha wajib diisi'),
+                ).toBeInTheDocument();
             });
         });
     });
@@ -118,7 +133,7 @@ describe('ProfileInfoForm Component', () => {
 
             expect(updateProfile).toHaveBeenCalledWith(
                 expect.any(FormData),
-                expect.any(Object)
+                expect.any(Object),
             );
         });
     });
@@ -128,8 +143,10 @@ describe('ProfileInfoForm Component', () => {
     // ==========================================
     describe('Accessibility', () => {
         it('ikon SVG dekoratif harus disembunyikan dari screen reader', () => {
-            const { container } = render(ProfileInfoForm, { props: { profile: mockProfile } });
-            
+            const { container } = render(ProfileInfoForm, {
+                props: { profile: mockProfile },
+            });
+
             const svgs = container.querySelectorAll('svg');
             svgs.forEach((svg) => {
                 expect(svg).toHaveAttribute('aria-hidden', 'true');

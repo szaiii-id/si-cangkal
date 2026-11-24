@@ -62,15 +62,24 @@ describe('Countdown Utilities', () => {
 
         it('harus mendeteksi isExpiringSoon (sisa < 6 jam) dengan tepat (BVA)', () => {
             // 5 jam 59 menit 59 detik -> Harus TRUE (Expiring Soon)
-            const nearlySixHours = formatBookingCountdown('2026-10-16T15:59:59Z', NOW);
+            const nearlySixHours = formatBookingCountdown(
+                '2026-10-16T15:59:59Z',
+                NOW,
+            );
             expect(nearlySixHours?.isExpiringSoon).toBe(true);
 
             // Tepat 6 jam -> Harus FALSE (karena rumusnya < threshold)
-            const exactlySixHours = formatBookingCountdown('2026-10-16T16:00:00Z', NOW);
+            const exactlySixHours = formatBookingCountdown(
+                '2026-10-16T16:00:00Z',
+                NOW,
+            );
             expect(exactlySixHours?.isExpiringSoon).toBe(false);
 
             // 7 jam -> FALSE
-            const sevenHours = formatBookingCountdown('2026-10-16T17:00:00Z', NOW);
+            const sevenHours = formatBookingCountdown(
+                '2026-10-16T17:00:00Z',
+                NOW,
+            );
             expect(sevenHours?.isExpiringSoon).toBe(false);
         });
     });

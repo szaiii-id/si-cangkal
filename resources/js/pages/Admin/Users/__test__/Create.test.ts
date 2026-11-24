@@ -114,7 +114,9 @@ vi.mock('@/components/admin/users/UserAccountForm.svelte', () => ({
                 input.setAttribute('aria-label', label);
                 input.value = value ?? '';
                 input.oninput = (e) => {
-                    (props.form as any)[key] = (e.target as HTMLInputElement).value;
+                    (props.form as any)[key] = (
+                        e.target as HTMLInputElement
+                    ).value;
                 };
                 wrapper.appendChild(input);
 
@@ -217,7 +219,9 @@ describe('Admin Users — Create Page', () => {
 
             // Judul via svelte:head tidak terlihat di DOM body, tapi tombol/header ya
             expect(screen.getByText('Buat Akun Admin')).toBeInTheDocument();
-            expect(screen.getByText('Isi data dasar untuk akun admin baru.')).toBeInTheDocument();
+            expect(
+                screen.getByText('Isi data dasar untuk akun admin baru.'),
+            ).toBeInTheDocument();
 
             // Back button
             const backBtn = screen.getByTestId('back-button');
@@ -233,12 +237,16 @@ describe('Admin Users — Create Page', () => {
             expect(screen.getByLabelText('Password')).toBeInTheDocument();
 
             // Submit button
-            expect(screen.getByRole('button', { name: 'Buat Admin' })).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: 'Buat Admin' }),
+            ).toBeInTheDocument();
         });
 
         it('tidak menampilkan error banner saat belum ada error', () => {
             render(Create);
-            expect(screen.queryByText(/kesalahan pada form/i)).not.toBeInTheDocument();
+            expect(
+                screen.queryByText(/kesalahan pada form/i),
+            ).not.toBeInTheDocument();
         });
     });
 
@@ -257,7 +265,9 @@ describe('Admin Users — Create Page', () => {
             // Mock createAdmin — tidak panggil callback agar processing tetap true sementara
             vi.mocked(createAdmin).mockImplementation(() => {});
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Buat Admin' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Buat Admin' }),
+            );
 
             expect(createAdmin).toHaveBeenCalledTimes(1);
             expect(createAdmin).toHaveBeenCalledWith(
@@ -281,7 +291,9 @@ describe('Admin Users — Create Page', () => {
 
             vi.mocked(createAdmin).mockImplementation(() => {});
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Buat Admin' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Buat Admin' }),
+            );
 
             expect(createAdmin).toHaveBeenCalledWith(
                 expect.objectContaining({ username: null }),
@@ -297,7 +309,9 @@ describe('Admin Users — Create Page', () => {
 
             vi.mocked(createAdmin).mockImplementation(() => {});
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Buat Admin' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Buat Admin' }),
+            );
 
             expect(createAdmin).toHaveBeenCalledWith(
                 expect.objectContaining({ password: null }),
@@ -316,7 +330,9 @@ describe('Admin Users — Create Page', () => {
             // createAdmin tidak memanggil callback → processing tetap true
             vi.mocked(createAdmin).mockImplementation(() => {});
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Buat Admin' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Buat Admin' }),
+            );
             await syncUI();
 
             const btn = screen.getByRole('button', { name: /menyimpan/i });
@@ -331,15 +347,21 @@ describe('Admin Users — Create Page', () => {
 
             render(Create);
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Buat Admin' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Buat Admin' }),
+            );
             await syncUI();
 
-            expect(screen.getByRole('button', { name: /menyimpan/i })).toBeDisabled();
+            expect(
+                screen.getByRole('button', { name: /menyimpan/i }),
+            ).toBeDisabled();
 
             finishCallback?.();
             await syncUI();
 
-            expect(screen.getByRole('button', { name: 'Buat Admin' })).not.toBeDisabled();
+            expect(
+                screen.getByRole('button', { name: 'Buat Admin' }),
+            ).not.toBeDisabled();
         });
     });
 
@@ -358,11 +380,15 @@ describe('Admin Users — Create Page', () => {
 
             render(Create);
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Buat Admin' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Buat Admin' }),
+            );
             await syncUI();
 
             // Error banner
-            expect(screen.getByText(/Terdapat 2 kesalahan pada form/i)).toBeInTheDocument();
+            expect(
+                screen.getByText(/Terdapat 2 kesalahan pada form/i),
+            ).toBeInTheDocument();
 
             // Error field
             expect(screen.getByText('Nama wajib diisi')).toBeInTheDocument();
@@ -377,7 +403,9 @@ describe('Admin Users — Create Page', () => {
 
             render(Create);
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Buat Admin' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Buat Admin' }),
+            );
             await syncUI();
 
             expect(showToast).toHaveBeenCalledWith(
@@ -394,7 +422,9 @@ describe('Admin Users — Create Page', () => {
 
             render(Create);
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Buat Admin' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Buat Admin' }),
+            );
             await syncUI();
 
             expect(showToast).toHaveBeenCalledWith(
@@ -416,14 +446,22 @@ describe('Admin Users — Create Page', () => {
             render(Create);
 
             // Submit pertama → error
-            await fireEvent.click(screen.getByRole('button', { name: 'Buat Admin' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Buat Admin' }),
+            );
             await syncUI();
-            expect(screen.getByText(/Terdapat 1 kesalahan/i)).toBeInTheDocument();
+            expect(
+                screen.getByText(/Terdapat 1 kesalahan/i),
+            ).toBeInTheDocument();
 
             // Submit kedua → errors reset
-            await fireEvent.click(screen.getByRole('button', { name: 'Buat Admin' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Buat Admin' }),
+            );
             await syncUI();
-            expect(screen.queryByText(/kesalahan pada form/i)).not.toBeInTheDocument();
+            expect(
+                screen.queryByText(/kesalahan pada form/i),
+            ).not.toBeInTheDocument();
         });
     });
 
@@ -443,10 +481,14 @@ describe('Admin Users — Create Page', () => {
 
             render(Create);
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Buat Admin' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Buat Admin' }),
+            );
             await syncUI();
 
-            expect(screen.getByText(/Terdapat 3 kesalahan/i)).toBeInTheDocument();
+            expect(
+                screen.getByText(/Terdapat 3 kesalahan/i),
+            ).toBeInTheDocument();
         });
     });
 });

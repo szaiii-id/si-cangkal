@@ -20,8 +20,9 @@ namespace App\Enums;
  *   (seeder, migrasi lama). Flow runtime saat ini TIDAK men-set status
  *   ini: saat mitra memverifikasi pembayaran, status langsung menjadi
  *   `confirmed` (lihat BookingPaymentService::verifyPayment).
- * - `in_progress` dan `completed` di-set otomatis oleh scheduler trip
- *   (Fase 3), bukan manual.
+ * - `in_progress` dan `completed` di-set oleh `TripService` saat trip
+ *   diaktifkan/diselesaikan (via `TripStatusSynchronizer`). Tidak ada
+ *   scheduler khusus untuk transisi ini.
  */
 enum BookingStatus: string
 {

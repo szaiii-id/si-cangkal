@@ -75,10 +75,7 @@ vi.mock('@/components/layout/DashboardLayout.svelte', () => ({
 // 7. MOCK — PAGE HEADER
 // ============================================================
 vi.mock('@/global/PageHeader.svelte', () => ({
-    default: (
-        anchor: Node,
-        props: { title: string; description?: string },
-    ) => {
+    default: (anchor: Node, props: { title: string; description?: string }) => {
         const el = document.createElement('div');
         el.setAttribute('data-testid', 'page-header');
         el.innerHTML = `<h1>${props.title}</h1><p>${props.description ?? ''}</p>`;
@@ -117,7 +114,10 @@ vi.mock('@/components/admin/refunds/RefundFilterBar.svelte', () => ({
                 const btn = document.createElement('button');
                 btn.type = 'button';
                 btn.setAttribute('role', 'tab');
-                btn.setAttribute('aria-selected', String(props.selectedStatus === tab.value));
+                btn.setAttribute(
+                    'aria-selected',
+                    String(props.selectedStatus === tab.value),
+                );
                 btn.textContent = `${tab.label} (${tab.count})`;
                 btn.onclick = () => props.onStatusChange(tab.value);
                 tabsEl.appendChild(btn);
@@ -127,7 +127,8 @@ vi.mock('@/components/admin/refunds/RefundFilterBar.svelte', () => ({
             // Search input
             const searchInput = document.createElement('input');
             searchInput.type = 'search';
-            searchInput.placeholder = 'Cari kode pesanan atau nama pelanggan...';
+            searchInput.placeholder =
+                'Cari kode pesanan atau nama pelanggan...';
             searchInput.value = props.search ?? '';
             searchInput.oninput = (e) => {
                 props.search = (e.target as HTMLInputElement).value;
@@ -208,7 +209,10 @@ vi.mock('@/global/EmptyState.svelte', () => ({
 // 11. MOCK — PAGINATION
 // ============================================================
 vi.mock('@/global/Pagination.svelte', () => ({
-    default: (anchor: Node, props: { meta: { total: number }; label: string }) => {
+    default: (
+        anchor: Node,
+        props: { meta: { total: number }; label: string },
+    ) => {
         const el = document.createElement('div');
         el.setAttribute('data-testid', 'pagination');
         el.textContent = `Total ${props.meta.total} ${props.label}`;
@@ -271,7 +275,12 @@ const SAMPLE_REFUNDS = [
 ];
 
 const DEFAULT_FILTERS = { search: '', status: '' };
-const DEFAULT_STATUS_COUNTS = { PENDING: 1, SUCCEEDED: 1, FAILED: 0, CANCELLED: 0 };
+const DEFAULT_STATUS_COUNTS = {
+    PENDING: 1,
+    SUCCEEDED: 1,
+    FAILED: 0,
+    CANCELLED: 0,
+};
 
 const renderPage = (
     refunds = makePagination(SAMPLE_REFUNDS),
@@ -304,7 +313,10 @@ describe('Admin Refunds — Index Page', () => {
             renderPage();
 
             expect(
-                screen.getByRole('heading', { level: 1, name: 'Pengembalian Dana' }),
+                screen.getByRole('heading', {
+                    level: 1,
+                    name: 'Pengembalian Dana',
+                }),
             ).toBeInTheDocument();
             expect(
                 screen.getByText(/Pantau semua pengembalian dana/i),
@@ -319,7 +331,9 @@ describe('Admin Refunds — Index Page', () => {
                 CANCELLED: 0,
             });
 
-            expect(screen.getByRole('tab', { name: /^Semua \(4\)/ })).toBeInTheDocument();
+            expect(
+                screen.getByRole('tab', { name: /^Semua \(4\)/ }),
+            ).toBeInTheDocument();
         });
 
         it('TIDAK menampilkan tab status yang count-nya 0', () => {
@@ -330,8 +344,12 @@ describe('Admin Refunds — Index Page', () => {
                 CANCELLED: 0,
             });
 
-            expect(screen.getByRole('tab', { name: /Menunggu \(1\)/ })).toBeInTheDocument();
-            expect(screen.queryByRole('tab', { name: /Berhasil/ })).not.toBeInTheDocument();
+            expect(
+                screen.getByRole('tab', { name: /Menunggu \(1\)/ }),
+            ).toBeInTheDocument();
+            expect(
+                screen.queryByRole('tab', { name: /Berhasil/ }),
+            ).not.toBeInTheDocument();
         });
     });
 
@@ -344,12 +362,16 @@ describe('Admin Refunds — Index Page', () => {
 
             expect(screen.getByTestId('refund-card-1')).toBeInTheDocument();
             expect(screen.getByTestId('refund-card-2')).toBeInTheDocument();
-            expect(screen.getByTestId('refund-card-1')).toHaveTextContent('Rp 500.000');
+            expect(screen.getByTestId('refund-card-1')).toHaveTextContent(
+                'Rp 500.000',
+            );
         });
 
         it('merender pagination saat data tersedia', () => {
             renderPage();
-            expect(screen.getByTestId('pagination')).toHaveTextContent('Total 2 pengembalian');
+            expect(screen.getByTestId('pagination')).toHaveTextContent(
+                'Total 2 pengembalian',
+            );
         });
     });
 
@@ -360,15 +382,26 @@ describe('Admin Refunds — Index Page', () => {
         it('merender EmptyState default tanpa filter', () => {
             renderPage(makePagination([]));
 
-            expect(screen.getByTestId('empty-state')).toHaveTextContent('Belum ada pengembalian');
-            expect(screen.queryByRole('button', { name: 'Reset Filter' })).not.toBeInTheDocument();
+            expect(screen.getByTestId('empty-state')).toHaveTextContent(
+                'Belum ada pengembalian',
+            );
+            expect(
+                screen.queryByRole('button', { name: 'Reset Filter' }),
+            ).not.toBeInTheDocument();
         });
 
         it('merender EmptyState search context saat filter aktif', () => {
-            renderPage(makePagination([]), { ...DEFAULT_FILTERS, search: 'budi' });
+            renderPage(makePagination([]), {
+                ...DEFAULT_FILTERS,
+                search: 'budi',
+            });
 
-            expect(screen.getByTestId('empty-state')).toHaveTextContent('Tidak ada pengembalian ditemukan');
-            expect(screen.getByRole('button', { name: 'Reset Filter' })).toBeInTheDocument();
+            expect(screen.getByTestId('empty-state')).toHaveTextContent(
+                'Tidak ada pengembalian ditemukan',
+            );
+            expect(
+                screen.getByRole('button', { name: 'Reset Filter' }),
+            ).toBeInTheDocument();
         });
 
         it('TIDAK merender Pagination saat empty', () => {
@@ -384,7 +417,9 @@ describe('Admin Refunds — Index Page', () => {
         it('tidak memanggil getRefunds sebelum 300ms', async () => {
             renderPage();
 
-            const input = screen.getByPlaceholderText(/Cari kode pesanan atau nama pelanggan/i);
+            const input = screen.getByPlaceholderText(
+                /Cari kode pesanan atau nama pelanggan/i,
+            );
             await fireEvent.input(input, { target: { value: 'budi' } });
 
             expect(getRefunds).not.toHaveBeenCalled();
@@ -393,7 +428,9 @@ describe('Admin Refunds — Index Page', () => {
         it('memanggil getRefunds setelah 300ms dengan query search', async () => {
             renderPage();
 
-            const input = screen.getByPlaceholderText(/Cari kode pesanan atau nama pelanggan/i);
+            const input = screen.getByPlaceholderText(
+                /Cari kode pesanan atau nama pelanggan/i,
+            );
             await fireEvent.input(input, { target: { value: 'budi' } });
 
             await vi.advanceTimersByTimeAsync(300);
@@ -413,7 +450,9 @@ describe('Admin Refunds — Index Page', () => {
         it('klik tab status memanggil getRefunds dengan status', async () => {
             renderPage();
 
-            await fireEvent.click(screen.getByRole('tab', { name: /Menunggu/ }));
+            await fireEvent.click(
+                screen.getByRole('tab', { name: /Menunggu/ }),
+            );
 
             expect(getRefunds).toHaveBeenCalledWith(
                 { search: '', status: 'PENDING' },
@@ -427,9 +466,14 @@ describe('Admin Refunds — Index Page', () => {
     // ----------------------------------------------------------
     describe('Interaction — Clear Filters', () => {
         it('klik "Hapus Semua Filter" memanggil getRefunds dengan query kosong', async () => {
-            renderPage(makePagination(SAMPLE_REFUNDS), { search: 'budi', status: 'PENDING' });
+            renderPage(makePagination(SAMPLE_REFUNDS), {
+                search: 'budi',
+                status: 'PENDING',
+            });
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Hapus Semua Filter' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Hapus Semua Filter' }),
+            );
 
             expect(getRefunds).toHaveBeenCalledWith(
                 {},
@@ -438,9 +482,14 @@ describe('Admin Refunds — Index Page', () => {
         });
 
         it('klik "Reset Filter" di EmptyState memanggil clearFilters', async () => {
-            renderPage(makePagination([]), { ...DEFAULT_FILTERS, search: 'xyz' });
+            renderPage(makePagination([]), {
+                ...DEFAULT_FILTERS,
+                search: 'xyz',
+            });
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Reset Filter' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Reset Filter' }),
+            );
 
             expect(getRefunds).toHaveBeenCalledWith(
                 {},

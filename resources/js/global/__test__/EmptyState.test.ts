@@ -10,15 +10,22 @@ describe('EmptyState Component', () => {
     describe('Rendering', () => {
         it('harus merender title dan description', () => {
             render(EmptyState, {
-                props: { title: 'Tidak ada data', description: 'Silakan tambah data baru.' },
+                props: {
+                    title: 'Tidak ada data',
+                    description: 'Silakan tambah data baru.',
+                },
             });
 
             expect(screen.getByText('Tidak ada data')).toBeInTheDocument();
-            expect(screen.getByText('Silakan tambah data baru.')).toBeInTheDocument();
+            expect(
+                screen.getByText('Silakan tambah data baru.'),
+            ).toBeInTheDocument();
         });
 
         it('harus merender ikon SVG default', () => {
-            const { container } = render(EmptyState, { props: { title: 'Test' } });
+            const { container } = render(EmptyState, {
+                props: { title: 'Test' },
+            });
             const svg = container.querySelector('svg');
             expect(svg).toBeInTheDocument();
             expect(svg).toHaveAttribute('aria-hidden', 'true');
@@ -32,7 +39,12 @@ describe('EmptyState Component', () => {
         it('harus merender tombol "Hapus Pencarian" jika hasFilters=true', async () => {
             const onClear = vi.fn();
             render(EmptyState, {
-                props: { title: 'Kosong', hasFilters: true, onClear, clearLabel: 'Reset Filter' },
+                props: {
+                    title: 'Kosong',
+                    hasFilters: true,
+                    onClear,
+                    clearLabel: 'Reset Filter',
+                },
             });
 
             const btn = screen.getByText('Reset Filter');
@@ -45,7 +57,11 @@ describe('EmptyState Component', () => {
         it('harus merender tombol aksi tunggal jika actionLabel dan onAction diberikan', async () => {
             const onAction = vi.fn();
             render(EmptyState, {
-                props: { title: 'Kosong', actionLabel: 'Tambah Data', onAction },
+                props: {
+                    title: 'Kosong',
+                    actionLabel: 'Tambah Data',
+                    onAction,
+                },
             });
 
             const btn = screen.getByText('Tambah Data');

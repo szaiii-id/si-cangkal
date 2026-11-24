@@ -66,7 +66,7 @@ vi.mock('@/global/InputText.svelte', () => ({
                 ${props.error ? `<p role="alert">${props.error}</p>` : ''}
             `;
             (el.querySelector('input') as HTMLInputElement).oninput = (e) =>
-                props.value = (e.target as HTMLInputElement).value;
+                (props.value = (e.target as HTMLInputElement).value);
         };
 
         update();
@@ -86,7 +86,7 @@ vi.mock('@/global/RupiahInput.svelte', () => ({
                 <input type="number" aria-label="${props.label}" value="${props.value || 0}" />
             `;
             (el.querySelector('input') as HTMLInputElement).oninput = (e) =>
-                props.value = Number((e.target as HTMLInputElement).value);
+                (props.value = Number((e.target as HTMLInputElement).value));
         };
 
         update();
@@ -131,7 +131,9 @@ describe('Mitra Packages — Create Page', () => {
         it('menampilkan stepper dan form step 1', () => {
             render(Create);
 
-            expect(screen.getByText('Fase 1: Pembuatan Paket Dasar')).toBeInTheDocument();
+            expect(
+                screen.getByText('Fase 1: Pembuatan Paket Dasar'),
+            ).toBeInTheDocument();
             expect(screen.getByText('Info Paket')).toBeInTheDocument();
             expect(screen.getByLabelText(/Nama Paket/i)).toBeInTheDocument();
             expect(screen.getByLabelText(/Kategori/i)).toBeInTheDocument();
@@ -162,12 +164,16 @@ describe('Mitra Packages — Create Page', () => {
         it('bisa kembali dari step 2 ke step 1', async () => {
             render(Create);
             await fillStep1();
-            await fireEvent.click(screen.getByRole('button', { name: /Lanjut/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Lanjut/i }),
+            );
             await syncUI();
 
             expect(screen.getByText('Durasi & Harga')).toBeInTheDocument();
 
-            await fireEvent.click(screen.getByRole('button', { name: /Kembali/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Kembali/i }),
+            );
             await syncUI();
 
             expect(screen.getByLabelText(/Nama Paket/i)).toBeInTheDocument();
@@ -178,24 +184,34 @@ describe('Mitra Packages — Create Page', () => {
         beforeEach(async () => {
             render(Create);
             await fillStep1();
-            await fireEvent.click(screen.getByRole('button', { name: /Lanjut/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Lanjut/i }),
+            );
             await syncUI();
         });
 
         it('menampilkan input durasi & harga', () => {
             expect(screen.getByLabelText(/Durasi Hari/i)).toBeInTheDocument();
             expect(screen.getByLabelText(/Durasi Malam/i)).toBeInTheDocument();
-            expect(screen.getByLabelText(/Harga per Orang/i)).toBeInTheDocument();
+            expect(
+                screen.getByLabelText(/Harga per Orang/i),
+            ).toBeInTheDocument();
         });
 
         it('bisa toggle checkbox harga rombongan', async () => {
-            const checkbox = screen.getByRole('checkbox', { name: /Gunakan Harga Rombongan/i });
+            const checkbox = screen.getByRole('checkbox', {
+                name: /Gunakan Harga Rombongan/i,
+            });
             await fireEvent.click(checkbox);
             await syncUI();
 
             // Pakai exact match agar tidak ambigu dengan label checkbox
-            expect(screen.getByLabelText('Harga Rombongan', { exact: true })).toBeInTheDocument();
-            expect(screen.getByLabelText(/Maksimal Peserta/i)).toBeInTheDocument();
+            expect(
+                screen.getByLabelText('Harga Rombongan', { exact: true }),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByLabelText(/Maksimal Peserta/i),
+            ).toBeInTheDocument();
         });
     });
 
@@ -205,7 +221,9 @@ describe('Mitra Packages — Create Page', () => {
 
             // Step 1
             await fillStep1();
-            await fireEvent.click(screen.getByRole('button', { name: /Lanjut/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Lanjut/i }),
+            );
             await syncUI();
 
             // Step 2
@@ -214,23 +232,29 @@ describe('Mitra Packages — Create Page', () => {
             await syncUI();
 
             const hargaPerOrang = screen.getByLabelText(/Harga per Orang/i);
-            await fireEvent.input(hargaPerOrang, { target: { value: '750000' } });
+            await fireEvent.input(hargaPerOrang, {
+                target: { value: '750000' },
+            });
             await syncUI();
 
-            await fireEvent.click(screen.getByRole('button', { name: /Lanjut/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Lanjut/i }),
+            );
             await syncUI();
 
             // Step 3
             expect(screen.getByText('Review Paket Anda')).toBeInTheDocument();
 
-            const submitBtn = screen.getByRole('button', { name: /Simpan & Lanjut Isi Kegiatan/i });
+            const submitBtn = screen.getByRole('button', {
+                name: /Simpan & Lanjut Isi Kegiatan/i,
+            });
             await fireEvent.click(submitBtn);
             await syncUI();
 
             expect(mockApi.createPackage).toHaveBeenCalledOnce();
             expect(mockApi.createPackage).toHaveBeenCalledWith(
                 expect.any(FormData),
-                expect.any(Object)
+                expect.any(Object),
             );
 
             const formData = mockApi.createPackage.mock.calls[0][0];

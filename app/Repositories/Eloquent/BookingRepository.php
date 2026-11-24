@@ -137,6 +137,17 @@ final class BookingRepository implements BookingRepositoryInterface
     /**
      * {@inheritDoc}
      */
+    public function findByIdForUpdate(int $id): ?Booking
+    {
+        return Booking::query()
+            ->whereKey($id)
+            ->lockForUpdate()
+            ->first();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     public function findByKode(string $kode): ?Booking
     {
         return Booking::with(['package', 'client', 'participants', 'payments'])

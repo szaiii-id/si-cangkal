@@ -79,9 +79,7 @@ test.describe('Mitra Bank Accounts', () => {
         await SEL.MITRA.bank.tipe(page, newIdx).selectOption('ewallet');
         await SEL.MITRA.bank.penyedia(page, newIdx).selectOption('GOPAY');
         await SEL.MITRA.bank.nomorRekening(page, newIdx).fill('081299887766');
-        await SEL.MITRA.bank
-            .namaPemilik(page, newIdx)
-            .fill('Mitra E2E Gopay');
+        await SEL.MITRA.bank.namaPemilik(page, newIdx).fill('Mitra E2E Gopay');
 
         await SEL.MITRA.bank.saveButton(page).click();
 

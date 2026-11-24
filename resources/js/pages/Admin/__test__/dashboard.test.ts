@@ -42,7 +42,10 @@ vi.mock('@faintshadow/flarecharts', () => ({
         const el = document.createElement('div');
         el.setAttribute('data-testid', 'area-chart');
         el.setAttribute('data-series-count', String(props.series?.length ?? 0));
-        el.setAttribute('data-data-points', String(props.series?.[0]?.data?.length ?? 0));
+        el.setAttribute(
+            'data-data-points',
+            String(props.series?.[0]?.data?.length ?? 0),
+        );
         anchor.parentNode?.insertBefore(el, anchor);
         return {};
     },
@@ -65,12 +68,18 @@ vi.mock('@/components/admin/dashboard/StatsGrid.svelte', () => ({
     default: (anchor: Node, props: { stats: any }) => {
         const el = document.createElement('div');
         el.setAttribute('data-testid', 'stats-grid');
-        el.setAttribute('data-total-revenue', String(props.stats?.total_revenue ?? 0));
-        el.setAttribute('data-total-users', String(
-            (props.stats?.users?.admin ?? 0) +
-            (props.stats?.users?.mitra ?? 0) +
-            (props.stats?.users?.client ?? 0)
-        ));
+        el.setAttribute(
+            'data-total-revenue',
+            String(props.stats?.total_revenue ?? 0),
+        );
+        el.setAttribute(
+            'data-total-users',
+            String(
+                (props.stats?.users?.admin ?? 0) +
+                    (props.stats?.users?.mitra ?? 0) +
+                    (props.stats?.users?.client ?? 0),
+            ),
+        );
         anchor.parentNode?.insertBefore(el, anchor);
         return {};
     },
@@ -83,7 +92,10 @@ vi.mock('@/components/admin/dashboard/RecentBookings.svelte', () => ({
     default: (anchor: Node, props: { bookings: any[] }) => {
         const el = document.createElement('div');
         el.setAttribute('data-testid', 'recent-bookings');
-        el.setAttribute('data-bookings-count', String(props.bookings?.length ?? 0));
+        el.setAttribute(
+            'data-bookings-count',
+            String(props.bookings?.length ?? 0),
+        );
         anchor.parentNode?.insertBefore(el, anchor);
         return {};
     },
@@ -162,7 +174,9 @@ describe('Admin Dashboard', () => {
         it('menampilkan deskripsi halaman', () => {
             renderPage();
             expect(
-                screen.getByText('Ini ringkasan performa bisnis Anda hari ini.'),
+                screen.getByText(
+                    'Ini ringkasan performa bisnis Anda hari ini.',
+                ),
             ).toBeInTheDocument();
         });
     });
@@ -179,7 +193,9 @@ describe('Admin Dashboard', () => {
 
         it('menampilkan link "Detail Laporan" ke /admin/reports', () => {
             renderPage();
-            const links = screen.getAllByRole('link', { name: /Detail Laporan/i });
+            const links = screen.getAllByRole('link', {
+                name: /Detail Laporan/i,
+            });
             expect(links.length).toBeGreaterThan(0);
             expect(links[0]).toHaveAttribute('href', '/admin/reports');
         });
@@ -221,7 +237,10 @@ describe('Admin Dashboard', () => {
         it('menampilkan heading "Tren Pendapatan"', () => {
             renderPage();
             expect(
-                screen.getByRole('heading', { level: 3, name: 'Tren Pendapatan' }),
+                screen.getByRole('heading', {
+                    level: 3,
+                    name: 'Tren Pendapatan',
+                }),
             ).toBeInTheDocument();
         });
 
@@ -326,7 +345,9 @@ describe('Admin Dashboard', () => {
         });
 
         it('handle user tanpa nama (fallback ke Admin)', () => {
-            mockPage.props.auth = { user: { id: 1, name: '', role: 'admin' } } as any;
+            mockPage.props.auth = {
+                user: { id: 1, name: '', role: 'admin' },
+            } as any;
             renderPage();
 
             expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(

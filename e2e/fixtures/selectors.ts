@@ -138,8 +138,7 @@ export const LAYOUT = {
     flash: {
         success: (page: Page): Locator =>
             page.locator('[role="status"]').first(),
-        error: (page: Page): Locator =>
-            page.locator('[role="alert"]').first(),
+        error: (page: Page): Locator => page.locator('[role="alert"]').first(),
         credentials: (page: Page): Locator =>
             page.getByText(/Kredensial User/i),
     },
@@ -162,7 +161,9 @@ export const LAYOUT = {
         page.getByRole('link', { name: /Notifikasi/i }),
 
     notificationBadge: (page: Page): Locator =>
-        page.getByLabel(/notifikasi.*\d+.*belum dibaca|\d+\s+notifikasi belum dibaca/i),
+        page.getByLabel(
+            /notifikasi.*\d+.*belum dibaca|\d+\s+notifikasi belum dibaca/i,
+        ),
 } as const;
 
 // ==========================================
@@ -230,13 +231,14 @@ export const CLIENT = {
             page.locator(`input#catatan_peserta_${index}`),
         submit: (page: Page): Locator =>
             page.getByRole('button', { name: /Konfirmasi Pesanan/i }),
-        errorAlert: (page: Page): Locator => page.locator('[role="alert"]').first(),
+        errorAlert: (page: Page): Locator =>
+            page.locator('[role="alert"]').first(),
 
         // Show Page — Participants (scoped ke main agar tidak bentrok dengan nama user di navbar)
         participantText: (page: Page, nama: string): Locator =>
             page.getByRole('main').getByText(nama),
 
-        // Upload Bukti Pembayaran 
+        // Upload Bukti Pembayaran
         paymentProofInput: (page: Page): Locator =>
             page.getByLabel('Pilih file bukti transfer'),
         uploadProofButton: (page: Page): Locator =>
@@ -248,7 +250,9 @@ export const CLIENT = {
 
         // Cancel Modal
         cancelButton: (page: Page) =>
-            page.getByRole('button', { name: /Batalkan Pesanan|Batalkan Booking/i }),
+            page.getByRole('button', {
+                name: /Batalkan Pesanan|Batalkan Booking/i,
+            }),
         confirmModal: (page: Page): Locator =>
             page
                 .getByRole('dialog')
@@ -257,7 +261,9 @@ export const CLIENT = {
             page
                 .getByRole('dialog')
                 .filter({ has: page.locator('#confirm-modal-title') })
-                .getByRole('button', { name: /Ya, Batalkan|Batalkan Pesanan/i }),
+                .getByRole('button', {
+                    name: /Ya, Batalkan|Batalkan Pesanan/i,
+                }),
         dismissCancelButton: (page: Page): Locator =>
             page
                 .getByRole('dialog')
@@ -336,8 +342,7 @@ export const MITRA = {
 
         // Day editor
         dayJudul: (page: Page): Locator => page.locator('#newDay-judul'),
-        dayJamMulai: (page: Page): Locator =>
-            page.locator('#newDay-jam-mulai'),
+        dayJamMulai: (page: Page): Locator => page.locator('#newDay-jam-mulai'),
         dayJamSelesai: (page: Page): Locator =>
             page.locator('#newDay-jam-selesai'),
         dayLokasi: (page: Page): Locator => page.locator('#newDay-lokasi'),
@@ -363,12 +368,13 @@ export const MITRA = {
             page.getByRole('button', { name: /Verifikasi & Terima/i }),
         rejectButton: (page: Page): Locator =>
             page.getByRole('button', { name: 'Tolak Pembayaran' }),
-        rejectReason: (page: Page): Locator =>
-            page.locator('#confirm-reason'),
+        rejectReason: (page: Page): Locator => page.locator('#confirm-reason'),
         rejectConfirm: (page: Page): Locator =>
             page.getByRole('button', { name: /Ya, Tolak/i }),
         cancelButton: (page: Page) =>
-            page.getByRole('button', { name: /Batalkan Pesanan|Batalkan & Refund/i }),
+            page.getByRole('button', {
+                name: /Batalkan Pesanan|Batalkan & Refund/i,
+            }),
         downloadProof: (page: Page): Locator =>
             page.getByRole('link', { name: /Buka bukti transfer/i }),
     },
@@ -381,8 +387,7 @@ export const MITRA = {
             page.getByRole('button', { name: /Setujui refund/i }),
         rejectButton: (page: Page): Locator =>
             page.getByRole('button', { name: /Tolak pengajuan refund/i }),
-        rejectReason: (page: Page): Locator =>
-            page.locator('#confirm-reason'),
+        rejectReason: (page: Page): Locator => page.locator('#confirm-reason'),
     },
 
     // ==========================================
@@ -390,7 +395,9 @@ export const MITRA = {
     // ==========================================
     trip: {
         manifestLink: (page: Page): Locator =>
-            page.getByRole('link', { name: /Cetak Laporan|Cetak Daftar Peserta/i }),
+            page.getByRole('link', {
+                name: /Cetak Laporan|Cetak Daftar Peserta/i,
+            }),
     },
 
     // ==========================================
@@ -475,14 +482,13 @@ export const ADMIN = {
         generatePassword: (page: Page): Locator =>
             page.getByRole('button', { name: 'Generate password otomatis' }),
         submit: (page: Page): Locator =>
-            page.getByRole('button', { name: /Tambah Pengguna|Buat User|Simpan Perubahan/i }),
+            page.getByRole('button', {
+                name: /Tambah Pengguna|Buat User|Simpan Perubahan/i,
+            }),
 
-        editButton: (page: Page): Locator =>
-            page.getByLabel('Edit user'),
-        resetButton: (page: Page): Locator =>
-            page.getByLabel('Reset password'),
-        deleteButton: (page: Page): Locator =>
-            page.getByLabel('Hapus user'),
+        editButton: (page: Page): Locator => page.getByLabel('Edit user'),
+        resetButton: (page: Page): Locator => page.getByLabel('Reset password'),
+        deleteButton: (page: Page): Locator => page.getByLabel('Hapus user'),
 
         confirmDelete: (page: Page): Locator =>
             page.getByRole('button', { name: /Ya, Hapus/i }),
@@ -509,17 +515,17 @@ export const ADMIN = {
         searchInput: (page: Page): Locator =>
             page.locator('input[placeholder*="Cari"]'),
         manifestLink: (page: Page): Locator =>
-            page.getByRole('link', { name: /Cetak Daftar Peserta|Cetak Laporan/i }),
+            page.getByRole('link', {
+                name: /Cetak Daftar Peserta|Cetak Laporan/i,
+            }),
     },
 
     // ==========================================
     // REPORT
     // ==========================================
     report: {
-        startDate: (page: Page): Locator =>
-            page.getByLabel('Dari Tanggal'),
-        endDate: (page: Page): Locator =>
-            page.getByLabel('Sampai Tanggal'),
+        startDate: (page: Page): Locator => page.getByLabel('Dari Tanggal'),
+        endDate: (page: Page): Locator => page.getByLabel('Sampai Tanggal'),
         applyFilter: (page: Page): Locator =>
             page.getByRole('button', { name: /Terapkan Filter/i }),
         exportPdf: (page: Page): Locator =>
@@ -565,12 +571,14 @@ export const SEL = {
     NOTIFICATIONS,
 } as const;
 
-
 // ==========================================
 // DATE
 // ==========================================
 
-export function getDateOffset(daysFromToday: number, timeZone = 'Asia/Makassar'): string {
+export function getDateOffset(
+    daysFromToday: number,
+    timeZone = 'Asia/Makassar',
+): string {
     const now = new Date();
     const localDateStr = new Intl.DateTimeFormat('en-CA', {
         timeZone,

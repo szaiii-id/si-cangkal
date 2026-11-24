@@ -33,28 +33,32 @@ describe('UserTable Component', () => {
     // ==========================================
     describe('Rendering', () => {
         it('harus merender nama dan email user', () => {
-            render(UserTable, { 
-                props: { 
-                    users: [createMockUser()], 
+            render(UserTable, {
+                props: {
+                    users: [createMockUser()],
                     authUserId: 99,
                     onDelete: vi.fn(),
                     onReset: vi.fn(),
-                } 
+                },
             });
 
             // Nama muncul di mobile & desktop (getAllByText)
-            expect(screen.getAllByText('Budi Santoso').length).toBeGreaterThan(0);
-            expect(screen.getAllByText('budi@test.com').length).toBeGreaterThan(0);
+            expect(screen.getAllByText('Budi Santoso').length).toBeGreaterThan(
+                0,
+            );
+            expect(screen.getAllByText('budi@test.com').length).toBeGreaterThan(
+                0,
+            );
         });
 
         it('harus menampilkan role badge yang sesuai', () => {
-            render(UserTable, { 
-                props: { 
-                    users: [createMockUser({ role: 'mitra' })], 
+            render(UserTable, {
+                props: {
+                    users: [createMockUser({ role: 'mitra' })],
                     authUserId: 99,
                     onDelete: vi.fn(),
                     onReset: vi.fn(),
-                } 
+                },
             });
 
             expect(screen.getAllByText('Mitra').length).toBeGreaterThan(0);
@@ -66,13 +70,13 @@ describe('UserTable Component', () => {
     // ==========================================
     describe('Action Buttons', () => {
         it('harus menampilkan tombol Edit & Reset untuk role admin', () => {
-            render(UserTable, { 
-                props: { 
-                    users: [createMockUser({ id: 1, role: 'admin' })], 
+            render(UserTable, {
+                props: {
+                    users: [createMockUser({ id: 1, role: 'admin' })],
                     authUserId: 99,
                     onDelete: vi.fn(),
                     onReset: vi.fn(),
-                } 
+                },
             });
 
             expect(screen.getAllByText('Edit').length).toBeGreaterThan(0);
@@ -80,26 +84,26 @@ describe('UserTable Component', () => {
         });
 
         it('harus menampilkan tombol Detail untuk role mitra', () => {
-            render(UserTable, { 
-                props: { 
-                    users: [createMockUser({ id: 2, role: 'mitra' })], 
+            render(UserTable, {
+                props: {
+                    users: [createMockUser({ id: 2, role: 'mitra' })],
                     authUserId: 99,
                     onDelete: vi.fn(),
                     onReset: vi.fn(),
-                } 
+                },
             });
 
             expect(screen.getAllByText('Detail').length).toBeGreaterThan(0);
         });
 
         it('TIDAK menampilkan tombol Edit/Reset untuk role client', () => {
-            render(UserTable, { 
-                props: { 
-                    users: [createMockUser({ id: 3, role: 'client' })], 
+            render(UserTable, {
+                props: {
+                    users: [createMockUser({ id: 3, role: 'client' })],
                     authUserId: 99,
                     onDelete: vi.fn(),
                     onReset: vi.fn(),
-                } 
+                },
             });
 
             expect(screen.queryByText('Edit')).not.toBeInTheDocument();
@@ -107,26 +111,26 @@ describe('UserTable Component', () => {
         });
 
         it('TIDAK menampilkan tombol Hapus jika user adalah diri sendiri (authUserId)', () => {
-            render(UserTable, { 
-                props: { 
-                    users: [createMockUser({ id: 99 })], 
+            render(UserTable, {
+                props: {
+                    users: [createMockUser({ id: 99 })],
                     authUserId: 99,
                     onDelete: vi.fn(),
                     onReset: vi.fn(),
-                } 
+                },
             });
 
             expect(screen.queryByText('Hapus')).not.toBeInTheDocument();
         });
 
         it('menampilkan tombol Hapus jika user bukan diri sendiri', () => {
-            render(UserTable, { 
-                props: { 
-                    users: [createMockUser({ id: 1 })], 
+            render(UserTable, {
+                props: {
+                    users: [createMockUser({ id: 1 })],
                     authUserId: 99,
                     onDelete: vi.fn(),
                     onReset: vi.fn(),
-                } 
+                },
             });
 
             expect(screen.getAllByText('Hapus').length).toBeGreaterThan(0);
@@ -139,13 +143,13 @@ describe('UserTable Component', () => {
     describe('User Interaction', () => {
         it('harus memanggil onDelete saat tombol Hapus diklik', async () => {
             const onDelete = vi.fn();
-            render(UserTable, { 
-                props: { 
-                    users: [createMockUser({ id: 1, name: 'Budi' })], 
+            render(UserTable, {
+                props: {
+                    users: [createMockUser({ id: 1, name: 'Budi' })],
                     authUserId: 99,
                     onDelete,
                     onReset: vi.fn(),
-                } 
+                },
             });
 
             // Ambil tombol Hapus pertama (versi mobile)
@@ -157,19 +161,29 @@ describe('UserTable Component', () => {
 
         it('harus memanggil onReset saat tombol Reset diklik', async () => {
             const onReset = vi.fn();
-            render(UserTable, { 
-                props: { 
-                    users: [createMockUser({ id: 1, name: 'Budi', email: 'budi@test.com' })], 
+            render(UserTable, {
+                props: {
+                    users: [
+                        createMockUser({
+                            id: 1,
+                            name: 'Budi',
+                            email: 'budi@test.com',
+                        }),
+                    ],
                     authUserId: 99,
                     onDelete: vi.fn(),
                     onReset,
-                } 
+                },
             });
 
             const resetBtns = screen.getAllByText('Reset');
             await fireEvent.click(resetBtns[0]);
 
-            expect(onReset).toHaveBeenCalledWith({ id: 1, name: 'Budi', email: 'budi@test.com' });
+            expect(onReset).toHaveBeenCalledWith({
+                id: 1,
+                name: 'Budi',
+                email: 'budi@test.com',
+            });
         });
     });
 
@@ -178,16 +192,18 @@ describe('UserTable Component', () => {
     // ==========================================
     describe('Accessibility', () => {
         it('tabel harus memiliki aria-label', () => {
-            render(UserTable, { 
-                props: { 
-                    users: [createMockUser()], 
+            render(UserTable, {
+                props: {
+                    users: [createMockUser()],
                     authUserId: 99,
                     onDelete: vi.fn(),
                     onReset: vi.fn(),
-                } 
+                },
             });
 
-            const table = screen.getByRole('table', { name: /Daftar Pengguna/i });
+            const table = screen.getByRole('table', {
+                name: /Daftar Pengguna/i,
+            });
             expect(table).toBeInTheDocument();
         });
     });

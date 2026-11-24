@@ -124,15 +124,11 @@ test.describe('Auth — Register Mitra', () => {
         });
 
         test('menampilkan tombol "Buat Akun Mitra"', async ({ page }) => {
-            await expect(
-                SEL.AUTH.registerMitra.submit(page),
-            ).toBeVisible();
+            await expect(SEL.AUTH.registerMitra.submit(page)).toBeVisible();
         });
 
         test('menampilkan link "Masuk sekarang"', async ({ page }) => {
-            await expect(
-                SEL.AUTH.registerMitra.loginLink(page),
-            ).toBeVisible();
+            await expect(SEL.AUTH.registerMitra.loginLink(page)).toBeVisible();
         });
 
         test('menampilkan link "Daftar sebagai Client"', async ({ page }) => {
@@ -169,30 +165,36 @@ test.describe('Auth — Register Mitra', () => {
         });
 
         test('field name bertipe text', async ({ page }) => {
-            await expect(
-                SEL.AUTH.registerMitra.name(page),
-            ).toHaveAttribute('type', 'text');
+            await expect(SEL.AUTH.registerMitra.name(page)).toHaveAttribute(
+                'type',
+                'text',
+            );
         });
 
         test('field email bertipe email', async ({ page }) => {
-            await expect(
-                SEL.AUTH.registerMitra.email(page),
-            ).toHaveAttribute('type', 'email');
+            await expect(SEL.AUTH.registerMitra.email(page)).toHaveAttribute(
+                'type',
+                'email',
+            );
         });
 
         test('semua field required', async ({ page }) => {
-            await expect(
-                SEL.AUTH.registerMitra.name(page),
-            ).toHaveAttribute('required', '');
-            await expect(
-                SEL.AUTH.registerMitra.username(page),
-            ).toHaveAttribute('required', '');
-            await expect(
-                SEL.AUTH.registerMitra.email(page),
-            ).toHaveAttribute('required', '');
-            await expect(
-                SEL.AUTH.registerMitra.password(page),
-            ).toHaveAttribute('required', '');
+            await expect(SEL.AUTH.registerMitra.name(page)).toHaveAttribute(
+                'required',
+                '',
+            );
+            await expect(SEL.AUTH.registerMitra.username(page)).toHaveAttribute(
+                'required',
+                '',
+            );
+            await expect(SEL.AUTH.registerMitra.email(page)).toHaveAttribute(
+                'required',
+                '',
+            );
+            await expect(SEL.AUTH.registerMitra.password(page)).toHaveAttribute(
+                'required',
+                '',
+            );
             await expect(
                 SEL.AUTH.registerMitra.passwordConfirmation(page),
             ).toHaveAttribute('required', '');
@@ -225,14 +227,10 @@ test.describe('Auth — Register Mitra', () => {
             ).toBeVisible();
         });
 
-        test('label "Lemah" muncul untuk password pendek', async ({
-            page,
-        }) => {
+        test('label "Lemah" muncul untuk password pendek', async ({ page }) => {
             await SEL.AUTH.registerMitra.password(page).fill('abc');
 
-            await expect(
-                page.getByText(/^Lemah$/i).first(),
-            ).toBeVisible();
+            await expect(page.getByText(/^Lemah$/i).first()).toBeVisible();
         });
     });
 
@@ -291,9 +289,7 @@ test.describe('Auth — Register Mitra', () => {
                 .fill(VALID_PASSWORD);
 
             // Terms belum dicentang → tombol disabled
-            await expect(
-                SEL.AUTH.registerMitra.submit(page),
-            ).toBeDisabled();
+            await expect(SEL.AUTH.registerMitra.submit(page)).toBeDisabled();
 
             // Centang terms → tombol enabled
             await SEL.AUTH.registerMitra.termsCheckbox(page).check();
@@ -316,9 +312,7 @@ test.describe('Auth — Register Mitra', () => {
                 page.getByText(/Konfirmasi password tidak cocok/i),
             ).toBeVisible();
 
-            await expect(
-                SEL.AUTH.registerMitra.submit(page),
-            ).toBeDisabled();
+            await expect(SEL.AUTH.registerMitra.submit(page)).toBeDisabled();
         });
 
         test('submit tanpa name → tetap di /register/mitra', async ({
@@ -367,10 +361,12 @@ test.describe('Auth — Register Mitra', () => {
 
         test('email duplikat dengan seed admin → error', async ({ page }) => {
             await SEL.AUTH.registerMitra.name(page).fill('Test Mitra');
-            await SEL.AUTH.registerMitra.username(page).fill(
-                `dupmitra${Date.now()}`.toLowerCase(),
-            );
-            await SEL.AUTH.registerMitra.email(page).fill(SEED_USERS.admin.email);
+            await SEL.AUTH.registerMitra
+                .username(page)
+                .fill(`dupmitra${Date.now()}`.toLowerCase());
+            await SEL.AUTH.registerMitra
+                .email(page)
+                .fill(SEED_USERS.admin.email);
             await SEL.AUTH.registerMitra.password(page).fill(VALID_PASSWORD);
             await SEL.AUTH.registerMitra
                 .passwordConfirmation(page)

@@ -192,7 +192,7 @@ describe('createFilter — clear', () => {
         expect(mockRouterGet).toHaveBeenCalledWith(
             '/test',
             {},
-            expect.objectContaining({ replace: true })
+            expect.objectContaining({ replace: true }),
         );
     });
 

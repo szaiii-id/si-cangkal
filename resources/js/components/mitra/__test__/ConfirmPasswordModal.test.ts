@@ -5,7 +5,10 @@ import ConfirmPasswordModal from '../ConfirmPasswordModal.svelte';
 // ==========================================
 // MOCK CHILD COMPONENT (ConfirmModal)
 // ==========================================
-vi.mock('@/global/ConfirmModal.svelte', () => import('@/global/__mocks__/ConfirmModal.svelte'));
+vi.mock(
+    '@/global/ConfirmModal.svelte',
+    () => import('@/global/__mocks__/ConfirmModal.svelte'),
+);
 
 describe('ConfirmPasswordModal Component', () => {
     beforeEach(() => {
@@ -17,17 +20,19 @@ describe('ConfirmPasswordModal Component', () => {
     // ==========================================
     describe('Rendering', () => {
         it('TIDAK boleh merender apa pun jika open=false', () => {
-            render(ConfirmPasswordModal, { 
-                props: { open: false, onConfirm: vi.fn() } 
+            render(ConfirmPasswordModal, {
+                props: { open: false, onConfirm: vi.fn() },
             });
-            expect(screen.queryByTestId('confirm-modal')).not.toBeInTheDocument();
+            expect(
+                screen.queryByTestId('confirm-modal'),
+            ).not.toBeInTheDocument();
         });
 
         it('harus merender modal dan input password jika open=true', () => {
-            render(ConfirmPasswordModal, { 
-                props: { open: true, onConfirm: vi.fn() } 
+            render(ConfirmPasswordModal, {
+                props: { open: true, onConfirm: vi.fn() },
             });
-            
+
             expect(screen.getByTestId('confirm-modal')).toBeInTheDocument();
             expect(screen.getByLabelText('Password Akun')).toBeInTheDocument();
         });
@@ -38,28 +43,30 @@ describe('ConfirmPasswordModal Component', () => {
     // ==========================================
     describe('Password Validation', () => {
         it('harus menampilkan error jika password kurang dari 5 karakter', async () => {
-            render(ConfirmPasswordModal, { 
-                props: { open: true, onConfirm: vi.fn() } 
+            render(ConfirmPasswordModal, {
+                props: { open: true, onConfirm: vi.fn() },
             });
-            
+
             const input = screen.getByLabelText('Password Akun');
             await fireEvent.input(input, { target: { value: 'abc' } });
-            
+
             const confirmBtn = screen.getByTestId('confirm-btn');
             await fireEvent.click(confirmBtn);
 
-            expect(screen.getByRole('alert')).toHaveTextContent('Password wajib diisi dan minimal 5 karakter.');
+            expect(screen.getByRole('alert')).toHaveTextContent(
+                'Password wajib diisi dan minimal 5 karakter.',
+            );
         });
 
         it('TIDAK boleh memanggil onConfirm jika password kurang dari 5 karakter', async () => {
             const onConfirm = vi.fn();
-            render(ConfirmPasswordModal, { 
-                props: { open: true, onConfirm } 
+            render(ConfirmPasswordModal, {
+                props: { open: true, onConfirm },
             });
-            
+
             const input = screen.getByLabelText('Password Akun');
             await fireEvent.input(input, { target: { value: 'abc' } });
-            
+
             const confirmBtn = screen.getByTestId('confirm-btn');
             await fireEvent.click(confirmBtn);
 
@@ -73,13 +80,13 @@ describe('ConfirmPasswordModal Component', () => {
     describe('Submit Password', () => {
         it('harus memanggil onConfirm dengan password yang valid', async () => {
             const onConfirm = vi.fn();
-            render(ConfirmPasswordModal, { 
-                props: { open: true, onConfirm } 
+            render(ConfirmPasswordModal, {
+                props: { open: true, onConfirm },
             });
-            
+
             const input = screen.getByLabelText('Password Akun');
             await fireEvent.input(input, { target: { value: 'password123' } });
-            
+
             const confirmBtn = screen.getByTestId('confirm-btn');
             await fireEvent.click(confirmBtn);
 
@@ -88,10 +95,10 @@ describe('ConfirmPasswordModal Component', () => {
 
         it('harus memanggil onConfirm saat menekan Enter', async () => {
             const onConfirm = vi.fn();
-            render(ConfirmPasswordModal, { 
-                props: { open: true, onConfirm } 
+            render(ConfirmPasswordModal, {
+                props: { open: true, onConfirm },
             });
-            
+
             const input = screen.getByLabelText('Password Akun');
             await fireEvent.input(input, { target: { value: 'password123' } });
             await fireEvent.keyDown(input, { key: 'Enter' });
@@ -105,10 +112,10 @@ describe('ConfirmPasswordModal Component', () => {
     // ==========================================
     describe('Accessibility', () => {
         it('ikon SVG dekoratif harus disembunyikan dari screen reader', () => {
-            const { container } = render(ConfirmPasswordModal, { 
-                props: { open: true, onConfirm: vi.fn() } 
+            const { container } = render(ConfirmPasswordModal, {
+                props: { open: true, onConfirm: vi.fn() },
             });
-            
+
             // Cari SVG yang ada di dalam input wrapper (bukan dari mock)
             const svgs = container.querySelectorAll('svg');
             svgs.forEach((svg) => {
@@ -118,13 +125,13 @@ describe('ConfirmPasswordModal Component', () => {
         });
 
         it('pesan error harus memiliki role="alert"', async () => {
-            render(ConfirmPasswordModal, { 
-                props: { open: true, onConfirm: vi.fn() } 
+            render(ConfirmPasswordModal, {
+                props: { open: true, onConfirm: vi.fn() },
             });
-            
+
             const input = screen.getByLabelText('Password Akun');
             await fireEvent.input(input, { target: { value: 'abc' } });
-            
+
             const confirmBtn = screen.getByTestId('confirm-btn');
             await fireEvent.click(confirmBtn);
 

@@ -147,8 +147,7 @@ export const DB = {
     database: DB_DATABASE,
     username:
         process.env.E2E_DB_USERNAME ?? process.env.DB_USERNAME ?? 'postgres',
-    password:
-        process.env.E2E_DB_PASSWORD ?? process.env.DB_PASSWORD ?? '',
+    password: process.env.E2E_DB_PASSWORD ?? process.env.DB_PASSWORD ?? '',
 } as const;
 
 // ==========================================
@@ -194,26 +193,10 @@ export const PATHS = {
  * - `globalTimeout`: timeout keseluruhan run.
  */
 export const TIMEOUTS = {
-    test: CI.isCI
-        ? SHARD.isHeavyLoad
-            ? 90_000
-            : 60_000
-        : 60_000,
-    action: CI.isCI
-        ? SHARD.isHeavyLoad
-            ? 30_000
-            : 20_000
-        : 10_000,
-    navigation: CI.isCI
-        ? SHARD.isHeavyLoad
-            ? 45_000
-            : 30_000
-        : 15_000,
-    expect: CI.isCI
-        ? SHARD.isHeavyLoad
-            ? 30_000
-            : 20_000
-        : 10_000,
+    test: CI.isCI ? (SHARD.isHeavyLoad ? 90_000 : 60_000) : 60_000,
+    action: CI.isCI ? (SHARD.isHeavyLoad ? 30_000 : 20_000) : 10_000,
+    navigation: CI.isCI ? (SHARD.isHeavyLoad ? 45_000 : 30_000) : 15_000,
+    expect: CI.isCI ? (SHARD.isHeavyLoad ? 30_000 : 20_000) : 10_000,
     webServer: 180_000,
     globalTimeout: 45 * 60_000,
 } as const;
@@ -258,7 +241,7 @@ export const HEALTHCHECK = {
  * - Listener `GenerateETicketListener` → dispatch `GenerateETicketJob` ke queue.
  * - Kalau async, E-Ticket mungkin belum siap saat test assert → flaky.
  * - Dengan `sync`, E-Ticket langsung jadi dalam request yang sama.
- * 
+ *
  * ✅ FIX RATE LIMIT:
  * - Meneruskan `AUTH_THROTTLE_*_TEST_OVERRIDE` dari `process.env` (script)
  *   ke server `php -S`.
@@ -282,13 +265,20 @@ export const ARTISAN_ENV: Record<string, string> = {
     MAIL_MAILER: 'array',
     LARAVEL_STORAGE_PATH: PATHS.storage,
 
-AUTH_THROTTLE_LOGIN_TEST_OVERRIDE: process.env.AUTH_THROTTLE_LOGIN_TEST_OVERRIDE ?? '1000',
-    AUTH_THROTTLE_REGISTER_TEST_OVERRIDE: process.env.AUTH_THROTTLE_REGISTER_TEST_OVERRIDE ?? '1000',
-    AUTH_THROTTLE_FORGOT_PASSWORD_TEST_OVERRIDE: process.env.AUTH_THROTTLE_FORGOT_PASSWORD_TEST_OVERRIDE ?? '1000',
-    AUTH_THROTTLE_RESET_PASSWORD_TEST_OVERRIDE: process.env.AUTH_THROTTLE_RESET_PASSWORD_TEST_OVERRIDE ?? '1000',
-    AUTH_THROTTLE_CONTACT_TEST_OVERRIDE: process.env.AUTH_THROTTLE_CONTACT_TEST_OVERRIDE ?? '1000',
-    AUTH_THROTTLE_UPLOAD_PROOF_TEST_OVERRIDE: process.env.AUTH_THROTTLE_UPLOAD_PROOF_TEST_OVERRIDE ?? '1000',
-    AUTH_THROTTLE_ETICKET_DOWNLOAD_TEST_OVERRIDE: process.env.AUTH_THROTTLE_ETICKET_DOWNLOAD_TEST_OVERRIDE ?? '1000',
+    AUTH_THROTTLE_LOGIN_TEST_OVERRIDE:
+        process.env.AUTH_THROTTLE_LOGIN_TEST_OVERRIDE ?? '1000',
+    AUTH_THROTTLE_REGISTER_TEST_OVERRIDE:
+        process.env.AUTH_THROTTLE_REGISTER_TEST_OVERRIDE ?? '1000',
+    AUTH_THROTTLE_FORGOT_PASSWORD_TEST_OVERRIDE:
+        process.env.AUTH_THROTTLE_FORGOT_PASSWORD_TEST_OVERRIDE ?? '1000',
+    AUTH_THROTTLE_RESET_PASSWORD_TEST_OVERRIDE:
+        process.env.AUTH_THROTTLE_RESET_PASSWORD_TEST_OVERRIDE ?? '1000',
+    AUTH_THROTTLE_CONTACT_TEST_OVERRIDE:
+        process.env.AUTH_THROTTLE_CONTACT_TEST_OVERRIDE ?? '1000',
+    AUTH_THROTTLE_UPLOAD_PROOF_TEST_OVERRIDE:
+        process.env.AUTH_THROTTLE_UPLOAD_PROOF_TEST_OVERRIDE ?? '1000',
+    AUTH_THROTTLE_ETICKET_DOWNLOAD_TEST_OVERRIDE:
+        process.env.AUTH_THROTTLE_ETICKET_DOWNLOAD_TEST_OVERRIDE ?? '1000',
 };
 
 // ==========================================

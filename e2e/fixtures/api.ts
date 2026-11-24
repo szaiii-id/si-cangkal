@@ -278,7 +278,9 @@ export async function apiRequest<T = unknown>(
         }
     }
 
-    throw lastError ?? new Error(`apiRequest: gagal setelah ${retries} attempt.`);
+    throw (
+        lastError ?? new Error(`apiRequest: gagal setelah ${retries} attempt.`)
+    );
 }
 
 // ==========================================

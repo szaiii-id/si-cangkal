@@ -22,7 +22,11 @@ test.describe('Admin — Booking Detail & Regenerate E-Ticket', () => {
         const page = await context.newPage();
         const { seed } = await import('../fixtures/seed');
 
-        await seed.login(page, SEED_USERS.admin.email, SEED_USERS.admin.password);
+        await seed.login(
+            page,
+            SEED_USERS.admin.email,
+            SEED_USERS.admin.password,
+        );
 
         const pkg = await seed.createPackage(page, {
             mitra_email: SEED_USERS.mitra.email,

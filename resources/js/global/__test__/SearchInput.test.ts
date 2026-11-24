@@ -12,8 +12,12 @@ describe('SearchInput Component', () => {
     // ==========================================
     describe('Rendering', () => {
         it('harus merender input dengan placeholder', () => {
-            render(SearchInput, { props: { placeholder: 'Cari paket wisata...' } });
-            expect(screen.getByPlaceholderText('Cari paket wisata...')).toBeInTheDocument();
+            render(SearchInput, {
+                props: { placeholder: 'Cari paket wisata...' },
+            });
+            expect(
+                screen.getByPlaceholderText('Cari paket wisata...'),
+            ).toBeInTheDocument();
         });
 
         it('harus merender nilai awal dari props value', () => {
@@ -23,12 +27,16 @@ describe('SearchInput Component', () => {
 
         it('harus menampilkan tombol hapus jika value tidak kosong', () => {
             render(SearchInput, { props: { value: 'Test' } });
-            expect(screen.getByRole('button', { name: /hapus pencarian/i })).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: /hapus pencarian/i }),
+            ).toBeInTheDocument();
         });
 
         it('TIDAK boleh menampilkan tombol hapus jika value kosong', () => {
             render(SearchInput, { props: { value: '' } });
-            expect(screen.queryByRole('button', { name: /hapus pencarian/i })).not.toBeInTheDocument();
+            expect(
+                screen.queryByRole('button', { name: /hapus pencarian/i }),
+            ).not.toBeInTheDocument();
         });
     });
 
@@ -50,7 +58,7 @@ describe('SearchInput Component', () => {
             const input = screen.getByRole('textbox');
 
             await fireEvent.input(input, { target: { value: 'Bali' } });
-            
+
             // PERBAIKAN: Karena kita mengambil nilai dari event target
             expect(oninput).toHaveBeenCalledWith('Bali');
         });
@@ -58,16 +66,18 @@ describe('SearchInput Component', () => {
         it('harus memanggil onclear dan mengosongkan input saat tombol hapus diklik', async () => {
             const onclear = vi.fn();
             const oninput = vi.fn();
-            
+
             render(SearchInput, { props: { value: 'Test', onclear, oninput } });
-            
-            const clearBtn = screen.getByRole('button', { name: /hapus pencarian/i });
+
+            const clearBtn = screen.getByRole('button', {
+                name: /hapus pencarian/i,
+            });
             await fireEvent.click(clearBtn);
 
             // Callback harus dipanggil dengan string kosong
             expect(oninput).toHaveBeenCalledWith('');
             expect(onclear).toHaveBeenCalledTimes(1);
-            
+
             // Input harus kosong
             expect(screen.getByRole('textbox')).toHaveValue('');
         });

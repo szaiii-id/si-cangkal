@@ -8,7 +8,9 @@ describe('RupiahInput Component', () => {
     // ==========================================
     describe('Rendering', () => {
         it('harus merender label dan prefix "Rp"', () => {
-            render(RupiahInput, { props: { id: 'harga', label: 'Harga Paket' } });
+            render(RupiahInput, {
+                props: { id: 'harga', label: 'Harga Paket' },
+            });
             expect(screen.getByLabelText(/Harga Paket/i)).toBeInTheDocument();
             expect(screen.getByText('Rp')).toBeInTheDocument();
         });
@@ -28,7 +30,7 @@ describe('RupiahInput Component', () => {
             const input = screen.getByRole('textbox');
 
             await fireEvent.input(input, { target: { value: '50000' } });
-            
+
             // Harusnya otomatis jadi "50.000"
             expect(input).toHaveValue('50.000');
         });
@@ -38,7 +40,7 @@ describe('RupiahInput Component', () => {
             const input = screen.getByRole('textbox');
 
             await fireEvent.input(input, { target: { value: '12abc34' } });
-            
+
             // Harus mengambil digit saja -> 1234 -> "1.234"
             expect(input).toHaveValue('1.234');
         });
@@ -62,14 +64,18 @@ describe('RupiahInput Component', () => {
             });
             const input = screen.getByRole('textbox');
             expect(input).toHaveAttribute('aria-describedby', 'harga-message');
-            expect(document.getElementById('harga-message')).toHaveTextContent('Harga wajib diisi');
+            expect(document.getElementById('harga-message')).toHaveTextContent(
+                'Harga wajib diisi',
+            );
         });
 
         it('pesan error harus memiliki role="alert"', () => {
             render(RupiahInput, {
                 props: { id: 'harga', error: 'Harga wajib diisi' },
             });
-            expect(screen.getByRole('alert')).toHaveTextContent('Harga wajib diisi');
+            expect(screen.getByRole('alert')).toHaveTextContent(
+                'Harga wajib diisi',
+            );
         });
 
         it('harus menghubungkan input dengan hint via aria-describedby', () => {
@@ -78,7 +84,9 @@ describe('RupiahInput Component', () => {
             });
             const input = screen.getByRole('textbox');
             expect(input).toHaveAttribute('aria-describedby', 'harga-message');
-            expect(document.getElementById('harga-message')).toHaveTextContent('Minimal Rp 100.000');
+            expect(document.getElementById('harga-message')).toHaveTextContent(
+                'Minimal Rp 100.000',
+            );
         });
     });
 
@@ -107,7 +115,7 @@ describe('RupiahInput Component', () => {
 
             // Simulasi user memasukkan "abc" (tidak valid)
             await fireEvent.input(input, { target: { value: 'abc' } });
-            
+
             // Saat blur, harus dikembalikan ke "0"
             await fireEvent.blur(input);
             expect(input).toHaveValue('0');

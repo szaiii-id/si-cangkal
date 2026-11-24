@@ -16,7 +16,9 @@ describe('Verifikasi Email — pure logic', () => {
         it('fallback untuk angka 0, negatif, NaN, dan Infinity', () => {
             expect(parseRetryAfter(0)).toBe(RESEND_COOLDOWN_SECONDS);
             expect(parseRetryAfter(-5)).toBe(RESEND_COOLDOWN_SECONDS);
-            expect(parseRetryAfter('not-a-number')).toBe(RESEND_COOLDOWN_SECONDS);
+            expect(parseRetryAfter('not-a-number')).toBe(
+                RESEND_COOLDOWN_SECONDS,
+            );
             expect(parseRetryAfter(Number.POSITIVE_INFINITY)).toBe(
                 RESEND_COOLDOWN_SECONDS,
             );

@@ -15,9 +15,8 @@ use Illuminate\Queue\SerializesModels;
  *
  *     verifyPayment()
  *       -> dispatch(BookingConfirmed)
- *          -> CreateTripForBooking (sync)       : buat Trip + TripDay
- *          -> GenerateETicketListener (queue)   : generate E-Ticket
- *          -> NotifyClientListener (queue)      : notifikasi + email
+ *          -> CreateTripForBooking (sync)  : buat Trip + TripDay,
+ *                                            lalu dispatch GenerateETicketJob
  *
  * Prinsip:
  * - Event bersifat immutable. Listener tidak boleh mengubah state Booking;

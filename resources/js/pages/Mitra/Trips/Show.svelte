@@ -4,6 +4,7 @@
     import TripHeaderCard from '@/components/mitra/trips/TripHeaderCard.svelte';
     import TripItineraryList from '@/components/mitra/trips/TripItineraryList.svelte';
     import TripFacilitiesCard from '@/components/mitra/trips/TripFacilitiesCard.svelte';
+    import TripActionsCard from '@/components/mitra/trips/TripActionsCard.svelte';
     import type { Package, Trip, TripDay, UserMini } from '@/types';
     import { tripStatusBadge, tripStatusLabel } from '@/utils/enums';
     import { mitraMenu } from '@/utils/menus';
@@ -63,6 +64,8 @@
 
         <div class="lg:col-span-1">
             <div class="lg:sticky lg:top-24 space-y-4">
+                <TripActionsCard tripId={trip.id} status={trip.status} />
+
                 {#if trip.mitra}
                     <div class="bg-white rounded-3xl border border-gray-200 shadow-sm p-5">
                         <h3 class="text-xs font-extrabold text-gray-500 uppercase tracking-widest mb-3">Penyedia Perjalanan</h3>

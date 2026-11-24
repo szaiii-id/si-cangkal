@@ -26,7 +26,9 @@ vi.mock('@/api/auth', () => ({
 // ==========================================
 const mockPage = vi.hoisted(() => ({
     props: {
-        auth: { user: { id: 1, name: 'Admin', role: 'admin', has_fcm_token: true } },
+        auth: {
+            user: { id: 1, name: 'Admin', role: 'admin', has_fcm_token: true },
+        },
         flash: {},
         unread_notifications: 1,
     },
@@ -47,7 +49,10 @@ vi.mock('@/api/notifications', () => ({
     markAllNotificationsAsRead: vi.fn(),
 }));
 
-import { markNotificationAsRead, markAllNotificationsAsRead } from '@/api/notifications';
+import {
+    markNotificationAsRead,
+    markAllNotificationsAsRead,
+} from '@/api/notifications';
 import { router } from '@inertiajs/svelte';
 
 // ==========================================
@@ -89,26 +94,34 @@ describe('Notifications Index Page', () => {
     describe('Rendering', () => {
         it('harus merender judul halaman dan jumlah belum dibaca', () => {
             render(NotificationsIndex, { props: mockProps() });
-            
+
             // PERBAIKAN: Gunakan getAllByRole atau spesifik ke teks deskripsi
             // "Notifikasi" muncul dua kali (di header layout dan di PageHeader)
-            const headings = screen.getAllByRole('heading', { name: /Notifikasi/i });
+            const headings = screen.getAllByRole('heading', {
+                name: /Notifikasi/i,
+            });
             expect(headings.length).toBeGreaterThanOrEqual(1);
-            
+
             // Cek deskripsi unik
             expect(screen.getByText('1 belum dibaca')).toBeInTheDocument();
         });
 
         it('harus merender daftar notifikasi', () => {
             render(NotificationsIndex, { props: mockProps() });
-            expect(screen.getByText('Booking Terkonfirmasi')).toBeInTheDocument();
+            expect(
+                screen.getByText('Booking Terkonfirmasi'),
+            ).toBeInTheDocument();
         });
 
         it('harus merender EmptyState jika data kosong', () => {
             render(NotificationsIndex, {
-                props: mockProps({ notifications: { ...mockProps().notifications, data: [] } }),
+                props: mockProps({
+                    notifications: { ...mockProps().notifications, data: [] },
+                }),
             });
-            expect(screen.getByText('Belum ada notifikasi')).toBeInTheDocument();
+            expect(
+                screen.getByText('Belum ada notifikasi'),
+            ).toBeInTheDocument();
         });
     });
 
@@ -117,17 +130,25 @@ describe('Notifications Index Page', () => {
     // ==========================================
     describe('Mark All As Read', () => {
         it('harus memanggil API markAllNotificationsAsRead saat tombol diklik', async () => {
-            render(NotificationsIndex, { props: mockProps({ unreadCount: 5 }) });
-            
-            const btn = screen.getByRole('button', { name: /Tandai Semua Dibaca/i });
+            render(NotificationsIndex, {
+                props: mockProps({ unreadCount: 5 }),
+            });
+
+            const btn = screen.getByRole('button', {
+                name: /Tandai Semua Dibaca/i,
+            });
             await fireEvent.click(btn);
-            
+
             expect(markAllNotificationsAsRead).toHaveBeenCalledTimes(1);
         });
 
         it('TIDAK merender tombol "Tandai Semua" jika unreadCount = 0', () => {
-            render(NotificationsIndex, { props: mockProps({ unreadCount: 0 }) });
-            expect(screen.queryByRole('button', { name: /Tandai Semua Dibaca/i })).not.toBeInTheDocument();
+            render(NotificationsIndex, {
+                props: mockProps({ unreadCount: 0 }),
+            });
+            expect(
+                screen.queryByRole('button', { name: /Tandai Semua Dibaca/i }),
+            ).not.toBeInTheDocument();
         });
     });
 
@@ -137,13 +158,15 @@ describe('Notifications Index Page', () => {
     describe('Notification Item Click', () => {
         it('harus memanggil API markNotificationAsRead jika item belum dibaca', async () => {
             render(NotificationsIndex, { props: mockProps() });
-            
-            const item = screen.getByText('Booking Terkonfirmasi').closest('button')!;
+
+            const item = screen
+                .getByText('Booking Terkonfirmasi')
+                .closest('button')!;
             await fireEvent.click(item);
 
             expect(markNotificationAsRead).toHaveBeenCalledWith(
                 'uuid-123',
-                expect.any(Object)
+                expect.any(Object),
             );
         });
 
@@ -152,12 +175,18 @@ describe('Notifications Index Page', () => {
                 props: mockProps({
                     notifications: {
                         ...mockProps().notifications,
-                        data: [mockNotification({ read_at: '2026-10-16T10:05:00Z' })],
+                        data: [
+                            mockNotification({
+                                read_at: '2026-10-16T10:05:00Z',
+                            }),
+                        ],
                     },
                 }),
             });
 
-            const item = screen.getByText('Booking Terkonfirmasi').closest('button')!;
+            const item = screen
+                .getByText('Booking Terkonfirmasi')
+                .closest('button')!;
             await fireEvent.click(item);
 
             expect(markNotificationAsRead).not.toHaveBeenCalled();

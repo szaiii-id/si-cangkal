@@ -19,18 +19,41 @@ export function calculatePasswordStrength(password: string): PasswordStrength {
 
     // Palet app.css + warna kontras untuk teks
     if (score <= 1) {
-        return { level: 1, label: 'Lemah', barColor: 'bg-red-500', textColor: 'text-red-600' };
+        return {
+            level: 1,
+            label: 'Lemah',
+            barColor: 'bg-red-500',
+            textColor: 'text-red-600',
+        };
     }
     if (score === 2) {
-        return { level: 2, label: 'Cukup', barColor: 'bg-sun', textColor: 'text-sun-text' };
+        return {
+            level: 2,
+            label: 'Cukup',
+            barColor: 'bg-sun',
+            textColor: 'text-sun-text',
+        };
     }
     if (score === 3) {
-        return { level: 3, label: 'Kuat', barColor: 'bg-green', textColor: 'text-green-text' };
+        return {
+            level: 3,
+            label: 'Kuat',
+            barColor: 'bg-green',
+            textColor: 'text-green-text',
+        };
     }
-    return { level: 4, label: 'Sangat Kuat', barColor: 'bg-green-dark', textColor: 'text-green-dark' };
+    return {
+        level: 4,
+        label: 'Sangat Kuat',
+        barColor: 'bg-green-dark',
+        textColor: 'text-green-dark',
+    };
 }
 
-export function isPasswordMismatch(password: string, confirmation: string): boolean {
+export function isPasswordMismatch(
+    password: string,
+    confirmation: string,
+): boolean {
     return confirmation.length > 0 && password !== confirmation;
 }
 

@@ -33,7 +33,9 @@ describe('DaysEditor Component', () => {
     describe('Empty State', () => {
         it('harus menampilkan pesan "Belum ada rencana perjalanan" jika days kosong', () => {
             render(DaysEditor, { props: { days: [] } });
-            expect(screen.getByText(/Belum ada rencana perjalanan/i)).toBeInTheDocument();
+            expect(
+                screen.getByText(/Belum ada rencana perjalanan/i),
+            ).toBeInTheDocument();
         });
 
         it('harus menampilkan form tambah hari jika tidak disabled', () => {
@@ -56,8 +58,8 @@ describe('DaysEditor Component', () => {
             const timeSpan = screen.getByText((_content, element) => {
                 return Boolean(
                     element?.tagName === 'SPAN' &&
-                        element.textContent?.includes('08:00') &&
-                        element.textContent?.includes('09:00'),
+                    element.textContent?.includes('08:00') &&
+                    element.textContent?.includes('09:00'),
                 );
             });
             expect(timeSpan).toBeInTheDocument();
@@ -80,12 +82,16 @@ describe('DaysEditor Component', () => {
             render(DaysEditor, { props: { days: [] } });
 
             const judulInput = screen.getByLabelText(/Judul Kegiatan/i);
-            await fireEvent.input(judulInput, { target: { value: 'Makan Siang' } });
+            await fireEvent.input(judulInput, {
+                target: { value: 'Makan Siang' },
+            });
 
             const form = document.querySelector('form');
             if (form) form.setAttribute('novalidate', '');
 
-            const submitBtn = screen.getByRole('button', { name: /Tambahkan ke Daftar/i });
+            const submitBtn = screen.getByRole('button', {
+                name: /Tambahkan ke Daftar/i,
+            });
             await fireEvent.click(submitBtn);
 
             expect(screen.getByText('Makan Siang')).toBeInTheDocument();
@@ -100,10 +106,14 @@ describe('DaysEditor Component', () => {
             const form = document.querySelector('form');
             if (form) form.setAttribute('novalidate', '');
 
-            const submitBtn = screen.getByRole('button', { name: /Tambahkan ke Daftar/i });
+            const submitBtn = screen.getByRole('button', {
+                name: /Tambahkan ke Daftar/i,
+            });
             await fireEvent.click(submitBtn);
 
-            expect(screen.getByText(/Judul kegiatan wajib diisi/i)).toBeInTheDocument();
+            expect(
+                screen.getByText(/Judul kegiatan wajib diisi/i),
+            ).toBeInTheDocument();
         });
     });
 
@@ -118,7 +128,9 @@ describe('DaysEditor Component', () => {
             ];
             render(DaysEditor, { props: { days } });
 
-            const deleteBtns = screen.getAllByRole('button', { name: /Hapus hari ke-/i });
+            const deleteBtns = screen.getAllByRole('button', {
+                name: /Hapus hari ke-/i,
+            });
             await fireEvent.click(deleteBtns[0]);
 
             expect(screen.queryByText('Hari Pertama')).not.toBeInTheDocument();
@@ -133,13 +145,17 @@ describe('DaysEditor Component', () => {
     describe('Disabled Mode', () => {
         it('TIDAK boleh menampilkan form tambah hari jika disabled=true', () => {
             render(DaysEditor, { props: { days: [], disabled: true } });
-            expect(screen.queryByText('Tambah Hari Baru')).not.toBeInTheDocument();
+            expect(
+                screen.queryByText('Tambah Hari Baru'),
+            ).not.toBeInTheDocument();
         });
 
         it('TIDAK boleh menampilkan tombol hapus jika disabled=true', () => {
             const days = [createMockDay()];
             render(DaysEditor, { props: { days, disabled: true } });
-            expect(screen.queryByRole('button', { name: /Hapus hari ke-/i })).not.toBeInTheDocument();
+            expect(
+                screen.queryByRole('button', { name: /Hapus hari ke-/i }),
+            ).not.toBeInTheDocument();
         });
     });
 });

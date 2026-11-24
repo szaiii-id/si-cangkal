@@ -26,9 +26,13 @@ describe('UploadPaymentProofCard Component', () => {
     describe('Rendering', () => {
         it('harus merender judul dan area upload', () => {
             render(UploadPaymentProofCard, { props: { bookingId: 1 } });
-            
-            expect(screen.getByText('Unggah Bukti Transfer')).toBeInTheDocument();
-            expect(screen.getByText('Klik untuk memilih file')).toBeInTheDocument();
+
+            expect(
+                screen.getByText('Unggah Bukti Transfer'),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByText('Klik untuk memilih file'),
+            ).toBeInTheDocument();
         });
     });
 
@@ -38,30 +42,50 @@ describe('UploadPaymentProofCard Component', () => {
     describe('File Validation', () => {
         it('harus menampilkan error jika file terlalu besar (>5MB)', async () => {
             render(UploadPaymentProofCard, { props: { bookingId: 1 } });
-            
-            const input = screen.getByLabelText(/Klik untuk memilih file/i).closest('label')?.querySelector('input')!;
-            
+
+            const label = screen
+                .getByLabelText(/Klik untuk memilih file/i)
+                .closest('label');
+            const input = label?.querySelector('input');
+
+            if (!input) {
+                throw new Error('Input file tidak ditemukan');
+            }
+
             const file = new File([''], 'large.jpg', { type: 'image/jpeg' });
             Object.defineProperty(file, 'size', { value: 6 * 1024 * 1024 });
 
             await fireEvent.change(input, { target: { files: [file] } });
 
             await waitFor(() => {
-                expect(screen.getByRole('alert')).toHaveTextContent(/Ukuran bukti transfer maksimal 5MB/i);
+                expect(screen.getByRole('alert')).toHaveTextContent(
+                    /Ukuran bukti transfer maksimal 5MB/i,
+                );
             });
         });
 
         it('harus menampilkan error jika format file tidak didukung', async () => {
             render(UploadPaymentProofCard, { props: { bookingId: 1 } });
-            
-            const input = screen.getByLabelText(/Klik untuk memilih file/i).closest('label')?.querySelector('input')!;
-            
-            const file = new File([''], 'document.pdf', { type: 'application/pdf' });
+
+            const label = screen
+                .getByLabelText(/Klik untuk memilih file/i)
+                .closest('label');
+            const input = label?.querySelector('input');
+
+            if (!input) {
+                throw new Error('Input file tidak ditemukan');
+            }
+
+            const file = new File([''], 'document.pdf', {
+                type: 'application/pdf',
+            });
 
             await fireEvent.change(input, { target: { files: [file] } });
 
             await waitFor(() => {
-                expect(screen.getByRole('alert')).toHaveTextContent(/Format bukti transfer tidak didukung/i);
+                expect(screen.getByRole('alert')).toHaveTextContent(
+                    /Format bukti transfer tidak didukung/i,
+                );
             });
         });
     });
@@ -72,9 +96,16 @@ describe('UploadPaymentProofCard Component', () => {
     describe('Upload', () => {
         it('harus memanggil uploadPaymentProof saat tombol "Unggah Bukti" diklik', async () => {
             render(UploadPaymentProofCard, { props: { bookingId: 1 } });
-            
-            const input = screen.getByLabelText(/Klik untuk memilih file/i).closest('label')?.querySelector('input')!;
-            
+
+            const label = screen
+                .getByLabelText(/Klik untuk memilih file/i)
+                .closest('label');
+            const input = label?.querySelector('input');
+
+            if (!input) {
+                throw new Error('Input file tidak ditemukan');
+            }
+
             const file = new File([''], 'test.jpg', { type: 'image/jpeg' });
             Object.defineProperty(file, 'size', { value: 500 * 1024 });
 
@@ -87,7 +118,7 @@ describe('UploadPaymentProofCard Component', () => {
             expect(uploadPaymentProof).toHaveBeenCalledWith(
                 1,
                 expect.any(FormData),
-                expect.any(Object)
+                expect.any(Object),
             );
         });
     });
@@ -98,9 +129,16 @@ describe('UploadPaymentProofCard Component', () => {
     describe('Accessibility', () => {
         it('pesan error harus memiliki role="alert"', async () => {
             render(UploadPaymentProofCard, { props: { bookingId: 1 } });
-            
-            const input = screen.getByLabelText(/Klik untuk memilih file/i).closest('label')?.querySelector('input')!;
-            
+
+            const label = screen
+                .getByLabelText(/Klik untuk memilih file/i)
+                .closest('label');
+            const input = label?.querySelector('input');
+
+            if (!input) {
+                throw new Error('Input file tidak ditemukan');
+            }
+
             const file = new File([''], 'large.jpg', { type: 'image/jpeg' });
             Object.defineProperty(file, 'size', { value: 6 * 1024 * 1024 });
 
@@ -108,7 +146,9 @@ describe('UploadPaymentProofCard Component', () => {
 
             await waitFor(() => {
                 const errorMessage = screen.getByRole('alert');
-                expect(errorMessage).toHaveTextContent(/Ukuran bukti transfer maksimal 5MB/i);
+                expect(errorMessage).toHaveTextContent(
+                    /Ukuran bukti transfer maksimal 5MB/i,
+                );
             });
         });
     });

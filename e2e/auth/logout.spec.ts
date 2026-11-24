@@ -64,7 +64,9 @@ async function logoutAndWait(
     ]);
 
     await page.waitForLoadState('domcontentloaded');
-    await page.waitForLoadState('networkidle', { timeout: 3_000 }).catch(() => {});
+    await page
+        .waitForLoadState('networkidle', { timeout: 3_000 })
+        .catch(() => {});
 }
 
 // ==========================================
@@ -282,7 +284,9 @@ test.describe('Auth — Logout', () => {
             await page.goto('/login');
 
             await SEL.AUTH.login.email(page).fill(SEED_USERS.client.email);
-            await SEL.AUTH.login.password(page).fill(SEED_USERS.client.password);
+            await SEL.AUTH.login
+                .password(page)
+                .fill(SEED_USERS.client.password);
             await SEL.AUTH.login.remember(page).check();
 
             await Promise.all([

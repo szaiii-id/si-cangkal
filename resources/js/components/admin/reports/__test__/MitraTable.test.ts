@@ -43,10 +43,16 @@ describe('MitraTable Component', () => {
         it('harus merender data mitra (nama, email, total_trip, total_revenue)', () => {
             render(MitraTable, { props: { mitras: [createMockMitra()] } });
 
-            expect(screen.getAllByText('Mitra Travel').length).toBeGreaterThan(0);
-            expect(screen.getAllByText('mitra@test.com').length).toBeGreaterThan(0);
+            expect(screen.getAllByText('Mitra Travel').length).toBeGreaterThan(
+                0,
+            );
+            expect(
+                screen.getAllByText('mitra@test.com').length,
+            ).toBeGreaterThan(0);
             expect(screen.getAllByText('10').length).toBeGreaterThan(0);
-            expect(screen.getAllByText(/Rp 5.000.000/).length).toBeGreaterThan(0);
+            expect(screen.getAllByText(/Rp 5.000.000/).length).toBeGreaterThan(
+                0,
+            );
         });
     });
 
@@ -58,7 +64,9 @@ describe('MitraTable Component', () => {
             render(MitraTable, { props: { mitras: [] } });
 
             // PERBAIKAN: Pesan muncul 2 kali (mobile & desktop)
-            const emptyMessages = screen.getAllByText('Belum ada data mitra pada periode ini.');
+            const emptyMessages = screen.getAllByText(
+                'Belum ada data mitra pada periode ini.',
+            );
             expect(emptyMessages.length).toBe(2);
         });
     });
@@ -69,9 +77,13 @@ describe('MitraTable Component', () => {
     describe('Formatting', () => {
         it('harus memformat total_revenue menjadi Rupiah', () => {
             render(MitraTable, {
-                props: { mitras: [createMockMitra({ total_revenue: 1500000 })] },
+                props: {
+                    mitras: [createMockMitra({ total_revenue: 1500000 })],
+                },
             });
-            expect(screen.getAllByText(/Rp 1.500.000/).length).toBeGreaterThan(0);
+            expect(screen.getAllByText(/Rp 1.500.000/).length).toBeGreaterThan(
+                0,
+            );
         });
     });
 
@@ -82,12 +94,16 @@ describe('MitraTable Component', () => {
         it('tabel harus memiliki aria-label', () => {
             render(MitraTable, { props: { mitras: [createMockMitra()] } });
 
-            const table = screen.getByRole('table', { name: /Peringkat Kinerja Mitra/i });
+            const table = screen.getByRole('table', {
+                name: /Peringkat Kinerja Mitra/i,
+            });
             expect(table).toBeInTheDocument();
         });
 
         it('ikon SVG dekoratif harus disembunyikan dari screen reader', () => {
-            const { container } = render(MitraTable, { props: { mitras: [createMockMitra()] } });
+            const { container } = render(MitraTable, {
+                props: { mitras: [createMockMitra()] },
+            });
 
             const svgs = container.querySelectorAll('svg');
             svgs.forEach((svg) => {

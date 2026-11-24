@@ -28,7 +28,9 @@ const createMockTrip = (overrides = {}) => ({
     ...overrides,
 });
 
-const createMockPagination = (data: any[]): PaginationMeta & { data: any[] } => ({
+const createMockPagination = (
+    data: any[],
+): PaginationMeta & { data: any[] } => ({
     current_page: 1,
     last_page: 1,
     from: 1,
@@ -49,7 +51,9 @@ describe('TripTable Component', () => {
     // ==========================================
     describe('Rendering', () => {
         it('harus merender kode trip dan nama paket', () => {
-            render(TripTable, { props: { trips: createMockPagination([createMockTrip()]) } });
+            render(TripTable, {
+                props: { trips: createMockPagination([createMockTrip()]) },
+            });
 
             // Kode muncul di mobile & desktop
             expect(screen.getAllByText('TRIP-123').length).toBeGreaterThan(0);
@@ -57,13 +61,17 @@ describe('TripTable Component', () => {
         });
 
         it('harus merender nama pelanggan', () => {
-            render(TripTable, { props: { trips: createMockPagination([createMockTrip()]) } });
+            render(TripTable, {
+                props: { trips: createMockPagination([createMockTrip()]) },
+            });
 
             expect(screen.getAllByText('Budi').length).toBeGreaterThan(0);
         });
 
         it('harus merender nama mitra', () => {
-            render(TripTable, { props: { trips: createMockPagination([createMockTrip()]) } });
+            render(TripTable, {
+                props: { trips: createMockPagination([createMockTrip()]) },
+            });
 
             expect(screen.getAllByText('Mitra A').length).toBeGreaterThan(0);
         });
@@ -75,16 +83,16 @@ describe('TripTable Component', () => {
     describe('Today Badge', () => {
         it('harus menampilkan badge "Hari ini" jika trip sedang berlangsung', () => {
             const today = todayInTimezone('Asia/Makassar');
-            render(TripTable, { 
-                props: { 
+            render(TripTable, {
+                props: {
                     trips: createMockPagination([
-                        createMockTrip({ 
-                            tanggal_mulai: today, 
+                        createMockTrip({
+                            tanggal_mulai: today,
                             tanggal_selesai: today,
-                            status: 'active' 
-                        })
-                    ]) 
-                } 
+                            status: 'active',
+                        }),
+                    ]),
+                },
             });
 
             expect(screen.getAllByText('Hari ini').length).toBeGreaterThan(0);
@@ -92,16 +100,16 @@ describe('TripTable Component', () => {
 
         it('TIDAK boleh menampilkan badge "Hari ini" jika status bukan active', () => {
             const today = todayInTimezone('Asia/Makassar');
-            render(TripTable, { 
-                props: { 
+            render(TripTable, {
+                props: {
                     trips: createMockPagination([
-                        createMockTrip({ 
-                            tanggal_mulai: today, 
+                        createMockTrip({
+                            tanggal_mulai: today,
                             tanggal_selesai: today,
-                            status: 'scheduled' 
-                        })
-                    ]) 
-                } 
+                            status: 'scheduled',
+                        }),
+                    ]),
+                },
             });
 
             expect(screen.queryByText('Hari ini')).not.toBeInTheDocument();
@@ -113,14 +121,22 @@ describe('TripTable Component', () => {
     // ==========================================
     describe('Formatting', () => {
         it('harus memformat tanggal mulai dan selesai', () => {
-            render(TripTable, { props: { trips: createMockPagination([createMockTrip()]) } });
+            render(TripTable, {
+                props: { trips: createMockPagination([createMockTrip()]) },
+            });
 
-            expect(screen.getAllByText(/20 Okt 2026/).length).toBeGreaterThan(0);
-            expect(screen.getAllByText(/22 Okt 2026/).length).toBeGreaterThan(0);
+            expect(screen.getAllByText(/20 Okt 2026/).length).toBeGreaterThan(
+                0,
+            );
+            expect(screen.getAllByText(/22 Okt 2026/).length).toBeGreaterThan(
+                0,
+            );
         });
 
         it('harus memformat durasi', () => {
-            render(TripTable, { props: { trips: createMockPagination([createMockTrip()]) } });
+            render(TripTable, {
+                props: { trips: createMockPagination([createMockTrip()]) },
+            });
 
             // Durasi dari 20 Okt ke 22 Okt = 3D2N
             expect(screen.getAllByText(/3D2N/).length).toBeGreaterThan(0);
@@ -132,7 +148,9 @@ describe('TripTable Component', () => {
     // ==========================================
     describe('Accessibility', () => {
         it('tabel harus memiliki aria-label', () => {
-            render(TripTable, { props: { trips: createMockPagination([createMockTrip()]) } });
+            render(TripTable, {
+                props: { trips: createMockPagination([createMockTrip()]) },
+            });
 
             const table = screen.getByRole('table', { name: /Daftar Trip/i });
             expect(table).toBeInTheDocument();
@@ -140,16 +158,16 @@ describe('TripTable Component', () => {
 
         it('indikator "Hari ini" harus disembunyikan dari screen reader', () => {
             const today = todayInTimezone('Asia/Makassar');
-            const { container } = render(TripTable, { 
-                props: { 
+            const { container } = render(TripTable, {
+                props: {
                     trips: createMockPagination([
-                        createMockTrip({ 
-                            tanggal_mulai: today, 
+                        createMockTrip({
+                            tanggal_mulai: today,
                             tanggal_selesai: today,
-                            status: 'active' 
-                        })
-                    ]) 
-                } 
+                            status: 'active',
+                        }),
+                    ]),
+                },
             });
 
             // Cari elemen dot (span dengan animate-pulse)

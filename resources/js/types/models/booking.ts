@@ -2,7 +2,7 @@ import type { BookingStatus, PaymentMetode } from '../enum';
 import type { UserMini, UserWithUsername, UserWithEmail } from './user';
 import type { BankAccount, MitraBankAccount } from './bank-account';
 import type { PackageEloquent } from './package';
-import type { RefundEloquent, RefundResource } from './refund'; 
+import type { RefundEloquent, RefundResource } from './refund';
 
 export type BookingEloquent = {
     id: number;
@@ -27,7 +27,7 @@ export type BookingEloquent = {
     mitra?: (UserMini & { bankAccounts?: MitraBankAccount[] }) | null;
     participants?: BookingParticipant[];
     payments?: PaymentEloquent[];
-    
+
     refunds?: RefundEloquent[];
 };
 

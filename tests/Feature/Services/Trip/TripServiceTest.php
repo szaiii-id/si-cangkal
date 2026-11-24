@@ -247,6 +247,16 @@ describe('activate — persistence', function () {
         }
 
         expect($result->status)->toBe(TripStatus::ACTIVE);
+
+        // Sinkronisasi baru: booking ikut IN_PROGRESS + notifikasi client.
+        $this->assertDatabaseHas('bookings', [
+            'id' => $booking->id,
+            'status' => BookingStatus::IN_PROGRESS->value,
+        ]);
+        $this->assertDatabaseHas('notifications', [
+            'user_id' => $this->client->id,
+            'tipe' => 'trip_started',
+        ]);
     });
 
     it('activate → status bukan SCHEDULED → ValidationException', function () {
@@ -284,6 +294,35 @@ describe('complete — persistence', function () {
         ]);
 
         expect($result->status)->toBe(TripStatus::COMPLETED);
+
+        // TripDay selesai, booking COMPLETED (syarat review client), notifikasi.
+        foreach (TripDay::where('trip_id', $trip->id)->get() as $day) {
+            expect($day->status)->toBe(TripDay::STATUS_COMPLETED);
+        }
+
+        $this->assertDatabaseHas('bookings', [
+            'id' => $booking->id,
+            'status' => BookingStatus::COMPLETED->value,
+        ]);
+        $this->assertDatabaseHas('notifications', [
+            'user_id' => $this->client->id,
+            'tipe' => 'trip_completed',
+        ]);
+    });
+
+    it('complete → TripDay IN_PROGRESS ikut COMPLETED', function () {
+        $package = makePackageWithDays($this->mitra, 2);
+        $booking = makeConfirmedBooking($this->client, $this->mitra, $package);
+        $trip = $this->service->createFromBooking($booking);
+        $trip->update(['status' => TripStatus::ACTIVE->value]);
+        TripDay::where('trip_id', $trip->id)->first()->update([
+            'status' => TripDay::STATUS_IN_PROGRESS,
+        ]);
+
+        $this->service->complete($trip->fresh());
+
+        expect(TripDay::where('trip_id', $trip->id)->pluck('status')->all())
+            ->toBe([TripDay::STATUS_COMPLETED, TripDay::STATUS_COMPLETED]);
     });
 
     it('complete → status bukan ACTIVE → ValidationException', function () {

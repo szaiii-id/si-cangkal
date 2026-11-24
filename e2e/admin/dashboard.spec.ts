@@ -82,9 +82,13 @@ test.describe('Admin — Dashboard', () => {
 
             // 1. Heading Sapaan & Tautan Laporan
             await expect(
-                mainArea.getByRole('heading', { name: new RegExp(`Halo, ${SEED_USERS.admin.name}`) }),
+                mainArea.getByRole('heading', {
+                    name: new RegExp(`Halo, ${SEED_USERS.admin.name}`),
+                }),
             ).toBeVisible();
-            await expect(mainArea.getByRole('link', { name: 'Lihat Laporan' })).toBeVisible();
+            await expect(
+                mainArea.getByRole('link', { name: 'Lihat Laporan' }),
+            ).toBeVisible();
 
             // 2. Kartu Statistik Utama (StatsGrid)
             await expect(mainArea.getByText('Total Pendapatan')).toBeVisible();
@@ -94,19 +98,24 @@ test.describe('Admin — Dashboard', () => {
 
             // Tautan detail pada kartu statistik
             await expect(
-                mainArea.getByRole('link', { name: 'Lihat detail Total Booking' }),
+                mainArea.getByRole('link', {
+                    name: 'Lihat detail Total Booking',
+                }),
             ).toHaveAttribute('href', /\/admin\/bookings$/);
             await expect(
                 mainArea.getByRole('link', { name: 'Lihat detail Total Trip' }),
             ).toHaveAttribute('href', /\/admin\/trips$/);
 
             // 3. Grafik Tren Pendapatan 6 Bulan Terakhir
-            await expect(mainArea.getByRole('heading', { name: 'Tren Pendapatan' })).toBeVisible();
-            await expect(mainArea.getByText('Pergerakan pendapatan 6 bulan terakhir')).toBeVisible();
-            await expect(mainArea.getByRole('link', { name: 'Detail Laporan' })).toHaveAttribute(
-                'href',
-                /\/admin\/reports$/,
-            );
+            await expect(
+                mainArea.getByRole('heading', { name: 'Tren Pendapatan' }),
+            ).toBeVisible();
+            await expect(
+                mainArea.getByText('Pergerakan pendapatan 6 bulan terakhir'),
+            ).toBeVisible();
+            await expect(
+                mainArea.getByRole('link', { name: 'Detail Laporan' }),
+            ).toHaveAttribute('href', /\/admin\/reports$/);
 
             // 4. Booking Terbaru (RecentBookings)
             await expect(mainArea.getByText(packageNama).first()).toBeVisible();

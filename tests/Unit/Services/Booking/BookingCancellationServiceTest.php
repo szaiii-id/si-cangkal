@@ -32,6 +32,11 @@ beforeEach(function () {
         ->byDefault()
         ->andReturnUsing(fn ($callback) => $callback());
 
+    // Lock baris: default null => service memakai booking yang diberikan.
+    $this->bookingRepo->shouldReceive('findByIdForUpdate')
+        ->byDefault()
+        ->andReturnNull();
+
     $auditLoggerMock = Mockery::mock(LoggerInterface::class);
     $auditLoggerMock->shouldReceive('info')->byDefault()->andReturnNull();
 

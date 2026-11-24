@@ -35,10 +35,13 @@ test.describe('Admin — Laporan Pendapatan & Kinerja Mitra', () => {
             await page.goto('/admin/reports');
             await expect(page).toHaveURL(/\/client\/dashboard$/);
 
-            const clientPdfRes = await page.request.get('/admin/reports/export-pdf', {
-                maxRedirects: 0,
-                failOnStatusCode: false,
-            });
+            const clientPdfRes = await page.request.get(
+                '/admin/reports/export-pdf',
+                {
+                    maxRedirects: 0,
+                    failOnStatusCode: false,
+                },
+            );
             expect([302, 401, 403]).toContain(clientPdfRes.status());
 
             // Mitra
@@ -46,10 +49,13 @@ test.describe('Admin — Laporan Pendapatan & Kinerja Mitra', () => {
             await page.goto('/admin/reports/mitra');
             await expect(page).toHaveURL(/\/mitra\/dashboard$/);
 
-            const mitraExcelRes = await page.request.get('/admin/reports/export-excel', {
-                maxRedirects: 0,
-                failOnStatusCode: false,
-            });
+            const mitraExcelRes = await page.request.get(
+                '/admin/reports/export-excel',
+                {
+                    maxRedirects: 0,
+                    failOnStatusCode: false,
+                },
+            );
             expect([302, 401, 403]).toContain(mitraExcelRes.status());
         });
     });
@@ -98,7 +104,9 @@ test.describe('Admin — Laporan Pendapatan & Kinerja Mitra', () => {
 
             // Heading utama di dalam <main> & Navigasi Tab aktif
             await expect(
-                page.getByRole('main').getByRole('heading', { name: 'Laporan Pendapatan' }),
+                page
+                    .getByRole('main')
+                    .getByRole('heading', { name: 'Laporan Pendapatan' }),
             ).toBeVisible();
             await expect(
                 page
@@ -112,21 +120,26 @@ test.describe('Admin — Laporan Pendapatan & Kinerja Mitra', () => {
             await expect(page.locator('.fc-kbd-nav')).toBeAttached();
 
             // Tabel Rincian Transaksi (Desktop)
-            const table = page.getByRole('table', { name: 'Rincian Transaksi' });
+            const table = page.getByRole('table', {
+                name: 'Rincian Transaksi',
+            });
             await expect(table.getByText(booking.kode)).toBeVisible();
             await expect(table.getByText(packageNama)).toBeVisible();
 
             // Uji validasi client-side saat tanggal "Dari" > "Sampai"
             const startInput = page.getByLabel('Dari Tanggal');
             const endInput = page.getByLabel('Sampai Tanggal');
-            const applyBtn = page.getByRole('button', { name: 'Terapkan filter tanggal' });
+            const applyBtn = page.getByRole('button', {
+                name: 'Terapkan filter tanggal',
+            });
 
             await startInput.fill('2026-11-25');
             await endInput.fill('2026-11-10');
 
             await expect(
                 page.getByRole('alert').filter({
-                    hasText: 'Tanggal "Dari" tidak boleh lebih besar dari tanggal "Sampai".',
+                    hasText:
+                        'Tanggal "Dari" tidak boleh lebih besar dari tanggal "Sampai".',
                 }),
             ).toBeVisible();
             await expect(applyBtn).toBeDisabled();
@@ -174,7 +187,9 @@ test.describe('Admin — Laporan Pendapatan & Kinerja Mitra', () => {
 
             const pdfResponse = await page.request.get(pdfHref!);
             expect(pdfResponse.status()).toBe(200);
-            expect(pdfResponse.headers()['content-type']).toContain('application/pdf');
+            expect(pdfResponse.headers()['content-type']).toContain(
+                'application/pdf',
+            );
         });
     });
 
@@ -207,9 +222,13 @@ test.describe('Admin — Laporan Pendapatan & Kinerja Mitra', () => {
             await expect(page.getByText('Trip Selesai').first()).toBeVisible();
 
             // Tabel Peringkat Kinerja Mitra
-            const mitraTable = page.getByRole('table', { name: 'Peringkat Kinerja Mitra' });
+            const mitraTable = page.getByRole('table', {
+                name: 'Peringkat Kinerja Mitra',
+            });
             await expect(mitraTable).toBeVisible();
-            await expect(mitraTable.getByText(SEED_USERS.mitra.email)).toBeVisible();
+            await expect(
+                mitraTable.getByText(SEED_USERS.mitra.email),
+            ).toBeVisible();
 
             // 1. Export Excel Kinerja Mitra
             const [excelDownload] = await Promise.all([
@@ -230,7 +249,9 @@ test.describe('Admin — Laporan Pendapatan & Kinerja Mitra', () => {
 
             const pdfResponse = await page.request.get(pdfHref!);
             expect(pdfResponse.status()).toBe(200);
-            expect(pdfResponse.headers()['content-type']).toContain('application/pdf');
+            expect(pdfResponse.headers()['content-type']).toContain(
+                'application/pdf',
+            );
         });
     });
 });

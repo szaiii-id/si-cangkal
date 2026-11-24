@@ -2,7 +2,8 @@ import { test, expect } from '../fixtures/base';
 import { SEL } from '../fixtures/selectors';
 import { MitraPackagePage } from '../pages/MitraPackagePage';
 
-test.describe.serial('E2E Cross-Role — Mitra Onboarding, Publikasi Paket & Katalog Client', () => {
+test.describe
+    .serial('E2E Cross-Role — Mitra Onboarding, Publikasi Paket & Katalog Client', () => {
     const runTimestamp = Date.now();
 
     const stateByProject: Record<
@@ -66,18 +67,24 @@ test.describe.serial('E2E Cross-Role — Mitra Onboarding, Publikasi Paket & Kat
         // --------------------------------------------------
         // 2. Onboarding Mitra (/mitra/onboarding)
         // --------------------------------------------------
-        await expect(page.getByRole('heading', { name: /Data Usaha/i })).toBeVisible();
+        await expect(
+            page.getByRole('heading', { name: /Data Usaha/i }),
+        ).toBeVisible();
 
         await page.locator('#nama_usaha').fill(state.namaUsaha);
         await page.locator('#no_hp').fill('081234567890');
-        await page.locator('#deskripsi').fill('Operator wisata alam dan petualangan Kalimantan Selatan.');
+        await page
+            .locator('#deskripsi')
+            .fill('Operator wisata alam dan petualangan Kalimantan Selatan.');
 
         await page.locator('#tipe_0').selectOption('bank');
         await page.locator('#nama_penyedia_0').selectOption('BCA');
         await page.locator('#nomor_rekening_0').fill('1234567890');
         await page.locator('#nama_pemilik_0').fill(`Owner ${state.namaUsaha}`);
 
-        await page.getByRole('button', { name: /Simpan & Masuk Dashboard/i }).click();
+        await page
+            .getByRole('button', { name: /Simpan & Masuk Dashboard/i })
+            .click();
         await expect(page).toHaveURL('/mitra/dashboard', { timeout: 20_000 });
 
         // --------------------------------------------------
@@ -88,7 +95,8 @@ test.describe.serial('E2E Cross-Role — Mitra Onboarding, Publikasi Paket & Kat
         // Step 1
         await pkgPage.fillStep1({
             nama: state.packageName,
-            deskripsi: 'Paket bamboo rafting menyusuri Sungai Amandit dan wisata budaya Dayak Meratus.',
+            deskripsi:
+                'Paket bamboo rafting menyusuri Sungai Amandit dan wisata budaya Dayak Meratus.',
             kategori: 'petualangan',
             timezone: 'Asia/Makassar',
         });
@@ -105,9 +113,14 @@ test.describe.serial('E2E Cross-Role — Mitra Onboarding, Publikasi Paket & Kat
 
         // Step 3 (Review) -> Submit Fase 1
         await pkgPage.submitCreateButton.click();
-        await expect(page).toHaveURL(/\/mitra\/packages\/\d+\/complete-phase2$/, { timeout: 20_000 });
+        await expect(page).toHaveURL(
+            /\/mitra\/packages\/\d+\/complete-phase2$/,
+            { timeout: 20_000 },
+        );
 
-        const phase2Match = page.url().match(/\/mitra\/packages\/(\d+)\/complete-phase2$/);
+        const phase2Match = page
+            .url()
+            .match(/\/mitra\/packages\/(\d+)\/complete-phase2$/);
         expect(phase2Match).not.toBeNull();
         state.packageId = phase2Match![1];
 
@@ -120,14 +133,16 @@ test.describe.serial('E2E Cross-Role — Mitra Onboarding, Publikasi Paket & Kat
             jamMulai: '08:30',
             jamSelesai: '12:00',
             lokasi: 'Dermaga Loksado, Hulu Sungai Selatan',
-            deskripsi: 'Menyusuri jeram sungai menggunakan rakit bambu tradisional bersama joki lokal.',
+            deskripsi:
+                'Menyusuri jeram sungai menggunakan rakit bambu tradisional bersama joki lokal.',
         });
         await pkgPage.addItineraryDay({
             judul: 'Wisata Budaya Dayak Meratus & Kepulangan',
             jamMulai: '09:00',
             jamSelesai: '14:00',
             lokasi: 'Balai Adat Malaris, Loksado',
-            deskripsi: 'Kunjungan balai adat dan pengantaran kembali ke titik kumpul.',
+            deskripsi:
+                'Kunjungan balai adat dan pengantaran kembali ke titik kumpul.',
         });
 
         await expect(pkgPage.nextStepButton).toBeEnabled();
@@ -150,15 +165,22 @@ test.describe.serial('E2E Cross-Role — Mitra Onboarding, Publikasi Paket & Kat
 
         // Step 3: Review & Terbit -> Klik tombol hijau "Simpan & Terbit"
         await expect(page.getByText('Paket Siap Terbit!')).toBeVisible();
-        const simpanDanTerbitBtn = page.getByRole('button', { name: 'Simpan & Terbit' });
+        const simpanDanTerbitBtn = page.getByRole('button', {
+            name: 'Simpan & Terbit',
+        });
         await expect(simpanDanTerbitBtn).toBeVisible();
         await expect(simpanDanTerbitBtn).toBeEnabled();
         await simpanDanTerbitBtn.click();
 
-        await expect(page).toHaveURL(new RegExp(`/mitra/packages/${state.packageId}$`), {
-            timeout: 20_000,
-        });
-        await expect(page.getByRole('heading', { name: state.packageName })).toBeVisible();
+        await expect(page).toHaveURL(
+            new RegExp(`/mitra/packages/${state.packageId}$`),
+            {
+                timeout: 20_000,
+            },
+        );
+        await expect(
+            page.getByRole('heading', { name: state.packageName }),
+        ).toBeVisible();
         await expect(pkgPage.archivePackageButton).toBeVisible();
     });
 
@@ -182,20 +204,26 @@ test.describe.serial('E2E Cross-Role — Mitra Onboarding, Publikasi Paket & Kat
                     res.url().includes('search=') &&
                     res.request().method() === 'GET',
             ),
-            page.getByPlaceholder('Cari destinasi wisata...').fill(state.packageName),
+            page
+                .getByPlaceholder('Cari destinasi wisata...')
+                .fill(state.packageName),
         ]);
 
         // Pastikan kartu spesifik milik project ini tampil dan hanya kartu tersebut yang diklik
         const targetCard = page
             .locator('article, div')
-            .filter({ has: page.getByRole('heading', { name: state.packageName }) })
+            .filter({
+                has: page.getByRole('heading', { name: state.packageName }),
+            })
             .filter({ has: page.getByRole('link', { name: /Lihat Detail/i }) })
             .last();
 
         await expect(targetCard).toBeVisible({ timeout: 10_000 });
         await expect(targetCard.getByText(state.namaUsaha)).toBeVisible();
 
-        const detailLink = targetCard.getByRole('link', { name: /Lihat Detail/i });
+        const detailLink = targetCard.getByRole('link', {
+            name: /Lihat Detail/i,
+        });
         await Promise.all([
             page.waitForURL(/\/client\/catalog\/.+/, {
                 timeout: 20_000,
@@ -208,14 +236,24 @@ test.describe.serial('E2E Cross-Role — Mitra Onboarding, Publikasi Paket & Kat
         expect(slugMatch).not.toBeNull();
         state.packageSlug = slugMatch![1];
 
-        await expect(page.getByRole('heading', { name: state.packageName })).toBeVisible({
+        await expect(
+            page.getByRole('heading', { name: state.packageName }),
+        ).toBeVisible({
             timeout: 10_000,
         });
-        await expect(page.getByText('Bamboo Rafting Sungai Amandit')).toBeVisible();
-        await expect(page.getByText('Rakit Bambu & Pemandu Lokal')).toBeVisible();
-        await expect(page.getByText('Pengeluaran Pribadi & Oleh-oleh')).toBeVisible();
+        await expect(
+            page.getByText('Bamboo Rafting Sungai Amandit'),
+        ).toBeVisible();
+        await expect(
+            page.getByText('Rakit Bambu & Pemandu Lokal'),
+        ).toBeVisible();
+        await expect(
+            page.getByText('Pengeluaran Pribadi & Oleh-oleh'),
+        ).toBeVisible();
         await expect(page.getByText(state.namaUsaha)).toBeVisible();
-        await expect(page.getByRole('link', { name: /Booking Sekarang/i })).toBeVisible();
+        await expect(
+            page.getByRole('link', { name: /Booking Sekarang/i }),
+        ).toBeVisible();
     });
 
     test('Flow 3: Mitra mengarsipkan paket → Paket hilang dari Katalog Client', async ({
@@ -261,17 +299,26 @@ test.describe.serial('E2E Cross-Role — Mitra Onboarding, Publikasi Paket & Kat
                     res.url().includes('search=') &&
                     res.request().method() === 'GET',
             ),
-            page.getByPlaceholder('Cari destinasi wisata...').fill(state.packageName),
+            page
+                .getByPlaceholder('Cari destinasi wisata...')
+                .fill(state.packageName),
         ]);
 
-        await expect(page.getByText('Tidak ada paket yang sesuai dengan pencarian Anda.')).toBeVisible({
+        await expect(
+            page.getByText(
+                'Tidak ada paket yang sesuai dengan pencarian Anda.',
+            ),
+        ).toBeVisible({
             timeout: 10_000,
         });
 
         if (state.packageSlug) {
-            const response = await page.goto(`/client/catalog/${state.packageSlug}`, {
-                waitUntil: 'domcontentloaded',
-            });
+            const response = await page.goto(
+                `/client/catalog/${state.packageSlug}`,
+                {
+                    waitUntil: 'domcontentloaded',
+                },
+            );
             expect(response?.status()).toBe(404);
         }
     });
@@ -322,10 +369,15 @@ test.describe.serial('E2E Cross-Role — Mitra Onboarding, Publikasi Paket & Kat
         await pkgPage.namaInput.fill(state.updatedPackageName);
         await page.getByRole('button', { name: /Simpan Perubahan/i }).click();
 
-        await expect(page).toHaveURL(new RegExp(`/mitra/packages/${state.packageId}$`), {
-            timeout: 20_000,
-        });
-        await expect(page.getByRole('heading', { name: state.updatedPackageName })).toBeVisible();
+        await expect(page).toHaveURL(
+            new RegExp(`/mitra/packages/${state.packageId}$`),
+            {
+                timeout: 20_000,
+            },
+        );
+        await expect(
+            page.getByRole('heading', { name: state.updatedPackageName }),
+        ).toBeVisible();
         await expect(pkgPage.archivePackageButton).toBeVisible();
 
         // Verifikasi paket dengan nama baru kembali tampil di Katalog Client
@@ -338,10 +390,14 @@ test.describe.serial('E2E Cross-Role — Mitra Onboarding, Publikasi Paket & Kat
                     res.url().includes('search=') &&
                     res.request().method() === 'GET',
             ),
-            page.getByPlaceholder('Cari destinasi wisata...').fill(state.updatedPackageName),
+            page
+                .getByPlaceholder('Cari destinasi wisata...')
+                .fill(state.updatedPackageName),
         ]);
 
-        await expect(page.getByRole('heading', { name: state.updatedPackageName })).toBeVisible({
+        await expect(
+            page.getByRole('heading', { name: state.updatedPackageName }),
+        ).toBeVisible({
             timeout: 10_000,
         });
     });

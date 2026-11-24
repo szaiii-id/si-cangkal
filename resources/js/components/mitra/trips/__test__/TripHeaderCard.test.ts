@@ -75,7 +75,9 @@ describe('TripHeaderCard Component', () => {
         });
 
         it('TIDAK boleh merender info client jika client null', () => {
-            render(TripHeaderCard, { props: { ...defaultProps, client: null } });
+            render(TripHeaderCard, {
+                props: { ...defaultProps, client: null },
+            });
 
             expect(screen.queryByText('Budi')).not.toBeInTheDocument();
         });
@@ -86,8 +88,10 @@ describe('TripHeaderCard Component', () => {
     // ==========================================
     describe('Accessibility', () => {
         it('ikon SVG dekoratif harus disembunyikan dari screen reader', () => {
-            const { container } = render(TripHeaderCard, { props: defaultProps });
-            
+            const { container } = render(TripHeaderCard, {
+                props: defaultProps,
+            });
+
             const svgs = container.querySelectorAll('svg');
             svgs.forEach((svg) => {
                 expect(svg).toHaveAttribute('aria-hidden', 'true');

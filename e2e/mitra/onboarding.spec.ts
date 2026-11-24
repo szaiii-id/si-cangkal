@@ -166,7 +166,9 @@ test.describe('Mitra Onboarding', () => {
         test('menampilkan judul halaman, heading utama, dan subjudul onboarding', async ({
             page,
         }) => {
-            await expect(page).toHaveTitle(/Lengkapi Data Mitra \| SI-CANGKAL/i);
+            await expect(page).toHaveTitle(
+                /Lengkapi Data Mitra \| SI-CANGKAL/i,
+            );
             await expect(
                 page.getByRole('heading', { level: 2, name: /Data Usaha/i }),
             ).toBeVisible();
@@ -321,7 +323,10 @@ test.describe('Mitra Onboarding', () => {
                 'required',
                 '',
             );
-            await expect(page.locator('#no_hp')).toHaveAttribute('required', '');
+            await expect(page.locator('#no_hp')).toHaveAttribute(
+                'required',
+                '',
+            );
 
             let postTriggered = false;
             page.on('request', (req) => {
@@ -420,7 +425,10 @@ test.describe('Mitra Onboarding', () => {
 
             const namaUsahaInput = page.locator('#nama_usaha');
             const namaUsahaError = page.locator('#nama_usaha-error');
-            await expect(namaUsahaInput).toHaveAttribute('aria-invalid', 'true');
+            await expect(namaUsahaInput).toHaveAttribute(
+                'aria-invalid',
+                'true',
+            );
             await expect(namaUsahaError).toBeVisible();
             await expect(namaUsahaError).toHaveText(
                 'Nama penyedia usaha minimal 2 karakter.',
@@ -469,7 +477,9 @@ test.describe('Mitra Onboarding', () => {
             await page.locator('#tipe_0').selectOption('bank');
             await page.locator('#nama_penyedia_0').selectOption('BCA');
             await page.locator('#nomor_rekening_0').fill('1234567890');
-            await page.locator('#nama_pemilik_0').fill('PT Pesona Meratus Tour');
+            await page
+                .locator('#nama_pemilik_0')
+                .fill('PT Pesona Meratus Tour');
 
             // 3. Tambah & Isi Rekening 2 (E-Wallet)
             await page

@@ -52,7 +52,9 @@ export function formatNumber(
 /**
  * Parse string input user menjadi number.
  */
-export function parseCurrency(value: string | number | null | undefined): number {
+export function parseCurrency(
+    value: string | number | null | undefined,
+): number {
     if (value === null || value === undefined || value === '') {
         return 0;
     }
@@ -62,7 +64,10 @@ export function parseCurrency(value: string | number | null | undefined): number
     }
 
     // 1. Bersihkan prefix Rp dan spasi
-    let cleaned = value.toString().trim().replace(/^Rp\s*/i, '');
+    let cleaned = value
+        .toString()
+        .trim()
+        .replace(/^Rp\s*/i, '');
 
     const hasDot = cleaned.includes('.');
     const hasComma = cleaned.includes(',');
@@ -102,7 +107,9 @@ export function parseCurrency(value: string | number | null | undefined): number
 /**
  * Sensor nomor rekening untuk tampilan visual.
  */
-export function maskAccountNumber(accountNumber: string | null | undefined): string {
+export function maskAccountNumber(
+    accountNumber: string | null | undefined,
+): string {
     if (!accountNumber) return '-';
     const cleanNumber = accountNumber.replace(/\s+/g, '');
     if (cleanNumber.length <= 4) return '****';

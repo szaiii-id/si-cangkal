@@ -15,12 +15,18 @@ describe('ExportButtons Component', () => {
         it('harus merender dua tombol export (PDF dan Excel)', () => {
             render(ExportButtons, { props: defaultProps });
 
-            expect(screen.getByRole('link', { name: /Export PDF/i })).toBeInTheDocument();
-            expect(screen.getByRole('link', { name: /Export Excel/i })).toBeInTheDocument();
+            expect(
+                screen.getByRole('link', { name: /Export PDF/i }),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByRole('link', { name: /Export Excel/i }),
+            ).toBeInTheDocument();
         });
 
         it('harus merender ikon SVG di dalam tombol', () => {
-            const { container } = render(ExportButtons, { props: defaultProps });
+            const { container } = render(ExportButtons, {
+                props: defaultProps,
+            });
 
             const svgs = container.querySelectorAll('svg');
             expect(svgs).toHaveLength(2);
@@ -35,7 +41,10 @@ describe('ExportButtons Component', () => {
             render(ExportButtons, { props: defaultProps });
 
             const pdfLink = screen.getByRole('link', { name: /Export PDF/i });
-            expect(pdfLink).toHaveAttribute('href', '/admin/reports/export-pdf');
+            expect(pdfLink).toHaveAttribute(
+                'href',
+                '/admin/reports/export-pdf',
+            );
             expect(pdfLink).toHaveAttribute('target', '_blank');
             expect(pdfLink).toHaveAttribute('rel', 'noopener noreferrer');
         });
@@ -43,8 +52,13 @@ describe('ExportButtons Component', () => {
         it('tombol Excel harus memiliki href yang benar dan atribut download', () => {
             render(ExportButtons, { props: defaultProps });
 
-            const excelLink = screen.getByRole('link', { name: /Export Excel/i });
-            expect(excelLink).toHaveAttribute('href', '/admin/reports/export-excel');
+            const excelLink = screen.getByRole('link', {
+                name: /Export Excel/i,
+            });
+            expect(excelLink).toHaveAttribute(
+                'href',
+                '/admin/reports/export-excel',
+            );
             expect(excelLink).toHaveAttribute('download');
         });
     });
@@ -54,7 +68,9 @@ describe('ExportButtons Component', () => {
     // ==========================================
     describe('Accessibility', () => {
         it('ikon SVG harus disembunyikan dari screen reader', () => {
-            const { container } = render(ExportButtons, { props: defaultProps });
+            const { container } = render(ExportButtons, {
+                props: defaultProps,
+            });
 
             const svgs = container.querySelectorAll('svg');
             svgs.forEach((svg) => {

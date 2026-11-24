@@ -1,4 +1,8 @@
-import type { PackageFacilityTipe, PackageKategori, PackageStatus } from '../enum';
+import type {
+    PackageFacilityTipe,
+    PackageKategori,
+    PackageStatus,
+} from '../enum';
 import type { UserMini, UserWithEmail } from './user';
 
 export type PackageEloquent = {
@@ -66,7 +70,6 @@ export type PackageFacility = {
     nama: string;
     urutan: number;
 };
-
 
 export type PackageInfoFormData = {
     nama: string;

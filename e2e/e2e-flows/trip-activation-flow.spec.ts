@@ -28,7 +28,9 @@ test.describe('E2E Flow — Siklus Aktivasi & Penyelesaian Trip (Scheduler trips
             durasi_malam: 0,
             harga_per_orang: 400_000,
             timezone: 'Asia/Makassar',
-            days: [{ judul: 'Hari 1: Eksplorasi Wisata', lokasi: 'Banjarmasin' }],
+            days: [
+                { judul: 'Hari 1: Eksplorasi Wisata', lokasi: 'Banjarmasin' },
+            ],
             facilities: [{ tipe: 'include', nama: 'Transportasi & Makan' }],
         });
 
@@ -75,7 +77,9 @@ test.describe('E2E Flow — Siklus Aktivasi & Penyelesaian Trip (Scheduler trips
             page.waitForResponse(
                 (res) =>
                     res.url().includes('/mitra/trips') &&
-                    res.url().includes(`search=${encodeURIComponent(trip.kode)}`) &&
+                    res
+                        .url()
+                        .includes(`search=${encodeURIComponent(trip.kode)}`) &&
                     res.request().method() === 'GET',
             ),
             searchInput.fill(trip.kode),
@@ -83,7 +87,9 @@ test.describe('E2E Flow — Siklus Aktivasi & Penyelesaian Trip (Scheduler trips
 
         const tripCard = page.getByRole('link').filter({ hasText: trip.kode });
         await expect(tripCard).toBeVisible({ timeout: 10_000 });
-        await expect(tripCard.getByText(/Sedang Berjalan|Aktif/i)).toBeVisible();
+        await expect(
+            tripCard.getByText(/Sedang Berjalan|Aktif/i),
+        ).toBeVisible();
         await expect(tripCard.getByText('Hari ini')).toBeVisible();
 
         await Promise.all([
@@ -93,7 +99,9 @@ test.describe('E2E Flow — Siklus Aktivasi & Penyelesaian Trip (Scheduler trips
             }),
             tripCard.click(),
         ]);
-        await expect(page.getByText(/Sedang Berjalan|Aktif/i).first()).toBeVisible({
+        await expect(
+            page.getByText(/Sedang Berjalan|Aktif/i).first(),
+        ).toBeVisible({
             timeout: 10_000,
         });
 

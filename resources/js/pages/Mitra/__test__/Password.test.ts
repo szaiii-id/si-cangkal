@@ -14,7 +14,12 @@ import Password from '../Password.svelte';
 const mockPage = vi.hoisted(() => ({
     props: {
         auth: {
-            user: { id: 1, name: 'Mitra Jaya', username: 'mitrajaya', email: 'mitra@test.com' },
+            user: {
+                id: 1,
+                name: 'Mitra Jaya',
+                username: 'mitrajaya',
+                email: 'mitra@test.com',
+            },
         },
     },
 }));
@@ -63,7 +68,12 @@ describe('Mitra Password Page (Wrapper)', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mockPage.props.auth = {
-            user: { id: 1, name: 'Mitra Jaya', username: 'mitrajaya', email: 'mitra@test.com' },
+            user: {
+                id: 1,
+                name: 'Mitra Jaya',
+                username: 'mitrajaya',
+                email: 'mitra@test.com',
+            },
         };
     });
 
@@ -71,9 +81,13 @@ describe('Mitra Password Page (Wrapper)', () => {
         it('menampilkan judul & deskripsi halaman', () => {
             render(Password);
 
-            expect(screen.getByTestId('page-header')).toHaveTextContent('Ganti Password');
+            expect(screen.getByTestId('page-header')).toHaveTextContent(
+                'Ganti Password',
+            );
             expect(
-                screen.getByText('Pastikan password baru Anda kuat dan mudah diingat.'),
+                screen.getByText(
+                    'Pastikan password baru Anda kuat dan mudah diingat.',
+                ),
             ).toBeInTheDocument();
         });
     });
@@ -83,7 +97,9 @@ describe('Mitra Password Page (Wrapper)', () => {
             render(Password);
 
             expect(screen.getByText('Mitra Jaya')).toBeInTheDocument();
-            expect(screen.getByText('@mitrajaya · mitra@test.com')).toBeInTheDocument();
+            expect(
+                screen.getByText('@mitrajaya · mitra@test.com'),
+            ).toBeInTheDocument();
         });
 
         it('menampilkan inisial user di avatar', () => {

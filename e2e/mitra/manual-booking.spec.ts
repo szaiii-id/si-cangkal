@@ -180,9 +180,7 @@ test.describe('Mitra — Pesanan Manual (Manual Booking)', () => {
             await page
                 .locator('#email_pelanggan')
                 .fill(`rombongan-over-${Date.now()}@test.com`);
-            await page
-                .locator('#tanggal_keberangkatan')
-                .fill(getDateOffset(5));
+            await page.locator('#tanggal_keberangkatan').fill(getDateOffset(5));
 
             // Isi 4 peserta (> max_peserta = 3)
             await page.locator('#jumlah_peserta').fill('4');
@@ -233,9 +231,7 @@ test.describe('Mitra — Pesanan Manual (Manual Booking)', () => {
             await page
                 .locator('#email_pelanggan')
                 .fill(`draft-manual-${Date.now()}@test.com`);
-            await page
-                .locator('#tanggal_keberangkatan')
-                .fill(getDateOffset(5));
+            await page.locator('#tanggal_keberangkatan').fill(getDateOffset(5));
             await page.locator('#jumlah_peserta').fill('1');
             await page.locator('#participant-nama-0').fill('Peserta Draft');
 
@@ -293,9 +289,7 @@ test.describe('Mitra — Pesanan Manual (Manual Booking)', () => {
             await page.locator('#nama_pelanggan').fill(newCustomerName);
             await page.locator('#email_pelanggan').fill(newCustomerEmail);
             await page.locator('#no_hp_pelanggan').fill('081298765432');
-            await page
-                .locator('#tanggal_keberangkatan')
-                .fill(getDateOffset(6));
+            await page.locator('#tanggal_keberangkatan').fill(getDateOffset(6));
             await page.locator('#jumlah_peserta').fill('2');
             await page
                 .locator('#catatan')
@@ -311,9 +305,7 @@ test.describe('Mitra — Pesanan Manual (Manual Booking)', () => {
 
             await page.locator('#participant-nama-1').fill('Ani Offline');
             await page.locator('#participant-umur-1').fill('28');
-            await page
-                .locator('#participant-catatan-1')
-                .fill('Vegetarian');
+            await page.locator('#participant-catatan-1').fill('Vegetarian');
 
             await Promise.all([
                 page.waitForURL(/\/mitra\/bookings\/\d+$/, {
@@ -358,9 +350,7 @@ test.describe('Mitra — Pesanan Manual (Manual Booking)', () => {
             await page
                 .locator('#email_pelanggan')
                 .fill(SEED_USERS.client.email);
-            await page
-                .locator('#tanggal_keberangkatan')
-                .fill(getDateOffset(7));
+            await page.locator('#tanggal_keberangkatan').fill(getDateOffset(7));
             await page.locator('#jumlah_peserta').fill('1');
             await page
                 .locator('#participant-nama-0')
@@ -383,9 +373,7 @@ test.describe('Mitra — Pesanan Manual (Manual Booking)', () => {
             await asClient();
             await page.goto(`/client/bookings/${createdBookingId}`);
             await expect(page.getByText(pkg.nama)).toBeVisible();
-            await expect(
-                page.getByText('Menunggu Pembayaran'),
-            ).toBeVisible();
+            await expect(page.getByText('Menunggu Pembayaran')).toBeVisible();
         });
     });
 });
