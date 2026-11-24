@@ -1,0 +1,34 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('mitra_bank_accounts', function (Blueprint $table): void {
+            $table->string('settlement_bank_account_id', 100)
+                ->nullable()
+                ->after('is_primary');
+
+            $table->timestamp('settlement_verified_at')
+                ->nullable()
+                ->after('settlement_bank_account_id');
+
+            $table->index('settlement_bank_account_id');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('mitra_bank_accounts', function (Blueprint $table): void {
+            $table->dropIndex(['settlement_bank_account_id']);
+            $table->dropColumn([
+                'settlement_bank_account_id',
+                'settlement_verified_at',
+            ]);
+        });
+    }
+};

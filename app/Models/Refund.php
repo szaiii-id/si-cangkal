@@ -25,6 +25,8 @@ use Illuminate\Support\Carbon;
  * @property numeric-string|null $refund_fee_amount
  * @property int|null $initiated_by_mitra
  * @property string|null $catatan
+ * @property string|null $gateway_refund_id
+ * @property string|null $gateway_status
  * @property Carbon $created_at
  * @property Carbon $updated_at
  * @property-read Booking|null $booking
@@ -52,6 +54,8 @@ class Refund extends Model
         'refund_fee_amount',
         'initiated_by_mitra',
         'catatan',
+        'gateway_refund_id',
+        'gateway_status',
     ];
 
     /**
@@ -64,6 +68,7 @@ class Refund extends Model
             'reason' => RefundReason::class,
             'status' => RefundStatus::class,
             'refund_fee_amount' => 'decimal:2',
+            'gateway_status' => 'string',
         ];
     }
 
