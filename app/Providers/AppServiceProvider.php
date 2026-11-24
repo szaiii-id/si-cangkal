@@ -24,6 +24,8 @@ use App\Services\Notification\Contracts\NotificationServiceInterface;
 use App\Services\Notification\FirebaseNotificationService;
 use App\Services\Notification\NotificationDispatcher;
 use App\Services\Notification\NotificationService;
+use App\Services\Payment\Contracts\PaymentGatewayServiceInterface;
+use App\Services\Payment\Doku\DokuGatewayService;
 use App\Services\Trip\Contracts\TripStatusSynchronizerInterface;
 use App\Services\Trip\TripStatusSynchronizer;
 use Carbon\CarbonImmutable;
@@ -67,6 +69,14 @@ final class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             NotificationDispatcherInterface::class,
             NotificationDispatcher::class,
+        );
+
+        // ==========================================
+        // PAYMENT BINDINGS
+        // ==========================================
+        $this->app->bind(
+            PaymentGatewayServiceInterface::class,
+            DokuGatewayService::class,
         );
 
         // ==========================================

@@ -24,6 +24,13 @@ describe('DokuIdempotencyKey', function () {
         expect($first)->toBe($second);
     });
 
+    it('berbeda untuk sequences berbeda saat charge dibuat ulang', function () {
+        $booking = makeBookingMock(['id' => 42]);
+
+        expect(DokuIdempotencyKey::forCharge($booking, 1))
+            ->not->toBe(DokuIdempotencyKey::forCharge($booking, 2));
+    });
+
     it('berbeda untuk booking berbeda', function () {
         $first = DokuIdempotencyKey::forCharge(makeBookingMock(['id' => 42]));
         $second = DokuIdempotencyKey::forCharge(makeBookingMock(['id' => 43]));
