@@ -107,6 +107,14 @@ jobs:
       - name: Run PHPStan
         run: ./vendor/bin/phpstan analyse --no-progress --memory-limit=512M
 
+      # Vite+ check (format + lint) BERBEDA dengan svelte-check.
+      # TODO: jadikan blocking setelah backlog formatting dibersihkan
+      # (saat ini ~323 file belum sesuai format Vite+). Sementara ini
+      # hanya melaporkan agar pipeline tetap hijau.
+      - name: Run Vite+ check
+        continue-on-error: true
+        run: bun run check
+
       - name: Run Svelte Check
         run: bun run types:check
 
@@ -230,3 +238,42 @@ jobs:
         env:
           LARAVEL_BYPASS_ENV_CHECK: '1'
         run: bun run test
+
+  # ==========================================
+  # 4. SECURITY AUDIT (informasional)
+  # ==========================================
+  # TODO: jadikan blocking setelah temuan lama dibersihkan.
+  # Saat ini vite-plus 0.3.0 masih menarik tinypool <=2.1.0 (critical)
+  # sehingga gate blocking akan langsung membuat CI merah.
+  security-audit:
+    name: Security Audit (Composer + Bun)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: mbstring, bcmath, pdo_pgsql, gd, zip, intl
+          coverage: none
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Composer deps
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Install Bun deps
+        run: bun install --frozen-lockfile
+
+      - name: Audit Composer
+        continue-on-error: true
+        run: composer audit --locked
+
+      - name: Audit Bun
+        continue-on-error: true
+        run: bun audit --audit-level=high
