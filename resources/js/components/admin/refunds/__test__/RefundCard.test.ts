@@ -13,7 +13,9 @@ vi.mock('@inertiajs/svelte', () => ({
 // ==========================================
 // MOCK DATA (SESUAI RefundResource)
 // ==========================================
-const createMockRefund = (overrides: Partial<RefundResource> = {}): RefundResource => ({
+const createMockRefund = (
+    overrides: Partial<RefundResource> = {},
+): RefundResource => ({
     id: 1,
     booking_id: 100,
     mitra_id: 1,
@@ -66,7 +68,9 @@ describe('RefundCard Component', () => {
         it('harus merender alasan refund', () => {
             render(RefundCard, { props: { refund: createMockRefund() } });
 
-            expect(screen.getByText('Pembatalan oleh Mitra')).toBeInTheDocument();
+            expect(
+                screen.getByText('Pembatalan oleh Mitra'),
+            ).toBeInTheDocument();
         });
 
         it('harus merender nama pengaju (mitraInitiator)', () => {
@@ -81,13 +85,17 @@ describe('RefundCard Component', () => {
     // ==========================================
     describe('Status Badge', () => {
         it('harus menampilkan label "Sedang Diproses" untuk status PENDING', () => {
-            render(RefundCard, { props: { refund: createMockRefund({ status: 'PENDING' }) } });
+            render(RefundCard, {
+                props: { refund: createMockRefund({ status: 'PENDING' }) },
+            });
 
             expect(screen.getByText('Sedang Diproses')).toBeInTheDocument();
         });
 
         it('harus menampilkan label "Berhasil" untuk status SUCCEEDED', () => {
-            render(RefundCard, { props: { refund: createMockRefund({ status: 'SUCCEEDED' }) } });
+            render(RefundCard, {
+                props: { refund: createMockRefund({ status: 'SUCCEEDED' }) },
+            });
 
             expect(screen.getByText('Berhasil')).toBeInTheDocument();
         });
@@ -98,13 +106,19 @@ describe('RefundCard Component', () => {
     // ==========================================
     describe('Footer Status', () => {
         it('harus menampilkan "Butuh Tindakan Mitra" jika status PENDING', () => {
-            render(RefundCard, { props: { refund: createMockRefund({ status: 'PENDING' }) } });
+            render(RefundCard, {
+                props: { refund: createMockRefund({ status: 'PENDING' }) },
+            });
 
-            expect(screen.getByText('Butuh Tindakan Mitra')).toBeInTheDocument();
+            expect(
+                screen.getByText('Butuh Tindakan Mitra'),
+            ).toBeInTheDocument();
         });
 
         it('harus menampilkan "Selesai" jika status bukan PENDING', () => {
-            render(RefundCard, { props: { refund: createMockRefund({ status: 'SUCCEEDED' }) } });
+            render(RefundCard, {
+                props: { refund: createMockRefund({ status: 'SUCCEEDED' }) },
+            });
 
             expect(screen.getByText('Selesai')).toBeInTheDocument();
         });

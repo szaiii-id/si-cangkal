@@ -13,10 +13,10 @@ type MockFlash = {
 
 const mockPage = vi.hoisted(() => ({
     props: {
-        flash: { 
-            status: null as string | null, 
-            error: null as string | null, 
-            retry_after: null as number | null 
+        flash: {
+            status: null as string | null,
+            error: null as string | null,
+            retry_after: null as number | null,
         } as MockFlash,
     },
 }));
@@ -54,9 +54,13 @@ describe('Login Page', () => {
             render(Login);
 
             expect(screen.getByText('Login')).toBeInTheDocument();
-            expect(screen.getByLabelText('Username atau Email')).toBeInTheDocument();
+            expect(
+                screen.getByLabelText('Username atau Email'),
+            ).toBeInTheDocument();
             expect(screen.getByLabelText('Password')).toBeInTheDocument();
-            expect(screen.getByRole('button', { name: /Masuk ke Sistem/i })).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: /Masuk ke Sistem/i }),
+            ).toBeInTheDocument();
         });
     });
 
@@ -68,17 +72,25 @@ describe('Login Page', () => {
             render(Login);
 
             const identitasInput = screen.getByLabelText('Username atau Email');
-            await fireEvent.input(identitasInput, { target: { value: 'budi@test.com' } });
+            await fireEvent.input(identitasInput, {
+                target: { value: 'budi@test.com' },
+            });
 
             const passwordInput = screen.getByLabelText('Password');
-            await fireEvent.input(passwordInput, { target: { value: 'password123' } });
+            await fireEvent.input(passwordInput, {
+                target: { value: 'password123' },
+            });
 
             const form = document.querySelector('form');
             await fireEvent.submit(form!);
 
             expect(login).toHaveBeenCalledWith(
-                { identitas: 'budi@test.com', password: 'password123', remember: false },
-                expect.any(Object)
+                {
+                    identitas: 'budi@test.com',
+                    password: 'password123',
+                    remember: false,
+                },
+                expect.any(Object),
             );
         });
 
@@ -86,12 +98,18 @@ describe('Login Page', () => {
             render(Login);
 
             const identitasInput = screen.getByLabelText('Username atau Email');
-            await fireEvent.input(identitasInput, { target: { value: 'budi@test.com' } });
+            await fireEvent.input(identitasInput, {
+                target: { value: 'budi@test.com' },
+            });
 
             const passwordInput = screen.getByLabelText('Password');
-            await fireEvent.input(passwordInput, { target: { value: 'password123' } });
+            await fireEvent.input(passwordInput, {
+                target: { value: 'password123' },
+            });
 
-            const rememberCheckbox = screen.getByLabelText('Ingat saya') as HTMLInputElement;
+            const rememberCheckbox = screen.getByLabelText(
+                'Ingat saya',
+            ) as HTMLInputElement;
             await fireEvent.click(rememberCheckbox);
             expect(rememberCheckbox.checked).toBe(true);
 
@@ -99,18 +117,26 @@ describe('Login Page', () => {
             await fireEvent.submit(form!);
 
             expect(login).toHaveBeenCalledWith(
-                { identitas: 'budi@test.com', password: 'password123', remember: true },
-                expect.any(Object)
+                {
+                    identitas: 'budi@test.com',
+                    password: 'password123',
+                    remember: true,
+                },
+                expect.any(Object),
             );
         });
 
         it('harus toggle show/hide password', async () => {
             render(Login);
 
-            const passwordInput = screen.getByLabelText('Password') as HTMLInputElement;
+            const passwordInput = screen.getByLabelText(
+                'Password',
+            ) as HTMLInputElement;
             expect(passwordInput.type).toBe('password');
 
-            const toggleBtn = screen.getByRole('button', { name: /Tampilkan password/i });
+            const toggleBtn = screen.getByRole('button', {
+                name: /Tampilkan password/i,
+            });
             await fireEvent.click(toggleBtn);
 
             expect(passwordInput.type).toBe('text');
@@ -133,7 +159,9 @@ describe('Login Page', () => {
             await fireEvent.submit(form!);
 
             await waitFor(() => {
-                expect(screen.getByText('Kredensial tidak cocok')).toBeInTheDocument();
+                expect(
+                    screen.getByText('Kredensial tidak cocok'),
+                ).toBeInTheDocument();
             });
         });
 
@@ -149,7 +177,9 @@ describe('Login Page', () => {
             await fireEvent.submit(form!);
 
             await waitFor(() => {
-                const identitasInput = screen.getByLabelText('Username atau Email');
+                const identitasInput = screen.getByLabelText(
+                    'Username atau Email',
+                );
                 expect(identitasInput).toHaveAttribute('aria-invalid', 'true');
             });
         });
@@ -160,14 +190,22 @@ describe('Login Page', () => {
     // ==========================================
     describe('Flash Messages', () => {
         it('harus menampilkan flash status', () => {
-            mockPage.props.flash = { status: 'Berhasil daftar', error: null, retry_after: null };
+            mockPage.props.flash = {
+                status: 'Berhasil daftar',
+                error: null,
+                retry_after: null,
+            };
             render(Login);
 
             expect(screen.getByText('Berhasil daftar')).toBeInTheDocument();
         });
 
         it('harus menampilkan flash error', () => {
-            mockPage.props.flash = { status: null, error: 'Terjadi kesalahan', retry_after: null };
+            mockPage.props.flash = {
+                status: null,
+                error: 'Terjadi kesalahan',
+                retry_after: null,
+            };
             render(Login);
 
             expect(screen.getByText('Terjadi kesalahan')).toBeInTheDocument();
@@ -179,7 +217,11 @@ describe('Login Page', () => {
     // ==========================================
     describe('Countdown (Rate Limit)', () => {
         it('harus memulai countdown jika flash.retry_after ada', async () => {
-            mockPage.props.flash = { status: null, error: null, retry_after: 5 };
+            mockPage.props.flash = {
+                status: null,
+                error: null,
+                retry_after: 5,
+            };
             render(Login);
 
             await vi.advanceTimersByTimeAsync(0);
@@ -190,16 +232,26 @@ describe('Login Page', () => {
         });
 
         it('tombol harus disabled selama countdown', async () => {
-            mockPage.props.flash = { status: null, error: null, retry_after: 5 };
+            mockPage.props.flash = {
+                status: null,
+                error: null,
+                retry_after: 5,
+            };
             render(Login);
 
             await vi.advanceTimersByTimeAsync(0);
-            const submitBtn = screen.getByRole('button', { name: /Tunggu 5 detik.../i });
+            const submitBtn = screen.getByRole('button', {
+                name: /Tunggu 5 detik.../i,
+            });
             expect(submitBtn).toBeDisabled();
         });
 
         it('tombol harus kembali aktif setelah countdown selesai', async () => {
-            mockPage.props.flash = { status: null, error: null, retry_after: 2 };
+            mockPage.props.flash = {
+                status: null,
+                error: null,
+                retry_after: 2,
+            };
             render(Login);
 
             await vi.advanceTimersByTimeAsync(0);
@@ -207,7 +259,9 @@ describe('Login Page', () => {
 
             await vi.advanceTimersByTimeAsync(2000);
             await vi.advanceTimersByTimeAsync(0);
-            expect(screen.getByRole('button', { name: /Masuk ke Sistem/i })).not.toBeDisabled();
+            expect(
+                screen.getByRole('button', { name: /Masuk ke Sistem/i }),
+            ).not.toBeDisabled();
         });
     });
 
@@ -227,7 +281,9 @@ describe('Login Page', () => {
 
             await waitFor(() => {
                 expect(screen.getByText('Memproses...')).toBeInTheDocument();
-                expect(screen.getByRole('button', { name: /Memproses/i })).toBeDisabled();
+                expect(
+                    screen.getByRole('button', { name: /Memproses/i }),
+                ).toBeDisabled();
             });
         });
     });
@@ -238,7 +294,7 @@ describe('Login Page', () => {
     describe('Accessibility', () => {
         it('ikon SVG dekoratif harus disembunyikan dari screen reader', () => {
             const { container } = render(Login);
-            
+
             const svgs = container.querySelectorAll('svg');
             svgs.forEach((svg) => {
                 expect(svg).toHaveAttribute('aria-hidden', 'true');
@@ -246,7 +302,11 @@ describe('Login Page', () => {
         });
 
         it('flash message sukses harus memiliki role="status"', () => {
-            mockPage.props.flash = { status: 'Berhasil', error: null, retry_after: null };
+            mockPage.props.flash = {
+                status: 'Berhasil',
+                error: null,
+                retry_after: null,
+            };
             render(Login);
 
             const status = screen.getByRole('status');
@@ -254,7 +314,11 @@ describe('Login Page', () => {
         });
 
         it('flash message error harus memiliki role="alert"', () => {
-            mockPage.props.flash = { status: null, error: 'Gagal', retry_after: null };
+            mockPage.props.flash = {
+                status: null,
+                error: 'Gagal',
+                retry_after: null,
+            };
             render(Login);
 
             const alert = screen.getByRole('alert');

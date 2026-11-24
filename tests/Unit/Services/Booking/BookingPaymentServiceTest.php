@@ -34,6 +34,12 @@ beforeEach(function () {
         ->byDefault()
         ->andReturnUsing(fn ($callback) => $callback());
 
+    // Lock baris: default null => service memakai booking yang diberikan.
+    // Test verifyPayment meng-override dengan booking yang sama.
+    $this->bookingRepo->shouldReceive('findByIdForUpdate')
+        ->byDefault()
+        ->andReturnNull();
+
     $auditLoggerMock = Mockery::mock(LoggerInterface::class);
     $auditLoggerMock->shouldReceive('info')->byDefault()->andReturnNull();
 
@@ -68,6 +74,9 @@ describe('BVA — verifyPayment status guard', function () {
         $mitra = makeUser(['id' => 99, 'role' => 'mitra']);
         $booking = makeBookingMock(['status' => BookingStatus::CONFIRMED, 'mitra_id' => 99]);
 
+        $this->bookingRepo->shouldReceive('findByIdForUpdate')
+            ->once()->with($booking->id)->andReturn($booking);
+
         expect(fn () => $this->service->verifyPayment($booking, $mitra))
             ->toThrow(ValidationException::class);
     });
@@ -93,6 +102,9 @@ describe('Equivalence — ownership', function () {
     it('verifyPayment: mitra bukan pemilik → ValidationException', function () {
         $otherMitra = makeUser(['id' => 88]);
         $booking = makeBookingMock(['mitra_id' => 99, 'status' => BookingStatus::PENDING_PAYMENT]);
+
+        $this->bookingRepo->shouldReceive('findByIdForUpdate')
+            ->once()->with($booking->id)->andReturn($booking);
 
         expect(fn () => $this->service->verifyPayment($booking, $otherMitra))
             ->toThrow(ValidationException::class);

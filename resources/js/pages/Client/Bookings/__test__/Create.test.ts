@@ -106,25 +106,39 @@ describe('Client Bookings — Create Page', () => {
         it('menampilkan form info pemesanan secara default', () => {
             renderPage();
 
-            expect(screen.getByRole('heading', { name: 'Info Pemesanan' })).toBeInTheDocument();
-            expect(screen.getByLabelText(/Tanggal Keberangkatan/i)).toBeInTheDocument();
-            expect(screen.getByLabelText(/Jumlah Peserta/i)).toBeInTheDocument();
-            expect(screen.getByRole('button', { name: /Lanjut Isi Peserta/i })).toBeInTheDocument();
+            expect(
+                screen.getByRole('heading', { name: 'Info Pemesanan' }),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByLabelText(/Tanggal Keberangkatan/i),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByLabelText(/Jumlah Peserta/i),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: /Lanjut Isi Peserta/i }),
+            ).toBeInTheDocument();
         });
 
         it('menampilkan info minimal H+1 (berdasarkan timezone)', () => {
             renderPage();
             // todayInTimezone di-mock '2026-01-01', + 1 hari = '2026-01-02'
-            expect(screen.getByText(/Tersedia mulai:/i)).toHaveTextContent(/2 Januari 2026/i);
+            expect(screen.getByText(/Tersedia mulai:/i)).toHaveTextContent(
+                /2 Januari 2026/i,
+            );
         });
 
         it('menampilkan error alert jika validasi step 1 gagal', async () => {
             renderPage();
 
             // Kosongkan field & submit
-            await fireEvent.click(screen.getByRole('button', { name: /Lanjut Isi Peserta/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Lanjut Isi Peserta/i }),
+            );
 
-            expect(screen.getByRole('alert')).toHaveTextContent(/Terdapat 1 kesalahan pada form/i);
+            expect(screen.getByRole('alert')).toHaveTextContent(
+                /Terdapat 1 kesalahan pada form/i,
+            );
         });
     });
 
@@ -139,10 +153,14 @@ describe('Client Bookings — Create Page', () => {
             const qtyInput = screen.getByLabelText(/Jumlah Peserta/i);
             await fireEvent.input(qtyInput, { target: { value: '2' } });
 
-            await fireEvent.click(screen.getByRole('button', { name: /Lanjut Isi Peserta/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Lanjut Isi Peserta/i }),
+            );
 
             // Tetap di step 1
-            expect(screen.queryByRole('heading', { name: 'Data Peserta' })).not.toBeInTheDocument();
+            expect(
+                screen.queryByRole('heading', { name: 'Data Peserta' }),
+            ).not.toBeInTheDocument();
         });
 
         it('lanjut ke step 2 jika form valid & generate field peserta sesuai qty', async () => {
@@ -150,7 +168,9 @@ describe('Client Bookings — Create Page', () => {
             await goToStep2();
 
             // Step 2 muncul
-            expect(screen.getByRole('heading', { name: 'Data Peserta' })).toBeInTheDocument();
+            expect(
+                screen.getByRole('heading', { name: 'Data Peserta' }),
+            ).toBeInTheDocument();
 
             // Cek jumlah field nama peserta (qty=2)
             expect(screen.getAllByLabelText(/Nama Lengkap/i)).toHaveLength(2);
@@ -200,8 +220,12 @@ describe('Client Bookings — Create Page', () => {
             const ubahBtn = screen.getByRole('button', { name: 'Ubah Info' });
             await fireEvent.click(ubahBtn);
 
-            expect(screen.getByRole('heading', { name: 'Info Pemesanan' })).toBeInTheDocument();
-            expect(screen.queryByRole('heading', { name: 'Data Peserta' })).not.toBeInTheDocument();
+            expect(
+                screen.getByRole('heading', { name: 'Info Pemesanan' }),
+            ).toBeInTheDocument();
+            expect(
+                screen.queryByRole('heading', { name: 'Data Peserta' }),
+            ).not.toBeInTheDocument();
         });
     });
 
@@ -218,11 +242,15 @@ describe('Client Bookings — Create Page', () => {
             await fireEvent.input(names[0], { target: { value: 'A' } });
             await fireEvent.input(names[1], { target: { value: 'Budi' } });
 
-            const submitBtn = screen.getByRole('button', { name: /Konfirmasi Pesanan/i });
+            const submitBtn = screen.getByRole('button', {
+                name: /Konfirmasi Pesanan/i,
+            });
             await fireEvent.click(submitBtn);
 
             // Error muncul, router.post tidak dipanggil
-            expect(screen.getByText('Nama peserta minimal 2 karakter.')).toBeInTheDocument();
+            expect(
+                screen.getByText('Nama peserta minimal 2 karakter.'),
+            ).toBeInTheDocument();
             expect(mockRouterPost).not.toHaveBeenCalled();
         });
 
@@ -235,7 +263,9 @@ describe('Client Bookings — Create Page', () => {
             await fireEvent.input(names[0], { target: { value: 'Budi' } });
             await fireEvent.input(names[1], { target: { value: 'Ani' } });
 
-            const submitBtn = screen.getByRole('button', { name: /Konfirmasi Pesanan/i });
+            const submitBtn = screen.getByRole('button', {
+                name: /Konfirmasi Pesanan/i,
+            });
             await fireEvent.click(submitBtn);
 
             expect(mockRouterPost).toHaveBeenCalledOnce();
@@ -249,7 +279,7 @@ describe('Client Bookings — Create Page', () => {
                         expect.objectContaining({ nama: 'Ani' }),
                     ],
                 }),
-                expect.any(Object)
+                expect.any(Object),
             );
         });
     });

@@ -38,10 +38,9 @@ describe('Client Reviews — Create Page (Component Test)', () => {
         ).toBeInTheDocument();
         expect(screen.getByText('Paket Review Test')).toBeInTheDocument();
         expect(screen.getByText('BKG-2026-042')).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: /Kembali ke Detail Booking/ })).toHaveAttribute(
-            'href',
-            '/client/bookings/42',
-        );
+        expect(
+            screen.getByRole('link', { name: /Kembali ke Detail Booking/ }),
+        ).toHaveAttribute('href', '/client/bookings/42');
     });
 
     it('state lokal: bintang dan komentar mengontrol tombol submit', async () => {
@@ -50,7 +49,9 @@ describe('Client Reviews — Create Page (Component Test)', () => {
         const submit = screen.getByRole('button', { name: 'Kirim Review' });
         expect(submit).toBeDisabled();
 
-        await fireEvent.click(screen.getByRole('button', { name: '4 bintang' }));
+        await fireEvent.click(
+            screen.getByRole('button', { name: '4 bintang' }),
+        );
         expect(screen.getByText('Bagus')).toBeInTheDocument();
         expect(submit).toBeDisabled(); // komentar belum diisi
 
@@ -72,11 +73,18 @@ describe('Client Reviews — Create Page (Component Test)', () => {
     it('error handling UI: pesan validasi backend ditampilkan ramah', async () => {
         render(Create, { props: { booking } });
 
-        await fireEvent.click(screen.getByRole('button', { name: '5 bintang' }));
-        await fireEvent.input(screen.getByRole('textbox', { name: /Komentar/ }), {
-            target: { value: 'Perjalanan sangat menyenangkan.' },
-        });
-        await fireEvent.click(screen.getByRole('button', { name: 'Kirim Review' }));
+        await fireEvent.click(
+            screen.getByRole('button', { name: '5 bintang' }),
+        );
+        await fireEvent.input(
+            screen.getByRole('textbox', { name: /Komentar/ }),
+            {
+                target: { value: 'Perjalanan sangat menyenangkan.' },
+            },
+        );
+        await fireEvent.click(
+            screen.getByRole('button', { name: 'Kirim Review' }),
+        );
 
         const options = mockApi.createReview.mock.calls[0][2];
         options.onError({
@@ -84,13 +92,11 @@ describe('Client Reviews — Create Page (Component Test)', () => {
             komentar: 'Komentar minimal 10 karakter.',
         });
 
-        expect(await screen.findByText('Bintang wajib dipilih.')).toHaveAttribute(
-            'role',
-            'alert',
-        );
-        expect(screen.getByText('Komentar minimal 10 karakter.')).toHaveAttribute(
-            'role',
-            'alert',
-        );
+        expect(
+            await screen.findByText('Bintang wajib dipilih.'),
+        ).toHaveAttribute('role', 'alert');
+        expect(
+            screen.getByText('Komentar minimal 10 karakter.'),
+        ).toHaveAttribute('role', 'alert');
     });
 });

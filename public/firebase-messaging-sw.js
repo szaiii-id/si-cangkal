@@ -1,16 +1,20 @@
 // public/firebase-messaging-sw.js
 
 // Import Firebase SDK khusus Service Worker (versi compat)
-importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js');
+importScripts(
+    'https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js',
+);
+importScripts(
+    'https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js',
+);
 
 const firebaseConfig = {
-    apiKey: "AIzaSyDILEgosZNLhfD3rYR4c53KcVF9XwQG_dM",
-    authDomain: "titiktemu-ebed3.firebaseapp.com",
-    projectId: "titiktemu-ebed3",
-    storageBucket: "titiktemu-ebed3.firebasestorage.app",
-    messagingSenderId: "1023650453890",
-    appId: "1:1023650453890:web:905677d5f89c87286e979b",
+    apiKey: 'AIzaSyDILEgosZNLhfD3rYR4c53KcVF9XwQG_dM',
+    authDomain: 'titiktemu-ebed3.firebaseapp.com',
+    projectId: 'titiktemu-ebed3',
+    storageBucket: 'titiktemu-ebed3.firebasestorage.app',
+    messagingSenderId: '1023650453890',
+    appId: '1:1023650453890:web:905677d5f89c87286e979b',
 };
 
 firebase.initializeApp(firebaseConfig);
@@ -48,4 +52,3 @@ self.addEventListener('notificationclick', (event) => {
             }),
     );
 });
-

@@ -155,8 +155,24 @@ const makePackage = (overrides: Record<string, unknown> = {}) =>
         created_at: '2026-01-01T00:00:00Z',
         updated_at: '2026-01-01T00:00:00Z',
         days: [
-            { id: 1, hari_ke: 1, judul: 'Day 1', deskripsi: 'Desc 1', jam_mulai: '08:00', jam_selesai: '17:00', lokasi: 'Bali' },
-            { id: 2, hari_ke: 2, judul: 'Day 2', deskripsi: 'Desc 2', jam_mulai: '08:00', jam_selesai: '17:00', lokasi: 'Bali' },
+            {
+                id: 1,
+                hari_ke: 1,
+                judul: 'Day 1',
+                deskripsi: 'Desc 1',
+                jam_mulai: '08:00',
+                jam_selesai: '17:00',
+                lokasi: 'Bali',
+            },
+            {
+                id: 2,
+                hari_ke: 2,
+                judul: 'Day 2',
+                deskripsi: 'Desc 2',
+                jam_mulai: '08:00',
+                jam_selesai: '17:00',
+                lokasi: 'Bali',
+            },
         ],
         facilities: [
             { id: 1, tipe: 'include', nama: 'Hotel' },
@@ -165,7 +181,8 @@ const makePackage = (overrides: Record<string, unknown> = {}) =>
         ...overrides,
     }) as any;
 
-const renderPage = (pkg = makePackage()) => render(Edit, { props: { package: pkg } });
+const renderPage = (pkg = makePackage()) =>
+    render(Edit, { props: { package: pkg } });
 
 // ============================================================
 // 6. TEST SUITE
@@ -179,9 +196,15 @@ describe('Mitra Packages — Edit Page', () => {
     describe('Rendering', () => {
         it('merender tab navigation (Info, Rencana Kegiatan, Fasilitas)', () => {
             renderPage();
-            expect(screen.getByRole('button', { name: /Info & Harga/i })).toBeInTheDocument();
-            expect(screen.getByRole('button', { name: /Rencana Kegiatan/i })).toBeInTheDocument();
-            expect(screen.getByRole('button', { name: /Fasilitas & Foto/i })).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: /Info & Harga/i }),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: /Rencana Kegiatan/i }),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: /Fasilitas & Foto/i }),
+            ).toBeInTheDocument();
         });
 
         it('menampilkan tab Info & Harga secara default', () => {
@@ -191,31 +214,44 @@ describe('Mitra Packages — Edit Page', () => {
 
         it('merender info dasar paket (nama, deskripsi, kategori, timezone)', () => {
             renderPage();
-            const namaInput = screen.getByLabelText(/Nama Paket/i) as HTMLInputElement;
+            const namaInput = screen.getByLabelText(
+                /Nama Paket/i,
+            ) as HTMLInputElement;
             expect(namaInput.value).toBe('Paket Bali');
 
-            const deskripsi = screen.getByLabelText(/Deskripsi/i) as HTMLTextAreaElement;
+            const deskripsi = screen.getByLabelText(
+                /Deskripsi/i,
+            ) as HTMLTextAreaElement;
             expect(deskripsi.value).toBe('Wisata Bali');
         });
 
         it('memilih kategori & timezone sesuai paket', () => {
             renderPage();
-            expect((screen.getByLabelText(/Kategori/i) as HTMLSelectElement).value).toBe('wisata_alam');
-            expect((screen.getByLabelText(/Zona Waktu/i) as HTMLSelectElement).value).toBe('Asia/Makassar');
+            expect(
+                (screen.getByLabelText(/Kategori/i) as HTMLSelectElement).value,
+            ).toBe('wisata_alam');
+            expect(
+                (screen.getByLabelText(/Zona Waktu/i) as HTMLSelectElement)
+                    .value,
+            ).toBe('Asia/Makassar');
         });
 
         it('merender durasi & harga', () => {
             renderPage();
             expect(screen.getByLabelText(/Durasi Hari/i)).toBeInTheDocument();
             expect(screen.getByLabelText(/Durasi Malam/i)).toBeInTheDocument();
-            expect(screen.getByLabelText(/Harga per Orang/i)).toBeInTheDocument();
+            expect(
+                screen.getByLabelText(/Harga per Orang/i),
+            ).toBeInTheDocument();
         });
     });
 
     describe('Interaction — Tab Navigation', () => {
         it('pindah ke tab Rencana Kegiatan saat tombol klik', async () => {
             renderPage();
-            await fireEvent.click(screen.getByRole('button', { name: /Rencana Kegiatan/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Rencana Kegiatan/i }),
+            );
             await syncUI();
 
             expect(screen.getByTestId('days-editor')).toBeInTheDocument();
@@ -223,7 +259,9 @@ describe('Mitra Packages — Edit Page', () => {
 
         it('pindah ke tab Fasilitas & Foto saat tombol klik', async () => {
             renderPage();
-            await fireEvent.click(screen.getByRole('button', { name: /Fasilitas & Foto/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Fasilitas & Foto/i }),
+            );
             await syncUI();
 
             expect(screen.getByTestId('facilities-editor')).toBeInTheDocument();
@@ -232,9 +270,13 @@ describe('Mitra Packages — Edit Page', () => {
 
         it('kembali ke tab Info dari tab Rencana Kegiatan', async () => {
             renderPage();
-            await fireEvent.click(screen.getByRole('button', { name: /Rencana Kegiatan/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Rencana Kegiatan/i }),
+            );
             await syncUI();
-            await fireEvent.click(screen.getByRole('button', { name: /Info & Harga/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Info & Harga/i }),
+            );
             await syncUI();
 
             expect(screen.getByLabelText(/Nama Paket/i)).toBeInTheDocument();
@@ -244,22 +286,34 @@ describe('Mitra Packages — Edit Page', () => {
     describe('Interaction — Toggle Harga Rombongan', () => {
         it('toggle checkbox menampilkan input harga rombongan', async () => {
             renderPage();
-            const checkbox = screen.getByRole('checkbox', { name: /Gunakan Harga Rombongan/i });
+            const checkbox = screen.getByRole('checkbox', {
+                name: /Gunakan Harga Rombongan/i,
+            });
             await fireEvent.click(checkbox);
             await syncUI();
 
-            expect(screen.getByLabelText('Harga Rombongan', { exact: true })).toBeInTheDocument();
-            expect(screen.getByLabelText(/Maksimal Peserta/i)).toBeInTheDocument();
+            expect(
+                screen.getByLabelText('Harga Rombongan', { exact: true }),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByLabelText(/Maksimal Peserta/i),
+            ).toBeInTheDocument();
         });
     });
 
     describe('Interaction — Submit', () => {
         it('memanggil updatePackage + publishPackage jika status draft', async () => {
-            mockApi.updatePackage.mockImplementation((_id, _fd, opts) => opts.onSuccess?.());
-            mockApi.publishPackage.mockImplementation((_id, opts) => opts.onSuccess?.());
+            mockApi.updatePackage.mockImplementation((_id, _fd, opts) =>
+                opts.onSuccess?.(),
+            );
+            mockApi.publishPackage.mockImplementation((_id, opts) =>
+                opts.onSuccess?.(),
+            );
 
             renderPage(makePackage({ status: 'draft' }));
-            await fireEvent.click(screen.getByRole('button', { name: /Simpan Perubahan/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Simpan Perubahan/i }),
+            );
             await syncUI();
 
             expect(mockApi.updatePackage).toHaveBeenCalledOnce();
@@ -267,10 +321,14 @@ describe('Mitra Packages — Edit Page', () => {
         });
 
         it('hanya updatePackage jika status aktif', async () => {
-            mockApi.updatePackage.mockImplementation((_id, _fd, opts) => opts.onSuccess?.());
+            mockApi.updatePackage.mockImplementation((_id, _fd, opts) =>
+                opts.onSuccess?.(),
+            );
 
             renderPage(makePackage({ status: 'aktif' }));
-            await fireEvent.click(screen.getByRole('button', { name: /Simpan Perubahan/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Simpan Perubahan/i }),
+            );
             await syncUI();
 
             expect(mockApi.updatePackage).toHaveBeenCalledOnce();
@@ -281,12 +339,14 @@ describe('Mitra Packages — Edit Page', () => {
             const { showToast } = await import('@/utils/toast.svelte');
             renderPage(makePackage({ nama: '' }));
 
-            await fireEvent.click(screen.getByRole('button', { name: /Simpan Perubahan/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Simpan Perubahan/i }),
+            );
             await syncUI();
 
             expect(showToast).toHaveBeenCalledWith(
                 'Lengkapi Nama Paket dan Durasi Hari.',
-                'warning'
+                'warning',
             );
             expect(mockApi.updatePackage).not.toHaveBeenCalled();
         });
@@ -295,12 +355,14 @@ describe('Mitra Packages — Edit Page', () => {
             const { showToast } = await import('@/utils/toast.svelte');
             renderPage(makePackage({ days: [] }));
 
-            await fireEvent.click(screen.getByRole('button', { name: /Simpan Perubahan/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Simpan Perubahan/i }),
+            );
             await syncUI();
 
             expect(showToast).toHaveBeenCalledWith(
                 expect.stringContaining('Rencana Kegiatan belum lengkap'),
-                'warning'
+                'warning',
             );
         });
     });

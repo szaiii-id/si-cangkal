@@ -30,7 +30,9 @@ describe('TripItinerary Component', () => {
     describe('Empty State', () => {
         it('harus menampilkan pesan kosong jika days kosong', () => {
             render(TripItinerary, { props: { days: [] } });
-            expect(screen.getByText('Rencana perjalanan belum tersedia.')).toBeInTheDocument();
+            expect(
+                screen.getByText('Rencana perjalanan belum tersedia.'),
+            ).toBeInTheDocument();
         });
     });
 
@@ -39,7 +41,10 @@ describe('TripItinerary Component', () => {
     // ==========================================
     describe('Displaying Days', () => {
         it('harus merender jumlah hari', () => {
-            const days = [createMockDay(), createMockDay({ id: 2, hari_ke: 2 })];
+            const days = [
+                createMockDay(),
+                createMockDay({ id: 2, hari_ke: 2 }),
+            ];
             render(TripItinerary, { props: { days } });
             expect(screen.getByText('2 hari')).toBeInTheDocument();
         });
@@ -82,8 +87,8 @@ describe('TripItinerary Component', () => {
     // ==========================================
     describe('Accessibility', () => {
         it('ikon SVG harus disembunyikan dari screen reader', () => {
-            const { container } = render(TripItinerary, { 
-                props: { days: [createMockDay()] } 
+            const { container } = render(TripItinerary, {
+                props: { days: [createMockDay()] },
             });
 
             const svgs = container.querySelectorAll('svg');
@@ -93,8 +98,8 @@ describe('TripItinerary Component', () => {
         });
 
         it('garis timeline dekoratif harus disembunyikan dari screen reader', () => {
-            const { container } = render(TripItinerary, { 
-                props: { days: [createMockDay()] } 
+            const { container } = render(TripItinerary, {
+                props: { days: [createMockDay()] },
             });
 
             // Garis timeline adalah div dengan class absolute left-3

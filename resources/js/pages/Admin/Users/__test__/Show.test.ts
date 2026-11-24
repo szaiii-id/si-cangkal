@@ -189,7 +189,9 @@ describe('Admin Users — Show Page', () => {
             render(Show, { user: makeAdmin() });
 
             expect(screen.getByText('S')).toBeInTheDocument();
-            expect(screen.getByRole('heading', { name: 'Super Admin' })).toBeInTheDocument();
+            expect(
+                screen.getByRole('heading', { name: 'Super Admin' }),
+            ).toBeInTheDocument();
             expect(screen.getByText('admin@test.com')).toBeInTheDocument();
             expect(screen.getByText('Admin')).toBeInTheDocument();
         });
@@ -202,7 +204,9 @@ describe('Admin Users — Show Page', () => {
         it('menampilkan role badge Mitra untuk user mitra', () => {
             render(Show, { user: makeMitra() });
 
-            expect(screen.getByRole('heading', { name: 'Mitra Satu' })).toBeInTheDocument();
+            expect(
+                screen.getByRole('heading', { name: 'Mitra Satu' }),
+            ).toBeInTheDocument();
             expect(screen.getByText('Mitra')).toBeInTheDocument();
         });
 
@@ -228,7 +232,9 @@ describe('Admin Users — Show Page', () => {
     describe('Rendering — Informasi Usaha', () => {
         it('menampilkan placeholder jika profile null', () => {
             render(Show, { user: makeAdmin() });
-            expect(screen.getByText('Profil usaha belum dilengkapi.')).toBeInTheDocument();
+            expect(
+                screen.getByText('Profil usaha belum dilengkapi.'),
+            ).toBeInTheDocument();
         });
 
         it('merender data usaha lengkap saat profile ada', () => {
@@ -241,7 +247,9 @@ describe('Admin Users — Show Page', () => {
             expect(screen.getByText('Jawa Barat')).toBeInTheDocument();
             expect(screen.getByText('Bandung')).toBeInTheDocument();
             expect(screen.getByText('40111')).toBeInTheDocument();
-            expect(screen.getByText('Travel agent terpercaya')).toBeInTheDocument();
+            expect(
+                screen.getByText('Travel agent terpercaya'),
+            ).toBeInTheDocument();
         });
 
         it('menampilkan "-" untuk field yang kosong/null', () => {
@@ -281,7 +289,12 @@ describe('Admin Users — Show Page', () => {
 
         it('menampilkan label "E-Wallet" untuk tipe ewallet', () => {
             const userWithEwallet = makeMitra({
-                bank_accounts: [makeBankAccount({ tipe: 'ewallet', nama_penyedia: 'GoPay' })],
+                bank_accounts: [
+                    makeBankAccount({
+                        tipe: 'ewallet',
+                        nama_penyedia: 'GoPay',
+                    }),
+                ],
             });
 
             render(Show, { user: userWithEwallet });
@@ -304,7 +317,11 @@ describe('Admin Users — Show Page', () => {
             const multiBankUser = makeMitra({
                 bank_accounts: [
                     makeBankAccount({ id: 1, nama_penyedia: 'BCA' }),
-                    makeBankAccount({ id: 2, nama_penyedia: 'BNI', is_primary: false }),
+                    makeBankAccount({
+                        id: 2,
+                        nama_penyedia: 'BNI',
+                        is_primary: false,
+                    }),
                 ],
             });
 
@@ -329,8 +346,12 @@ describe('Admin Users — Show Page', () => {
 
             // ✅ Scope ke card "Rekening Bank" — hindari bentrok dengan "Nomor Identitas"
             const bankCard = getCardByTitle('Rekening Bank');
-            expect(within(bankCard).getByText('1234567890')).toBeInTheDocument();
-            expect(within(bankCard).queryByText(/•••• •••• 7890/)).not.toBeInTheDocument();
+            expect(
+                within(bankCard).getByText('1234567890'),
+            ).toBeInTheDocument();
+            expect(
+                within(bankCard).queryByText(/•••• •••• 7890/),
+            ).not.toBeInTheDocument();
         });
 
         it('menyembunyikan nomor saat tombol diklik lagi', async () => {
@@ -341,20 +362,28 @@ describe('Admin Users — Show Page', () => {
             await syncUI();
 
             const bankCard = getCardByTitle('Rekening Bank');
-            expect(within(bankCard).getByText('1234567890')).toBeInTheDocument();
+            expect(
+                within(bankCard).getByText('1234567890'),
+            ).toBeInTheDocument();
 
             // Hide
             await fireEvent.click(screen.getByTitle('Sembunyikan'));
             await syncUI();
 
-            expect(within(bankCard).getByText(/•••• •••• 7890/)).toBeInTheDocument();
+            expect(
+                within(bankCard).getByText(/•••• •••• 7890/),
+            ).toBeInTheDocument();
         });
 
         it('toggle reveal hanya untuk rekening yang diklik (multi-account)', async () => {
             const multiUser = makeMitra({
                 bank_accounts: [
                     makeBankAccount({ id: 1, nomor_rekening: '111122223333' }),
-                    makeBankAccount({ id: 2, nomor_rekening: '444455556666', is_primary: false }),
+                    makeBankAccount({
+                        id: 2,
+                        nomor_rekening: '444455556666',
+                        is_primary: false,
+                    }),
                 ],
             });
 
@@ -365,8 +394,12 @@ describe('Admin Users — Show Page', () => {
             await syncUI();
 
             const bankCard = getCardByTitle('Rekening Bank');
-            expect(within(bankCard).getByText('111122223333')).toBeInTheDocument();
-            expect(within(bankCard).getByText(/•••• •••• 6666/)).toBeInTheDocument();
+            expect(
+                within(bankCard).getByText('111122223333'),
+            ).toBeInTheDocument();
+            expect(
+                within(bankCard).getByText(/•••• •••• 6666/),
+            ).toBeInTheDocument();
         });
     });
 
@@ -416,7 +449,9 @@ describe('Admin Users — Show Page', () => {
         it('merender fallback "User Tidak Ditemukan" saat user falsy', () => {
             render(Show, { user: null as any });
 
-            expect(screen.getByRole('heading', { name: 'User Tidak Ditemukan' })).toBeInTheDocument();
+            expect(
+                screen.getByRole('heading', { name: 'User Tidak Ditemukan' }),
+            ).toBeInTheDocument();
             expect(screen.getByText('-')).toBeInTheDocument();
         });
     });

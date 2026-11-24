@@ -25,7 +25,14 @@ test.describe('Mitra — Penolakan Pembayaran Booking', () => {
             durasi_hari: 1,
             durasi_malam: 0,
             harga_per_orang: 350_000,
-            days: [{ judul: 'Tur Sehari', jam_mulai: '08:00', jam_selesai: '17:00', lokasi: 'Banjarmasin' }],
+            days: [
+                {
+                    judul: 'Tur Sehari',
+                    jam_mulai: '08:00',
+                    jam_selesai: '17:00',
+                    lokasi: 'Banjarmasin',
+                },
+            ],
             facilities: [
                 { tipe: 'include', nama: 'Perahu Klotok' },
                 { tipe: 'exclude', nama: 'Belanja Pribadi' },
@@ -41,7 +48,8 @@ test.describe('Mitra — Penolakan Pembayaran Booking', () => {
         asMitra,
         seed,
     }) => {
-        const rejectReason = 'Nominal transfer pada bukti pembayaran tidak sesuai tagihan';
+        const rejectReason =
+            'Nominal transfer pada bukti pembayaran tidak sesuai tagihan';
 
         const booking = await seed.createBooking(page, {
             client_email: SEED_USERS.client.email,
@@ -73,7 +81,10 @@ test.describe('Mitra — Penolakan Pembayaran Booking', () => {
         await mitraPage.expectStatusBadge(/Menunggu Pembayaran|Pending/i);
 
         // Verifikasi notifikasi beserta alasan penolakan terkirim ke client
-        const notifRes = await seed.latestNotification(page, SEED_USERS.client.email);
+        const notifRes = await seed.latestNotification(
+            page,
+            SEED_USERS.client.email,
+        );
         expect(notifRes.notification).not.toBeNull();
         expect(notifRes.notification?.judul).toMatch(/Bukti Transfer Ditolak/i);
         expect(notifRes.notification?.pesan).toContain(rejectReason);

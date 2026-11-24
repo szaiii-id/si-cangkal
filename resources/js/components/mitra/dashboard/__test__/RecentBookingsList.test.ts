@@ -33,12 +33,18 @@ describe('RecentBookingsList Component', () => {
     // ==========================================
     describe('Rendering', () => {
         it('harus merender judul "Pesanan Terbaru"', () => {
-            render(RecentBookingsList, { props: { bookings: [createMockBooking()] } });
-            expect(screen.getByRole('heading', { name: 'Pesanan Terbaru' })).toBeInTheDocument();
+            render(RecentBookingsList, {
+                props: { bookings: [createMockBooking()] },
+            });
+            expect(
+                screen.getByRole('heading', { name: 'Pesanan Terbaru' }),
+            ).toBeInTheDocument();
         });
 
         it('harus merender tautan "Lihat Semua"', () => {
-            render(RecentBookingsList, { props: { bookings: [createMockBooking()] } });
+            render(RecentBookingsList, {
+                props: { bookings: [createMockBooking()] },
+            });
 
             const link = screen.getByLabelText('Lihat semua pesanan');
             expect(link).toBeInTheDocument();
@@ -46,7 +52,9 @@ describe('RecentBookingsList Component', () => {
         });
 
         it('harus merender data pesanan (kode, client, paket, total, status) beserta tautan detail', () => {
-            render(RecentBookingsList, { props: { bookings: [createMockBooking()] } });
+            render(RecentBookingsList, {
+                props: { bookings: [createMockBooking()] },
+            });
 
             expect(screen.getByText('BK-001')).toBeInTheDocument();
             expect(screen.getByText(/Budi — Paket Bali/)).toBeInTheDocument();
@@ -64,7 +72,9 @@ describe('RecentBookingsList Component', () => {
     describe('Empty State', () => {
         it('harus menampilkan pesan kosong jika bookings kosong', () => {
             render(RecentBookingsList, { props: { bookings: [] } });
-            expect(screen.getByText('Belum ada pesanan terbaru.')).toBeInTheDocument();
+            expect(
+                screen.getByText('Belum ada pesanan terbaru.'),
+            ).toBeInTheDocument();
         });
     });
 

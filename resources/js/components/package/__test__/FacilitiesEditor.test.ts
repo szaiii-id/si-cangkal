@@ -15,7 +15,9 @@ type EditableFacility = {
 // ==========================================
 // MOCK DATA
 // ==========================================
-const createMockFacility = (overrides: Partial<EditableFacility> = {}): EditableFacility => ({
+const createMockFacility = (
+    overrides: Partial<EditableFacility> = {},
+): EditableFacility => ({
     id: 1,
     tipe: 'include',
     nama: 'Transportasi',
@@ -33,7 +35,7 @@ describe('FacilitiesEditor Component', () => {
     describe('Empty State', () => {
         it('harus menampilkan pesan "Belum ada" untuk kedua tipe', () => {
             render(FacilitiesEditor, { props: { facilities: [] } });
-            
+
             const emptyMessages = screen.getAllByText('Belum ada.');
             expect(emptyMessages.length).toBe(2);
         });
@@ -44,7 +46,9 @@ describe('FacilitiesEditor Component', () => {
     // ==========================================
     describe('Displaying Facilities', () => {
         it('harus menampilkan fasilitas "include" di kolom Termasuk', () => {
-            const facilities = [createMockFacility({ id: 1, tipe: 'include', nama: 'Makan' })];
+            const facilities = [
+                createMockFacility({ id: 1, tipe: 'include', nama: 'Makan' }),
+            ];
             render(FacilitiesEditor, { props: { facilities } });
 
             expect(screen.getByText('Makan')).toBeInTheDocument();
@@ -52,11 +56,19 @@ describe('FacilitiesEditor Component', () => {
         });
 
         it('harus menampilkan fasilitas "exclude" di kolom Tidak Termasuk', () => {
-            const facilities = [createMockFacility({ id: 2, tipe: 'exclude', nama: 'Tiket Pesawat' })];
+            const facilities = [
+                createMockFacility({
+                    id: 2,
+                    tipe: 'exclude',
+                    nama: 'Tiket Pesawat',
+                }),
+            ];
             render(FacilitiesEditor, { props: { facilities } });
 
             expect(screen.getByText('Tiket Pesawat')).toBeInTheDocument();
-            expect(screen.getByText(/Tidak Termasuk \(1\)/)).toBeInTheDocument();
+            expect(
+                screen.getByText(/Tidak Termasuk \(1\)/),
+            ).toBeInTheDocument();
         });
     });
 
@@ -70,7 +82,9 @@ describe('FacilitiesEditor Component', () => {
             const namaInput = screen.getByLabelText('Nama Fasilitas');
             await fireEvent.input(namaInput, { target: { value: 'Guide' } });
 
-            const submitBtn = screen.getByRole('button', { name: /\+ Tambah/i });
+            const submitBtn = screen.getByRole('button', {
+                name: /\+ Tambah/i,
+            });
             await fireEvent.click(submitBtn);
 
             expect(screen.getByText('Guide')).toBeInTheDocument();
@@ -79,10 +93,14 @@ describe('FacilitiesEditor Component', () => {
         it('harus menampilkan error jika nama fasilitas kosong', async () => {
             render(FacilitiesEditor, { props: { facilities: [] } });
 
-            const submitBtn = screen.getByRole('button', { name: /\+ Tambah/i });
+            const submitBtn = screen.getByRole('button', {
+                name: /\+ Tambah/i,
+            });
             await fireEvent.click(submitBtn);
 
-            expect(screen.getByText(/Nama fasilitas wajib diisi/i)).toBeInTheDocument();
+            expect(
+                screen.getByText(/Nama fasilitas wajib diisi/i),
+            ).toBeInTheDocument();
         });
     });
 
@@ -96,7 +114,9 @@ describe('FacilitiesEditor Component', () => {
 
             expect(screen.getByText('Makan')).toBeInTheDocument();
 
-            const deleteBtn = screen.getByRole('button', { name: /Hapus fasilitas Makan/i });
+            const deleteBtn = screen.getByRole('button', {
+                name: /Hapus fasilitas Makan/i,
+            });
             await fireEvent.click(deleteBtn);
 
             expect(screen.queryByText('Makan')).not.toBeInTheDocument();
@@ -108,14 +128,20 @@ describe('FacilitiesEditor Component', () => {
     // ==========================================
     describe('Disabled Mode', () => {
         it('TIDAK boleh menampilkan form tambah jika disabled=true', () => {
-            render(FacilitiesEditor, { props: { facilities: [], disabled: true } });
-            expect(screen.queryByText('Tambah Fasilitas Baru')).not.toBeInTheDocument();
+            render(FacilitiesEditor, {
+                props: { facilities: [], disabled: true },
+            });
+            expect(
+                screen.queryByText('Tambah Fasilitas Baru'),
+            ).not.toBeInTheDocument();
         });
 
         it('TIDAK boleh menampilkan tombol hapus jika disabled=true', () => {
             const facilities = [createMockFacility()];
             render(FacilitiesEditor, { props: { facilities, disabled: true } });
-            expect(screen.queryByRole('button', { name: /Hapus fasilitas/i })).not.toBeInTheDocument();
+            expect(
+                screen.queryByRole('button', { name: /Hapus fasilitas/i }),
+            ).not.toBeInTheDocument();
         });
     });
 });

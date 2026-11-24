@@ -76,10 +76,7 @@ vi.mock('@/components/layout/DashboardLayout.svelte', () => ({
 // 7. MOCK — PAGE HEADER
 // ============================================================
 vi.mock('@/global/PageHeader.svelte', () => ({
-    default: (
-        anchor: Node,
-        props: { title: string; description?: string },
-    ) => {
+    default: (anchor: Node, props: { title: string; description?: string }) => {
         const el = document.createElement('div');
         el.setAttribute('data-testid', 'page-header');
         el.innerHTML = `<h1>${props.title}</h1><p>${props.description ?? ''}</p>`;
@@ -188,7 +185,6 @@ import { getPackages } from '@/api/admin';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { formatDurasi } from '@/utils/duration';
 
-
 // ============================================================
 // 13. FIXTURES
 // ============================================================
@@ -269,10 +265,15 @@ describe('Admin Trips — Overview Page', () => {
             renderPage();
 
             expect(
-                screen.getByRole('heading', { level: 1, name: 'Monitoring Perjalanan' }),
+                screen.getByRole('heading', {
+                    level: 1,
+                    name: 'Monitoring Perjalanan',
+                }),
             ).toBeInTheDocument();
             expect(
-                screen.getByText(/Pilih paket wisata untuk melihat jadwal perjalanan/i),
+                screen.getByText(
+                    /Pilih paket wisata untuk melihat jadwal perjalanan/i,
+                ),
             ).toBeInTheDocument();
         });
     });
@@ -299,12 +300,23 @@ describe('Admin Trips — Overview Page', () => {
             const cardLinks = screen
                 .getAllByRole('link')
                 .filter((el) =>
-                    el.getAttribute('href')?.startsWith('/admin/trips?package_id='),
+                    el
+                        .getAttribute('href')
+                        ?.startsWith('/admin/trips?package_id='),
                 );
 
-            expect(cardLinks[0]).toHaveAttribute('href', '/admin/trips?package_id=1');
-            expect(cardLinks[1]).toHaveAttribute('href', '/admin/trips?package_id=2');
-            expect(cardLinks[2]).toHaveAttribute('href', '/admin/trips?package_id=3');
+            expect(cardLinks[0]).toHaveAttribute(
+                'href',
+                '/admin/trips?package_id=1',
+            );
+            expect(cardLinks[1]).toHaveAttribute(
+                'href',
+                '/admin/trips?package_id=2',
+            );
+            expect(cardLinks[2]).toHaveAttribute(
+                'href',
+                '/admin/trips?package_id=3',
+            );
         });
 
         it('menampilkan nama paket & kode', () => {
@@ -330,7 +342,9 @@ describe('Admin Trips — Overview Page', () => {
                 ]),
             );
 
-            expect(screen.getByText('Mitra tidak diketahui')).toBeInTheDocument();
+            expect(
+                screen.getByText('Mitra tidak diketahui'),
+            ).toBeInTheDocument();
         });
 
         it('merender cover image saat cover_image ada', () => {
@@ -344,7 +358,9 @@ describe('Admin Trips — Overview Page', () => {
                 ]),
             );
 
-            const img = screen.getByAltText('Paket With Image') as HTMLImageElement;
+            const img = screen.getByAltText(
+                'Paket With Image',
+            ) as HTMLImageElement;
             expect(img).toBeInTheDocument();
             expect(img.getAttribute('src')).toBe('/storage/packages/bali.jpg');
         });
@@ -360,11 +376,14 @@ describe('Admin Trips — Overview Page', () => {
                 ]),
             );
 
-            expect(screen.queryByAltText('Paket No Image')).not.toBeInTheDocument();
+            expect(
+                screen.queryByAltText('Paket No Image'),
+            ).not.toBeInTheDocument();
             // SVG placeholder ada di DOM (tidak ada alt, ada <svg>)
             expect(
-                document.querySelectorAll('a[href^="/admin/trips?package_id="] svg')
-                    .length,
+                document.querySelectorAll(
+                    'a[href^="/admin/trips?package_id="] svg',
+                ).length,
             ).toBeGreaterThan(0);
         });
     });
@@ -375,7 +394,9 @@ describe('Admin Trips — Overview Page', () => {
     describe('Rendering — Harga & Durasi', () => {
         it('memanggil formatDurasi dengan durasi_hari & durasi_malam', () => {
             renderPage(
-                makePagination([makePackage({ durasi_hari: 4, durasi_malam: 3 })]),
+                makePagination([
+                    makePackage({ durasi_hari: 4, durasi_malam: 3 }),
+                ]),
             );
 
             expect(formatDurasi).toHaveBeenCalledWith(4, 3);
@@ -461,7 +482,9 @@ describe('Admin Trips — Overview Page', () => {
 
             const emptyState = screen.getByTestId('empty-state');
             expect(emptyState).toHaveTextContent('Tidak ada paket ditemukan');
-            expect(emptyState).toHaveTextContent('Belum ada paket wisata aktif saat ini.');
+            expect(emptyState).toHaveTextContent(
+                'Belum ada paket wisata aktif saat ini.',
+            );
         });
 
         it('merender EmptyState dengan search context saat filter aktif', () => {
@@ -471,7 +494,9 @@ describe('Admin Trips — Overview Page', () => {
             expect(emptyState).toHaveTextContent(
                 'Tidak ditemukan paket dengan kata kunci "xyz".',
             );
-            expect(screen.getByRole('button', { name: 'Reset Filter' })).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: 'Reset Filter' }),
+            ).toBeInTheDocument();
         });
     });
 
@@ -482,7 +507,9 @@ describe('Admin Trips — Overview Page', () => {
         it('tidak memanggil getPackages sebelum 300ms', async () => {
             renderPage();
 
-            const input = screen.getByPlaceholderText(/Cari nama paket wisata/i);
+            const input = screen.getByPlaceholderText(
+                /Cari nama paket wisata/i,
+            );
             await fireEvent.input(input, { target: { value: 'bali' } });
 
             expect(getPackages).not.toHaveBeenCalled();
@@ -491,7 +518,9 @@ describe('Admin Trips — Overview Page', () => {
         it('memanggil getPackages setelah 300ms dengan status "aktif"', async () => {
             renderPage();
 
-            const input = screen.getByPlaceholderText(/Cari nama paket wisata/i);
+            const input = screen.getByPlaceholderText(
+                /Cari nama paket wisata/i,
+            );
             await fireEvent.input(input, { target: { value: 'bali' } });
 
             await vi.advanceTimersByTimeAsync(300);
@@ -506,7 +535,9 @@ describe('Admin Trips — Overview Page', () => {
         it('debounce meringkas panggilan saat mengetik cepat', async () => {
             renderPage();
 
-            const input = screen.getByPlaceholderText(/Cari nama paket wisata/i);
+            const input = screen.getByPlaceholderText(
+                /Cari nama paket wisata/i,
+            );
             await fireEvent.input(input, { target: { value: 'b' } });
             await fireEvent.input(input, { target: { value: 'ba' } });
             await fireEvent.input(input, { target: { value: 'bal' } });
@@ -525,7 +556,9 @@ describe('Admin Trips — Overview Page', () => {
         it('klik clear langsung memanggil getPackages tanpa debounce', async () => {
             renderPage(makePagination(SAMPLE_PACKAGES), { search: 'bali' });
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Hapus Pencarian' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Hapus Pencarian' }),
+            );
 
             expect(getPackages).toHaveBeenCalledOnce();
             expect(getPackages).toHaveBeenCalledWith(
@@ -537,7 +570,9 @@ describe('Admin Trips — Overview Page', () => {
         it('klik "Reset Filter" di EmptyState memanggil clearSearch', async () => {
             renderPage(makePagination([]), { search: 'xyz' });
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Reset Filter' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Reset Filter' }),
+            );
 
             expect(getPackages).toHaveBeenCalledWith(
                 { search: '', status: 'aktif' },

@@ -105,7 +105,7 @@ describe('Booking Rules & Status Checks', () => {
             expect(isActiveBooking('payment_verified')).toBe(true);
             expect(isActiveBooking('confirmed')).toBe(true);
             expect(isActiveBooking('in_progress')).toBe(true);
-            
+
             // Final states -> harus false
             expect(isActiveBooking('completed')).toBe(false);
             expect(isActiveBooking('cancelled')).toBe(false);

@@ -98,7 +98,9 @@ test.describe('Auth — Register (Client)', () => {
             await expect(SEL.AUTH.register.username(page)).toBeVisible();
             await expect(SEL.AUTH.register.email(page)).toBeVisible();
             await expect(SEL.AUTH.register.password(page)).toBeVisible();
-            await expect(SEL.AUTH.register.passwordConfirmation(page)).toBeVisible();
+            await expect(
+                SEL.AUTH.register.passwordConfirmation(page),
+            ).toBeVisible();
         });
 
         test('menampilkan checkbox terms', async ({ page }) => {
@@ -218,7 +220,9 @@ test.describe('Auth — Register (Client)', () => {
             await page.goto('/register');
         });
 
-        test('menampilkan checklist password saat password diisi', async ({ page }) => {
+        test('menampilkan checklist password saat password diisi', async ({
+            page,
+        }) => {
             // Belum ada checklist saat password kosong
             await expect(
                 page.getByText(/Minimal 8 karakter/i),
@@ -235,12 +239,12 @@ test.describe('Auth — Register (Client)', () => {
         test('label "Lemah" muncul untuk password pendek', async ({ page }) => {
             await SEL.AUTH.register.password(page).fill('abc');
 
-            await expect(
-                page.getByText(/^Lemah$/i).first(),
-            ).toBeVisible();
+            await expect(page.getByText(/^Lemah$/i).first()).toBeVisible();
         });
 
-        test('label "Kuat" muncul untuk password kompleks', async ({ page }) => {
+        test('label "Kuat" muncul untuk password kompleks', async ({
+            page,
+        }) => {
             await SEL.AUTH.register.password(page).fill('Password123!');
 
             await expect(
@@ -248,7 +252,6 @@ test.describe('Auth — Register (Client)', () => {
             ).toBeVisible();
         });
     });
-
 
     // ==========================================
     // CONTRACT — TOGGLE PASSWORD
@@ -265,7 +268,9 @@ test.describe('Auth — Register (Client)', () => {
             await expect(input).toHaveAttribute('type', 'password');
 
             // FIX: aria-label spesifik untuk field password
-            await page.getByRole('button', { name: /^Tampilkan password$/i }).click();
+            await page
+                .getByRole('button', { name: /^Tampilkan password$/i })
+                .click();
             await expect(input).toHaveAttribute('type', 'text');
         });
 
@@ -274,9 +279,11 @@ test.describe('Auth — Register (Client)', () => {
             await expect(input).toHaveAttribute('type', 'password');
 
             // FIX: aria-label spesifik untuk field konfirmasi
-            await page.getByRole('button', {
-                name: /Tampilkan konfirmasi password/i,
-            }).click();
+            await page
+                .getByRole('button', {
+                    name: /Tampilkan konfirmasi password/i,
+                })
+                .click();
             await expect(input).toHaveAttribute('type', 'text');
         });
     });
@@ -285,7 +292,7 @@ test.describe('Auth — Register (Client)', () => {
     // VALIDASI BROWSER (submit diblokir HTML5 / JS)
     // ==========================================
 
-   test.describe('Validasi Browser', () => {
+    test.describe('Validasi Browser', () => {
         test.beforeEach(async ({ page, asGuest }) => {
             await asGuest();
             await page.goto('/register');
@@ -295,20 +302,26 @@ test.describe('Auth — Register (Client)', () => {
             await SEL.AUTH.register.email(page).fill('test@example.com');
             await SEL.AUTH.register.username(page).fill('testuser');
             await SEL.AUTH.register.password(page).fill(VALID_PASSWORD);
-            await SEL.AUTH.register.passwordConfirmation(page).fill(VALID_PASSWORD);
-            await SEL.AUTH.register.termsCheckbox(page).check();  // FIX: centang terms dulu
+            await SEL.AUTH.register
+                .passwordConfirmation(page)
+                .fill(VALID_PASSWORD);
+            await SEL.AUTH.register.termsCheckbox(page).check(); // FIX: centang terms dulu
 
             await SEL.AUTH.register.submit(page).click();
 
             await expect(page).toHaveURL('/register');
         });
 
-        test('tombol submit disabled saat terms belum dicentang', async ({ page }) => {
+        test('tombol submit disabled saat terms belum dicentang', async ({
+            page,
+        }) => {
             await SEL.AUTH.register.name(page).fill('Test User');
             await SEL.AUTH.register.username(page).fill('testuser');
             await SEL.AUTH.register.email(page).fill('test@example.com');
             await SEL.AUTH.register.password(page).fill(VALID_PASSWORD);
-            await SEL.AUTH.register.passwordConfirmation(page).fill(VALID_PASSWORD);
+            await SEL.AUTH.register
+                .passwordConfirmation(page)
+                .fill(VALID_PASSWORD);
 
             // FIX: tombol disabled by design saat terms kosong
             await expect(SEL.AUTH.register.submit(page)).toBeDisabled();
@@ -323,7 +336,9 @@ test.describe('Auth — Register (Client)', () => {
             await SEL.AUTH.register.username(page).fill('testuser');
             await SEL.AUTH.register.email(page).fill('test@example.com');
             await SEL.AUTH.register.password(page).fill('password123');
-            await SEL.AUTH.register.passwordConfirmation(page).fill('password456');
+            await SEL.AUTH.register
+                .passwordConfirmation(page)
+                .fill('password456');
             await SEL.AUTH.register.termsCheckbox(page).check();
 
             await expect(
@@ -333,12 +348,16 @@ test.describe('Auth — Register (Client)', () => {
             await expect(SEL.AUTH.register.submit(page)).toBeDisabled();
         });
 
-        test('email format invalid → submit diblokir browser', async ({ page }) => {
+        test('email format invalid → submit diblokir browser', async ({
+            page,
+        }) => {
             await SEL.AUTH.register.name(page).fill('Test User');
             await SEL.AUTH.register.username(page).fill('testuser');
             await SEL.AUTH.register.email(page).fill('bukan-email');
             await SEL.AUTH.register.password(page).fill(VALID_PASSWORD);
-            await SEL.AUTH.register.passwordConfirmation(page).fill(VALID_PASSWORD);
+            await SEL.AUTH.register
+                .passwordConfirmation(page)
+                .fill(VALID_PASSWORD);
             await SEL.AUTH.register.termsCheckbox(page).check();
 
             await SEL.AUTH.register.submit(page).click();
@@ -359,9 +378,9 @@ test.describe('Auth — Register (Client)', () => {
 
         test('email duplikat dengan seed admin → error', async ({ page }) => {
             await SEL.AUTH.register.name(page).fill('Test User');
-            await SEL.AUTH.register.username(page).fill(
-                `dup${Date.now()}`.toLowerCase(),
-            );
+            await SEL.AUTH.register
+                .username(page)
+                .fill(`dup${Date.now()}`.toLowerCase());
             await SEL.AUTH.register.email(page).fill(SEED_USERS.admin.email);
             await SEL.AUTH.register.password(page).fill(VALID_PASSWORD);
             await SEL.AUTH.register
@@ -385,13 +404,15 @@ test.describe('Auth — Register (Client)', () => {
             ).toBeVisible({ timeout: 10_000 });
         });
 
-        test('username duplikat dengan seed admin → error', async ({ page }) => {
+        test('username duplikat dengan seed admin → error', async ({
+            page,
+        }) => {
             const email = `dup-u-${Date.now()}@test.com`;
 
             await SEL.AUTH.register.name(page).fill('Test User');
-            await SEL.AUTH.register.username(page).fill(
-                SEED_USERS.admin.username,
-            );
+            await SEL.AUTH.register
+                .username(page)
+                .fill(SEED_USERS.admin.username);
             await SEL.AUTH.register.email(page).fill(email);
             await SEL.AUTH.register.password(page).fill(VALID_PASSWORD);
             await SEL.AUTH.register

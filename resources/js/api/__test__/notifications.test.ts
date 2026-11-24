@@ -33,7 +33,11 @@ describe('Notifications API Wrapper', () => {
         it('memanggil POST /notifications/fcm dengan payload token', () => {
             const payload = { token: 'fcm-token-123' };
             updateFcmToken(payload);
-            expect(router.post).toHaveBeenCalledWith('/notifications/fcm', payload, undefined);
+            expect(router.post).toHaveBeenCalledWith(
+                '/notifications/fcm',
+                payload,
+                undefined,
+            );
         });
 
         it('meneruskan VisitOptions ke router.post', () => {
@@ -44,7 +48,11 @@ describe('Notifications API Wrapper', () => {
                 onSuccess: vi.fn(),
             };
             updateFcmToken(payload, options);
-            expect(router.post).toHaveBeenCalledWith('/notifications/fcm', payload, options);
+            expect(router.post).toHaveBeenCalledWith(
+                '/notifications/fcm',
+                payload,
+                options,
+            );
         });
 
         it('meneruskan token string panjang apa adanya', () => {

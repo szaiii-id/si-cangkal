@@ -44,9 +44,11 @@ export function formatRupiahInput(value: number | null | undefined): string {
  *   parseIntInput('1.500')    // 1500
  *   parseIntInput('abc')      // 0
  */
-export function parseIntInput(value: string | number | null | undefined): number {
+export function parseIntInput(
+    value: string | number | null | undefined,
+): number {
     if (value === null || value === undefined || value === '') return 0;
-    
+
     if (typeof value === 'number') {
         return Number.isFinite(value) ? Math.trunc(value) : 0;
     }

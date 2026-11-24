@@ -25,14 +25,20 @@ describe('BankAccountManager Component', () => {
     // ==========================================
     describe('Rendering', () => {
         it('harus merender judul dan deskripsi', () => {
-            render(BankAccountManager, { props: { accounts: [createMockAccount()], errors: {} } });
+            render(BankAccountManager, {
+                props: { accounts: [createMockAccount()], errors: {} },
+            });
 
             expect(screen.getByText('Rekening Pembayaran')).toBeInTheDocument();
-            expect(screen.getByText(/Tambahkan minimal 1 rekening/i)).toBeInTheDocument();
+            expect(
+                screen.getByText(/Tambahkan minimal 1 rekening/i),
+            ).toBeInTheDocument();
         });
 
         it('harus merender 1 rekening jika accounts berisi 1 item', () => {
-            render(BankAccountManager, { props: { accounts: [createMockAccount()], errors: {} } });
+            render(BankAccountManager, {
+                props: { accounts: [createMockAccount()], errors: {} },
+            });
 
             expect(screen.getByText('Rekening 1')).toBeInTheDocument();
             expect(screen.getByLabelText(/Nama Bank/i)).toBeInTheDocument();
@@ -48,7 +54,9 @@ describe('BankAccountManager Component', () => {
                 props: { accounts: [createMockAccount()], errors: {} },
             });
 
-            const addBtn = screen.getByRole('button', { name: /Tambah Rekening Lain/i });
+            const addBtn = screen.getByRole('button', {
+                name: /Tambah Rekening Lain/i,
+            });
             await fireEvent.click(addBtn);
 
             // Cek apakah ada 2 rekening sekarang
@@ -63,8 +71,12 @@ describe('BankAccountManager Component', () => {
             ];
             render(BankAccountManager, { props: { accounts, errors: {} } });
 
-            expect(screen.queryByRole('button', { name: /Tambah Rekening Lain/i })).not.toBeInTheDocument();
-            expect(screen.getByText(/Batas maksimal 3 rekening/i)).toBeInTheDocument();
+            expect(
+                screen.queryByRole('button', { name: /Tambah Rekening Lain/i }),
+            ).not.toBeInTheDocument();
+            expect(
+                screen.getByText(/Batas maksimal 3 rekening/i),
+            ).toBeInTheDocument();
         });
     });
 
@@ -79,7 +91,9 @@ describe('BankAccountManager Component', () => {
             ];
             render(BankAccountManager, { props: { accounts, errors: {} } });
 
-            const deleteBtns = screen.getAllByRole('button', { name: /Hapus rekening/i });
+            const deleteBtns = screen.getAllByRole('button', {
+                name: /Hapus rekening/i,
+            });
             await fireEvent.click(deleteBtns[0]);
 
             // Cek apakah rekening 2 hilang dan rekening 1 tersisa
@@ -88,8 +102,12 @@ describe('BankAccountManager Component', () => {
         });
 
         it('TIDAK boleh menampilkan tombol Hapus jika hanya ada 1 rekening', () => {
-            render(BankAccountManager, { props: { accounts: [createMockAccount()], errors: {} } });
-            expect(screen.queryByRole('button', { name: /Hapus rekening/i })).not.toBeInTheDocument();
+            render(BankAccountManager, {
+                props: { accounts: [createMockAccount()], errors: {} },
+            });
+            expect(
+                screen.queryByRole('button', { name: /Hapus rekening/i }),
+            ).not.toBeInTheDocument();
         });
     });
 
@@ -99,10 +117,15 @@ describe('BankAccountManager Component', () => {
     describe('Conditional Dropdown', () => {
         it('harus menampilkan opsi Bank jika tipe = bank', () => {
             render(BankAccountManager, {
-                props: { accounts: [createMockAccount({ tipe: 'bank' })], errors: {} },
+                props: {
+                    accounts: [createMockAccount({ tipe: 'bank' })],
+                    errors: {},
+                },
             });
 
-            const select = screen.getByLabelText(/Nama Bank/i) as HTMLSelectElement;
+            const select = screen.getByLabelText(
+                /Nama Bank/i,
+            ) as HTMLSelectElement;
             const options = Array.from(select.options).map((o) => o.value);
 
             expect(options).toContain('BCA');
@@ -111,10 +134,15 @@ describe('BankAccountManager Component', () => {
 
         it('harus menampilkan opsi E-Wallet jika tipe = ewallet', () => {
             render(BankAccountManager, {
-                props: { accounts: [createMockAccount({ tipe: 'ewallet' })], errors: {} },
+                props: {
+                    accounts: [createMockAccount({ tipe: 'ewallet' })],
+                    errors: {},
+                },
             });
 
-            const select = screen.getByLabelText(/Nama E-Wallet/i) as HTMLSelectElement;
+            const select = screen.getByLabelText(
+                /Nama E-Wallet/i,
+            ) as HTMLSelectElement;
             const options = Array.from(select.options).map((o) => o.value);
 
             expect(options).toContain('DANA');
@@ -130,11 +158,16 @@ describe('BankAccountManager Component', () => {
             render(BankAccountManager, {
                 props: {
                     accounts: [createMockAccount()],
-                    errors: { 'accounts.0.nama_penyedia': 'Pilih bank terlebih dahulu' },
+                    errors: {
+                        'accounts.0.nama_penyedia':
+                            'Pilih bank terlebih dahulu',
+                    },
                 },
             });
 
-            expect(screen.getByText('Pilih bank terlebih dahulu')).toBeInTheDocument();
+            expect(
+                screen.getByText('Pilih bank terlebih dahulu'),
+            ).toBeInTheDocument();
         });
     });
 });

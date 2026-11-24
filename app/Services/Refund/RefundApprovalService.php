@@ -9,6 +9,8 @@ use App\Models\Booking;
 use App\Models\Payment;
 use App\Models\Refund;
 use App\Models\User;
+use App\Repositories\Contracts\BookingRepositoryInterface;
+use App\Repositories\Contracts\RefundRepositoryInterface;
 use App\Services\Notification\Contracts\NotificationDispatcherInterface;
 use App\Support\AuditLogger;
 use Illuminate\Support\Facades\DB;
@@ -17,29 +19,29 @@ use Illuminate\Validation\ValidationException;
 class RefundApprovalService
 {
     public function __construct(
+        private readonly RefundRepositoryInterface $refundRepository,
+        private readonly BookingRepositoryInterface $bookingRepository,
         private readonly NotificationDispatcherInterface $notificationDispatcher,
     ) {}
 
     public function approve(Refund $refund, User $mitra, ?string $catatan): Refund
     {
-        $this->ensureRefundPending($refund);
-        $this->ensureOwnership($refund, $mitra);
+        // Lock refund + booking di dalam transaksi: dua request approve
+        // bersamaan harus diproses serial agar Payment negatif tidak ganda.
+        $refund = DB::transaction(function () use ($refund, $mitra, $catatan): Refund {
+            $locked = $this->lockRefund($refund);
 
-        $booking = $this->resolveBooking($refund);
-        $amount = (float) $refund->amount;
+            $this->ensureRefundPending($locked);
+            $this->ensureOwnership($locked, $mitra);
 
-        $refund = DB::transaction(function () use (
-            $refund,
-            $booking,
-            $mitra,
-            $catatan,
-            $amount
-        ): Refund {
+            $booking = $this->lockBooking($locked);
+
+            $amount = (float) $locked->amount;
             $noteLine = '[Approved] '.now()->format('Y-m-d H:i').($catatan !== null ? " - {$catatan}" : '');
 
-            $refund->update([
+            $locked->update([
                 'status' => RefundStatus::SUCCEEDED->value,
-                'catatan' => trim(($refund->catatan ?? '')."\n{$noteLine}"),
+                'catatan' => trim(($locked->catatan ?? '')."\n{$noteLine}"),
             ]);
 
             Payment::create([
@@ -48,7 +50,7 @@ class RefundApprovalService
                 'metode' => PaymentMetode::TRANSFER_MANUAL->value,
                 'verified_by' => $mitra->id,
                 'verified_at' => now(),
-                'catatan' => "Refund manual oleh Mitra: {$mitra->name}. Alasan: {$refund->reason->label()}",
+                'catatan' => "Refund manual oleh Mitra: {$mitra->name}. Alasan: {$locked->reason->label()}",
             ]);
 
             $booking->update([
@@ -59,16 +61,18 @@ class RefundApprovalService
             AuditLogger::log('refund.approved', [
                 'actor_id' => $mitra->id,
                 'actor_role' => 'mitra',
-                'refund_id' => $refund->id,
+                'refund_id' => $locked->id,
                 'booking_id' => $booking->id,
                 'booking_kode' => $booking->kode,
                 'amount' => $amount,
-                'reason' => $refund->reason->value,
+                'reason' => $locked->reason->value,
             ]);
 
-            return $refund->refresh()->load('booking.client');
+            return $locked->refresh()->load('booking.client');
         });
 
+        // Notifikasi dikirim setelah commit: kegagalan FCM/IO tidak boleh
+        // membatalkan refund yang sudah sah.
         $this->notifyRefundSucceededToClient($refund);
 
         return $refund;
@@ -76,31 +80,56 @@ class RefundApprovalService
 
     public function reject(Refund $refund, User $mitra, string $alasan): Refund
     {
-        $this->ensureRefundPending($refund);
-        $this->ensureOwnership($refund, $mitra);
+        $refund = DB::transaction(function () use ($refund, $mitra, $alasan): Refund {
+            $locked = $this->lockRefund($refund);
 
-        $noteLine = '[Rejected] '.now()->format('Y-m-d H:i')." - {$alasan}";
+            $this->ensureRefundPending($locked);
+            $this->ensureOwnership($locked, $mitra);
 
-        $refund = DB::transaction(function () use ($refund, $mitra, $noteLine, $alasan): Refund {
-            $refund->update([
+            $noteLine = '[Rejected] '.now()->format('Y-m-d H:i')." - {$alasan}";
+
+            $locked->update([
                 'status' => RefundStatus::CANCELLED->value,
-                'catatan' => trim(($refund->catatan ?? '')."\n{$noteLine}"),
+                'catatan' => trim(($locked->catatan ?? '')."\n{$noteLine}"),
             ]);
 
             AuditLogger::log('refund.rejected', [
                 'actor_id' => $mitra->id,
                 'actor_role' => 'mitra',
-                'refund_id' => $refund->id,
-                'booking_id' => $refund->booking_id,
+                'refund_id' => $locked->id,
+                'booking_id' => $locked->booking_id,
                 'alasan' => $alasan,
             ]);
 
-            return $refund->refresh()->load('booking.client');
+            return $locked->refresh()->load('booking.client');
         });
 
         $this->notifyRefundRejectedToClient($refund, $alasan);
 
         return $refund;
+    }
+
+    /**
+     * Ambil refund dengan row lock. Guard status & kepemilikan wajib
+     * dicek ulang SETELAH lock agar state yang dibaca adalah state final.
+     */
+    private function lockRefund(Refund $refund): Refund
+    {
+        return $this->refundRepository->findByIdForUpdate($refund->id) ?? $refund;
+    }
+
+    private function lockBooking(Refund $refund): Booking
+    {
+        $booking = $this->bookingRepository->findByIdForUpdate($refund->booking_id)
+            ?? $refund->booking;
+
+        if ($booking === null) {
+            throw ValidationException::withMessages([
+                'refund' => ['Booking terkait refund tidak ditemukan.'],
+            ]);
+        }
+
+        return $booking;
     }
 
     private function ensureRefundPending(Refund $refund): void
@@ -135,22 +164,14 @@ class RefundApprovalService
         }
     }
 
-    private function resolveBooking(Refund $refund): Booking
+    private function notifyRefundSucceededToClient(Refund $refund): void
     {
         $booking = $refund->booking;
 
         if ($booking === null) {
-            throw ValidationException::withMessages([
-                'refund' => ['Booking terkait refund tidak ditemukan.'],
-            ]);
+            return;
         }
 
-        return $booking;
-    }
-
-    private function notifyRefundSucceededToClient(Refund $refund): void
-    {
-        $booking = $refund->booking;
         $client = $booking->client;
 
         if ($client === null) {
@@ -172,6 +193,11 @@ class RefundApprovalService
     private function notifyRefundRejectedToClient(Refund $refund, string $alasan): void
     {
         $booking = $refund->booking;
+
+        if ($booking === null) {
+            return;
+        }
+
         $client = $booking->client;
 
         if ($client === null) {

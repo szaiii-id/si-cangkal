@@ -99,9 +99,12 @@ export class MitraPackagePage {
         this.notificationDialog = page
             .getByRole('dialog')
             .filter({ has: page.locator('#notif-title') });
-        this.dismissNotificationButton = this.notificationDialog.getByRole('button', {
-            name: 'Nanti Saja',
-        });
+        this.dismissNotificationButton = this.notificationDialog.getByRole(
+            'button',
+            {
+                name: 'Nanti Saja',
+            },
+        );
 
         // Step 1
         this.namaInput = page.locator('#nama');
@@ -112,15 +115,29 @@ export class MitraPackagePage {
         // Step 2 (gunakan role 'textbox' agar tidak bentrok dengan checkbox Harga Rombongan)
         this.durasiHariInput = page.locator('#durasi_hari');
         this.durasiMalamInput = page.locator('#durasi_malam');
-        this.useRombonganCheckbox = page.getByRole('checkbox', { name: /Gunakan Harga Rombongan/i });
-        this.hargaPerOrangInput = page.getByRole('textbox', { name: /Harga per Orang/i });
-        this.hargaRombonganInput = page.getByRole('textbox', { name: 'Harga Rombongan' });
+        this.useRombonganCheckbox = page.getByRole('checkbox', {
+            name: /Gunakan Harga Rombongan/i,
+        });
+        this.hargaPerOrangInput = page.getByRole('textbox', {
+            name: /Harga per Orang/i,
+        });
+        this.hargaRombonganInput = page.getByRole('textbox', {
+            name: 'Harga Rombongan',
+        });
         this.maxPesertaInput = page.locator('#max_peserta');
 
         // Wizard Buttons
-        this.nextStepButton = page.getByRole('button', { name: 'Lanjut', exact: true });
-        this.prevStepButton = page.getByRole('button', { name: 'Kembali', exact: true });
-        this.submitCreateButton = page.getByRole('button', { name: /Simpan & Lanjut Isi Kegiatan/i });
+        this.nextStepButton = page.getByRole('button', {
+            name: 'Lanjut',
+            exact: true,
+        });
+        this.prevStepButton = page.getByRole('button', {
+            name: 'Kembali',
+            exact: true,
+        });
+        this.submitCreateButton = page.getByRole('button', {
+            name: /Simpan & Lanjut Isi Kegiatan/i,
+        });
 
         // DaysEditor.svelte
         this.dayJudulInput = page.locator('#newDay-judul');
@@ -128,28 +145,48 @@ export class MitraPackagePage {
         this.dayJamSelesaiInput = page.locator('#newDay-jam-selesai');
         this.dayLokasiInput = page.locator('#newDay-lokasi');
         this.dayDeskripsiInput = page.locator('#newDay-deskripsi');
-        this.addDayButton = page.getByRole('button', { name: '+ Tambahkan ke Daftar' });
+        this.addDayButton = page.getByRole('button', {
+            name: '+ Tambahkan ke Daftar',
+        });
 
         // FacilitiesEditor.svelte
         this.facilityTipeSelect = page.locator('#newFacility-tipe');
         this.facilityNamaInput = page.locator('#newFacility-nama');
-        this.addFacilityButton = page.getByRole('button', { name: '+ Tambah', exact: true });
+        this.addFacilityButton = page.getByRole('button', {
+            name: '+ Tambah',
+            exact: true,
+        });
 
         // PackageActions.svelte
         this.editPackageLink = page.getByRole('link', { name: 'Edit paket' });
-        this.manualBookingLink = page.getByRole('link', { name: 'Buat pesanan manual' });
-        this.continueDraftLink = page.getByRole('link', { name: 'Lanjutkan pembuatan paket' });
-        this.archivePackageButton = page.getByRole('button', { name: 'Arsipkan paket' });
-        this.restorePackageButton = page.getByRole('button', { name: 'Aktifkan kembali paket' });
-        this.deletePackageButton = page.getByRole('button', { name: 'Hapus paket' });
+        this.manualBookingLink = page.getByRole('link', {
+            name: 'Buat pesanan manual',
+        });
+        this.continueDraftLink = page.getByRole('link', {
+            name: 'Lanjutkan pembuatan paket',
+        });
+        this.archivePackageButton = page.getByRole('button', {
+            name: 'Arsipkan paket',
+        });
+        this.restorePackageButton = page.getByRole('button', {
+            name: 'Aktifkan kembali paket',
+        });
+        this.deletePackageButton = page.getByRole('button', {
+            name: 'Hapus paket',
+        });
 
         // ConfirmModal.svelte (di-filter dengan #confirm-modal-title agar tidak bentrok dengan notif modal)
         this.confirmDialog = page
             .getByRole('dialog')
             .filter({ has: page.locator('#confirm-modal-title') });
-        this.confirmDialogTitle = this.confirmDialog.locator('#confirm-modal-title');
-        this.confirmReasonTextarea = this.confirmDialog.locator('#confirm-reason');
-        this.confirmCancelButton = this.confirmDialog.getByRole('button', { name: 'Batal' });
+        this.confirmDialogTitle = this.confirmDialog.locator(
+            '#confirm-modal-title',
+        );
+        this.confirmReasonTextarea =
+            this.confirmDialog.locator('#confirm-reason');
+        this.confirmCancelButton = this.confirmDialog.getByRole('button', {
+            name: 'Batal',
+        });
     }
 
     // ==========================================
@@ -167,9 +204,13 @@ export class MitraPackagePage {
 
         await this.page.goto('/login');
         const identifierInput = this.page
-            .locator('form input:not([type="hidden"]):not([type="checkbox"]):not([type="password"])')
+            .locator(
+                'form input:not([type="hidden"]):not([type="checkbox"]):not([type="password"])',
+            )
             .first();
-        const passwordInput = this.page.locator('form input[type="password"]').first();
+        const passwordInput = this.page
+            .locator('form input[type="password"]')
+            .first();
 
         await identifierInput.fill('mitra@test.com');
         await passwordInput.fill('password');
@@ -208,14 +249,18 @@ export class MitraPackagePage {
         if (data.useRombongan) {
             await this.useRombonganCheckbox.check();
             await this.hargaRombonganInput.fill(data.hargaRaw);
-            await expect(this.hargaRombonganInput).toHaveValue(data.expectedFormattedHarga);
+            await expect(this.hargaRombonganInput).toHaveValue(
+                data.expectedFormattedHarga,
+            );
 
             if (data.maxPeserta !== undefined) {
                 await this.maxPesertaInput.fill(String(data.maxPeserta));
             }
         } else {
             await this.hargaPerOrangInput.fill(data.hargaRaw);
-            await expect(this.hargaPerOrangInput).toHaveValue(data.expectedFormattedHarga);
+            await expect(this.hargaPerOrangInput).toHaveValue(
+                data.expectedFormattedHarga,
+            );
         }
     }
 
@@ -236,7 +281,9 @@ export class MitraPackagePage {
     }
 
     async removeItineraryDay(hariKe: number): Promise<void> {
-        await this.page.getByRole('button', { name: `Hapus hari ke-${hariKe}` }).click();
+        await this.page
+            .getByRole('button', { name: `Hapus hari ke-${hariKe}` })
+            .click();
     }
 
     async addFacility(facility: FacilityInput): Promise<void> {
@@ -249,7 +296,9 @@ export class MitraPackagePage {
     }
 
     async removeFacility(facilityName: string): Promise<void> {
-        await this.page.getByRole('button', { name: `Hapus fasilitas ${facilityName}` }).click();
+        await this.page
+            .getByRole('button', { name: `Hapus fasilitas ${facilityName}` })
+            .click();
         await expect(this.page.getByText(facilityName)).toBeHidden();
     }
 
@@ -265,11 +314,15 @@ export class MitraPackagePage {
         await expect(this.confirmCancelButton).toBeFocused();
 
         if (options?.expectedTitle) {
-            await expect(this.confirmDialogTitle).toHaveText(options.expectedTitle);
+            await expect(this.confirmDialogTitle).toHaveText(
+                options.expectedTitle,
+            );
         }
 
         const confirmBtn = this.confirmDialog.getByRole('button', {
-            name: options?.confirmButtonLabel ?? /Ya, Lanjutkan|Arsipkan|Aktifkan|Hapus/i,
+            name:
+                options?.confirmButtonLabel ??
+                /Ya, Lanjutkan|Arsipkan|Aktifkan|Hapus/i,
         });
 
         if (options?.reason !== undefined) {

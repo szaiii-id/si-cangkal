@@ -6,14 +6,14 @@
 
 import type { PaginationMeta } from '../pagination';
 import type {
-BookingEloquent,
-BookingResource,
-PackageEloquent,
-Profile,
-RefundResource,
-TripDay,
-TripEloquent,
-User,
+    BookingEloquent,
+    BookingResource,
+    PackageEloquent,
+    Profile,
+    RefundResource,
+    TripDay,
+    TripEloquent,
+    User,
 } from '../models';
 import type { CommonListFilters } from './index';
 
@@ -28,39 +28,39 @@ import type { CommonListFilters } from './index';
  * `stats` dihitung via agregasi di controller.
  */
 export type AdminDashboardProps = {
-stats: {
-    users: {
-        admin: number;
-        mitra: number;
-        client: number;
+    stats: {
+        users: {
+            admin: number;
+            mitra: number;
+            client: number;
+        };
+        packages: {
+            total: number;
+            aktif: number;
+        };
+        trips: {
+            total: number;
+            aktif: number;
+        };
+        bookings: {
+            total: number;
+        };
+        total_revenue: number;
     };
-    packages: {
+    recent_bookings: Array<{
+        id: number;
+        kode: string;
+        client: string;
+        mitra: string;
+        paket: string;
         total: number;
-        aktif: number;
-    };
-    trips: {
+        status: string;
+        tanggal: string;
+    }>;
+    monthly_revenue: Array<{
+        bulan: string;
         total: number;
-        aktif: number;
-    };
-    bookings: {
-        total: number;
-    };
-    total_revenue: number;
-};
-recent_bookings: Array<{
-    id: number;
-    kode: string;
-    client: string;
-    mitra: string;
-    paket: string;
-    total: number;
-    status: string;
-    tanggal: string;
-}>;
-monthly_revenue: Array<{
-    bulan: string;
-    total: number;
-}>;
+    }>;
 };
 
 // ==========================================
@@ -77,25 +77,25 @@ monthly_revenue: Array<{
  * `BookingQueryService::paginate()` yang return Eloquent.
  */
 export type AdminBookingIndexProps = {
-bookings: PaginationMeta & {
-    data: Array<
-        BookingEloquent & {
-            package: Pick<
-                PackageEloquent,
-                'id' | 'nama' | 'kode' | 'timezone'
-            > | null;
-            client: Pick<User, 'id' | 'name' | 'email'> | null;
-            mitra: Pick<User, 'id' | 'name'> | null;
-        }
-    >;
-};
-filters: CommonListFilters & {
-    package_id: string | null;
-    tanggal_dari: string | null;
-    tanggal_sampai: string | null;
-    is_today: boolean | string | number;
-};
-statusCounts: Record<string, number>;
+    bookings: PaginationMeta & {
+        data: Array<
+            BookingEloquent & {
+                package: Pick<
+                    PackageEloquent,
+                    'id' | 'nama' | 'kode' | 'timezone'
+                > | null;
+                client: Pick<User, 'id' | 'name' | 'email'> | null;
+                mitra: Pick<User, 'id' | 'name'> | null;
+            }
+        >;
+    };
+    filters: CommonListFilters & {
+        package_id: string | null;
+        tanggal_dari: string | null;
+        tanggal_sampai: string | null;
+        is_today: boolean | string | number;
+    };
+    statusCounts: Record<string, number>;
 };
 
 /**
@@ -106,12 +106,12 @@ statusCounts: Record<string, number>;
  * participants, payments.verifier, refunds.
  */
 export type AdminBookingShowProps = {
-booking: BookingResource & {
-    package: NonNullable<BookingResource['package']>;
-    client: NonNullable<BookingResource['client']>;
-    participants: NonNullable<BookingResource['participants']>;
-    payments: NonNullable<BookingResource['payments']>;
-};
+    booking: BookingResource & {
+        package: NonNullable<BookingResource['package']>;
+        client: NonNullable<BookingResource['client']>;
+        participants: NonNullable<BookingResource['participants']>;
+        payments: NonNullable<BookingResource['payments']>;
+    };
 };
 
 // ==========================================
@@ -125,23 +125,20 @@ booking: BookingResource & {
  * (dari `UserRepository::paginateClients()`)
  */
 export type AdminClientIndexProps = {
-clients: PaginationMeta & {
-    data: Array<
-        Pick<
-            User,
-            'id' | 'name' | 'username' | 'email' | 'created_at'
-        > & {
-            profile?: Pick<
-                Profile,
-                'nama_penyedia_usaha' | 'logo' | 'kota' | 'provinsi'
-            > | null;
-        }
-    >;
-};
-filters: {
-    search: string | null;
-    per_page: number;
-};
+    clients: PaginationMeta & {
+        data: Array<
+            Pick<User, 'id' | 'name' | 'username' | 'email' | 'created_at'> & {
+                profile?: Pick<
+                    Profile,
+                    'nama_penyedia_usaha' | 'logo' | 'kota' | 'provinsi'
+                > | null;
+            }
+        >;
+    };
+    filters: {
+        search: string | null;
+        per_page: number;
+    };
 };
 
 /**
@@ -151,20 +148,20 @@ filters: {
  * (dari `UserRepository::paginateMitras()`)
  */
 export type AdminMitraIndexProps = {
-mitras: PaginationMeta & {
-    data: Array<
-        Pick<User, 'id' | 'name' | 'email' | 'created_at'> & {
-            profile?: Pick<
-                Profile,
-                'nama_penyedia_usaha' | 'logo' | 'kota' | 'provinsi'
-            > | null;
-        }
-    >;
-};
-filters: {
-    search: string | null;
-    per_page: number;
-};
+    mitras: PaginationMeta & {
+        data: Array<
+            Pick<User, 'id' | 'name' | 'email' | 'created_at'> & {
+                profile?: Pick<
+                    Profile,
+                    'nama_penyedia_usaha' | 'logo' | 'kota' | 'provinsi'
+                > | null;
+            }
+        >;
+    };
+    filters: {
+        search: string | null;
+        per_page: number;
+    };
 };
 
 // ==========================================
@@ -179,14 +176,14 @@ filters: {
  * reasonLabel, isFinal, refundFeeRupiah) yang dihitung di backend.
  */
 export type AdminRefundIndexProps = {
-refunds: PaginationMeta & {
-    data: Array<RefundResource>;
-};
-filters: {
-    search: string | null;
-    status: string | null;
-};
-statusCounts: Record<string, number>;
+    refunds: PaginationMeta & {
+        data: Array<RefundResource>;
+    };
+    filters: {
+        search: string | null;
+        status: string | null;
+    };
+    statusCounts: Record<string, number>;
 };
 
 // ==========================================
@@ -200,26 +197,26 @@ statusCounts: Record<string, number>;
  * `getMonthlyRevenue()`.
  */
 export type AdminReportRevenueProps = {
-data: {
-    total_revenue: number;
-    transactions: Array<{
-        kode: string;
-        tanggal: string;
-        client: string;
-        mitra: string;
-        paket: string;
+    data: {
+        total_revenue: number;
+        transactions: Array<{
+            kode: string;
+            tanggal: string;
+            client: string;
+            mitra: string;
+            paket: string;
+            total: number;
+            status: string;
+        }>;
+    };
+    monthly_revenue: Array<{
+        bulan: string;
         total: number;
-        status: string;
     }>;
-};
-monthly_revenue: Array<{
-    bulan: string;
-    total: number;
-}>;
-filters: {
-    start_date: string;
-    end_date: string;
-};
+    filters: {
+        start_date: string;
+        end_date: string;
+    };
 };
 
 /**
@@ -228,21 +225,21 @@ filters: {
  * Custom shape dari `ReportService::getMitraPerformanceData()`.
  */
 export type AdminReportMitraProps = {
-data: {
-    total_mitra: number;
-    total_trip_completed: number;
-    mitras: Array<{
-        id: number;
-        name: string;
-        email: string;
-        total_trip: number;
-        total_revenue: number;
-    }>;
-};
-filters: {
-    start_date: string;
-    end_date: string;
-};
+    data: {
+        total_mitra: number;
+        total_trip_completed: number;
+        mitras: Array<{
+            id: number;
+            name: string;
+            email: string;
+            total_trip: number;
+            total_revenue: number;
+        }>;
+    };
+    filters: {
+        start_date: string;
+        end_date: string;
+    };
 };
 
 // ==========================================
@@ -262,35 +259,29 @@ filters: {
  * yang return Eloquent.
  */
 export type AdminTripIndexProps = {
-trips: PaginationMeta & {
-    data: Array<
-        TripEloquent & {
-            package: Pick<
-                PackageEloquent,
-                'id' | 'nama' | 'kode' | 'timezone'
-            > | null;
-            booking:
-                | (Pick<
-                        BookingEloquent,
-                        'id' | 'kode' | 'user_id'
-                    > & {
-                        client: Pick<
-                            User,
-                            'id' | 'name' | 'email'
-                        > | null;
-                    })
-                | null;
-            mitra: Pick<User, 'id' | 'name'> | null;
-        }
-    >;
-};
-filters: CommonListFilters & {
-    mitra_id: string | null;
-    tanggal_dari: string | null;
-    tanggal_sampai: string | null;
-    package_id: string | number | null;
-};
-statusCounts: Record<string, number>;
+    trips: PaginationMeta & {
+        data: Array<
+            TripEloquent & {
+                package: Pick<
+                    PackageEloquent,
+                    'id' | 'nama' | 'kode' | 'timezone'
+                > | null;
+                booking:
+                    | (Pick<BookingEloquent, 'id' | 'kode' | 'user_id'> & {
+                          client: Pick<User, 'id' | 'name' | 'email'> | null;
+                      })
+                    | null;
+                mitra: Pick<User, 'id' | 'name'> | null;
+            }
+        >;
+    };
+    filters: CommonListFilters & {
+        mitra_id: string | null;
+        tanggal_dari: string | null;
+        tanggal_sampai: string | null;
+        package_id: string | number | null;
+    };
+    statusCounts: Record<string, number>;
 };
 
 /**
@@ -307,35 +298,32 @@ statusCounts: Record<string, number>;
  * `snapshot_package` ADA (kolom DB, Eloquent).
  */
 export type AdminTripShowProps = {
-trip: TripEloquent & {
-    package: NonNullable<TripEloquent['package']>;
-    booking:
-        | (Pick<
-                BookingEloquent,
-                | 'id'
-                | 'kode'
-                | 'user_id'
-                | 'tanggal_keberangkatan'
-                | 'jumlah_peserta'
-                | 'total_harga'
-                | 'status'
-            > & {
-                client: Pick<
-                    User,
-                    'id' | 'name' | 'email' | 'username'
-                > | null;
-            })
-        | null;
-    mitra:
-        | (Pick<
-                User,
-                'id' | 'name' | 'email' | 'username'
-            > & {
-                timezone: string;
-            })
-        | null;
-    days: TripDay[];
-};
+    trip: TripEloquent & {
+        package: NonNullable<TripEloquent['package']>;
+        booking:
+            | (Pick<
+                  BookingEloquent,
+                  | 'id'
+                  | 'kode'
+                  | 'user_id'
+                  | 'tanggal_keberangkatan'
+                  | 'jumlah_peserta'
+                  | 'total_harga'
+                  | 'status'
+              > & {
+                  client: Pick<
+                      User,
+                      'id' | 'name' | 'email' | 'username'
+                  > | null;
+              })
+            | null;
+        mitra:
+            | (Pick<User, 'id' | 'name' | 'email' | 'username'> & {
+                  timezone: string;
+              })
+            | null;
+        days: TripDay[];
+    };
 };
 
 // ==========================================
@@ -349,29 +337,21 @@ trip: TripEloquent & {
  * (dari `UserService::paginateByRoles(['admin', 'mitra'])`)
  */
 export type AdminUserIndexProps = {
-users: PaginationMeta & {
-    data: Array<
-        Pick<
-            User,
-            | 'id'
-            | 'name'
-            | 'username'
-            | 'email'
-            | 'role'
-            | 'created_at'
-        > & {
-            role: 'admin' | 'mitra';
-            profile?: Pick<
-                Profile,
-                'nama_penyedia_usaha' | 'logo'
-            > | null;
-        }
-    >;
-};
-filters: {
-    search: string | null;
-    per_page: number;
-};
+    users: PaginationMeta & {
+        data: Array<
+            Pick<
+                User,
+                'id' | 'name' | 'username' | 'email' | 'role' | 'created_at'
+            > & {
+                role: 'admin' | 'mitra';
+                profile?: Pick<Profile, 'nama_penyedia_usaha' | 'logo'> | null;
+            }
+        >;
+    };
+    filters: {
+        search: string | null;
+        per_page: number;
+    };
 };
 
 /**
@@ -381,21 +361,18 @@ filters: {
  * (dari `$user->load('profile')`)
  */
 export type AdminUserEditProps = {
-user: Pick<
-    User,
-    'id' | 'name' | 'username' | 'email' | 'role'
-> & {
-    role: 'admin' | 'mitra';
-    profile?: Pick<
-        Profile,
-        | 'nama_penyedia_usaha'
-        | 'nomor_identitas'
-        | 'alamat'
-        | 'telepon'
-        | 'provinsi'
-        | 'kota'
-        | 'kode_pos'
-        | 'deskripsi'
-    > | null;
-};
+    user: Pick<User, 'id' | 'name' | 'username' | 'email' | 'role'> & {
+        role: 'admin' | 'mitra';
+        profile?: Pick<
+            Profile,
+            | 'nama_penyedia_usaha'
+            | 'nomor_identitas'
+            | 'alamat'
+            | 'telepon'
+            | 'provinsi'
+            | 'kota'
+            | 'kode_pos'
+            | 'deskripsi'
+        > | null;
+    };
 };

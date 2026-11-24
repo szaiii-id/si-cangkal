@@ -55,7 +55,9 @@ test.describe('Mitra Profile', () => {
         await page.getByRole('button', { name: /Simpan Profil/i }).click();
 
         await expect(
-            SEL.LAYOUT.toastRegion(page).getByText(/Profil berhasil diperbarui/i).last(),
+            SEL.LAYOUT.toastRegion(page)
+                .getByText(/Profil berhasil diperbarui/i)
+                .last(),
         ).toBeVisible();
 
         // Reload & verifikasi persistensi
@@ -72,7 +74,9 @@ test.describe('Mitra Profile', () => {
         await page.getByRole('button', { name: /Simpan Profil/i }).click();
 
         await expect(
-            SEL.LAYOUT.toastRegion(page).getByText(/Profil berhasil diperbarui/i).last(),
+            SEL.LAYOUT.toastRegion(page)
+                .getByText(/Profil berhasil diperbarui/i)
+                .last(),
         ).toBeVisible();
     });
 
@@ -86,14 +90,18 @@ test.describe('Mitra Profile', () => {
         await page.getByRole('button', { name: /Simpan Profil/i }).click();
 
         await expect(
-            SEL.LAYOUT.toastRegion(page).getByText(/Profil berhasil diperbarui/i).first(),
+            SEL.LAYOUT.toastRegion(page)
+                .getByText(/Profil berhasil diperbarui/i)
+                .first(),
         ).toBeVisible();
 
         // Kembalikan nama usaha semula
         await namaUsahaInput.fill(originalNama);
         await page.getByRole('button', { name: /Simpan Profil/i }).click();
         await expect(
-            SEL.LAYOUT.toastRegion(page).getByText(/Profil berhasil diperbarui/i).last(),
+            SEL.LAYOUT.toastRegion(page)
+                .getByText(/Profil berhasil diperbarui/i)
+                .last(),
         ).toBeVisible();
     });
 });

@@ -420,8 +420,14 @@ async function waitForTestRoutes(shardLabel: string): Promise<void> {
                     'env' in body &&
                     body.env !== 'testing'
                 ) {
+                    const envValue = body.env;
+                    const envLabel =
+                        typeof envValue === 'string'
+                            ? envValue
+                            : JSON.stringify(envValue);
+
                     logWarning(
-                        `APP_ENV bukan 'testing' (dapat: ${body.env}). ` +
+                        `APP_ENV bukan 'testing' (dapat: ${envLabel}). ` +
                             `Route /_test/* mungkin tidak aktif.`,
                     );
                 }

@@ -40,11 +40,7 @@ export type UserMini = {
 
 export type UserWithEmail = Pick<User, 'id' | 'name' | 'email'>;
 
-export type UserWithUsername = Pick<
-    User,
-    'id' | 'name' | 'email' | 'username'
->;
-
+export type UserWithUsername = Pick<User, 'id' | 'name' | 'email' | 'username'>;
 
 export type UserAccountFormData = {
     name: string;

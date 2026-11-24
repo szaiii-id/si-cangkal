@@ -83,10 +83,7 @@ vi.mock('@/components/layout/DashboardLayout.svelte', () => ({
 // 7. MOCK — PAGE HEADER
 // ============================================================
 vi.mock('@/global/PageHeader.svelte', () => ({
-    default: (
-        anchor: Node,
-        props: { title: string; description?: string },
-    ) => {
+    default: (anchor: Node, props: { title: string; description?: string }) => {
         const el = document.createElement('div');
         el.setAttribute('data-testid', 'page-header');
         el.innerHTML = `<h1>${props.title}</h1><p>${props.description ?? ''}</p>`;
@@ -142,7 +139,10 @@ vi.mock('@/components/admin/trips/TripFilterBar.svelte', () => ({
                 const btn = document.createElement('button');
                 btn.type = 'button';
                 btn.setAttribute('role', 'tab');
-                btn.setAttribute('aria-selected', String(props.selectedStatus === tab.value));
+                btn.setAttribute(
+                    'aria-selected',
+                    String(props.selectedStatus === tab.value),
+                );
                 btn.textContent = `${tab.label} (${tab.count})`;
                 btn.onclick = () => props.onStatusChange(tab.value);
                 tabsEl.appendChild(btn);
@@ -152,7 +152,8 @@ vi.mock('@/components/admin/trips/TripFilterBar.svelte', () => ({
             // Search input
             const searchInput = document.createElement('input');
             searchInput.type = 'search';
-            searchInput.placeholder = 'Cari kode trip, paket, atau nama pelanggan...';
+            searchInput.placeholder =
+                'Cari kode trip, paket, atau nama pelanggan...';
             searchInput.value = props.search ?? '';
             searchInput.oninput = (e) => {
                 props.search = (e.target as HTMLInputElement).value;
@@ -209,7 +210,9 @@ vi.mock('@/components/admin/trips/TripTable.svelte', () => ({
     default: (
         anchor: Node,
         props: {
-            trips: { data: Array<{ id: number; kode: string; status: string }> };
+            trips: {
+                data: Array<{ id: number; kode: string; status: string }>;
+            };
         },
     ) => {
         const el = document.createElement('div');
@@ -274,7 +277,10 @@ vi.mock('@/global/EmptyState.svelte', () => ({
 // 12. MOCK — PAGINATION
 // ============================================================
 vi.mock('@/global/Pagination.svelte', () => ({
-    default: (anchor: Node, props: { meta: { total: number }; label: string }) => {
+    default: (
+        anchor: Node,
+        props: { meta: { total: number }; label: string },
+    ) => {
         const el = document.createElement('div');
         el.setAttribute('data-testid', 'pagination');
         el.textContent = `Total ${props.meta.total} ${props.label}`;
@@ -312,7 +318,10 @@ const makeTrip = (overrides: Record<string, unknown> = {}) =>
         ...overrides,
     }) as any;
 
-const makeTrips = (data = [makeTrip()], overrides: Record<string, unknown> = {}) =>
+const makeTrips = (
+    data = [makeTrip()],
+    overrides: Record<string, unknown> = {},
+) =>
     ({
         current_page: 1,
         last_page: 1,
@@ -373,7 +382,10 @@ describe('Admin Trips — Index Page', () => {
         it('menampilkan judul "Jadwal Perjalanan"', () => {
             renderPage();
             expect(
-                screen.getByRole('heading', { level: 1, name: 'Jadwal Perjalanan' }),
+                screen.getByRole('heading', {
+                    level: 1,
+                    name: 'Jadwal Perjalanan',
+                }),
             ).toBeInTheDocument();
         });
 
@@ -387,7 +399,9 @@ describe('Admin Trips — Index Page', () => {
         it('deskripsi conditional saat packageId terisi', () => {
             renderPage(makeTrips(), { ...DEFAULT_FILTERS, package_id: 5 });
             expect(
-                screen.getByText(/Menampilkan jadwal untuk paket yang dipilih/i),
+                screen.getByText(
+                    /Menampilkan jadwal untuk paket yang dipilih/i,
+                ),
             ).toBeInTheDocument();
         });
 
@@ -417,7 +431,9 @@ describe('Admin Trips — Index Page', () => {
                 cancelled: 0,
             });
 
-            expect(screen.getByRole('tab', { name: /^Semua \(6\)/ })).toBeInTheDocument();
+            expect(
+                screen.getByRole('tab', { name: /^Semua \(6\)/ }),
+            ).toBeInTheDocument();
         });
 
         it('TIDAK menampilkan tab status yang count-nya 0', () => {
@@ -428,19 +444,29 @@ describe('Admin Trips — Index Page', () => {
                 cancelled: 0,
             });
 
-            expect(screen.getByRole('tab', { name: /Terjadwal \(1\)/ })).toBeInTheDocument();
-            expect(screen.queryByRole('tab', { name: /Berlangsung/ })).not.toBeInTheDocument();
+            expect(
+                screen.getByRole('tab', { name: /Terjadwal \(1\)/ }),
+            ).toBeInTheDocument();
+            expect(
+                screen.queryByRole('tab', { name: /Berlangsung/ }),
+            ).not.toBeInTheDocument();
         });
 
         it('menampilkan tab status yang selected meski count=0', () => {
-            renderPage(makeTrips(), { ...DEFAULT_FILTERS, status: 'active' }, {
-                scheduled: 1,
-                active: 0,
-                completed: 0,
-                cancelled: 0,
-            });
+            renderPage(
+                makeTrips(),
+                { ...DEFAULT_FILTERS, status: 'active' },
+                {
+                    scheduled: 1,
+                    active: 0,
+                    completed: 0,
+                    cancelled: 0,
+                },
+            );
 
-            expect(screen.getByRole('tab', { name: /Berlangsung \(0\)/ })).toBeInTheDocument();
+            expect(
+                screen.getByRole('tab', { name: /Berlangsung \(0\)/ }),
+            ).toBeInTheDocument();
         });
     });
 
@@ -473,7 +499,9 @@ describe('Admin Trips — Index Page', () => {
 
             const emptyState = screen.getByTestId('empty-state');
             expect(emptyState).toHaveTextContent('Tidak ada jadwal ditemukan');
-            expect(screen.getByRole('button', { name: 'Reset Filter' })).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: 'Reset Filter' }),
+            ).toBeInTheDocument();
         });
     });
 
@@ -484,7 +512,9 @@ describe('Admin Trips — Index Page', () => {
         it('tidak memanggil getTrips sebelum 300ms', async () => {
             renderPage();
 
-            const input = screen.getByPlaceholderText(/Cari kode trip, paket, atau nama pelanggan/i);
+            const input = screen.getByPlaceholderText(
+                /Cari kode trip, paket, atau nama pelanggan/i,
+            );
             await fireEvent.input(input, { target: { value: 'bali' } });
 
             expect(getTrips).not.toHaveBeenCalled();
@@ -493,7 +523,9 @@ describe('Admin Trips — Index Page', () => {
         it('memanggil getTrips setelah 300ms dengan buildQuery lengkap', async () => {
             renderPage();
 
-            const input = screen.getByPlaceholderText(/Cari kode trip, paket, atau nama pelanggan/i);
+            const input = screen.getByPlaceholderText(
+                /Cari kode trip, paket, atau nama pelanggan/i,
+            );
             await fireEvent.input(input, { target: { value: 'bali' } });
             await vi.advanceTimersByTimeAsync(300);
 
@@ -524,7 +556,9 @@ describe('Admin Trips — Index Page', () => {
                 cancelled: 0,
             });
 
-            await fireEvent.click(screen.getByRole('tab', { name: /Terjadwal/ }));
+            await fireEvent.click(
+                screen.getByRole('tab', { name: /Terjadwal/ }),
+            );
 
             expect(getTrips).toHaveBeenCalledWith(
                 expect.objectContaining({ status: 'scheduled' }),
@@ -546,7 +580,9 @@ describe('Admin Trips — Index Page', () => {
             await fireEvent.input(screen.getByLabelText('Sampai Tanggal'), {
                 target: { value: '2026-02-28' },
             });
-            await fireEvent.click(screen.getByRole('button', { name: 'Terapkan' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Terapkan' }),
+            );
 
             expect(getTrips).toHaveBeenCalledWith(
                 expect.objectContaining({
@@ -569,7 +605,9 @@ describe('Admin Trips — Index Page', () => {
                 status: 'active',
             });
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Hapus Semua Filter' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Hapus Semua Filter' }),
+            );
 
             expect(getTrips).toHaveBeenCalledWith(
                 {},
@@ -584,7 +622,9 @@ describe('Admin Trips — Index Page', () => {
                 package_id: 5,
             });
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Hapus Semua Filter' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Hapus Semua Filter' }),
+            );
 
             expect(getTrips).toHaveBeenCalledWith(
                 { package_id: 5 }, // ← package_id tetap dipertahankan
@@ -595,7 +635,9 @@ describe('Admin Trips — Index Page', () => {
         it('klik "Reset Filter" di EmptyState memanggil clearFilters', async () => {
             renderPage(makeTrips([]), { ...DEFAULT_FILTERS, search: 'xyz' });
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Reset Filter' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Reset Filter' }),
+            );
 
             expect(getTrips).toHaveBeenCalledWith(
                 {},
@@ -630,12 +672,16 @@ describe('Admin Trips — Index Page', () => {
     // ----------------------------------------------------------
     describe('Accessibility', () => {
         it('status tabs punya role="tablist" dan aria-selected', () => {
-            renderPage(makeTrips(), { ...DEFAULT_FILTERS, status: 'scheduled' }, {
-                scheduled: 1,
-                active: 0,
-                completed: 0,
-                cancelled: 0,
-            });
+            renderPage(
+                makeTrips(),
+                { ...DEFAULT_FILTERS, status: 'scheduled' },
+                {
+                    scheduled: 1,
+                    active: 0,
+                    completed: 0,
+                    cancelled: 0,
+                },
+            );
 
             expect(screen.getByRole('tablist')).toBeInTheDocument();
             expect(
@@ -646,7 +692,9 @@ describe('Admin Trips — Index Page', () => {
         it('search input punya placeholder deskriptif', () => {
             renderPage();
             expect(
-                screen.getByPlaceholderText(/Cari kode trip, paket, atau nama pelanggan/i),
+                screen.getByPlaceholderText(
+                    /Cari kode trip, paket, atau nama pelanggan/i,
+                ),
             ).toBeInTheDocument();
         });
     });

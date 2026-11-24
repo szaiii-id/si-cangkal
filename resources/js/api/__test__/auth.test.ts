@@ -37,22 +37,44 @@ describe('Auth API Wrapper (Frontend Pure Logic)', () => {
     // ==========================================
     describe('Happy Path — Endpoint & Method', () => {
         it('login() memanggil POST /login', () => {
-            const payload = { email: 'user@example.com', password: 'password123' };
+            const payload = {
+                email: 'user@example.com',
+                password: 'password123',
+            };
             login(payload);
             expect(router.post).toHaveBeenCalledOnce();
-            expect(router.post).toHaveBeenCalledWith('/login', payload, undefined);
+            expect(router.post).toHaveBeenCalledWith(
+                '/login',
+                payload,
+                undefined,
+            );
         });
 
         it('register() memanggil POST /register', () => {
-            const payload = { name: 'John Doe', email: 'john@example.com', password: 'secret' };
+            const payload = {
+                name: 'John Doe',
+                email: 'john@example.com',
+                password: 'secret',
+            };
             register(payload);
-            expect(router.post).toHaveBeenCalledWith('/register', payload, undefined);
+            expect(router.post).toHaveBeenCalledWith(
+                '/register',
+                payload,
+                undefined,
+            );
         });
 
         it('registerMitra() memanggil POST /register/mitra', () => {
-            const payload = { company: 'PT Maju Jaya', email: 'mitra@example.com' };
+            const payload = {
+                company: 'PT Maju Jaya',
+                email: 'mitra@example.com',
+            };
             registerMitra(payload);
-            expect(router.post).toHaveBeenCalledWith('/register/mitra', payload, undefined);
+            expect(router.post).toHaveBeenCalledWith(
+                '/register/mitra',
+                payload,
+                undefined,
+            );
         });
 
         it('logout() memanggil POST /logout dengan payload kosong {}', () => {
@@ -63,20 +85,35 @@ describe('Auth API Wrapper (Frontend Pure Logic)', () => {
         it('forgotPassword() memanggil POST /forgot-password', () => {
             const payload = { email: 'user@example.com' };
             forgotPassword(payload);
-            expect(router.post).toHaveBeenCalledWith('/forgot-password', payload, undefined);
+            expect(router.post).toHaveBeenCalledWith(
+                '/forgot-password',
+                payload,
+                undefined,
+            );
         });
 
         it('resetPassword() memanggil POST /reset-password', () => {
             const payload = { token: 'token-abc-123', password: 'newPassword' };
             resetPassword(payload);
-            expect(router.post).toHaveBeenCalledWith('/reset-password', payload, undefined);
+            expect(router.post).toHaveBeenCalledWith(
+                '/reset-password',
+                payload,
+                undefined,
+            );
         });
 
         it('changePassword() memanggil PUT /change-password', () => {
-            const payload = { current_password: 'oldPassword', password: 'newPassword' };
+            const payload = {
+                current_password: 'oldPassword',
+                password: 'newPassword',
+            };
             changePassword(payload);
             expect(router.put).toHaveBeenCalledOnce();
-            expect(router.put).toHaveBeenCalledWith('/change-password', payload, undefined);
+            expect(router.put).toHaveBeenCalledWith(
+                '/change-password',
+                payload,
+                undefined,
+            );
         });
     });
 
@@ -85,21 +122,32 @@ describe('Auth API Wrapper (Frontend Pure Logic)', () => {
     // ==========================================
     describe('Options Forwarding', () => {
         it('meneruskan VisitOptions ke router.post (contoh: login)', () => {
-            const payload = { email: 'user@example.com', password: 'password123' };
+            const payload = {
+                email: 'user@example.com',
+                password: 'password123',
+            };
             const options = { preserveScroll: true, onSuccess: vi.fn() };
-            
+
             login(payload, options);
-            
-            expect(router.post).toHaveBeenCalledWith('/login', payload, options);
+
+            expect(router.post).toHaveBeenCalledWith(
+                '/login',
+                payload,
+                options,
+            );
         });
 
         it('meneruskan VisitOptions ke router.put (contoh: changePassword)', () => {
             const payload = { current_password: 'old', password: 'new' };
             const options = { preserveState: true, onError: vi.fn() };
-            
+
             changePassword(payload, options);
-            
-            expect(router.put).toHaveBeenCalledWith('/change-password', payload, options);
+
+            expect(router.put).toHaveBeenCalledWith(
+                '/change-password',
+                payload,
+                options,
+            );
         });
 
         it('meneruskan VisitOptions ke logout', () => {
@@ -119,13 +167,17 @@ describe('Auth API Wrapper (Frontend Pure Logic)', () => {
         });
 
         it('meneruskan objek kompleks pada register', () => {
-            const complexPayload = { 
+            const complexPayload = {
                 name: 'Budi',
                 roles: ['user', 'mitra'],
-                meta: { source: 'web' }
+                meta: { source: 'web' },
             };
             register(complexPayload);
-            expect(router.post).toHaveBeenCalledWith('/register', complexPayload, undefined);
+            expect(router.post).toHaveBeenCalledWith(
+                '/register',
+                complexPayload,
+                undefined,
+            );
         });
 
         it('memastikan login() TIDAK memanggil method router lainnya', () => {

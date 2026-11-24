@@ -45,7 +45,11 @@ vi.mock('@/components/layout/DashboardLayout.svelte', () => ({
 vi.mock('@/global/PageHeader.svelte', () => ({
     default: (
         anchor: Node,
-        props: { title: string; description?: string; actions?: (anchor: Node) => void },
+        props: {
+            title: string;
+            description?: string;
+            actions?: (anchor: Node) => void;
+        },
     ) => {
         const el = document.createElement('div');
         el.setAttribute('data-testid', 'page-header');
@@ -160,7 +164,10 @@ vi.mock('@/components/admin/reports/RevenueChart.svelte', () => ({
     default: (anchor: Node, props: { monthly_revenue: any[] }) => {
         const el = document.createElement('div');
         el.setAttribute('data-testid', 'revenue-chart');
-        el.setAttribute('data-points', String(props.monthly_revenue?.length ?? 0));
+        el.setAttribute(
+            'data-points',
+            String(props.monthly_revenue?.length ?? 0),
+        );
         anchor.parentNode?.insertBefore(el, anchor);
         return {};
     },
@@ -173,7 +180,10 @@ vi.mock('@/components/admin/reports/RevenueTable.svelte', () => ({
     default: (anchor: Node, props: { transactions: any[] }) => {
         const el = document.createElement('div');
         el.setAttribute('data-testid', 'revenue-table');
-        el.setAttribute('data-transactions', String(props.transactions?.length ?? 0));
+        el.setAttribute(
+            'data-transactions',
+            String(props.transactions?.length ?? 0),
+        );
         anchor.parentNode?.insertBefore(el, anchor);
         return {};
     },
@@ -225,8 +235,7 @@ const makeProps = (overrides = {}) => ({
     ...overrides,
 });
 
-const renderPage = (props = makeProps()) =>
-    render(Index, { props });
+const renderPage = (props = makeProps()) => render(Index, { props });
 
 // ============================================================
 // 16. TEST SUITE
@@ -245,10 +254,15 @@ describe('Admin Reports — Revenue Index Page', () => {
             renderPage();
 
             expect(
-                screen.getByRole('heading', { level: 1, name: 'Laporan Pendapatan' }),
+                screen.getByRole('heading', {
+                    level: 1,
+                    name: 'Laporan Pendapatan',
+                }),
             ).toBeInTheDocument();
             expect(
-                screen.getByText('Pantau performa keuangan dan tren bisnis Anda.'),
+                screen.getByText(
+                    'Pantau performa keuangan dan tren bisnis Anda.',
+                ),
             ).toBeInTheDocument();
         });
 
@@ -320,7 +334,9 @@ describe('Admin Reports — Revenue Index Page', () => {
         it('memanggil getRevenueReport dengan startDate & endDate saat ini', async () => {
             renderPage();
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Apply' }),
+            );
 
             expect(getRevenueReport).toHaveBeenCalledOnce();
             expect(getRevenueReport).toHaveBeenCalledWith(
@@ -335,11 +351,17 @@ describe('Admin Reports — Revenue Index Page', () => {
             const startInput = screen.getByLabelText('Start Date');
             const endInput = screen.getByLabelText('End Date');
 
-            await fireEvent.input(startInput, { target: { value: '2026-02-01' } });
-            await fireEvent.input(endInput, { target: { value: '2026-03-31' } });
+            await fireEvent.input(startInput, {
+                target: { value: '2026-02-01' },
+            });
+            await fireEvent.input(endInput, {
+                target: { value: '2026-03-31' },
+            });
             await syncUI();
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Apply' }),
+            );
 
             expect(getRevenueReport).toHaveBeenCalledWith(
                 { start_date: '2026-02-01', end_date: '2026-03-31' },
@@ -363,8 +385,12 @@ describe('Admin Reports — Revenue Index Page', () => {
             const startInput = screen.getByLabelText('Start Date');
             const endInput = screen.getByLabelText('End Date');
 
-            await fireEvent.input(startInput, { target: { value: '2026-03-01' } });
-            await fireEvent.input(endInput, { target: { value: '2026-09-30' } });
+            await fireEvent.input(startInput, {
+                target: { value: '2026-03-01' },
+            });
+            await fireEvent.input(endInput, {
+                target: { value: '2026-09-30' },
+            });
             await syncUI();
 
             expect(exportBtns.getAttribute('data-pdf-url')).toContain(

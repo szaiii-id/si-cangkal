@@ -28,7 +28,11 @@ test.describe('Mitra — Refund Form Validation & Modal Behavior', () => {
 
         const uniqueKode = generateUniquePackageCode(testInfo.workerIndex);
 
-        await seed.login(page, SEED_USERS.mitra.email, SEED_USERS.mitra.password);
+        await seed.login(
+            page,
+            SEED_USERS.mitra.email,
+            SEED_USERS.mitra.password,
+        );
 
         const pkg = await seed.createPackage(page, {
             mitra_email: SEED_USERS.mitra.email,
@@ -72,7 +76,10 @@ test.describe('Mitra — Refund Form Validation & Modal Behavior', () => {
         await page.goto('/mitra/refunds');
         await page.waitForLoadState('networkidle');
 
-        const card = page.locator('article').filter({ hasText: bookingKode }).first();
+        const card = page
+            .locator('article')
+            .filter({ hasText: bookingKode })
+            .first();
         await expect(card).toBeVisible({ timeout: 10_000 });
 
         await card.getByRole('button', { name: /Tolak/i }).click();
@@ -109,7 +116,10 @@ test.describe('Mitra — Refund Form Validation & Modal Behavior', () => {
         await page.goto('/mitra/refunds');
         await page.waitForLoadState('networkidle');
 
-        const card = page.locator('article').filter({ hasText: bookingKode }).first();
+        const card = page
+            .locator('article')
+            .filter({ hasText: bookingKode })
+            .first();
         await expect(card).toBeVisible({ timeout: 10_000 });
 
         await card.getByRole('button', { name: /Setujui/i }).click();
@@ -124,7 +134,11 @@ test.describe('Mitra — Refund Form Validation & Modal Behavior', () => {
         await expect(approveDialog).toBeHidden();
 
         // Status masih PENDING (tombol Setujui & Tolak tetap tampil)
-        await expect(card.getByRole('button', { name: /Setujui/i })).toBeVisible();
-        await expect(card.getByRole('button', { name: /Tolak/i })).toBeVisible();
+        await expect(
+            card.getByRole('button', { name: /Setujui/i }),
+        ).toBeVisible();
+        await expect(
+            card.getByRole('button', { name: /Tolak/i }),
+        ).toBeVisible();
     });
 });

@@ -97,7 +97,9 @@ vi.mock('@/utils/bookingRules', () => ({
 // 8. MOCK — FORMAT HELPERS (deterministik)
 // ============================================================
 vi.mock('@/utils/formatCurrency', () => ({
-    formatCurrency: vi.fn((v: string | number) => `Rp ${Number(v).toLocaleString('id-ID')}`),
+    formatCurrency: vi.fn(
+        (v: string | number) => `Rp ${Number(v).toLocaleString('id-ID')}`,
+    ),
 }));
 
 vi.mock('@/utils/formatDate', () => ({
@@ -111,7 +113,9 @@ vi.mock('@/utils/formatDate', () => ({
 }));
 
 vi.mock('@/utils/duration', () => ({
-    formatDurasi: vi.fn((hari: number, malam: number) => `${hari}H / ${malam}M`),
+    formatDurasi: vi.fn(
+        (hari: number, malam: number) => `${hari}H / ${malam}M`,
+    ),
 }));
 
 // ============================================================
@@ -175,7 +179,9 @@ vi.mock('@/components/shared/PaymentProofPreview.svelte', () => ({
         const el = document.createElement('div');
         el.setAttribute('data-testid', 'payment-proof');
         el.setAttribute('data-has-proof', String(props.hasProof));
-        el.textContent = props.hasProof ? 'Bukti tersedia' : (props.emptyMessage ?? '');
+        el.textContent = props.hasProof
+            ? 'Bukti tersedia'
+            : (props.emptyMessage ?? '');
         anchor.parentNode?.insertBefore(el, anchor);
         return {};
     },
@@ -294,8 +300,16 @@ describe('Admin Bookings — Show Page', () => {
             renderPage();
 
             expect(screen.getByText('BK-2026-001')).toBeInTheDocument();
-            expect(screen.getByRole('heading', { level: 1, name: 'Paket Bali 3H2M' })).toBeInTheDocument();
-            expect(screen.getByTestId('back-button')).toHaveAttribute('href', '/admin/bookings');
+            expect(
+                screen.getByRole('heading', {
+                    level: 1,
+                    name: 'Paket Bali 3H2M',
+                }),
+            ).toBeInTheDocument();
+            expect(screen.getByTestId('back-button')).toHaveAttribute(
+                'href',
+                '/admin/bookings',
+            );
         });
 
         it('menampilkan badge status (via mock enums)', () => {
@@ -313,7 +327,12 @@ describe('Admin Bookings — Show Page', () => {
 
         it('menampilkan placeholder saat package null', () => {
             renderPage(makeBooking({ package: null }));
-            expect(screen.getByRole('heading', { level: 1, name: 'Paket dihapus' })).toBeInTheDocument();
+            expect(
+                screen.getByRole('heading', {
+                    level: 1,
+                    name: 'Paket dihapus',
+                }),
+            ).toBeInTheDocument();
         });
     });
 
@@ -338,7 +357,9 @@ describe('Admin Bookings — Show Page', () => {
 
         it('menampilkan banner "Pesanan Telah Dikonfirmasi" saat status confirmed', () => {
             renderPage(makeBooking({ status: 'confirmed' }));
-            expect(screen.getByText('Pesanan Telah Dikonfirmasi')).toBeInTheDocument();
+            expect(
+                screen.getByText('Pesanan Telah Dikonfirmasi'),
+            ).toBeInTheDocument();
         });
     });
 
@@ -355,7 +376,9 @@ describe('Admin Bookings — Show Page', () => {
 
         it('menampilkan placeholder saat client null', () => {
             renderPage(makeBooking({ client: null }));
-            expect(screen.getByText('Data client sudah tidak tersedia.')).toBeInTheDocument();
+            expect(
+                screen.getByText('Data client sudah tidak tersedia.'),
+            ).toBeInTheDocument();
         });
     });
 
@@ -365,24 +388,33 @@ describe('Admin Bookings — Show Page', () => {
     describe('Rendering — Participant & Payment', () => {
         it('merender ParticipantList dengan jumlah peserta benar', () => {
             renderPage();
-            expect(screen.getByTestId('participant-list')).toHaveTextContent('2 peserta');
+            expect(screen.getByTestId('participant-list')).toHaveTextContent(
+                '2 peserta',
+            );
         });
 
         it('merender PaymentProofPreview dengan hasProof=false', () => {
             renderPage();
             const proof = screen.getByTestId('payment-proof');
             expect(proof).toHaveAttribute('data-has-proof', 'false');
-            expect(proof).toHaveTextContent('Client belum mengunggah bukti transfer.');
+            expect(proof).toHaveTextContent(
+                'Client belum mengunggah bukti transfer.',
+            );
         });
 
         it('merender PaymentProofPreview dengan hasProof=true', () => {
             renderPage(makeBooking({ has_payment_proof: true }));
-            expect(screen.getByTestId('payment-proof')).toHaveAttribute('data-has-proof', 'true');
+            expect(screen.getByTestId('payment-proof')).toHaveAttribute(
+                'data-has-proof',
+                'true',
+            );
         });
 
         it('TIDAK merender PaymentHistory saat payments kosong', () => {
             renderPage();
-            expect(screen.queryByTestId('payment-history')).not.toBeInTheDocument();
+            expect(
+                screen.queryByTestId('payment-history'),
+            ).not.toBeInTheDocument();
         });
 
         it('merender PaymentHistory saat payments ada', () => {
@@ -391,7 +423,9 @@ describe('Admin Bookings — Show Page', () => {
                     payments: [{ id: 1 }, { id: 2 }],
                 }),
             );
-            expect(screen.getByTestId('payment-history')).toHaveTextContent('2 transaksi');
+            expect(screen.getByTestId('payment-history')).toHaveTextContent(
+                '2 transaksi',
+            );
         });
     });
 
@@ -418,7 +452,9 @@ describe('Admin Bookings — Show Page', () => {
 
             expect(screen.getByText('Batas Transfer')).toBeInTheDocument();
             expect(screen.getByText('Catatan Tambahan')).toBeInTheDocument();
-            expect(screen.getByText('Tolong siapkan kamar twin bed')).toBeInTheDocument();
+            expect(
+                screen.getByText('Tolong siapkan kamar twin bed'),
+            ).toBeInTheDocument();
         });
 
         it('menampilkan placeholder "Tidak ada catatan" saat catatan null', () => {
@@ -430,7 +466,9 @@ describe('Admin Bookings — Show Page', () => {
 
         it('menampilkan "Tidak ada batas waktu" saat expired_at null', () => {
             renderPage(makeBooking({ expired_at: null }));
-            expect(screen.getByText('Tidak ada batas waktu')).toBeInTheDocument();
+            expect(
+                screen.getByText('Tidak ada batas waktu'),
+            ).toBeInTheDocument();
         });
     });
 
@@ -489,18 +527,27 @@ describe('Admin Bookings — Show Page', () => {
     // ----------------------------------------------------------
     describe('Interaction — Regenerate', () => {
         it('klik "Ya, Regenerate" memanggil API & menampilkan toast success', async () => {
-            (regenerateETicket as any).mockImplementation((_id: number, opts: any) => {
-                opts.onSuccess?.();
-                opts.onFinish?.();
-            });
+            (regenerateETicket as any).mockImplementation(
+                (_id: number, opts: any) => {
+                    opts.onSuccess?.();
+                    opts.onFinish?.();
+                },
+            );
 
             renderPage(makeBooking({ status: 'confirmed' }));
-            await fireEvent.click(screen.getByRole('button', { name: /Regenerate E-Ticket/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Regenerate E-Ticket/i }),
+            );
             await syncUI();
-            await fireEvent.click(screen.getByRole('button', { name: 'Ya, Regenerate' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Ya, Regenerate' }),
+            );
             await syncUI();
 
-            expect(regenerateETicket).toHaveBeenCalledWith(1, expect.any(Object));
+            expect(regenerateETicket).toHaveBeenCalledWith(
+                1,
+                expect.any(Object),
+            );
             expect(showToast).toHaveBeenCalledWith(
                 'E-Ticket berhasil di-generate ulang.',
                 'success',
@@ -509,65 +556,99 @@ describe('Admin Bookings — Show Page', () => {
 
         it('menonaktifkan tombol selama processing', async () => {
             let finishCallback: (() => void) | undefined;
-            (regenerateETicket as any).mockImplementation((_id: number, opts: any) => {
-                finishCallback = opts.onFinish;
-            });
+            (regenerateETicket as any).mockImplementation(
+                (_id: number, opts: any) => {
+                    finishCallback = opts.onFinish;
+                },
+            );
 
             renderPage(makeBooking({ status: 'confirmed' }));
-            await fireEvent.click(screen.getByRole('button', { name: /Regenerate E-Ticket/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Regenerate E-Ticket/i }),
+            );
             await syncUI();
-            await fireEvent.click(screen.getByRole('button', { name: 'Ya, Regenerate' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Ya, Regenerate' }),
+            );
             await syncUI();
 
             // Query ulang — mock re-render innerHTML
-            expect(screen.getByRole('button', { name: 'Ya, Regenerate' })).toBeDisabled();
+            expect(
+                screen.getByRole('button', { name: 'Ya, Regenerate' }),
+            ).toBeDisabled();
 
             finishCallback?.();
             await syncUI();
 
-            expect(screen.getByRole('button', { name: 'Ya, Regenerate' })).not.toBeDisabled();
+            expect(
+                screen.getByRole('button', { name: 'Ya, Regenerate' }),
+            ).not.toBeDisabled();
         });
 
         it('menampilkan toast error saat API reject', async () => {
-            (regenerateETicket as any).mockImplementation((_id: number, opts: any) => {
-                opts.onError?.({ error: 'Queue worker mati' });
-                opts.onFinish?.();
-            });
+            (regenerateETicket as any).mockImplementation(
+                (_id: number, opts: any) => {
+                    opts.onError?.({ error: 'Queue worker mati' });
+                    opts.onFinish?.();
+                },
+            );
 
             renderPage(makeBooking({ status: 'confirmed' }));
-            await fireEvent.click(screen.getByRole('button', { name: /Regenerate E-Ticket/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Regenerate E-Ticket/i }),
+            );
             await syncUI();
-            await fireEvent.click(screen.getByRole('button', { name: 'Ya, Regenerate' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Ya, Regenerate' }),
+            );
             await syncUI();
 
-            expect(showToast).toHaveBeenCalledWith('Queue worker mati', 'error');
+            expect(showToast).toHaveBeenCalledWith(
+                'Queue worker mati',
+                'error',
+            );
         });
 
         it('menampilkan pesan error fallback jika onError tanpa field error', async () => {
-            (regenerateETicket as any).mockImplementation((_id: number, opts: any) => {
-                opts.onError?.({});
-                opts.onFinish?.();
-            });
+            (regenerateETicket as any).mockImplementation(
+                (_id: number, opts: any) => {
+                    opts.onError?.({});
+                    opts.onFinish?.();
+                },
+            );
 
             renderPage(makeBooking({ status: 'confirmed' }));
-            await fireEvent.click(screen.getByRole('button', { name: /Regenerate E-Ticket/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Regenerate E-Ticket/i }),
+            );
             await syncUI();
-            await fireEvent.click(screen.getByRole('button', { name: 'Ya, Regenerate' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Ya, Regenerate' }),
+            );
             await syncUI();
 
-            expect(showToast).toHaveBeenCalledWith('Gagal regenerate E-Ticket.', 'error');
+            expect(showToast).toHaveBeenCalledWith(
+                'Gagal regenerate E-Ticket.',
+                'error',
+            );
         });
 
         it('modal tertutup setelah onSuccess', async () => {
-            (regenerateETicket as any).mockImplementation((_id: number, opts: any) => {
-                opts.onSuccess?.();
-                opts.onFinish?.();
-            });
+            (regenerateETicket as any).mockImplementation(
+                (_id: number, opts: any) => {
+                    opts.onSuccess?.();
+                    opts.onFinish?.();
+                },
+            );
 
             renderPage(makeBooking({ status: 'confirmed' }));
-            await fireEvent.click(screen.getByRole('button', { name: /Regenerate E-Ticket/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Regenerate E-Ticket/i }),
+            );
             await syncUI();
-            await fireEvent.click(screen.getByRole('button', { name: 'Ya, Regenerate' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Ya, Regenerate' }),
+            );
             await syncUI();
 
             expect(screen.getByTestId('confirm-modal')).toBeEmptyDOMElement();
@@ -580,14 +661,25 @@ describe('Admin Bookings — Show Page', () => {
     describe('Accessibility', () => {
         it('heading h1 untuk nama paket', () => {
             renderPage();
-            expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
+            expect(
+                screen.getByRole('heading', { level: 1 }),
+            ).toBeInTheDocument();
         });
 
         it('heading h2 untuk section Data Pemesan, Peserta, Pembayaran', () => {
             renderPage();
-            expect(screen.getByRole('heading', { level: 2, name: 'Data Pemesan' })).toBeInTheDocument();
-            expect(screen.getByRole('heading', { level: 2, name: 'Daftar Peserta' })).toBeInTheDocument();
-            expect(screen.getByRole('heading', { level: 2, name: 'Pembayaran' })).toBeInTheDocument();
+            expect(
+                screen.getByRole('heading', { level: 2, name: 'Data Pemesan' }),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByRole('heading', {
+                    level: 2,
+                    name: 'Daftar Peserta',
+                }),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByRole('heading', { level: 2, name: 'Pembayaran' }),
+            ).toBeInTheDocument();
         });
     });
 });

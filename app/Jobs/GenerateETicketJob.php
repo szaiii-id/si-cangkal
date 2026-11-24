@@ -12,15 +12,15 @@ use Throwable;
 /**
  * Job: generate E-Ticket untuk sebuah Trip di background.
  *
- * Ditembak oleh `GenerateETicketListener` setelah event `BookingConfirmed`.
+ * Ditembak oleh `CreateTripForBooking` setelah event `BookingConfirmed`.
  * Dipisah ke Job (bukan dikerjakan langsung di listener) karena:
  * - PDF + QR generation memakan waktu > 200ms (NF-02).
  * - Harus tahan terhadap kegagalan sementara (disk lambat, dsb) lewat retry.
  *
  * Kebijakan retry:
  * - 3 percobaan, backoff 10s, 30s, 60s (eksponensial).
- * - Bila tetap gagal, Job masuk ke `failed_jobs`. Client TIDAK
- *   mendapat notifikasi "e-ticket siap" (lihat `NotifyClientListener`).
+ * - Bila tetap gagal, Job masuk ke `failed_jobs` dan perlu ditangani
+ *   lewat retry manual / alur notifikasi operasional (Fase 2).
  *
  * Idempotensi:
  * - `ETicketService::generateForTrip` memakai `updateOrCreate` pada

@@ -12,7 +12,7 @@
  * Backend: PasswordResetController@store → Password::sendResetLink
  * Route: GET /forgot-password, POST /forgot-password (password.request)
  * Middleware: `guest`, `auth.throttle:forgot-password`
- * 
+ *
  * CATATAN PENTING:
  * - Laravel memiliki bawaan `RESET_THROTTLED` (60 detik per email) dari
  *   `PasswordBroker`. Jika test lain menembak email yang sama dalam < 60 detik,
@@ -24,7 +24,6 @@
 
 import { test, expect } from '../fixtures/base';
 import { SEL } from '../fixtures/selectors';
-import { SEED_USERS } from '../fixtures/auth';
 import { seed } from '../fixtures/seed';
 
 // ==========================================
@@ -85,9 +84,7 @@ test.describe('Auth — Forgot Password', () => {
         test('menampilkan tombol "Kirim Tautan Pemulihan"', async ({
             page,
         }) => {
-            await expect(
-                SEL.AUTH.forgotPassword.submit(page),
-            ).toBeVisible();
+            await expect(SEL.AUTH.forgotPassword.submit(page)).toBeVisible();
         });
 
         test('menampilkan link "Kembali ke Login"', async ({ page }) => {
@@ -96,9 +93,7 @@ test.describe('Auth — Forgot Password', () => {
             ).toBeVisible();
         });
 
-        test('link "Kembali ke Login" mengarah ke /login', async ({
-            page,
-        }) => {
+        test('link "Kembali ke Login" mengarah ke /login', async ({ page }) => {
             await expect(
                 SEL.AUTH.forgotPassword.backToLogin(page),
             ).toHaveAttribute('href', /\/login$/);
@@ -116,21 +111,24 @@ test.describe('Auth — Forgot Password', () => {
         });
 
         test('input email bertipe email', async ({ page }) => {
-            await expect(
-                SEL.AUTH.forgotPassword.email(page),
-            ).toHaveAttribute('type', 'email');
+            await expect(SEL.AUTH.forgotPassword.email(page)).toHaveAttribute(
+                'type',
+                'email',
+            );
         });
 
         test('input email required', async ({ page }) => {
-            await expect(
-                SEL.AUTH.forgotPassword.email(page),
-            ).toHaveAttribute('required', '');
+            await expect(SEL.AUTH.forgotPassword.email(page)).toHaveAttribute(
+                'required',
+                '',
+            );
         });
 
         test('input email punya autocomplete="email"', async ({ page }) => {
-            await expect(
-                SEL.AUTH.forgotPassword.email(page),
-            ).toHaveAttribute('autocomplete', 'email');
+            await expect(SEL.AUTH.forgotPassword.email(page)).toHaveAttribute(
+                'autocomplete',
+                'email',
+            );
         });
     });
 
@@ -173,7 +171,7 @@ test.describe('Auth — Forgot Password', () => {
         test('email tidak terdaftar → error', async ({ page }) => {
             // Pakai email acak yang dijamin tidak ada di DB
             const randomEmail = `tidak-ada-${Date.now()}@test.com`;
-            
+
             await SEL.AUTH.forgotPassword.email(page).fill(randomEmail);
 
             await Promise.all([
@@ -245,7 +243,9 @@ test.describe('Auth — Forgot Password', () => {
                 .poll(
                     async () =>
                         await page
-                            .getByText(/Tautan pemulihan password telah dikirim/i)
+                            .getByText(
+                                /Tautan pemulihan password telah dikirim/i,
+                            )
                             .isVisible()
                             .catch(() => false),
                     { timeout: 15_000, intervals: [100, 200, 500] },

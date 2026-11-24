@@ -28,7 +28,9 @@ describe('MitraSummary Component', () => {
     // ==========================================
     describe('Accessibility', () => {
         it('ikon SVG dekoratif harus disembunyikan dari screen reader', () => {
-            const { container } = render(MitraSummary, { props: { totalMitra: 10, totalTrip: 5 } });
+            const { container } = render(MitraSummary, {
+                props: { totalMitra: 10, totalTrip: 5 },
+            });
 
             // Cek apakah semua SVG berada di dalam elemen dengan aria-hidden
             const svgs = container.querySelectorAll('svg');

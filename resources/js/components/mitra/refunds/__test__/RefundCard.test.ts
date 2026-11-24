@@ -65,7 +65,11 @@ describe('RefundCard Component (Mitra)', () => {
     describe('Rendering', () => {
         it('harus merender ID refund dan jumlah', () => {
             render(RefundCard, {
-                props: { refund: createMockRefund(), onApprove: vi.fn(), onReject: vi.fn() },
+                props: {
+                    refund: createMockRefund(),
+                    onApprove: vi.fn(),
+                    onReject: vi.fn(),
+                },
             });
 
             expect(screen.getByText(/#1/)).toBeInTheDocument();
@@ -74,7 +78,11 @@ describe('RefundCard Component (Mitra)', () => {
 
         it('harus merender kode pesanan dan client', () => {
             render(RefundCard, {
-                props: { refund: createMockRefund(), onApprove: vi.fn(), onReject: vi.fn() },
+                props: {
+                    refund: createMockRefund(),
+                    onApprove: vi.fn(),
+                    onReject: vi.fn(),
+                },
             });
 
             expect(screen.getByText('BK-123')).toBeInTheDocument();
@@ -83,10 +91,16 @@ describe('RefundCard Component (Mitra)', () => {
 
         it('harus merender alasan refund', () => {
             render(RefundCard, {
-                props: { refund: createMockRefund(), onApprove: vi.fn(), onReject: vi.fn() },
+                props: {
+                    refund: createMockRefund(),
+                    onApprove: vi.fn(),
+                    onReject: vi.fn(),
+                },
             });
 
-            expect(screen.getByText('Pembatalan oleh Mitra')).toBeInTheDocument();
+            expect(
+                screen.getByText('Pembatalan oleh Mitra'),
+            ).toBeInTheDocument();
         });
     });
 
@@ -96,30 +110,54 @@ describe('RefundCard Component (Mitra)', () => {
     describe('Action Buttons (PENDING)', () => {
         it('harus merender tombol "Setujui" dan "Tolak" jika status PENDING', () => {
             render(RefundCard, {
-                props: { refund: createMockRefund({ status: 'PENDING' }), onApprove: vi.fn(), onReject: vi.fn() },
+                props: {
+                    refund: createMockRefund({ status: 'PENDING' }),
+                    onApprove: vi.fn(),
+                    onReject: vi.fn(),
+                },
             });
 
-            expect(screen.getByLabelText(/Setujui & Kembalikan Dana untuk refund #1/i)).toBeInTheDocument();
-            expect(screen.getByLabelText(/Tolak Pengajuan refund #1/i)).toBeInTheDocument();
+            expect(
+                screen.getByLabelText(
+                    /Setujui & Kembalikan Dana untuk refund #1/i,
+                ),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByLabelText(/Tolak Pengajuan refund #1/i),
+            ).toBeInTheDocument();
         });
 
         it('harus memanggil onApprove saat tombol Setujui diklik', async () => {
             const onApprove = vi.fn();
             render(RefundCard, {
-                props: { refund: createMockRefund({ status: 'PENDING' }), onApprove, onReject: vi.fn() },
+                props: {
+                    refund: createMockRefund({ status: 'PENDING' }),
+                    onApprove,
+                    onReject: vi.fn(),
+                },
             });
 
-            await fireEvent.click(screen.getByLabelText(/Setujui & Kembalikan Dana untuk refund #1/i));
+            await fireEvent.click(
+                screen.getByLabelText(
+                    /Setujui & Kembalikan Dana untuk refund #1/i,
+                ),
+            );
             expect(onApprove).toHaveBeenCalledTimes(1);
         });
 
         it('harus memanggil onReject saat tombol Tolak diklik', async () => {
             const onReject = vi.fn();
             render(RefundCard, {
-                props: { refund: createMockRefund({ status: 'PENDING' }), onApprove: vi.fn(), onReject },
+                props: {
+                    refund: createMockRefund({ status: 'PENDING' }),
+                    onApprove: vi.fn(),
+                    onReject,
+                },
             });
 
-            await fireEvent.click(screen.getByLabelText(/Tolak Pengajuan refund #1/i));
+            await fireEvent.click(
+                screen.getByLabelText(/Tolak Pengajuan refund #1/i),
+            );
             expect(onReject).toHaveBeenCalledTimes(1);
         });
     });
@@ -130,27 +168,45 @@ describe('RefundCard Component (Mitra)', () => {
     describe('Final Status', () => {
         it('harus menampilkan pesan "Dana telah dikembalikan" jika SUCCEEDED', () => {
             render(RefundCard, {
-                props: { refund: createMockRefund({ status: 'SUCCEEDED' }), onApprove: vi.fn(), onReject: vi.fn() },
+                props: {
+                    refund: createMockRefund({ status: 'SUCCEEDED' }),
+                    onApprove: vi.fn(),
+                    onReject: vi.fn(),
+                },
             });
 
-            expect(screen.getByText(/Dana telah dikembalikan/)).toBeInTheDocument();
+            expect(
+                screen.getByText(/Dana telah dikembalikan/),
+            ).toBeInTheDocument();
             expect(screen.queryByRole('button')).not.toBeInTheDocument();
         });
 
         it('harus menampilkan pesan "dibatalkan" jika CANCELLED', () => {
             render(RefundCard, {
-                props: { refund: createMockRefund({ status: 'CANCELLED' }), onApprove: vi.fn(), onReject: vi.fn() },
+                props: {
+                    refund: createMockRefund({ status: 'CANCELLED' }),
+                    onApprove: vi.fn(),
+                    onReject: vi.fn(),
+                },
             });
 
-            expect(screen.getByText(/Pengajuan refund dibatalkan/)).toBeInTheDocument();
+            expect(
+                screen.getByText(/Pengajuan refund dibatalkan/),
+            ).toBeInTheDocument();
         });
 
         it('harus menampilkan pesan "gagal diproses" jika FAILED', () => {
             render(RefundCard, {
-                props: { refund: createMockRefund({ status: 'FAILED' }), onApprove: vi.fn(), onReject: vi.fn() },
+                props: {
+                    refund: createMockRefund({ status: 'FAILED' }),
+                    onApprove: vi.fn(),
+                    onReject: vi.fn(),
+                },
             });
 
-            expect(screen.getByText(/Pengembalian dana gagal diproses/)).toBeInTheDocument();
+            expect(
+                screen.getByText(/Pengembalian dana gagal diproses/),
+            ).toBeInTheDocument();
         });
     });
 
@@ -160,7 +216,11 @@ describe('RefundCard Component (Mitra)', () => {
     describe('Accessibility', () => {
         it('pesan status final harus memiliki role="status"', () => {
             render(RefundCard, {
-                props: { refund: createMockRefund({ status: 'SUCCEEDED' }), onApprove: vi.fn(), onReject: vi.fn() },
+                props: {
+                    refund: createMockRefund({ status: 'SUCCEEDED' }),
+                    onApprove: vi.fn(),
+                    onReject: vi.fn(),
+                },
             });
 
             const statusElement = screen.getByRole('status');

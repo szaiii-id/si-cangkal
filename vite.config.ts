@@ -62,6 +62,17 @@ export default defineConfig({
             denyWarnings: true,
             typeAware: true,
         },
+        overrides: [
+            {
+                // Di test, `router.get`/`router.post` adalah vi.fn(), bukan
+                // method yang memakai `this`. Rule unbound-method hanya
+                // menghasilkan false positive di assertions Vitest.
+                files: ['**/*.test.ts', '**/*.spec.ts'],
+                rules: {
+                    'typescript/unbound-method': 'off',
+                },
+            },
+        ],
     },
     fmt: {
         printWidth: 80,

@@ -220,9 +220,7 @@ export function formatTime(
  * Helper ini memastikan kita dapat `null` yang konsisten untuk
  * semua input invalid/empty.
  */
-function parseDateTime(
-    value: string | Date | null | undefined,
-): Date | null {
+function parseDateTime(value: string | Date | null | undefined): Date | null {
     if (!value) {
         return null;
     }

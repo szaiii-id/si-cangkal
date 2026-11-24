@@ -8,7 +8,9 @@ describe('Badge Component', () => {
     // ==========================================
     describe('Standalone Props', () => {
         it('harus merender label teks biasa', () => {
-            render(Badge, { props: { label: 'Custom Label', class: 'bg-red-100' } });
+            render(Badge, {
+                props: { label: 'Custom Label', class: 'bg-red-100' },
+            });
             expect(screen.getByText('Custom Label')).toBeInTheDocument();
         });
 
@@ -37,7 +39,7 @@ describe('Badge Component', () => {
 
             // Memastikan teks label ter-resolve dengan benar
             expect(screen.getByText('Terkonfirmasi')).toBeInTheDocument();
-            
+
             // Memastikan class warna dari helper masuk
             const span = container.querySelector('span');
             expect(span).toHaveClass('bg-green/10');
@@ -53,7 +55,10 @@ describe('Badge Component', () => {
 
         it('harus kembali ke label default jika variant tidak dikenal (Edge Case)', () => {
             render(Badge, {
-                props: { variant: 'booking_status' as any, value: 'UNKNOWN_STATUS' },
+                props: {
+                    variant: 'booking_status' as any,
+                    value: 'UNKNOWN_STATUS',
+                },
             });
             // Karena helper tidak menemukan label, ia mengembalikan string asli
             expect(screen.getByText('UNKNOWN_STATUS')).toBeInTheDocument();
@@ -90,14 +95,22 @@ describe('Badge Component', () => {
             const { container } = render(Badge, {
                 props: { label: 'Kecil', size: 'sm' },
             });
-            expect(container.querySelector('span')).toHaveClass('px-2', 'py-0.5', 'text-[10px]');
+            expect(container.querySelector('span')).toHaveClass(
+                'px-2',
+                'py-0.5',
+                'text-[10px]',
+            );
         });
 
         it('harus menerapkan class ukuran "md" secara default', () => {
             const { container } = render(Badge, {
                 props: { label: 'Sedang' },
             });
-            expect(container.querySelector('span')).toHaveClass('px-3', 'py-1.5', 'text-[11px]');
+            expect(container.querySelector('span')).toHaveClass(
+                'px-3',
+                'py-1.5',
+                'text-[11px]',
+            );
         });
     });
 });

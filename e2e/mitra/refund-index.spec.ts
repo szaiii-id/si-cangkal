@@ -22,7 +22,11 @@ test.describe('Mitra — Refund Index, Filter & Search', () => {
         const page = await context.newPage();
         const { seed } = await import('../fixtures/seed');
 
-        await seed.login(page, SEED_USERS.mitra.email, SEED_USERS.mitra.password);
+        await seed.login(
+            page,
+            SEED_USERS.mitra.email,
+            SEED_USERS.mitra.password,
+        );
 
         const pkg = await seed.createPackage(page, {
             mitra_email: SEED_USERS.mitra.email,
@@ -70,11 +74,18 @@ test.describe('Mitra — Refund Index, Filter & Search', () => {
             page.getByRole('heading', { name: 'Pengembalian Dana (Refund)' }),
         ).toBeVisible();
 
-        const card = page.locator('article').filter({ hasText: bookingKode }).first();
+        const card = page
+            .locator('article')
+            .filter({ hasText: bookingKode })
+            .first();
         await expect(card).toBeVisible({ timeout: 10_000 });
         await expect(card.getByText(/Rp\s*300\.000/i)).toBeVisible();
-        await expect(card.getByRole('button', { name: /Setujui/i })).toBeVisible();
-        await expect(card.getByRole('button', { name: /Tolak/i })).toBeVisible();
+        await expect(
+            card.getByRole('button', { name: /Setujui/i }),
+        ).toBeVisible();
+        await expect(
+            card.getByRole('button', { name: /Tolak/i }),
+        ).toBeVisible();
     });
 
     test('Pencarian berdasarkan kode booking dan reset filter bekerja dengan benar', async ({
@@ -87,7 +98,9 @@ test.describe('Mitra — Refund Index, Filter & Search', () => {
         await page.goto('/mitra/refunds');
         await page.waitForLoadState('networkidle');
 
-        const searchInput = page.getByPlaceholder(/Cari kode pesanan atau nama pelanggan/i);
+        const searchInput = page.getByPlaceholder(
+            /Cari kode pesanan atau nama pelanggan/i,
+        );
         await searchInput.fill(bookingKode);
 
         await expect(

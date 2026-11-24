@@ -7,13 +7,14 @@ describe('StarRating Component', () => {
         const onChange = vi.fn();
         render(StarRating, { props: { onChange } });
 
-        await fireEvent.click(screen.getByRole('button', { name: '4 bintang' }));
+        await fireEvent.click(
+            screen.getByRole('button', { name: '4 bintang' }),
+        );
 
         expect(onChange).toHaveBeenCalledWith(4);
-        expect(screen.getByRole('button', { name: '4 bintang' })).toHaveAttribute(
-            'aria-pressed',
-            'true',
-        );
+        expect(
+            screen.getByRole('button', { name: '4 bintang' }),
+        ).toHaveAttribute('aria-pressed', 'true');
         expect(screen.getByText('Bagus')).toBeInTheDocument();
     });
 
@@ -21,6 +22,8 @@ describe('StarRating Component', () => {
         render(StarRating, { props: { value: 3, readonly: true } });
 
         expect(screen.queryByRole('button')).not.toBeInTheDocument();
-        expect(screen.getByRole('img', { name: 'Rating 3 dari 5 bintang' })).toBeInTheDocument();
+        expect(
+            screen.getByRole('img', { name: 'Rating 3 dari 5 bintang' }),
+        ).toBeInTheDocument();
     });
 });

@@ -22,8 +22,15 @@ describe('BackButton Component (Refactored)', () => {
         });
 
         it('harus merender label kustom', () => {
-            render(BackButton, { props: { href: '/admin/packages', label: 'Kembali ke Daftar Paket' } });
-            expect(screen.getByText('Kembali ke Daftar Paket')).toBeInTheDocument();
+            render(BackButton, {
+                props: {
+                    href: '/admin/packages',
+                    label: 'Kembali ke Daftar Paket',
+                },
+            });
+            expect(
+                screen.getByText('Kembali ke Daftar Paket'),
+            ).toBeInTheDocument();
         });
 
         it('harus menerapkan atribut href yang benar', () => {
@@ -33,7 +40,9 @@ describe('BackButton Component (Refactored)', () => {
         });
 
         it('harus menerapkan class tambahan dari props className', () => {
-            render(BackButton, { props: { href: '/test', class: 'mb-5 custom-class' } });
+            render(BackButton, {
+                props: { href: '/test', class: 'mb-5 custom-class' },
+            });
             const link = screen.getByRole('link');
             expect(link).toHaveClass('mb-5');
             expect(link).toHaveClass('custom-class');
@@ -47,13 +56,19 @@ describe('BackButton Component (Refactored)', () => {
     // ==========================================
     describe('Accessibility', () => {
         it('harus memiliki aria-label yang sesuai dengan teks label', () => {
-            render(BackButton, { props: { href: '/test', label: 'Kembali ke Beranda' } });
-            const link = screen.getByRole('link', { name: 'Kembali ke Beranda' });
+            render(BackButton, {
+                props: { href: '/test', label: 'Kembali ke Beranda' },
+            });
+            const link = screen.getByRole('link', {
+                name: 'Kembali ke Beranda',
+            });
             expect(link).toBeInTheDocument();
         });
 
         it('ikon SVG harus disembunyikan dari screen reader (aria-hidden)', () => {
-            const { container } = render(BackButton, { props: { href: '/test' } });
+            const { container } = render(BackButton, {
+                props: { href: '/test' },
+            });
             const svg = container.querySelector('svg');
             expect(svg).toHaveAttribute('aria-hidden', 'true');
         });

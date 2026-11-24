@@ -42,7 +42,7 @@ describe('NotificationDropdown Component', () => {
         it('TIDAK boleh menampilkan badge jika unread = 0', () => {
             mockPage.props.unread_notifications = 0;
             const { container } = render(NotificationDropdown);
-            
+
             const badge = container.querySelector('.bg-red-500');
             expect(badge).not.toBeInTheDocument();
         });
@@ -91,7 +91,9 @@ describe('NotificationDropdown Component', () => {
             mockPage.props.unread_notifications = 3;
             render(NotificationDropdown);
 
-            expect(screen.getByLabelText('Notifikasi, 3 belum dibaca')).toBeInTheDocument();
+            expect(
+                screen.getByLabelText('Notifikasi, 3 belum dibaca'),
+            ).toBeInTheDocument();
         });
     });
 });

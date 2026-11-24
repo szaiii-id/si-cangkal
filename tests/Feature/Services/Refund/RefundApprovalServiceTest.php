@@ -9,6 +9,8 @@ use App\Models\Package;
 use App\Models\Payment;
 use App\Models\Refund;
 use App\Models\User;
+use App\Repositories\Contracts\BookingRepositoryInterface;
+use App\Repositories\Contracts\RefundRepositoryInterface;
 use App\Services\Notification\Contracts\NotificationDispatcherInterface;
 use App\Services\Refund\RefundApprovalService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -43,7 +45,11 @@ beforeEach(function () {
     $this->notifier = Mockery::mock(NotificationDispatcherInterface::class);
     $this->notifier->shouldReceive('send')->byDefault()->andReturnNull();
 
-    $this->service = new RefundApprovalService($this->notifier);
+    $this->service = new RefundApprovalService(
+        app(RefundRepositoryInterface::class),
+        app(BookingRepositoryInterface::class),
+        $this->notifier,
+    );
 
     // Mock Log::channel('audit') — AuditLogger::writer()
     $auditLoggerMock = Mockery::mock(LoggerInterface::class);

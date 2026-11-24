@@ -130,7 +130,9 @@ test.describe('Auth — Verifikasi Email', () => {
         await page.goto(url);
 
         await expect(page).toHaveURL('/client/dashboard');
-        await expect(page.getByText(/Email berhasil diverifikasi/i)).toBeVisible({
+        await expect(
+            page.getByText(/Email berhasil diverifikasi/i),
+        ).toBeVisible({
             timeout: 10_000,
         });
     });
@@ -184,9 +186,7 @@ test.describe('Auth — Verifikasi Email', () => {
         await makeUnverified(page, seed, 'client');
         await page.goto('/verify-email');
 
-        await page
-            .getByRole('button', { name: /Keluar \(Logout\)/i })
-            .click();
+        await page.getByRole('button', { name: /Keluar \(Logout\)/i }).click();
 
         await expect(page).toHaveURL('/');
         await page.goto('/verify-email');

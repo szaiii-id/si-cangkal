@@ -32,6 +32,7 @@ use App\Http\Controllers\Mitra\RefundController as MitraRefundController;
 use App\Http\Controllers\Mitra\TripController as MitraTripController;
 use App\Http\Controllers\Notification\FcmTokenController;
 use App\Http\Controllers\Notification\NotificationController;
+use App\Http\Controllers\PublicETicketController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -46,6 +47,13 @@ Route::get('/', fn () => Inertia::render('Welcome'))->name('home');
 Route::post('/contact', [ContactController::class, 'store'])
     ->middleware('throttle:contact')
     ->name('contact.store');
+
+// Verifikasi E-Ticket lewat scan QR. UUID berfungsi sebagai capability URL;
+// halaman hanya menampilkan data aman (tanpa email/HP/daftar peserta).
+Route::get('/e-tickets/{uuid}', [PublicETicketController::class, 'show'])
+    ->whereUuid('uuid')
+    ->middleware('throttle:e-ticket-verify')
+    ->name('e-tickets.verify');
 
 Route::prefix('legal')->name('legal.')->group(function () {
     Route::get('/privacy', [LegalController::class, 'privacy'])->name('privacy');
@@ -221,6 +229,7 @@ Route::middleware('auth')->group(function () {
 
                 Route::get('/trips', [MitraTripController::class, 'index'])->name('trips.index');
                 Route::get('/trips/{trip}', [MitraTripController::class, 'show'])->name('trips.show');
+                Route::post('/trips/{trip}/complete', [MitraTripController::class, 'complete'])->name('trips.complete');
                 Route::get('/trips/{trip}/manifest', [MitraTripController::class, 'manifest'])->name('trips.manifest');
 
                 Route::prefix('bookings')->name('bookings.')->group(function () {

@@ -29,6 +29,19 @@ return [
     |
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | After Commit
+    |--------------------------------------------------------------------------
+    |
+    | Semua driver antrean nyata memakai `after_commit => true` agar job
+    | (E-Ticket, push FCM, dll.) baru dikirim ke worker SETELAH transaksi
+    | database pemanggil di-commit. Ini mencegah worker membaca data yang
+    | belum ada / sudah di-rollback. Driver `sync` sengaja tidak diubah:
+    | ia mengeksekusi job langsung dan dipakai oleh test/E2E.
+    |
+    */
+
     'connections' => [
 
         'sync' => [
@@ -41,7 +54,7 @@ return [
             'table' => env('DB_QUEUE_TABLE', 'jobs'),
             'queue' => env('DB_QUEUE', 'default'),
             'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 90),
-            'after_commit' => false,
+            'after_commit' => true,
         ],
 
         'beanstalkd' => [
@@ -50,7 +63,7 @@ return [
             'queue' => env('BEANSTALKD_QUEUE', 'default'),
             'retry_after' => (int) env('BEANSTALKD_QUEUE_RETRY_AFTER', 90),
             'block_for' => 0,
-            'after_commit' => false,
+            'after_commit' => true,
         ],
 
         'sqs' => [
@@ -61,7 +74,7 @@ return [
             'queue' => env('SQS_QUEUE', 'default'),
             'suffix' => env('SQS_SUFFIX'),
             'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
-            'after_commit' => false,
+            'after_commit' => true,
         ],
 
         'redis' => [
@@ -70,7 +83,7 @@ return [
             'queue' => env('REDIS_QUEUE', 'default'),
             'retry_after' => (int) env('REDIS_QUEUE_RETRY_AFTER', 90),
             'block_for' => null,
-            'after_commit' => false,
+            'after_commit' => true,
         ],
 
         'deferred' => [

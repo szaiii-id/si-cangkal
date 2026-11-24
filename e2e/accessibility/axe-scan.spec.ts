@@ -16,7 +16,9 @@ async function expectNoCriticalA11yViolations(
     page: Page,
     pageLabel: string,
 ): Promise<void> {
-    await page.waitForLoadState('networkidle', { timeout: 3_000 }).catch(() => {});
+    await page
+        .waitForLoadState('networkidle', { timeout: 3_000 })
+        .catch(() => {});
     await page.locator('body').waitFor({ state: 'visible' });
 
     const results = await new AxeBuilder({ page })
@@ -34,7 +36,10 @@ async function expectNoCriticalA11yViolations(
                     `[${v.impact?.toUpperCase()}] ${v.id}: ${v.help} (${v.nodes.length} node)\n` +
                     v.nodes
                         .slice(0, 3)
-                        .map((n) => `  - ${n.target.join(' ')}: ${n.failureSummary}`)
+                        .map(
+                            (n) =>
+                                `  - ${n.target.join(' ')}: ${n.failureSummary}`,
+                        )
                         .join('\n'),
             )
             .join('\n\n');
@@ -76,8 +81,14 @@ test.describe('Accessibility Audit (WCAG 2.1 AA — Axe-Core)', () => {
                 { url: '/', label: 'Landing Page (/)' },
                 { url: '/login', label: 'Login Page (/login)' },
                 { url: '/register', label: 'Register Client (/register)' },
-                { url: '/register-mitra', label: 'Register Mitra (/register-mitra)' },
-                { url: '/forgot-password', label: 'Forgot Password (/forgot-password)' },
+                {
+                    url: '/register-mitra',
+                    label: 'Register Mitra (/register-mitra)',
+                },
+                {
+                    url: '/forgot-password',
+                    label: 'Forgot Password (/forgot-password)',
+                },
             ]);
         });
 
@@ -161,7 +172,10 @@ test.describe('Accessibility Audit (WCAG 2.1 AA — Axe-Core)', () => {
                 jumlah_peserta: 1,
                 participants: [{ nama: 'Peserta Ulasan A11y', umur: 27 }],
             });
-            const catalogTrip = await seed.createTrip(page, catalogBooking.kode);
+            const catalogTrip = await seed.createTrip(
+                page,
+                catalogBooking.kode,
+            );
             await seed.resetTrip(page, catalogTrip.trip_id, 'completed');
 
             await asClient();
@@ -187,7 +201,9 @@ test.describe('Accessibility Audit (WCAG 2.1 AA — Axe-Core)', () => {
             // Slug paket di-generate dengan suffix acak, jadi ambil dari link katalog.
             await page.goto('/client/catalog');
             const katalogHref = await page
-                .getByRole('link', { name: new RegExp(`Paket A11y Client ${suffix}`) })
+                .getByRole('link', {
+                    name: new RegExp(`Paket A11y Client ${suffix}`),
+                })
                 .first()
                 .getAttribute('href');
 
@@ -252,14 +268,20 @@ test.describe('Accessibility Audit (WCAG 2.1 AA — Axe-Core)', () => {
             await auditRoutes(page, [
                 { url: '/mitra/dashboard', label: 'Mitra Dashboard' },
                 { url: '/mitra/packages', label: 'Mitra Packages Index' },
-                { url: '/mitra/packages/create', label: 'Mitra Package Create' },
+                {
+                    url: '/mitra/packages/create',
+                    label: 'Mitra Package Create',
+                },
                 { url: '/mitra/bookings', label: 'Mitra Bookings Index' },
                 {
                     url: `/mitra/bookings/${booking.booking_id}`,
                     label: 'Mitra Booking Show',
                 },
                 { url: '/mitra/trips', label: 'Mitra Trips Index' },
-                { url: `/mitra/trips/${trip.trip_id}`, label: 'Mitra Trip Show' },
+                {
+                    url: `/mitra/trips/${trip.trip_id}`,
+                    label: 'Mitra Trip Show',
+                },
                 { url: '/mitra/refunds', label: 'Mitra Refunds Index' },
                 { url: '/mitra/bank-accounts', label: 'Mitra Bank Accounts' },
                 { url: '/mitra/profile', label: 'Mitra Profile' },

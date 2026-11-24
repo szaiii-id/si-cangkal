@@ -25,7 +25,14 @@ test.describe('Security — Role Separation & Policy Enforcement', () => {
             durasi_hari: 1,
             durasi_malam: 0,
             harga_per_orang: 200_000,
-            days: [{ judul: 'Hari 1', jam_mulai: '08:00', jam_selesai: '14:00', lokasi: 'Loksado' }],
+            days: [
+                {
+                    judul: 'Hari 1',
+                    jam_mulai: '08:00',
+                    jam_selesai: '14:00',
+                    lokasi: 'Loksado',
+                },
+            ],
             facilities: [
                 { tipe: 'include', nama: 'Pemandu' },
                 { tipe: 'exclude', nama: 'Dokumentasi' },
@@ -55,7 +62,9 @@ test.describe('Security — Role Separation & Policy Enforcement', () => {
         // 1. Cek halaman detail booking di sisi Admin
         await page.goto(`/admin/bookings/${bookingId}`);
         await expect(
-            page.getByRole('button', { name: /Verifikasi & Terima|Tolak Pembayaran|Batalkan/i }),
+            page.getByRole('button', {
+                name: /Verifikasi & Terima|Tolak Pembayaran|Batalkan/i,
+            }),
         ).toHaveCount(0);
 
         // 2. Admin tidak punya rute edit paket mitra (redirect ke /admin/dashboard)

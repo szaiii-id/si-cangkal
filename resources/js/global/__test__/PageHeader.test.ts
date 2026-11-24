@@ -18,15 +18,22 @@ describe('PageHeader Component', () => {
 
         it('harus merender deskripsi jika diberikan', () => {
             render(PageHeader, {
-                props: { title: 'Paket Wisata', description: 'Kelola semua paket wisata Anda.' },
+                props: {
+                    title: 'Paket Wisata',
+                    description: 'Kelola semua paket wisata Anda.',
+                },
             });
 
-            expect(screen.getByText('Kelola semua paket wisata Anda.')).toBeInTheDocument();
+            expect(
+                screen.getByText('Kelola semua paket wisata Anda.'),
+            ).toBeInTheDocument();
         });
 
         it('TIDAK boleh merender deskripsi jika props description kosong', () => {
-            const { container } = render(PageHeader, { props: { title: 'Test' } });
-            
+            const { container } = render(PageHeader, {
+                props: { title: 'Test' },
+            });
+
             // Pastikan hanya ada <h1>, tidak ada <p>
             const paragraphs = container.querySelectorAll('p');
             expect(paragraphs.length).toBe(0);
@@ -40,7 +47,8 @@ describe('PageHeader Component', () => {
         it('harus merender tombol aksi jika snippet actions diberikan', () => {
             // Membuat snippet palsu untuk Svelte 5
             const mockActions = createRawSnippet(() => ({
-                render: () => `<button data-testid="action-btn">Tambah Data</button>`,
+                render: () =>
+                    `<button data-testid="action-btn">Tambah Data</button>`,
             }));
 
             render(PageHeader, {
@@ -52,8 +60,10 @@ describe('PageHeader Component', () => {
         });
 
         it('TIDAK boleh merender apa pun jika snippet actions tidak diberikan', () => {
-            const { container } = render(PageHeader, { props: { title: 'Test' } });
-            
+            const { container } = render(PageHeader, {
+                props: { title: 'Test' },
+            });
+
             // Pastikan tidak ada div pembungkus aksi
             // (Hanya div pembungkus judul yang ada)
             const divs = container.querySelectorAll('div');

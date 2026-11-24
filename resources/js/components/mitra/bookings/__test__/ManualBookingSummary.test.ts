@@ -66,7 +66,9 @@ describe('ManualBookingSummary Component', () => {
                 },
             });
 
-            expect(screen.getByText(/Rp 1.200.000 \/ rombongan/)).toBeInTheDocument();
+            expect(
+                screen.getByText(/Rp 1.200.000 \/ rombongan/),
+            ).toBeInTheDocument();
         });
     });
 
@@ -84,7 +86,11 @@ describe('ManualBookingSummary Component', () => {
                 },
             });
 
-            expect(screen.getByText(/Pembayaran dilakukan langsung ke rekening Anda/)).toBeInTheDocument();
+            expect(
+                screen.getByText(
+                    /Pembayaran dilakukan langsung ke rekening Anda/,
+                ),
+            ).toBeInTheDocument();
         });
     });
 });

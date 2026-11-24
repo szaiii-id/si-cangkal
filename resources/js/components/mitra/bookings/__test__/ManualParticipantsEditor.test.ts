@@ -23,8 +23,12 @@ describe('ManualParticipantsEditor Component', () => {
     // ==========================================
     describe('Empty State', () => {
         it('harus menampilkan pesan kosong jika participants kosong', () => {
-            render(ManualParticipantsEditor, { props: { participants: [], errors: {} } });
-            expect(screen.getByText('Tentukan jumlah peserta terlebih dahulu.')).toBeInTheDocument();
+            render(ManualParticipantsEditor, {
+                props: { participants: [], errors: {} },
+            });
+            expect(
+                screen.getByText('Tentukan jumlah peserta terlebih dahulu.'),
+            ).toBeInTheDocument();
         });
     });
 
@@ -41,7 +45,9 @@ describe('ManualParticipantsEditor Component', () => {
             expect(screen.getByLabelText(/Nama Lengkap/i)).toBeInTheDocument();
             expect(screen.getByLabelText(/Umur/i)).toBeInTheDocument();
             expect(screen.getByLabelText(/No. HP/i)).toBeInTheDocument();
-            expect(screen.getByLabelText(/Catatan Peserta/i)).toBeInTheDocument();
+            expect(
+                screen.getByLabelText(/Catatan Peserta/i),
+            ).toBeInTheDocument();
         });
 
         it('harus menampilkan nilai awal dari props', () => {
@@ -49,7 +55,9 @@ describe('ManualParticipantsEditor Component', () => {
                 props: { participants: [createMockParticipant()], errors: {} },
             });
 
-            const namaInput = screen.getByLabelText(/Nama Lengkap/i) as HTMLInputElement;
+            const namaInput = screen.getByLabelText(
+                /Nama Lengkap/i,
+            ) as HTMLInputElement;
             expect(namaInput.value).toBe('Budi');
         });
     });
@@ -91,8 +99,12 @@ describe('ManualParticipantsEditor Component', () => {
                 props: { participants: [createMockParticipant()], errors: {} },
             });
 
-            const namaInput = screen.getByLabelText(/Nama Lengkap/i) as HTMLInputElement;
-            await fireEvent.input(namaInput, { target: { value: 'Budi Baru' } });
+            const namaInput = screen.getByLabelText(
+                /Nama Lengkap/i,
+            ) as HTMLInputElement;
+            await fireEvent.input(namaInput, {
+                target: { value: 'Budi Baru' },
+            });
 
             expect(namaInput.value).toBe('Budi Baru');
         });

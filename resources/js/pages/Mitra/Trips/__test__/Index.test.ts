@@ -157,13 +157,20 @@ const makeTrip = (overrides: Record<string, unknown> = {}) => ({
     },
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
-    package: { id: 1, nama: 'Paket Bali', kode: 'PKT-01', timezone: 'Asia/Jakarta' },
+    package: {
+        id: 1,
+        nama: 'Paket Bali',
+        kode: 'PKT-01',
+        timezone: 'Asia/Jakarta',
+    },
     booking: null,
     mitra: null,
     ...overrides,
 });
 
-const makeProps = (overrides: Record<string, unknown> = {}): MitraTripIndexProps =>
+const makeProps = (
+    overrides: Record<string, unknown> = {},
+): MitraTripIndexProps =>
     ({
         trips: {
             data: [makeTrip()],
@@ -175,7 +182,12 @@ const makeProps = (overrides: Record<string, unknown> = {}): MitraTripIndexProps
             to: 1,
             links: [],
         },
-        filters: { search: '', status: '', sort: 'tanggal_mulai', direction: 'desc' },
+        filters: {
+            search: '',
+            status: '',
+            sort: 'tanggal_mulai',
+            direction: 'desc',
+        },
         statusCounts: { scheduled: 0, active: 1, completed: 0, cancelled: 0 },
         ...overrides,
     }) as unknown as MitraTripIndexProps;
@@ -197,7 +209,9 @@ describe('Mitra Trips — Index Page', () => {
     describe('Rendering', () => {
         it('merender PageHeader dan toolbar', () => {
             render(Index, { props: makeProps() });
-            expect(screen.getByTestId('page-header')).toHaveTextContent('Jadwal Perjalanan');
+            expect(screen.getByTestId('page-header')).toHaveTextContent(
+                'Jadwal Perjalanan',
+            );
             expect(screen.getByTestId('status-tabs')).toBeInTheDocument();
             expect(screen.getByTestId('search-input')).toBeInTheDocument();
         });
@@ -205,7 +219,16 @@ describe('Mitra Trips — Index Page', () => {
         it('merender EmptyState jika data kosong', () => {
             render(Index, {
                 props: makeProps({
-                    trips: { data: [], current_page: 1, last_page: 1, total: 0, per_page: 15, from: 0, to: 0, links: [] },
+                    trips: {
+                        data: [],
+                        current_page: 1,
+                        last_page: 1,
+                        total: 0,
+                        per_page: 15,
+                        from: 0,
+                        to: 0,
+                        links: [],
+                    },
                 }),
             });
             expect(screen.getByTestId('empty-state')).toBeInTheDocument();
@@ -227,7 +250,14 @@ describe('Mitra Trips — Index Page', () => {
 
         it('merender badge "Hari ini" jika trip active & today', () => {
             render(Index, {
-                props: makeProps({ statusCounts: { scheduled: 0, active: 1, completed: 0, cancelled: 0 } }),
+                props: makeProps({
+                    statusCounts: {
+                        scheduled: 0,
+                        active: 1,
+                        completed: 0,
+                        cancelled: 0,
+                    },
+                }),
             });
             expect(screen.getByText('Hari ini')).toBeInTheDocument();
         });
@@ -251,7 +281,12 @@ describe('Mitra Trips — Index Page', () => {
         it('memanggil getTrips saat status tab berubah', async () => {
             render(Index, {
                 props: makeProps({
-                    statusCounts: { scheduled: 1, active: 1, completed: 0, cancelled: 0 },
+                    statusCounts: {
+                        scheduled: 1,
+                        active: 1,
+                        completed: 0,
+                        cancelled: 0,
+                    },
                 }),
             });
             await fireEvent.click(screen.getByText(/scheduled/i));

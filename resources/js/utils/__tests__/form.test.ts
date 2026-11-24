@@ -104,7 +104,7 @@ describe('Form Utilities', () => {
             // Di normalizeForCompare, null dan '' dianggap sama ('')
             expect(hasFormChanges(current, initial)).toBe(false);
         });
-        
+
         it('harus mendeteksi perubahan pada array/object (JSON stringify)', () => {
             const initial = { tags: ['a', 'b'] };
             const current = { tags: ['a', 'b', 'c'] };

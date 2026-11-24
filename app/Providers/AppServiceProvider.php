@@ -24,6 +24,8 @@ use App\Services\Notification\Contracts\NotificationServiceInterface;
 use App\Services\Notification\FirebaseNotificationService;
 use App\Services\Notification\NotificationDispatcher;
 use App\Services\Notification\NotificationService;
+use App\Services\Trip\Contracts\TripStatusSynchronizerInterface;
+use App\Services\Trip\TripStatusSynchronizer;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -66,6 +68,15 @@ final class AppServiceProvider extends ServiceProvider
             NotificationDispatcherInterface::class,
             NotificationDispatcher::class,
         );
+
+        // ==========================================
+        // TRIP BINDINGS
+        // ==========================================
+        $this->app->bind(
+            TripStatusSynchronizerInterface::class,
+            TripStatusSynchronizer::class,
+        );
+
         $this->app->bind(
             ETicketServiceInterface::class,
             ETicketService::class,
@@ -121,6 +132,12 @@ final class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(10)->by(
                 $userId !== null ? "user:{$userId}" : "ip:{$request->ip()}",
             );
+        });
+
+        // Halaman verifikasi QR publik: batasi per IP agar UUID tidak bisa
+        // ditebak secara masif (enumeration).
+        RateLimiter::for('e-ticket-verify', function (Request $request) {
+            return Limit::perMinute(30)->by('ip:'.$request->ip());
         });
     }
 }

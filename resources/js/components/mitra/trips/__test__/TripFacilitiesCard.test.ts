@@ -12,31 +12,31 @@ describe('TripFacilitiesCard Component', () => {
     // ==========================================
     describe('With Facilities', () => {
         it('harus merender judul "Fasilitas"', () => {
-            render(TripFacilitiesCard, { 
-                props: { include: ['Makan'], exclude: ['Tiket'] } 
+            render(TripFacilitiesCard, {
+                props: { include: ['Makan'], exclude: ['Tiket'] },
             });
             expect(screen.getByText('Fasilitas')).toBeInTheDocument();
         });
 
         it('harus merender kolom "Termasuk" dan "Tidak Termasuk"', () => {
-            render(TripFacilitiesCard, { 
-                props: { include: ['Makan'], exclude: ['Tiket'] } 
+            render(TripFacilitiesCard, {
+                props: { include: ['Makan'], exclude: ['Tiket'] },
             });
             expect(screen.getByText('Termasuk')).toBeInTheDocument();
             expect(screen.getByText('Tidak Termasuk')).toBeInTheDocument();
         });
 
         it('harus merender item fasilitas "include"', () => {
-            render(TripFacilitiesCard, { 
-                props: { include: ['Makan', 'Transportasi'], exclude: [] } 
+            render(TripFacilitiesCard, {
+                props: { include: ['Makan', 'Transportasi'], exclude: [] },
             });
             expect(screen.getByText('Makan')).toBeInTheDocument();
             expect(screen.getByText('Transportasi')).toBeInTheDocument();
         });
 
         it('harus merender item fasilitas "exclude"', () => {
-            render(TripFacilitiesCard, { 
-                props: { include: [], exclude: ['Tiket Pesawat'] } 
+            render(TripFacilitiesCard, {
+                props: { include: [], exclude: ['Tiket Pesawat'] },
             });
             expect(screen.getByText('Tiket Pesawat')).toBeInTheDocument();
         });
@@ -47,10 +47,10 @@ describe('TripFacilitiesCard Component', () => {
     // ==========================================
     describe('Hidden State', () => {
         it('TIDAK boleh merender elemen visual apa pun jika include dan exclude kosong', () => {
-            const { container } = render(TripFacilitiesCard, { 
-                props: { include: [], exclude: [] } 
+            const { container } = render(TripFacilitiesCard, {
+                props: { include: [], exclude: [] },
             });
-            
+
             // PERBAIKAN: Cek apakah ada elemen <div> yang dirender (selain komentar Svelte)
             const divElements = container.querySelectorAll('div');
             expect(divElements.length).toBe(0);
@@ -62,10 +62,10 @@ describe('TripFacilitiesCard Component', () => {
     // ==========================================
     describe('Accessibility', () => {
         it('ikon SVG dekoratif harus disembunyikan dari screen reader', () => {
-            const { container } = render(TripFacilitiesCard, { 
-                props: { include: ['Makan'], exclude: ['Tiket'] } 
+            const { container } = render(TripFacilitiesCard, {
+                props: { include: ['Makan'], exclude: ['Tiket'] },
             });
-            
+
             const svgs = container.querySelectorAll('svg');
             svgs.forEach((svg) => {
                 expect(svg).toHaveAttribute('aria-hidden', 'true');

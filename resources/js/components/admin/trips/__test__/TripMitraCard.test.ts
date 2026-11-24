@@ -39,7 +39,9 @@ describe('TripMitraCard Component', () => {
         it('harus merender tautan ke halaman detail mitra', () => {
             render(TripMitraCard, { props: { mitra: createMockMitra() } });
 
-            const link = screen.getByLabelText(/Lihat detail mitra Mitra Travel/i);
+            const link = screen.getByLabelText(
+                /Lihat detail mitra Mitra Travel/i,
+            );
             expect(link).toBeInTheDocument();
             expect(link).toHaveAttribute('href', '/admin/users/1');
         });
@@ -52,7 +54,9 @@ describe('TripMitraCard Component', () => {
         it('harus menampilkan pesan "Data mitra tidak ditemukan" jika mitra null', () => {
             render(TripMitraCard, { props: { mitra: null } });
 
-            expect(screen.getByText('Data mitra tidak ditemukan')).toBeInTheDocument();
+            expect(
+                screen.getByText('Data mitra tidak ditemukan'),
+            ).toBeInTheDocument();
         });
 
         it('TIDAK boleh merender tautan jika mitra null', () => {
@@ -67,8 +71,8 @@ describe('TripMitraCard Component', () => {
     // ==========================================
     describe('Accessibility', () => {
         it('ikon SVG harus disembunyikan dari screen reader', () => {
-            const { container } = render(TripMitraCard, { 
-                props: { mitra: createMockMitra() } 
+            const { container } = render(TripMitraCard, {
+                props: { mitra: createMockMitra() },
             });
 
             const svgs = container.querySelectorAll('svg');

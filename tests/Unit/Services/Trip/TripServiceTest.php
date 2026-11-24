@@ -5,6 +5,8 @@ use App\Enums\PackageKategori;
 use App\Enums\TripStatus;
 use App\Models\Package;
 use App\Repositories\Contracts\TripRepositoryInterface;
+use App\Services\Notification\Contracts\NotificationDispatcherInterface;
+use App\Services\Trip\Contracts\TripStatusSynchronizerInterface;
 use App\Services\Trip\TripService;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -16,11 +18,28 @@ use Throwable;
 
 beforeEach(function () {
     $this->tripRepo = Mockery::mock(TripRepositoryInterface::class);
-    $this->service = new TripService($this->tripRepo);
+    $this->synchronizer = Mockery::mock(TripStatusSynchronizerInterface::class);
+    $this->notifier = Mockery::mock(NotificationDispatcherInterface::class);
+
+    $this->service = new TripService(
+        $this->tripRepo,
+        $this->synchronizer,
+        $this->notifier,
+    );
 
     DB::shouldReceive('transaction')
         ->byDefault()
         ->andReturnUsing(fn ($callback) => $callback());
+
+    // Lock baris: default null => service memakai trip yang diberikan.
+    $this->tripRepo->shouldReceive('findByIdForUpdate')
+        ->byDefault()
+        ->andReturnNull();
+
+    // Sinkronisasi & notifikasi butuh DB/IO — di unit test cukup di-stub.
+    $this->synchronizer->shouldReceive('markActivated')->byDefault()->andReturnNull();
+    $this->synchronizer->shouldReceive('markCompleted')->byDefault()->andReturnNull();
+    $this->notifier->shouldReceive('send')->byDefault()->andReturnNull();
 
     Log::shouldReceive('info')->byDefault()->andReturnNull();
     Log::shouldReceive('warning')->byDefault()->andReturnNull();
@@ -308,6 +327,23 @@ describe('activateDueTrips', function () {
         $result = $this->service->activateDueTrips();
 
         expect($result)->toBe(['activated' => 0, 'skipped_no_mitra' => 0]);
+    });
+
+    it('trip tanpa mitra → skipped_no_mitra bertambah', function () {
+        $trip = makeTripMock([
+            'id' => 1,
+            'mitra_id' => 0,
+            'tanggal_mulai' => Carbon::now(),
+            'timezone' => 'Asia/Makassar',
+        ]);
+        $trip->shouldReceive('hasMitra')->once()->andReturn(false);
+
+        $this->tripRepo->shouldReceive('findDueScheduled')
+            ->once()->andReturn(new Collection([$trip]));
+
+        $result = $this->service->activateDueTrips();
+
+        expect($result)->toBe(['activated' => 0, 'skipped_no_mitra' => 1]);
     });
 
     it('error di 1 trip → log, lanjut trip lain', function () {

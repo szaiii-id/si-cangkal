@@ -49,7 +49,10 @@ test.describe('Security — Review Client (OWASP A01/A03)', () => {
         const postResponse = await page.request.post(
             `/client/bookings/${booking.booking_id}/review`,
             {
-                data: { rating: 5, komentar: 'Coba mengirim review booking orang lain.' },
+                data: {
+                    rating: 5,
+                    komentar: 'Coba mengirim review booking orang lain.',
+                },
                 headers: { 'X-XSRF-TOKEN': csrf },
                 failOnStatusCode: false,
             },

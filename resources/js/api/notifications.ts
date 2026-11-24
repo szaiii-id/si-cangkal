@@ -19,6 +19,5 @@ export const markNotificationAsRead = (
 /**
  * Menandai semua notifikasi sebagai sudah dibaca.
  */
-export const markAllNotificationsAsRead = (
-    options?: NotificationOptions,
-) => router.post('/notifications/mark-all-read', {}, options);
+export const markAllNotificationsAsRead = (options?: NotificationOptions) =>
+    router.post('/notifications/mark-all-read', {}, options);

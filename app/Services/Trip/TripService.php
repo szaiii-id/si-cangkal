@@ -12,6 +12,8 @@ use App\Models\Trip;
 use App\Models\TripDay;
 use App\Models\User;
 use App\Repositories\Contracts\TripRepositoryInterface;
+use App\Services\Notification\Contracts\NotificationDispatcherInterface;
+use App\Services\Trip\Contracts\TripStatusSynchronizerInterface;
 use App\Support\Timezone;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -24,6 +26,8 @@ class TripService
 {
     public function __construct(
         protected TripRepositoryInterface $tripRepository,
+        private readonly TripStatusSynchronizerInterface $statusSynchronizer,
+        private readonly NotificationDispatcherInterface $notificationDispatcher,
     ) {}
 
     /**
@@ -181,75 +185,104 @@ class TripService
 
     public function activate(Trip $trip): Trip
     {
-        if ($trip->status !== TripStatus::SCHEDULED) {
-            throw ValidationException::withMessages([
-                'status' => ['Trip harus berstatus "Terjadwal" untuk diaktifkan.'],
-            ]);
-        }
+        [$updated, $booking] = DB::transaction(function () use ($trip): array {
+            // Lock baris trip agar dua request (manual + scheduler) tidak
+            // memproses transisi status yang sama dua kali.
+            $locked = $this->tripRepository->findByIdForUpdate($trip->id) ?? $trip;
 
-        $today = Timezone::today($trip->timezoneOrDefault());
+            if ($locked->status !== TripStatus::SCHEDULED) {
+                throw ValidationException::withMessages([
+                    'status' => ['Trip harus berstatus "Terjadwal" untuk diaktifkan.'],
+                ]);
+            }
 
-        if ($trip->tanggal_mulai->format('Y-m-d') > $today->format('Y-m-d')) {
-            throw ValidationException::withMessages([
-                'status' => ['Trip belum waktunya dimulai.'],
-            ]);
-        }
+            $today = Timezone::today($locked->timezoneOrDefault());
 
-        return DB::transaction(function () use ($trip): Trip {
-            $trip = $this->tripRepository->update($trip, [
+            if ($locked->tanggal_mulai->format('Y-m-d') > $today->format('Y-m-d')) {
+                throw ValidationException::withMessages([
+                    'status' => ['Trip belum waktunya dimulai.'],
+                ]);
+            }
+
+            $updated = $this->tripRepository->update($locked, [
                 'status' => TripStatus::ACTIVE->value,
             ]);
 
-            TripDay::query()
-                ->where('trip_id', $trip->id)
-                ->where('status', TripDay::STATUS_PENDING)
-                ->update(['status' => TripDay::STATUS_IN_PROGRESS]);
+            $booking = $this->statusSynchronizer->markActivated($updated);
 
-            Log::info('Trip diaktifkan', ['trip_id' => $trip->id, 'kode' => $trip->kode]);
+            Log::info('Trip diaktifkan', ['trip_id' => $updated->id, 'kode' => $updated->kode]);
 
-            return $trip;
+            return [$updated, $booking];
         });
+
+        if ($booking !== null) {
+            $this->notifyClientTripStatus(
+                $booking,
+                tipe: 'trip_started',
+                judul: 'Perjalanan Dimulai',
+                pesan: "Perjalanan {$updated->kode} untuk booking {$booking->kode} telah dimulai. Selamat menikmati perjalanan!",
+            );
+        }
+
+        return $updated;
     }
 
     public function complete(Trip $trip): Trip
     {
-        if ($trip->status !== TripStatus::ACTIVE) {
-            throw ValidationException::withMessages([
-                'status' => ['Trip harus berstatus "Sedang Berjalan" untuk diselesaikan.'],
-            ]);
-        }
+        [$updated, $booking] = DB::transaction(function () use ($trip): array {
+            $locked = $this->tripRepository->findByIdForUpdate($trip->id) ?? $trip;
 
-        return DB::transaction(function () use ($trip): Trip {
-            $trip = $this->tripRepository->update($trip, [
+            if ($locked->status !== TripStatus::ACTIVE) {
+                throw ValidationException::withMessages([
+                    'status' => ['Trip harus berstatus "Sedang Berjalan" untuk diselesaikan.'],
+                ]);
+            }
+
+            $updated = $this->tripRepository->update($locked, [
                 'status' => TripStatus::COMPLETED->value,
             ]);
 
-            Log::info('Trip diselesaikan', ['trip_id' => $trip->id, 'kode' => $trip->kode]);
+            $booking = $this->statusSynchronizer->markCompleted($updated);
 
-            return $trip;
+            Log::info('Trip diselesaikan', ['trip_id' => $updated->id, 'kode' => $updated->kode]);
+
+            return [$updated, $booking];
         });
+
+        if ($booking !== null) {
+            $this->notifyClientTripStatus(
+                $booking,
+                tipe: 'trip_completed',
+                judul: 'Perjalanan Selesai',
+                pesan: "Perjalanan {$updated->kode} untuk booking {$booking->kode} telah selesai. Terima kasih telah mempercayakan perjalanan Anda kepada kami.",
+            );
+        }
+
+        return $updated;
     }
 
     public function cancel(Trip $trip, string $alasan = 'Dibatalkan'): Trip
     {
-        if (! $trip->canBeCancelled()) {
-            throw ValidationException::withMessages([
-                'status' => ['Trip ini tidak bisa dibatalkan.'],
-            ]);
-        }
-
         return DB::transaction(function () use ($trip, $alasan): Trip {
-            $trip = $this->tripRepository->update($trip, [
+            $locked = $this->tripRepository->findByIdForUpdate($trip->id) ?? $trip;
+
+            if (! $locked->canBeCancelled()) {
+                throw ValidationException::withMessages([
+                    'status' => ['Trip ini tidak bisa dibatalkan.'],
+                ]);
+            }
+
+            $updated = $this->tripRepository->update($locked, [
                 'status' => TripStatus::CANCELLED->value,
             ]);
 
             Log::warning('Trip dibatalkan', [
-                'trip_id' => $trip->id,
-                'kode' => $trip->kode,
+                'trip_id' => $updated->id,
+                'kode' => $updated->kode,
                 'alasan' => $alasan,
             ]);
 
-            return $trip;
+            return $updated;
         });
     }
 
@@ -264,23 +297,25 @@ class TripService
         $skippedNoMitra = 0;
 
         foreach ($candidates as $trip) {
+            if (! $trip->hasMitra()) {
+                $skippedNoMitra++;
+
+                Log::warning('Trip due dilewati: belum punya mitra', [
+                    'trip_id' => $trip->id,
+                    'kode' => $trip->kode,
+                ]);
+
+                continue;
+            }
+
+            $tripToday = Timezone::today($trip->timezoneOrDefault());
+
+            if ($trip->tanggal_mulai->format('Y-m-d') > $tripToday->format('Y-m-d')) {
+                continue;
+            }
+
             try {
-                $tripToday = Timezone::today($trip->timezoneOrDefault());
-
-                if ($trip->tanggal_mulai->format('Y-m-d') > $tripToday->format('Y-m-d')) {
-                    continue;
-                }
-
-                DB::transaction(function () use ($trip): void {
-                    $this->tripRepository->update($trip, [
-                        'status' => TripStatus::ACTIVE->value,
-                    ]);
-                    TripDay::query()
-                        ->where('trip_id', $trip->id)
-                        ->where('status', TripDay::STATUS_PENDING)
-                        ->update(['status' => TripDay::STATUS_IN_PROGRESS]);
-                });
-
+                $this->activate($trip);
                 $activated++;
 
                 Log::info('Trip auto-activated', ['trip_id' => $trip->id, 'kode' => $trip->kode]);
@@ -296,5 +331,44 @@ class TripService
             'activated' => $activated,
             'skipped_no_mitra' => $skippedNoMitra,
         ];
+    }
+
+    /**
+     * Kirim notifikasi status trip ke client.
+     *
+     * Dipanggil SETELAH transaksi commit dan tidak boleh menggagalkan
+     * perubahan status operasional bila pengiriman notifikasi error.
+     */
+    private function notifyClientTripStatus(
+        Booking $booking,
+        string $tipe,
+        string $judul,
+        string $pesan,
+    ): void {
+        $client = $booking->client;
+
+        if ($client === null) {
+            return;
+        }
+
+        try {
+            $this->notificationDispatcher->send(
+                user: $client,
+                tipe: $tipe,
+                judul: $judul,
+                pesan: $pesan,
+                data: [
+                    'booking_id' => $booking->id,
+                    // URL eksplisit: client tidak punya halaman /client/trips.
+                    'url' => "/client/bookings/{$booking->id}",
+                ],
+            );
+        } catch (Throwable $e) {
+            Log::warning('TripService: gagal mengirim notifikasi status trip', [
+                'booking_id' => $booking->id,
+                'tipe' => $tipe,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }

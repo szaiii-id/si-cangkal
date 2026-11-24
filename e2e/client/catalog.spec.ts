@@ -109,7 +109,9 @@ test.describe('Client Catalog', () => {
         ).toBeVisible();
 
         // Filter kategori Kuliner
-        await page.getByRole('button', { name: 'Kuliner', exact: true }).click();
+        await page
+            .getByRole('button', { name: 'Kuliner', exact: true })
+            .click();
         await Promise.all([
             page.waitForResponse(
                 (res) =>
@@ -128,7 +130,9 @@ test.describe('Client Catalog', () => {
             .searchInput(page)
             .fill(`TidakAdaPaket_${suffix}`);
         await expect(
-            page.getByText(/Tidak ada paket yang sesuai dengan pencarian Anda/i),
+            page.getByText(
+                /Tidak ada paket yang sesuai dengan pencarian Anda/i,
+            ),
         ).toBeVisible();
 
         await page.getByRole('button', { name: 'Hapus Filter' }).click();
@@ -217,14 +221,20 @@ test.describe('Client Catalog', () => {
             status: 'arsip',
         });
 
-        const draftRes = await page.goto(`/client/catalog/${draftPkg.package_id}`, {
-            waitUntil: 'domcontentloaded',
-        });
+        const draftRes = await page.goto(
+            `/client/catalog/${draftPkg.package_id}`,
+            {
+                waitUntil: 'domcontentloaded',
+            },
+        );
         expect(draftRes?.status()).toBe(404);
 
-        const arsipRes = await page.goto(`/client/catalog/${arsipPkg.package_id}`, {
-            waitUntil: 'domcontentloaded',
-        });
+        const arsipRes = await page.goto(
+            `/client/catalog/${arsipPkg.package_id}`,
+            {
+                waitUntil: 'domcontentloaded',
+            },
+        );
         expect(arsipRes?.status()).toBe(404);
     });
 });

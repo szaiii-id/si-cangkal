@@ -13,7 +13,8 @@ vi.mock('@inertiajs/svelte', () => ({
 describe('LegalLayout Component', () => {
     // Helper untuk membuat snippet children
     const mockChildren = createRawSnippet(() => ({
-        render: () => '<p data-testid="mock-content">Isi Kebijakan Privasi...</p>',
+        render: () =>
+            '<p data-testid="mock-content">Isi Kebijakan Privasi...</p>',
     }));
 
     const defaultProps = {
@@ -29,7 +30,9 @@ describe('LegalLayout Component', () => {
         it('harus merender judul, last updated, dan children', () => {
             render(LegalLayout, { props: defaultProps });
 
-            expect(screen.getByRole('heading', { name: 'Kebijakan Privasi' })).toBeInTheDocument();
+            expect(
+                screen.getByRole('heading', { name: 'Kebijakan Privasi' }),
+            ).toBeInTheDocument();
             expect(screen.getByText(/16 Oktober 2026/)).toBeInTheDocument();
             expect(screen.getByTestId('mock-content')).toBeInTheDocument();
         });
@@ -53,19 +56,29 @@ describe('LegalLayout Component', () => {
         });
 
         it('harus menambahkan meta description', () => {
-            render(LegalLayout, { 
-                props: { ...defaultProps, description: 'Deskripsi Khusus' } 
+            render(LegalLayout, {
+                props: { ...defaultProps, description: 'Deskripsi Khusus' },
             });
 
-            const metaDescription = document.querySelector('meta[name="description"]');
-            expect(metaDescription).toHaveAttribute('content', 'Deskripsi Khusus');
+            const metaDescription = document.querySelector(
+                'meta[name="description"]',
+            );
+            expect(metaDescription).toHaveAttribute(
+                'content',
+                'Deskripsi Khusus',
+            );
         });
 
         it('harus menggunakan meta description default jika tidak diberikan', () => {
             render(LegalLayout, { props: defaultProps });
 
-            const metaDescription = document.querySelector('meta[name="description"]');
-            expect(metaDescription).toHaveAttribute('content', 'Dokumen hukum resmi SI-CANGKAL.');
+            const metaDescription = document.querySelector(
+                'meta[name="description"]',
+            );
+            expect(metaDescription).toHaveAttribute(
+                'content',
+                'Dokumen hukum resmi SI-CANGKAL.',
+            );
         });
     });
 

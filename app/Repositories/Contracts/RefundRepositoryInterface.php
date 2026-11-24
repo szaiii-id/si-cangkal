@@ -30,6 +30,14 @@ interface RefundRepositoryInterface
     public function findDetailById(int $id): ?Refund;
 
     /**
+     * Cari refund berdasarkan ID dengan row lock (SELECT ... FOR UPDATE).
+     *
+     * Dipakai saat approve/reject agar dua request bersamaan tidak
+     * memproses refund yang sama dua kali.
+     */
+    public function findByIdForUpdate(int $id): ?Refund;
+
+    /**
      * Hitung refund per status (untuk badge counter admin).
      *
      * @return array<string, int>

@@ -41,6 +41,15 @@ interface BookingRepositoryInterface
     public function findById(int $id): ?Booking;
 
     /**
+     * Cari booking berdasarkan ID dengan row lock (SELECT ... FOR UPDATE).
+     *
+     * Dipakai di dalam transaksi untuk mencegah double verifikasi
+     * pembayaran, double refund, dan auto-expire yang menimpa booking
+     * yang baru dibayar.
+     */
+    public function findByIdForUpdate(int $id): ?Booking;
+
+    /**
      * Cari booking berdasarkan kode (BKG-2026-001).
      */
     public function findByKode(string $kode): ?Booking;

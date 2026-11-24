@@ -31,16 +31,26 @@ import { SEED_USERS } from '../fixtures/auth';
 // ==========================================
 
 const LOGIN_LIMIT = Number(process.env.AUTH_THROTTLE_LOGIN_TEST_OVERRIDE ?? 0);
-const REGISTER_LIMIT = Number(process.env.AUTH_THROTTLE_REGISTER_TEST_OVERRIDE ?? 0);
-const FORGOT_LIMIT = Number(process.env.AUTH_THROTTLE_FORGOT_PASSWORD_TEST_OVERRIDE ?? 0);
-const RESET_LIMIT = Number(process.env.AUTH_THROTTLE_RESET_PASSWORD_TEST_OVERRIDE ?? 0);
+const REGISTER_LIMIT = Number(
+    process.env.AUTH_THROTTLE_REGISTER_TEST_OVERRIDE ?? 0,
+);
+const FORGOT_LIMIT = Number(
+    process.env.AUTH_THROTTLE_FORGOT_PASSWORD_TEST_OVERRIDE ?? 0,
+);
+const RESET_LIMIT = Number(
+    process.env.AUTH_THROTTLE_RESET_PASSWORD_TEST_OVERRIDE ?? 0,
+);
 
 const RATE_LIMIT_THRESHOLD = 100;
 const SHOULD_SKIP =
-    LOGIN_LIMIT === 0 || LOGIN_LIMIT >= RATE_LIMIT_THRESHOLD ||
-    REGISTER_LIMIT === 0 || REGISTER_LIMIT >= RATE_LIMIT_THRESHOLD ||
-    FORGOT_LIMIT === 0 || FORGOT_LIMIT >= RATE_LIMIT_THRESHOLD ||
-    RESET_LIMIT === 0 || RESET_LIMIT >= RATE_LIMIT_THRESHOLD;
+    LOGIN_LIMIT === 0 ||
+    LOGIN_LIMIT >= RATE_LIMIT_THRESHOLD ||
+    REGISTER_LIMIT === 0 ||
+    REGISTER_LIMIT >= RATE_LIMIT_THRESHOLD ||
+    FORGOT_LIMIT === 0 ||
+    FORGOT_LIMIT >= RATE_LIMIT_THRESHOLD ||
+    RESET_LIMIT === 0 ||
+    RESET_LIMIT >= RATE_LIMIT_THRESHOLD;
 
 const FAKE_TOKEN = 'token-palsu-tidak-valid-e2e';
 const VALID_PASSWORD = 'Password123!';
@@ -74,7 +84,9 @@ async function resetRateLimiter(
         });
 
         if (!response.ok()) {
-            throw new Error(`Gagal reset rate limiter: ${limiter} | ${normalized}|${ip}`);
+            throw new Error(
+                `Gagal reset rate limiter: ${limiter} | ${normalized}|${ip}`,
+            );
         }
     }
 }
@@ -263,7 +275,9 @@ test.describe.serial('Auth — Rate Limiting', () => {
             let lastResponse: Response | null = null;
 
             for (let i = 0; i < RESET_LIMIT + 1; i++) {
-                await SEL.AUTH.resetPassword.password(page).fill(VALID_PASSWORD);
+                await SEL.AUTH.resetPassword
+                    .password(page)
+                    .fill(VALID_PASSWORD);
                 await SEL.AUTH.resetPassword
                     .passwordConfirmation(page)
                     .fill(VALID_PASSWORD);

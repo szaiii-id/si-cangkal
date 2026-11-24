@@ -6,7 +6,10 @@ import type { UserRole } from '@/types';
 // ==========================================
 // MOCK CHILD COMPONENT (Mengarah ke file fisik)
 // ==========================================
-vi.mock('../UserAccountFields.svelte', () => import('../__mocks__/UserAccountFields.svelte'));
+vi.mock(
+    '../UserAccountFields.svelte',
+    () => import('../__mocks__/UserAccountFields.svelte'),
+);
 
 // ==========================================
 // MOCK DATA
@@ -32,15 +35,27 @@ describe('UserAccountForm Component', () => {
     describe('Rendering', () => {
         it('harus merender judul "Tambah Pengguna Baru" jika isEdit=false', () => {
             render(UserAccountForm, {
-                props: { form: createMockForm(), errors: {}, isEdit: false, onSubmit: vi.fn() },
+                props: {
+                    form: createMockForm(),
+                    errors: {},
+                    isEdit: false,
+                    onSubmit: vi.fn(),
+                },
             });
 
-            expect(screen.getByText('Tambah Pengguna Baru')).toBeInTheDocument();
+            expect(
+                screen.getByText('Tambah Pengguna Baru'),
+            ).toBeInTheDocument();
         });
 
         it('harus merender judul "Edit Pengguna" jika isEdit=true', () => {
             render(UserAccountForm, {
-                props: { form: createMockForm(), errors: {}, isEdit: true, onSubmit: vi.fn() },
+                props: {
+                    form: createMockForm(),
+                    errors: {},
+                    isEdit: true,
+                    onSubmit: vi.fn(),
+                },
             });
 
             expect(screen.getByText('Edit Pengguna')).toBeInTheDocument();
@@ -48,10 +63,16 @@ describe('UserAccountForm Component', () => {
 
         it('harus merender UserAccountFields (mock)', () => {
             render(UserAccountForm, {
-                props: { form: createMockForm(), errors: {}, onSubmit: vi.fn() },
+                props: {
+                    form: createMockForm(),
+                    errors: {},
+                    onSubmit: vi.fn(),
+                },
             });
 
-            expect(screen.getByTestId('user-account-fields')).toBeInTheDocument();
+            expect(
+                screen.getByTestId('user-account-fields'),
+            ).toBeInTheDocument();
         });
     });
 
@@ -61,7 +82,11 @@ describe('UserAccountForm Component', () => {
     describe('Role Selection', () => {
         it('harus merender dropdown role dengan opsi admin, mitra, client', () => {
             render(UserAccountForm, {
-                props: { form: createMockForm(), errors: {}, onSubmit: vi.fn() },
+                props: {
+                    form: createMockForm(),
+                    errors: {},
+                    onSubmit: vi.fn(),
+                },
             });
 
             const select = screen.getByLabelText(/Role/i) as HTMLSelectElement;
@@ -79,7 +104,12 @@ describe('UserAccountForm Component', () => {
     describe('Password Field', () => {
         it('harus menampilkan input password jika isEdit=false', () => {
             render(UserAccountForm, {
-                props: { form: createMockForm(), errors: {}, isEdit: false, onSubmit: vi.fn() },
+                props: {
+                    form: createMockForm(),
+                    errors: {},
+                    isEdit: false,
+                    onSubmit: vi.fn(),
+                },
             });
 
             expect(screen.getByLabelText(/Password/i)).toBeInTheDocument();
@@ -87,10 +117,17 @@ describe('UserAccountForm Component', () => {
 
         it('TIDAK boleh menampilkan input password jika isEdit=true', () => {
             render(UserAccountForm, {
-                props: { form: createMockForm(), errors: {}, isEdit: true, onSubmit: vi.fn() },
+                props: {
+                    form: createMockForm(),
+                    errors: {},
+                    isEdit: true,
+                    onSubmit: vi.fn(),
+                },
             });
 
-            expect(screen.queryByLabelText(/Password/i)).not.toBeInTheDocument();
+            expect(
+                screen.queryByLabelText(/Password/i),
+            ).not.toBeInTheDocument();
         });
     });
 
@@ -117,7 +154,12 @@ describe('UserAccountForm Component', () => {
     describe('Loading State', () => {
         it('harus menonaktifkan tombol dan menampilkan "Menyimpan..." saat processing=true', () => {
             render(UserAccountForm, {
-                props: { form: createMockForm(), errors: {}, processing: true, onSubmit: vi.fn() },
+                props: {
+                    form: createMockForm(),
+                    errors: {},
+                    processing: true,
+                    onSubmit: vi.fn(),
+                },
             });
 
             const btn = screen.getByRole('button');

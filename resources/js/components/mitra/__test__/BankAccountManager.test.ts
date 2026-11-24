@@ -5,9 +5,18 @@ import BankAccountManager from '../BankAccountManager.svelte';
 // ==========================================
 // MOCK CHILD COMPONENTS (Mengarah ke file fisik)
 // ==========================================
-vi.mock('../BankAccountDisplay.svelte', () => import('../__mocks__/BankAccountDisplay.svelte'));
-vi.mock('../ConfirmPasswordModal.svelte', () => import('../__mocks__/ConfirmPasswordModal.svelte'));
-vi.mock('../BankAccountFormModal.svelte', () => import('../__mocks__/BankAccountFormModal.svelte'));
+vi.mock(
+    '../BankAccountDisplay.svelte',
+    () => import('../__mocks__/BankAccountDisplay.svelte'),
+);
+vi.mock(
+    '../ConfirmPasswordModal.svelte',
+    () => import('../__mocks__/ConfirmPasswordModal.svelte'),
+);
+vi.mock(
+    '../BankAccountFormModal.svelte',
+    () => import('../__mocks__/BankAccountFormModal.svelte'),
+);
 
 // ==========================================
 // MOCK API & TOAST
@@ -37,12 +46,14 @@ describe('BankAccountManager Component', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
-        
+
         // PERBAIKAN: Mock implementation untuk memicu onSuccess dan onFinish
-        (updateBankAccounts as any).mockImplementation((_payload: any, options: any) => {
-            options.onSuccess?.();
-            options.onFinish?.();
-        });
+        (updateBankAccounts as any).mockImplementation(
+            (_payload: any, options: any) => {
+                options.onSuccess?.();
+                options.onFinish?.();
+            },
+        );
     });
 
     // ==========================================
@@ -50,8 +61,12 @@ describe('BankAccountManager Component', () => {
     // ==========================================
     describe('Rendering', () => {
         it('harus merender BankAccountDisplay', () => {
-            render(BankAccountManager, { props: { bankAccounts: mockAccounts } });
-            expect(screen.getByTestId('bank-account-display')).toBeInTheDocument();
+            render(BankAccountManager, {
+                props: { bankAccounts: mockAccounts },
+            });
+            expect(
+                screen.getByTestId('bank-account-display'),
+            ).toBeInTheDocument();
         });
     });
 
@@ -60,21 +75,29 @@ describe('BankAccountManager Component', () => {
     // ==========================================
     describe('Password Flow', () => {
         it('harus membuka modal password saat tombol Edit diklik', async () => {
-            render(BankAccountManager, { props: { bankAccounts: mockAccounts } });
-            
+            render(BankAccountManager, {
+                props: { bankAccounts: mockAccounts },
+            });
+
             const editBtn = screen.getByTestId('edit-btn');
             await fireEvent.click(editBtn);
 
-            expect(screen.getByTestId('confirm-password-modal')).toBeInTheDocument();
+            expect(
+                screen.getByTestId('confirm-password-modal'),
+            ).toBeInTheDocument();
         });
 
         it('harus membuka modal form setelah password dikonfirmasi', async () => {
-            render(BankAccountManager, { props: { bankAccounts: mockAccounts } });
-            
+            render(BankAccountManager, {
+                props: { bankAccounts: mockAccounts },
+            });
+
             await fireEvent.click(screen.getByTestId('edit-btn'));
             await fireEvent.click(screen.getByTestId('confirm-btn'));
 
-            expect(screen.getByTestId('bank-account-form-modal')).toBeInTheDocument();
+            expect(
+                screen.getByTestId('bank-account-form-modal'),
+            ).toBeInTheDocument();
         });
     });
 
@@ -83,7 +106,9 @@ describe('BankAccountManager Component', () => {
     // ==========================================
     describe('Save Changes', () => {
         it('harus memanggil updateBankAccounts dan showToast success saat simpan', async () => {
-            render(BankAccountManager, { props: { bankAccounts: mockAccounts } });
+            render(BankAccountManager, {
+                props: { bankAccounts: mockAccounts },
+            });
 
             // Simulasi alur: buka password modal, konfirmasi, lalu simpan
             await fireEvent.click(screen.getByTestId('edit-btn'));
@@ -91,7 +116,10 @@ describe('BankAccountManager Component', () => {
             await fireEvent.click(screen.getByTestId('save-btn'));
 
             expect(updateBankAccounts).toHaveBeenCalledTimes(1);
-            expect(showToast).toHaveBeenCalledWith('Data rekening berhasil diperbarui.', 'success');
+            expect(showToast).toHaveBeenCalledWith(
+                'Data rekening berhasil diperbarui.',
+                'success',
+            );
         });
     });
 });

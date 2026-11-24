@@ -1,12 +1,17 @@
 import { render, screen } from '@testing-library/svelte';
 import { describe, it, expect } from 'vitest';
 import ParticipantList from '../ParticipantList.svelte';
-import type { BookingParticipant, BookingParticipantResource } from '@/types/models';
+import type {
+    BookingParticipant,
+    BookingParticipantResource,
+} from '@/types/models';
 
 // ==========================================
 // MOCK DATA
 // ==========================================
-const createMockParticipant = (overrides: Partial<BookingParticipant> = {}): BookingParticipant => ({
+const createMockParticipant = (
+    overrides: Partial<BookingParticipant> = {},
+): BookingParticipant => ({
     id: 1,
     booking_id: 1,
     nama: 'Budi',
@@ -16,7 +21,9 @@ const createMockParticipant = (overrides: Partial<BookingParticipant> = {}): Boo
     ...overrides,
 });
 
-const createMockParticipantResource = (overrides: Partial<BookingParticipantResource> = {}): BookingParticipantResource => ({
+const createMockParticipantResource = (
+    overrides: Partial<BookingParticipantResource> = {},
+): BookingParticipantResource => ({
     id: 1,
     nama: 'Budi',
     umur: 25,
@@ -34,12 +41,14 @@ describe('ParticipantList Component', () => {
     describe('Empty State', () => {
         it('harus menampilkan pesan default jika participants kosong', () => {
             render(ParticipantList, { props: { participants: [] } });
-            expect(screen.getByText('Belum ada data peserta.')).toBeInTheDocument();
+            expect(
+                screen.getByText('Belum ada data peserta.'),
+            ).toBeInTheDocument();
         });
 
         it('harus menampilkan pesan kustom jika emptyMessage diberikan', () => {
-            render(ParticipantList, { 
-                props: { participants: [], emptyMessage: 'Tidak ada peserta.' } 
+            render(ParticipantList, {
+                props: { participants: [], emptyMessage: 'Tidak ada peserta.' },
             });
             expect(screen.getByText('Tidak ada peserta.')).toBeInTheDocument();
         });
@@ -59,7 +68,9 @@ describe('ParticipantList Component', () => {
         });
 
         it('harus menampilkan catatan jika ada', () => {
-            const participants = [createMockParticipant({ catatan: 'Alergi seafood' })];
+            const participants = [
+                createMockParticipant({ catatan: 'Alergi seafood' }),
+            ];
             render(ParticipantList, { props: { participants } });
 
             expect(screen.getByText('Alergi seafood')).toBeInTheDocument();
@@ -71,17 +82,21 @@ describe('ParticipantList Component', () => {
     // ==========================================
     describe('Displaying Participants (Resource)', () => {
         it('harus menampilkan umurLabel dari resource jika ada', () => {
-            const participants = [createMockParticipantResource({ umurLabel: 'Dewasa (25 th)' })];
+            const participants = [
+                createMockParticipantResource({ umurLabel: 'Dewasa (25 th)' }),
+            ];
             render(ParticipantList, { props: { participants } });
 
             expect(screen.getByText('Dewasa (25 th)')).toBeInTheDocument();
         });
 
         it('harus menampilkan catatan jika has_catatan=true', () => {
-            const participants = [createMockParticipantResource({ 
-                catatan: 'Butuh kursi roda', 
-                has_catatan: true 
-            })];
+            const participants = [
+                createMockParticipantResource({
+                    catatan: 'Butuh kursi roda',
+                    has_catatan: true,
+                }),
+            ];
             render(ParticipantList, { props: { participants } });
 
             expect(screen.getByText('Butuh kursi roda')).toBeInTheDocument();
@@ -93,10 +108,16 @@ describe('ParticipantList Component', () => {
     // ==========================================
     describe('Conditional Catatan', () => {
         it('TIDAK boleh menampilkan catatan jika showCatatan=false', () => {
-            const participants = [createMockParticipant({ catatan: 'Alergi seafood' })];
-            render(ParticipantList, { props: { participants, showCatatan: false } });
+            const participants = [
+                createMockParticipant({ catatan: 'Alergi seafood' }),
+            ];
+            render(ParticipantList, {
+                props: { participants, showCatatan: false },
+            });
 
-            expect(screen.queryByText('Alergi seafood')).not.toBeInTheDocument();
+            expect(
+                screen.queryByText('Alergi seafood'),
+            ).not.toBeInTheDocument();
         });
     });
 
@@ -106,7 +127,7 @@ describe('ParticipantList Component', () => {
     describe('Accessibility', () => {
         it('pesan kosong harus memiliki role="status"', () => {
             render(ParticipantList, { props: { participants: [] } });
-            
+
             const emptyMessage = screen.getByRole('status');
             expect(emptyMessage).toHaveTextContent('Belum ada data peserta.');
         });
@@ -116,7 +137,9 @@ describe('ParticipantList Component', () => {
             render(ParticipantList, { props: { participants } });
 
             // Cari elemen dengan aria-hidden="true"
-            const { container } = render(ParticipantList, { props: { participants } });
+            const { container } = render(ParticipantList, {
+                props: { participants },
+            });
             const numberBadge = container.querySelector('[aria-hidden="true"]');
             expect(numberBadge).toBeInTheDocument();
             expect(numberBadge).toHaveTextContent('1');

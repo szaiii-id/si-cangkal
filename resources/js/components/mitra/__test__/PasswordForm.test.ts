@@ -28,11 +28,17 @@ describe('PasswordForm Component', () => {
             render(PasswordForm);
 
             expect(screen.getByText('Form Ganti Password')).toBeInTheDocument();
-            
+
             // PERBAIKAN: Gunakan placeholder yang unik
-            expect(screen.getByPlaceholderText('Masukkan password lama Anda')).toBeInTheDocument();
-            expect(screen.getByPlaceholderText('Minimal 8 karakter')).toBeInTheDocument();
-            expect(screen.getByPlaceholderText('Ulangi password baru Anda')).toBeInTheDocument();
+            expect(
+                screen.getByPlaceholderText('Masukkan password lama Anda'),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByPlaceholderText('Minimal 8 karakter'),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByPlaceholderText('Ulangi password baru Anda'),
+            ).toBeInTheDocument();
         });
     });
 
@@ -42,9 +48,10 @@ describe('PasswordForm Component', () => {
     describe('Password Validation', () => {
         it('harus menampilkan kriteria jika password diisi', async () => {
             render(PasswordForm);
-            
+
             // PERBAIKAN: Gunakan placeholder
-            const passwordInput = screen.getByPlaceholderText('Minimal 8 karakter');
+            const passwordInput =
+                screen.getByPlaceholderText('Minimal 8 karakter');
             await fireEvent.input(passwordInput, { target: { value: 'abc' } });
 
             expect(screen.getByText('Min. 8 karakter')).toBeInTheDocument();
@@ -55,26 +62,42 @@ describe('PasswordForm Component', () => {
 
         it('harus menampilkan error jika konfirmasi password tidak cocok', async () => {
             render(PasswordForm);
-            
-            const passwordInput = screen.getByPlaceholderText('Minimal 8 karakter');
-            await fireEvent.input(passwordInput, { target: { value: 'password123' } });
 
-            const confirmInput = screen.getByPlaceholderText('Ulangi password baru Anda');
-            await fireEvent.input(confirmInput, { target: { value: 'password456' } });
+            const passwordInput =
+                screen.getByPlaceholderText('Minimal 8 karakter');
+            await fireEvent.input(passwordInput, {
+                target: { value: 'password123' },
+            });
+
+            const confirmInput = screen.getByPlaceholderText(
+                'Ulangi password baru Anda',
+            );
+            await fireEvent.input(confirmInput, {
+                target: { value: 'password456' },
+            });
 
             await waitFor(() => {
-                expect(screen.getByText('Konfirmasi password tidak cocok.')).toBeInTheDocument();
+                expect(
+                    screen.getByText('Konfirmasi password tidak cocok.'),
+                ).toBeInTheDocument();
             });
         });
 
         it('tombol submit harus disabled jika password tidak cocok', async () => {
             render(PasswordForm);
-            
-            const passwordInput = screen.getByPlaceholderText('Minimal 8 karakter');
-            await fireEvent.input(passwordInput, { target: { value: 'password123' } });
 
-            const confirmInput = screen.getByPlaceholderText('Ulangi password baru Anda');
-            await fireEvent.input(confirmInput, { target: { value: 'password456' } });
+            const passwordInput =
+                screen.getByPlaceholderText('Minimal 8 karakter');
+            await fireEvent.input(passwordInput, {
+                target: { value: 'password123' },
+            });
+
+            const confirmInput = screen.getByPlaceholderText(
+                'Ulangi password baru Anda',
+            );
+            await fireEvent.input(confirmInput, {
+                target: { value: 'password456' },
+            });
 
             const submitBtn = screen.getByText('Simpan Password Baru');
             expect(submitBtn).toBeDisabled();
@@ -87,15 +110,24 @@ describe('PasswordForm Component', () => {
     describe('Form Submission', () => {
         it('harus memanggil updatePassword saat form disubmit', async () => {
             render(PasswordForm);
-            
-            const oldInput = screen.getByPlaceholderText('Masukkan password lama Anda');
+
+            const oldInput = screen.getByPlaceholderText(
+                'Masukkan password lama Anda',
+            );
             await fireEvent.input(oldInput, { target: { value: 'oldpass' } });
 
-            const passwordInput = screen.getByPlaceholderText('Minimal 8 karakter');
-            await fireEvent.input(passwordInput, { target: { value: 'newpassword123!' } });
+            const passwordInput =
+                screen.getByPlaceholderText('Minimal 8 karakter');
+            await fireEvent.input(passwordInput, {
+                target: { value: 'newpassword123!' },
+            });
 
-            const confirmInput = screen.getByPlaceholderText('Ulangi password baru Anda');
-            await fireEvent.input(confirmInput, { target: { value: 'newpassword123!' } });
+            const confirmInput = screen.getByPlaceholderText(
+                'Ulangi password baru Anda',
+            );
+            await fireEvent.input(confirmInput, {
+                target: { value: 'newpassword123!' },
+            });
 
             const form = document.querySelector('form');
             await fireEvent.submit(form!);
@@ -106,7 +138,7 @@ describe('PasswordForm Component', () => {
                     password: 'newpassword123!',
                     password_confirmation: 'newpassword123!',
                 },
-                expect.any(Object)
+                expect.any(Object),
             );
         });
     });
@@ -117,7 +149,7 @@ describe('PasswordForm Component', () => {
     describe('Accessibility', () => {
         it('ikon SVG dekoratif harus disembunyikan dari screen reader', () => {
             const { container } = render(PasswordForm);
-            
+
             const svgs = container.querySelectorAll('svg');
             svgs.forEach((svg) => {
                 expect(svg).toHaveAttribute('aria-hidden', 'true');

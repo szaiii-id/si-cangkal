@@ -44,11 +44,15 @@ vi.mock('@/utils/enums', () => ({
 // 3. MOCK — FORMAT HELPERS
 // ============================================================
 vi.mock('@/utils/formatCurrency', () => ({
-    formatCurrency: vi.fn((v: string | number) => `Rp ${Number(v).toLocaleString('id-ID')}`),
+    formatCurrency: vi.fn(
+        (v: string | number) => `Rp ${Number(v).toLocaleString('id-ID')}`,
+    ),
 }));
 
 vi.mock('@/utils/duration', () => ({
-    formatDurasi: vi.fn((hari: number, malam: number) => `${hari}H / ${malam}M`),
+    formatDurasi: vi.fn(
+        (hari: number, malam: number) => `${hari}H / ${malam}M`,
+    ),
 }));
 
 vi.mock('@/utils/timezone', () => ({
@@ -105,8 +109,24 @@ const makePackage = (overrides: Record<string, unknown> = {}) =>
             },
         },
         days: [
-            { id: 1, hari_ke: 1, judul: 'Kedatangan', deskripsi: 'Arrive', jam_mulai: '08:00:00', jam_selesai: '12:00:00', lokasi: 'Bandara' },
-            { id: 2, hari_ke: 2, judul: 'Explore', deskripsi: 'Tour', jam_mulai: null, jam_selesai: null, lokasi: null },
+            {
+                id: 1,
+                hari_ke: 1,
+                judul: 'Kedatangan',
+                deskripsi: 'Arrive',
+                jam_mulai: '08:00:00',
+                jam_selesai: '12:00:00',
+                lokasi: 'Bandara',
+            },
+            {
+                id: 2,
+                hari_ke: 2,
+                judul: 'Explore',
+                deskripsi: 'Tour',
+                jam_mulai: null,
+                jam_selesai: null,
+                lokasi: null,
+            },
         ],
         facilities: [
             { id: 1, tipe: 'include', nama: 'Hotel' },
@@ -149,13 +169,17 @@ describe('Client Catalog — Show Page', () => {
             renderPage();
 
             // Scope ke header info, bukan card lain
-            const header = screen.getByRole('heading', { level: 1, name: 'Paket Bali' }).closest('div');
+            const header = screen
+                .getByRole('heading', { level: 1, name: 'Paket Bali' })
+                .closest('div');
             expect(within(header!).getByText('Alam')).toBeInTheDocument();
         });
 
         it('menampilkan judul paket sebagai h1', () => {
             renderPage();
-            expect(screen.getByRole('heading', { level: 1, name: 'Paket Bali' })).toBeInTheDocument();
+            expect(
+                screen.getByRole('heading', { level: 1, name: 'Paket Bali' }),
+            ).toBeInTheDocument();
         });
     });
 
@@ -191,7 +215,9 @@ describe('Client Catalog — Show Page', () => {
     describe('Rendering — Deskripsi', () => {
         it('menampilkan deskripsi saat ada', () => {
             renderPage();
-            expect(screen.getByText('Liburan seru di Bali')).toBeInTheDocument();
+            expect(
+                screen.getByText('Liburan seru di Bali'),
+            ).toBeInTheDocument();
         });
 
         it('TIDAK merender section deskripsi saat null', () => {
@@ -224,7 +250,9 @@ describe('Client Catalog — Show Page', () => {
 
         it('menampilkan placeholder saat itinerary kosong', () => {
             renderPage(makePackage({ days: [] }));
-            expect(screen.getByText('Rencana perjalanan belum tersedia.')).toBeInTheDocument();
+            expect(
+                screen.getByText('Rencana perjalanan belum tersedia.'),
+            ).toBeInTheDocument();
         });
     });
 
@@ -244,11 +272,15 @@ describe('Client Catalog — Show Page', () => {
         });
 
         it('menampilkan placeholder jika include kosong', () => {
-            renderPage(makePackage({
-                facilities: [{ id: 1, tipe: 'exclude', nama: 'Tiket' }],
-            }));
+            renderPage(
+                makePackage({
+                    facilities: [{ id: 1, tipe: 'exclude', nama: 'Tiket' }],
+                }),
+            );
             // "Belum ada info" muncul di include
-            expect(screen.getAllByText('Belum ada info.').length).toBeGreaterThanOrEqual(1);
+            expect(
+                screen.getAllByText('Belum ada info.').length,
+            ).toBeGreaterThanOrEqual(1);
         });
     });
 
@@ -267,15 +299,19 @@ describe('Client Catalog — Show Page', () => {
         });
 
         it('fallback ke nama mitra saat profile null', () => {
-            renderPage(makePackage({
-                mitra: { id: 1, name: 'Mitra Name Only', profile: null },
-            }));
+            renderPage(
+                makePackage({
+                    mitra: { id: 1, name: 'Mitra Name Only', profile: null },
+                }),
+            );
             expect(screen.getByText('Mitra Name Only')).toBeInTheDocument();
         });
 
         it('TIDAK render card mitra saat mitra null', () => {
             renderPage(makePackage({ mitra: null }));
-            expect(screen.queryByText('Diselenggarakan oleh')).not.toBeInTheDocument();
+            expect(
+                screen.queryByText('Diselenggarakan oleh'),
+            ).not.toBeInTheDocument();
         });
     });
 
@@ -286,29 +322,55 @@ describe('Client Catalog — Show Page', () => {
         it('merender WA link saat telepon ada', () => {
             renderPage();
 
-            const waLink = screen.getByRole('link', { name: /Hubungi via WA/i });
-            expect(waLink).toHaveAttribute('href', expect.stringContaining('https://wa.me/6281234567890'));
+            const waLink = screen.getByRole('link', {
+                name: /Hubungi via WA/i,
+            });
+            expect(waLink).toHaveAttribute(
+                'href',
+                expect.stringContaining('https://wa.me/6281234567890'),
+            );
         });
 
         it('WhatsApp URL mengandung text prefilled', () => {
             renderPage();
 
-            const waLink = screen.getByRole('link', { name: /Hubungi via WA/i });
+            const waLink = screen.getByRole('link', {
+                name: /Hubungi via WA/i,
+            });
             expect(waLink.getAttribute('href')).toContain('text=');
-            expect(decodeURIComponent(waLink.getAttribute('href')!)).toContain('Paket Bali');
+            expect(decodeURIComponent(waLink.getAttribute('href')!)).toContain(
+                'Paket Bali',
+            );
         });
 
         it('TIDAK render WA link saat telepon null', () => {
-            renderPage(makePackage({
-                mitra: { id: 1, name: 'X', profile: { nama_penyedia_usaha: 'Y', telepon: null, kota: 'Z', provinsi: 'W' } },
-            }));
-            expect(screen.queryByRole('link', { name: /Hubungi via WA/i })).not.toBeInTheDocument();
+            renderPage(
+                makePackage({
+                    mitra: {
+                        id: 1,
+                        name: 'X',
+                        profile: {
+                            nama_penyedia_usaha: 'Y',
+                            telepon: null,
+                            kota: 'Z',
+                            provinsi: 'W',
+                        },
+                    },
+                }),
+            );
+            expect(
+                screen.queryByRole('link', { name: /Hubungi via WA/i }),
+            ).not.toBeInTheDocument();
         });
 
         it('konversi 08xxx → 628xxx', () => {
             renderPage();
-            const waLink = screen.getByRole('link', { name: /Hubungi via WA/i });
-            expect(waLink.getAttribute('href')).toContain('wa.me/6281234567890');
+            const waLink = screen.getByRole('link', {
+                name: /Hubungi via WA/i,
+            });
+            expect(waLink.getAttribute('href')).toContain(
+                'wa.me/6281234567890',
+            );
         });
     });
 
@@ -335,14 +397,21 @@ describe('Client Catalog — Show Page', () => {
     describe('Interaction — Links', () => {
         it('link "Kembali ke Katalog" ke /client/catalog', () => {
             renderPage();
-            const backLink = screen.getByRole('link', { name: /Kembali ke Katalog/i });
+            const backLink = screen.getByRole('link', {
+                name: /Kembali ke Katalog/i,
+            });
             expect(backLink).toHaveAttribute('href', '/client/catalog');
         });
 
         it('link "Booking Sekarang" ke /client/bookings/create/:id', () => {
             renderPage();
-            const bookingLink = screen.getByRole('link', { name: /Booking Sekarang/i });
-            expect(bookingLink).toHaveAttribute('href', '/client/bookings/create/1');
+            const bookingLink = screen.getByRole('link', {
+                name: /Booking Sekarang/i,
+            });
+            expect(bookingLink).toHaveAttribute(
+                'href',
+                '/client/bookings/create/1',
+            );
         });
     });
 });

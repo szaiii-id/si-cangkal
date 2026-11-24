@@ -5,8 +5,14 @@ import BookingFilterBar from '../BookingFilterBar.svelte';
 // ==========================================
 // MOCK CHILD COMPONENTS (Mengarah ke file fisik)
 // ==========================================
-vi.mock('@/global/SearchInput.svelte', () => import('@/global/__mocks__/SearchInput.svelte'));
-vi.mock('@/global/StatusTabs.svelte', () => import('@/global/__mocks__/StatusTabs.svelte'));
+vi.mock(
+    '@/global/SearchInput.svelte',
+    () => import('@/global/__mocks__/SearchInput.svelte'),
+);
+vi.mock(
+    '@/global/StatusTabs.svelte',
+    () => import('@/global/__mocks__/StatusTabs.svelte'),
+);
 
 describe('BookingFilterBar Component', () => {
     const defaultProps = {
@@ -45,8 +51,12 @@ describe('BookingFilterBar Component', () => {
         });
 
         it('TIDAK boleh merender tombol "Filter Tanggal" jika showDateRange=false', () => {
-            render(BookingFilterBar, { props: { ...defaultProps, showDateRange: false } });
-            expect(screen.queryByText('Filter Tanggal')).not.toBeInTheDocument();
+            render(BookingFilterBar, {
+                props: { ...defaultProps, showDateRange: false },
+            });
+            expect(
+                screen.queryByText('Filter Tanggal'),
+            ).not.toBeInTheDocument();
         });
     });
 
@@ -65,8 +75,8 @@ describe('BookingFilterBar Component', () => {
         });
 
         it('harus menampilkan indikator "!" jika ada tanggal yang dipilih', () => {
-            render(BookingFilterBar, { 
-                props: { ...defaultProps, dateFrom: '2026-10-01' } 
+            render(BookingFilterBar, {
+                props: { ...defaultProps, dateFrom: '2026-10-01' },
             });
 
             const indicator = screen.getByText('!');
@@ -80,8 +90,8 @@ describe('BookingFilterBar Component', () => {
     describe('Clear Filters', () => {
         it('harus memanggil onClearAll saat tombol "Hapus Semua Filter" diklik', async () => {
             const onClearAll = vi.fn();
-            render(BookingFilterBar, { 
-                props: { ...defaultProps, hasActiveFilters: true, onClearAll } 
+            render(BookingFilterBar, {
+                props: { ...defaultProps, hasActiveFilters: true, onClearAll },
             });
 
             const clearBtn = screen.getByLabelText('Hapus semua filter');
@@ -91,8 +101,12 @@ describe('BookingFilterBar Component', () => {
         });
 
         it('TIDAK boleh merender tombol "Hapus Semua Filter" jika hasActiveFilters=false', () => {
-            render(BookingFilterBar, { props: { ...defaultProps, hasActiveFilters: false } });
-            expect(screen.queryByText('Hapus Semua Filter')).not.toBeInTheDocument();
+            render(BookingFilterBar, {
+                props: { ...defaultProps, hasActiveFilters: false },
+            });
+            expect(
+                screen.queryByText('Hapus Semua Filter'),
+            ).not.toBeInTheDocument();
         });
     });
 
@@ -102,14 +116,18 @@ describe('BookingFilterBar Component', () => {
     describe('Accessibility', () => {
         it('tombol "Filter Tanggal" harus memiliki aria-expanded', () => {
             render(BookingFilterBar, { props: defaultProps });
-            
-            const filterBtn = screen.getByText('Filter Tanggal').closest('button');
+
+            const filterBtn = screen
+                .getByText('Filter Tanggal')
+                .closest('button');
             expect(filterBtn).toHaveAttribute('aria-expanded', 'false');
         });
 
         it('ikon SVG harus disembunyikan dari screen reader', () => {
-            const { container } = render(BookingFilterBar, { props: defaultProps });
-            
+            const { container } = render(BookingFilterBar, {
+                props: defaultProps,
+            });
+
             const svgs = container.querySelectorAll('svg');
             svgs.forEach((svg) => {
                 expect(svg).toHaveAttribute('aria-hidden', 'true');

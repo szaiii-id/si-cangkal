@@ -17,12 +17,13 @@ function syncViewerTimezoneCookie(): void {
         if (existing === encoded) return;
         const maxAge = 60 * 60 * 24 * 365;
         const secure = window.location.protocol === 'https:' ? '; Secure' : '';
-        document.cookie = [
-            `${VIEWER_TZ_COOKIE}=${encoded}`,
-            `max-age=${maxAge}`,
-            'path=/',
-            'SameSite=Lax',
-        ].join('; ') + secure;
+        document.cookie =
+            [
+                `${VIEWER_TZ_COOKIE}=${encoded}`,
+                `max-age=${maxAge}`,
+                'path=/',
+                'SameSite=Lax',
+            ].join('; ') + secure;
     } catch {}
 }
 
@@ -45,12 +46,17 @@ function setupGlobalErrorHandler(): void {
 
         // Jika Rate Limit (429)
         if (status === 429) {
-            let message = 'Terlalu banyak percobaan. Silakan tunggu beberapa saat.';
-            
+            let message =
+                'Terlalu banyak percobaan. Silakan tunggu beberapa saat.';
+
             // Jika response JSON memiliki pesan/errors (sesuai ValidationException 429 kita)
             if (event.detail.response.data?.errors) {
-                const firstErrorKey = Object.keys(event.detail.response.data.errors)[0];
-                message = event.detail.response.data.errors[firstErrorKey][0] || message;
+                const firstErrorKey = Object.keys(
+                    event.detail.response.data.errors,
+                )[0];
+                message =
+                    event.detail.response.data.errors[firstErrorKey][0] ||
+                    message;
             } else if (event.detail.response.data?.message) {
                 message = event.detail.response.data.message;
             }
@@ -72,7 +78,10 @@ function setupForegroundFcmHandler(): void {
     });
 }
 
-function showGlobalAlert(message: string, variant: 'warning' | 'error' | 'success' | 'info' = 'warning'): void {
+function showGlobalAlert(
+    message: string,
+    variant: 'warning' | 'error' | 'success' | 'info' = 'warning',
+): void {
     showToast(message, variant);
 }
 

@@ -30,8 +30,9 @@ vi.mock('@/api/auth', () => ({
 // ==========================================
 // MOCK CHILD COMPONENT (Mengarah ke file fisik)
 // ==========================================
-vi.mock('@/components/ui/PasswordChecklist.svelte', () => 
-    import('@/components/ui/__mocks__/PasswordChecklist.svelte')
+vi.mock(
+    '@/components/ui/PasswordChecklist.svelte',
+    () => import('@/components/ui/__mocks__/PasswordChecklist.svelte'),
 );
 
 import { register } from '@/api/auth';
@@ -69,20 +70,36 @@ describe('Register Page', () => {
         it('harus merender seluruh field form, tombol disabled di awal, dan tautan navigasi', () => {
             render(Register);
 
-            expect(screen.getByRole('heading', { name: /Daftar Akun/i })).toBeInTheDocument();
+            expect(
+                screen.getByRole('heading', { name: /Daftar Akun/i }),
+            ).toBeInTheDocument();
             expect(screen.getByLabelText('Nama Lengkap')).toBeInTheDocument();
             expect(screen.getByLabelText('Username')).toBeInTheDocument();
             expect(screen.getByLabelText('Email')).toBeInTheDocument();
             expect(screen.getByLabelText('Password')).toBeInTheDocument();
-            expect(screen.getByLabelText('Konfirmasi Password')).toBeInTheDocument();
-            expect(screen.getByLabelText(/Saya telah membaca dan menyetujui/i)).not.toBeChecked();
+            expect(
+                screen.getByLabelText('Konfirmasi Password'),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByLabelText(/Saya telah membaca dan menyetujui/i),
+            ).not.toBeChecked();
 
-            expect(screen.getByRole('button', { name: /Buat Akun/i })).toBeDisabled();
+            expect(
+                screen.getByRole('button', { name: /Buat Akun/i }),
+            ).toBeDisabled();
 
-            expect(screen.getByRole('link', { name: /Syarat & Ketentuan/i })).toHaveAttribute('href', '/legal/terms');
-            expect(screen.getByRole('link', { name: /Kebijakan Privasi/i })).toHaveAttribute('href', '/legal/privacy');
-            expect(screen.getByRole('link', { name: /Masuk sekarang/i })).toHaveAttribute('href', '/login');
-            expect(screen.getByRole('link', { name: /Google/i })).toHaveAttribute('href', '/auth/google');
+            expect(
+                screen.getByRole('link', { name: /Syarat & Ketentuan/i }),
+            ).toHaveAttribute('href', '/legal/terms');
+            expect(
+                screen.getByRole('link', { name: /Kebijakan Privasi/i }),
+            ).toHaveAttribute('href', '/legal/privacy');
+            expect(
+                screen.getByRole('link', { name: /Masuk sekarang/i }),
+            ).toHaveAttribute('href', '/login');
+            expect(
+                screen.getByRole('link', { name: /Google/i }),
+            ).toHaveAttribute('href', '/auth/google');
         });
     });
 
@@ -90,13 +107,17 @@ describe('Register Page', () => {
         it('harus menampilkan PasswordChecklist saat password mulai diisi', async () => {
             render(Register);
 
-            expect(screen.queryByTestId('password-checklist')).not.toBeInTheDocument();
+            expect(
+                screen.queryByTestId('password-checklist'),
+            ).not.toBeInTheDocument();
 
             await fireEvent.input(screen.getByLabelText('Password'), {
                 target: { value: 'Pass' },
             });
 
-            expect(screen.getByTestId('password-checklist')).toBeInTheDocument();
+            expect(
+                screen.getByTestId('password-checklist'),
+            ).toBeInTheDocument();
         });
 
         it('harus menampilkan error dan mengunci tombol jika konfirmasi password tidak cocok', async () => {
@@ -105,13 +126,22 @@ describe('Register Page', () => {
             await fireEvent.input(screen.getByLabelText('Password'), {
                 target: { value: 'Password123!' },
             });
-            await fireEvent.input(screen.getByLabelText('Konfirmasi Password'), {
-                target: { value: 'Berbeda123!' },
-            });
-            await fireEvent.click(screen.getByLabelText(/Saya telah membaca dan menyetujui/i));
+            await fireEvent.input(
+                screen.getByLabelText('Konfirmasi Password'),
+                {
+                    target: { value: 'Berbeda123!' },
+                },
+            );
+            await fireEvent.click(
+                screen.getByLabelText(/Saya telah membaca dan menyetujui/i),
+            );
 
-            expect(screen.getByRole('alert')).toHaveTextContent('Konfirmasi password tidak cocok.');
-            expect(screen.getByRole('button', { name: /Buat Akun/i })).toBeDisabled();
+            expect(screen.getByRole('alert')).toHaveTextContent(
+                'Konfirmasi password tidak cocok.',
+            );
+            expect(
+                screen.getByRole('button', { name: /Buat Akun/i }),
+            ).toBeDisabled();
         });
 
         it('harus menampilkan error dan tidak memanggil register jika form disubmit tanpa menyetujui syarat', async () => {
@@ -120,7 +150,9 @@ describe('Register Page', () => {
 
             await fireEvent.submit(document.querySelector('form')!);
 
-            expect(screen.getByRole('alert')).toHaveTextContent('Anda harus menyetujui Syarat & Ketentuan.');
+            expect(screen.getByRole('alert')).toHaveTextContent(
+                'Anda harus menyetujui Syarat & Ketentuan.',
+            );
             expect(register).not.toHaveBeenCalled();
         });
     });
@@ -130,10 +162,14 @@ describe('Register Page', () => {
             render(Register);
             await fillValidForm();
 
-            const consentCheckbox = screen.getByLabelText(/Saya telah membaca dan menyetujui/i);
+            const consentCheckbox = screen.getByLabelText(
+                /Saya telah membaca dan menyetujui/i,
+            );
             await fireEvent.click(consentCheckbox);
 
-            const submitBtn = screen.getByRole('button', { name: /Buat Akun/i });
+            const submitBtn = screen.getByRole('button', {
+                name: /Buat Akun/i,
+            });
             expect(submitBtn).toBeEnabled();
 
             await fireEvent.submit(document.querySelector('form')!);
@@ -154,20 +190,32 @@ describe('Register Page', () => {
         it('harus toggle visibilitas password dan konfirmasi password secara independen', async () => {
             render(Register);
 
-            const passwordInput = screen.getByLabelText('Password') as HTMLInputElement;
-            const confirmInput = screen.getByLabelText('Konfirmasi Password') as HTMLInputElement;
+            const passwordInput = screen.getByLabelText(
+                'Password',
+            ) as HTMLInputElement;
+            const confirmInput = screen.getByLabelText(
+                'Konfirmasi Password',
+            ) as HTMLInputElement;
 
             expect(passwordInput.type).toBe('password');
             expect(confirmInput.type).toBe('password');
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Tampilkan password' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Tampilkan password' }),
+            );
             expect(passwordInput.type).toBe('text');
             expect(confirmInput.type).toBe('password');
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Tampilkan konfirmasi password' }));
+            await fireEvent.click(
+                screen.getByRole('button', {
+                    name: 'Tampilkan konfirmasi password',
+                }),
+            );
             expect(confirmInput.type).toBe('text');
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Sembunyikan password' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Sembunyikan password' }),
+            );
             expect(passwordInput.type).toBe('password');
         });
     });
@@ -178,10 +226,14 @@ describe('Register Page', () => {
 
             render(Register);
             await fillValidForm();
-            await fireEvent.click(screen.getByLabelText(/Saya telah membaca dan menyetujui/i));
+            await fireEvent.click(
+                screen.getByLabelText(/Saya telah membaca dan menyetujui/i),
+            );
             await fireEvent.submit(document.querySelector('form')!);
 
-            expect(screen.getByRole('button', { name: /Memproses/i })).toBeDisabled();
+            expect(
+                screen.getByRole('button', { name: /Memproses/i }),
+            ).toBeDisabled();
         });
 
         it('harus menampilkan error validasi dari backend untuk setiap field', async () => {
@@ -198,7 +250,9 @@ describe('Register Page', () => {
 
             render(Register);
             await fillValidForm();
-            await fireEvent.click(screen.getByLabelText(/Saya telah membaca dan menyetujui/i));
+            await fireEvent.click(
+                screen.getByLabelText(/Saya telah membaca dan menyetujui/i),
+            );
             await fireEvent.submit(document.querySelector('form')!);
 
             const alerts = screen.getAllByRole('alert');
@@ -211,10 +265,15 @@ describe('Register Page', () => {
         });
 
         it('harus menampilkan flash error global', () => {
-            mockPage.props.flash = { error: 'Registrasi sedang ditutup', retry_after: null };
+            mockPage.props.flash = {
+                error: 'Registrasi sedang ditutup',
+                retry_after: null,
+            };
             render(Register);
 
-            expect(screen.getByRole('alert')).toHaveTextContent('Registrasi sedang ditutup');
+            expect(screen.getByRole('alert')).toHaveTextContent(
+                'Registrasi sedang ditutup',
+            );
         });
     });
 
@@ -223,10 +282,14 @@ describe('Register Page', () => {
             mockPage.props.flash = { error: null, retry_after: 3 };
             render(Register);
             await fillValidForm();
-            await fireEvent.click(screen.getByLabelText(/Saya telah membaca dan menyetujui/i));
+            await fireEvent.click(
+                screen.getByLabelText(/Saya telah membaca dan menyetujui/i),
+            );
             await tick();
 
-            const submitBtn = screen.getByRole('button', { name: /Tunggu 3 detik/i });
+            const submitBtn = screen.getByRole('button', {
+                name: /Tunggu 3 detik/i,
+            });
             expect(submitBtn).toBeDisabled();
 
             await vi.advanceTimersByTimeAsync(1000);

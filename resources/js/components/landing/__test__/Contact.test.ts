@@ -35,23 +35,33 @@ describe('Contact Component', () => {
     describe('Rendering', () => {
         it('harus merender judul dan deskripsi', () => {
             render(Contact);
-            
-            expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(/Punya Pertanyaan/i);
-            expect(screen.getByText(/Tim SI-CANGKAL siap membantu/i)).toBeInTheDocument();
+
+            expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(
+                /Punya Pertanyaan/i,
+            );
+            expect(
+                screen.getByText(/Tim SI-CANGKAL siap membantu/i),
+            ).toBeInTheDocument();
         });
 
         it('harus merender formulir dengan 3 input (nama, email, pesan)', () => {
             render(Contact);
-            
+
             expect(screen.getByLabelText('Nama Lengkap')).toBeInTheDocument();
             expect(screen.getByLabelText('Alamat Email')).toBeInTheDocument();
-            expect(screen.getByLabelText('Pesan atau Keterangan')).toBeInTheDocument();
+            expect(
+                screen.getByLabelText('Pesan atau Keterangan'),
+            ).toBeInTheDocument();
         });
 
         it('harus merender informasi kontak di kolom kiri', () => {
             render(Contact);
-            
-            expect(screen.getByText('Kertak Hanyar, Kalimantan Selatan, Indonesia')).toBeInTheDocument();
+
+            expect(
+                screen.getByText(
+                    'Kertak Hanyar, Kalimantan Selatan, Indonesia',
+                ),
+            ).toBeInTheDocument();
             expect(screen.getByText('halo@si-cangkal.id')).toBeInTheDocument();
             expect(screen.getByText('+62 811 2233 4455')).toBeInTheDocument();
         });
@@ -74,15 +84,18 @@ describe('Contact Component', () => {
             });
 
             const { container } = render(Contact);
-            
+
             // PERBAIKAN: Menggunakan querySelector karena <form> tidak memiliki role="form"
             // kecuali jika diberi aria-label.
             const form = container.querySelector('form');
             expect(form).toBeInTheDocument();
-            
+
             await fireEvent.submit(form!);
 
-            expect(postMock).toHaveBeenCalledWith('/contact', expect.any(Object));
+            expect(postMock).toHaveBeenCalledWith(
+                '/contact',
+                expect.any(Object),
+            );
         });
     });
 

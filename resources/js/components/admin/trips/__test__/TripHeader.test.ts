@@ -44,7 +44,10 @@ describe('TripHeader Component', () => {
     describe('Rendering', () => {
         it('harus merender kode trip dan nama paket dari snapshot', () => {
             render(TripHeader, {
-                props: { trip: createMockTrip(), snapshot: createMockSnapshot() },
+                props: {
+                    trip: createMockTrip(),
+                    snapshot: createMockSnapshot(),
+                },
             });
 
             expect(screen.getByText('TRIP-123')).toBeInTheDocument();
@@ -61,7 +64,10 @@ describe('TripHeader Component', () => {
 
         it('harus merender tanggal mulai dan selesai', () => {
             render(TripHeader, {
-                props: { trip: createMockTrip(), snapshot: createMockSnapshot() },
+                props: {
+                    trip: createMockTrip(),
+                    snapshot: createMockSnapshot(),
+                },
             });
 
             // FormatDate menghasilkan "20 Okt 2026"
@@ -71,7 +77,10 @@ describe('TripHeader Component', () => {
 
         it('harus merender jumlah peserta', () => {
             render(TripHeader, {
-                props: { trip: createMockTrip(), snapshot: createMockSnapshot() },
+                props: {
+                    trip: createMockTrip(),
+                    snapshot: createMockSnapshot(),
+                },
             });
 
             expect(screen.getByText('10 orang')).toBeInTheDocument();
@@ -79,7 +88,10 @@ describe('TripHeader Component', () => {
 
         it('harus merender timezone dalam format panjang', () => {
             render(TripHeader, {
-                props: { trip: createMockTrip(), snapshot: createMockSnapshot() },
+                props: {
+                    trip: createMockTrip(),
+                    snapshot: createMockSnapshot(),
+                },
             });
 
             expect(screen.getByText(/WITA/)).toBeInTheDocument();
@@ -92,19 +104,31 @@ describe('TripHeader Component', () => {
     describe('Action Buttons', () => {
         it('harus merender tombol "Cetak Daftar Peserta" dengan link yang benar', () => {
             render(TripHeader, {
-                props: { trip: createMockTrip(), snapshot: createMockSnapshot() },
+                props: {
+                    trip: createMockTrip(),
+                    snapshot: createMockSnapshot(),
+                },
             });
 
             const btn = screen.getByText('Cetak Daftar Peserta');
             expect(btn).toBeInTheDocument();
-            expect(btn.closest('a')).toHaveAttribute('href', '/admin/trips/1/manifest');
+            expect(btn.closest('a')).toHaveAttribute(
+                'href',
+                '/admin/trips/1/manifest',
+            );
             expect(btn.closest('a')).toHaveAttribute('target', '_blank');
-            expect(btn.closest('a')).toHaveAttribute('rel', 'noopener noreferrer');
+            expect(btn.closest('a')).toHaveAttribute(
+                'rel',
+                'noopener noreferrer',
+            );
         });
 
         it('harus merender tombol "Lihat Pesanan" jika trip.booking ada', () => {
             render(TripHeader, {
-                props: { trip: createMockTrip(), snapshot: createMockSnapshot() },
+                props: {
+                    trip: createMockTrip(),
+                    snapshot: createMockSnapshot(),
+                },
             });
 
             expect(screen.getByText('Lihat Pesanan')).toBeInTheDocument();
@@ -128,10 +152,15 @@ describe('TripHeader Component', () => {
     describe('Mitra Warning', () => {
         it('TIDAK boleh merender peringatan jika trip.mitra ada', () => {
             render(TripHeader, {
-                props: { trip: createMockTrip(), snapshot: createMockSnapshot() },
+                props: {
+                    trip: createMockTrip(),
+                    snapshot: createMockSnapshot(),
+                },
             });
 
-            expect(screen.queryByText(/belum terhubung dengan Mitra/)).not.toBeInTheDocument();
+            expect(
+                screen.queryByText(/belum terhubung dengan Mitra/),
+            ).not.toBeInTheDocument();
         });
 
         it('harus merender peringatan jika trip.mitra null', () => {
@@ -142,7 +171,9 @@ describe('TripHeader Component', () => {
                 },
             });
 
-            expect(screen.getByText(/belum terhubung dengan Mitra/)).toBeInTheDocument();
+            expect(
+                screen.getByText(/belum terhubung dengan Mitra/),
+            ).toBeInTheDocument();
         });
     });
 

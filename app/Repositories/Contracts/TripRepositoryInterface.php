@@ -41,6 +41,14 @@ interface TripRepositoryInterface
     public function findById(int $id): ?Trip;
 
     /**
+     * Cari trip berdasarkan ID dengan row lock (SELECT ... FOR UPDATE).
+     *
+     * Dipakai di dalam transaksi untuk transisi status agar dua request
+     * bersamaan tidak memproses trip yang sama dua kali.
+     */
+    public function findByIdForUpdate(int $id): ?Trip;
+
+    /**
      * Cari trip berdasarkan kode (TRP-2026-001).
      */
     public function findByKode(string $kode): ?Trip;

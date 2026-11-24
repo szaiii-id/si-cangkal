@@ -20,7 +20,9 @@ describe('Error Page', () => {
         await tick();
 
         expect(screen.getByText('Kabanyakan Permintaan')).toBeInTheDocument();
-        expect(screen.getByText(/Coba lagi dalam 42 detik/i)).toBeInTheDocument();
+        expect(
+            screen.getByText(/Coba lagi dalam 42 detik/i),
+        ).toBeInTheDocument();
     });
 
     it('tidak menampilkan hitung mundur jika retry_after null', async () => {

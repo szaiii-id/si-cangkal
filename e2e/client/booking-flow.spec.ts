@@ -229,8 +229,12 @@ test.describe('Client Booking — Create & Listing Flow', () => {
                 ),
             ).toBeVisible();
             await expect(page.getByText('Menunggu Pembayaran')).toBeVisible();
-            await expect(page.getByRole('main').getByText(SEED_USERS.client.name)).toBeVisible();
-            await expect(page.getByRole('main').getByText('Siti Aminah')).toBeVisible();
+            await expect(
+                page.getByRole('main').getByText(SEED_USERS.client.name),
+            ).toBeVisible();
+            await expect(
+                page.getByRole('main').getByText('Siti Aminah'),
+            ).toBeVisible();
 
             // Verifikasi notifikasi masuk ke Mitra
             const notif = await seed.latestNotification(

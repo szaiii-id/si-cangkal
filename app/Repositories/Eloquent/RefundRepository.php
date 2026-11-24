@@ -66,6 +66,17 @@ final class RefundRepository implements RefundRepositoryInterface
 
     /**
      * {@inheritDoc}
+     */
+    public function findByIdForUpdate(int $id): ?Refund
+    {
+        return Refund::query()
+            ->whereKey($id)
+            ->lockForUpdate()
+            ->first();
+    }
+
+    /**
+     * {@inheritDoc}
      *
      * @return array<string, int>
      */

@@ -17,14 +17,7 @@
 
 import { execSync } from 'node:child_process';
 import fs from 'node:fs';
-import path from 'node:path';
-import {
-    APP,
-    DB,
-    PATHS,
-    PROJECT_ROOT,
-    SHARD,
-} from './config';
+import { DB, PATHS, SHARD } from './config';
 
 // ==========================================
 // LOGGER
@@ -61,18 +54,14 @@ export default async function globalTeardown(): Promise<void> {
     if (process.env.E2E_KEEP_STORAGE === '0') {
         cleanupStorage();
     } else {
-        logInfo(
-            `Storage TIDAK dihapus (set E2E_KEEP_STORAGE=0 untuk hapus).`,
-        );
+        logInfo(`Storage TIDAK dihapus (set E2E_KEEP_STORAGE=0 untuk hapus).`);
     }
 
     // 2. Drop database (opt-in)
     if (process.env.E2E_DROP_DB === '1') {
         dropDatabase();
     } else {
-        logInfo(
-            `Database TIDAK di-drop (set E2E_DROP_DB=1 untuk drop).`,
-        );
+        logInfo(`Database TIDAK di-drop (set E2E_DROP_DB=1 untuk drop).`);
     }
 
     logSection(`GLOBAL TEARDOWN SELESAI — ${shardLabel}`);
@@ -101,9 +90,7 @@ function cleanupStorage(): void {
         fs.rmSync(PATHS.storage, { recursive: true, force: true });
         logSuccess('Storage dihapus.');
     } catch (error) {
-        logWarning(
-            `Gagal hapus storage: ${(error as Error).message}`,
-        );
+        logWarning(`Gagal hapus storage: ${(error as Error).message}`);
     }
 }
 

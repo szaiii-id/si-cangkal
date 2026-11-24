@@ -30,7 +30,9 @@ describe('TripItineraryList Component', () => {
     describe('Empty State', () => {
         it('harus menampilkan pesan kosong jika days kosong', () => {
             render(TripItineraryList, { props: { days: [] } });
-            expect(screen.getByText('Rencana perjalanan belum tersedia.')).toBeInTheDocument();
+            expect(
+                screen.getByText('Rencana perjalanan belum tersedia.'),
+            ).toBeInTheDocument();
         });
     });
 
@@ -85,10 +87,10 @@ describe('TripItineraryList Component', () => {
     // ==========================================
     describe('Accessibility', () => {
         it('ikon SVG dekoratif harus disembunyikan dari screen reader', () => {
-            const { container } = render(TripItineraryList, { 
-                props: { days: [createMockDay()] } 
+            const { container } = render(TripItineraryList, {
+                props: { days: [createMockDay()] },
             });
-            
+
             const svgs = container.querySelectorAll('svg');
             svgs.forEach((svg) => {
                 expect(svg).toHaveAttribute('aria-hidden', 'true');
@@ -96,19 +98,21 @@ describe('TripItineraryList Component', () => {
         });
 
         it('garis timeline dekoratif harus disembunyikan dari screen reader', () => {
-            const { container } = render(TripItineraryList, { 
-                props: { days: [createMockDay()] } 
+            const { container } = render(TripItineraryList, {
+                props: { days: [createMockDay()] },
             });
-            
+
             const timelineLine = container.querySelector('.left-3');
             expect(timelineLine).toHaveAttribute('aria-hidden', 'true');
         });
 
         it('empty state harus memiliki role="status"', () => {
             render(TripItineraryList, { props: { days: [] } });
-            
+
             const emptyState = screen.getByRole('status');
-            expect(emptyState).toHaveTextContent('Rencana perjalanan belum tersedia.');
+            expect(emptyState).toHaveTextContent(
+                'Rencana perjalanan belum tersedia.',
+            );
         });
     });
 });

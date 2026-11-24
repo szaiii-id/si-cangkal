@@ -53,7 +53,7 @@ test.describe('Security — Cross-Role & Guest Route Access Control', () => {
         }
     });
 
-// ==========================================
+    // ==========================================
     // 2. CLIENT ROLE ISOLATION
     // ==========================================
     test('Client mengakses rute /admin/* → redirect ke /client/dashboard', async ({
@@ -93,7 +93,11 @@ test.describe('Security — Cross-Role & Guest Route Access Control', () => {
             await page.goto(path);
             await expect(page).toHaveURL('/mitra/dashboard');
             await expect(
-                page.getByText('Anda tidak memiliki hak akses ke halaman tersebut.').first(),
+                page
+                    .getByText(
+                        'Anda tidak memiliki hak akses ke halaman tersebut.',
+                    )
+                    .first(),
             ).toBeVisible();
         }
     });
@@ -108,7 +112,11 @@ test.describe('Security — Cross-Role & Guest Route Access Control', () => {
             await page.goto(path);
             await expect(page).toHaveURL('/mitra/dashboard');
             await expect(
-                page.getByText('Anda tidak memiliki hak akses ke halaman tersebut.').first(),
+                page
+                    .getByText(
+                        'Anda tidak memiliki hak akses ke halaman tersebut.',
+                    )
+                    .first(),
             ).toBeVisible();
         }
     });
@@ -126,7 +134,11 @@ test.describe('Security — Cross-Role & Guest Route Access Control', () => {
             await page.goto(path);
             await expect(page).toHaveURL('/admin/dashboard');
             await expect(
-                page.getByText('Anda tidak memiliki hak akses ke halaman tersebut.').first(),
+                page
+                    .getByText(
+                        'Anda tidak memiliki hak akses ke halaman tersebut.',
+                    )
+                    .first(),
             ).toBeVisible();
         }
     });
@@ -141,7 +153,11 @@ test.describe('Security — Cross-Role & Guest Route Access Control', () => {
             await page.goto(path);
             await expect(page).toHaveURL('/admin/dashboard');
             await expect(
-                page.getByText('Anda tidak memiliki hak akses ke halaman tersebut.').first(),
+                page
+                    .getByText(
+                        'Anda tidak memiliki hak akses ke halaman tersebut.',
+                    )
+                    .first(),
             ).toBeVisible();
         }
     });

@@ -13,7 +13,9 @@ describe('StatusTabs Component', () => {
     describe('Rendering', () => {
         it('TIDAK boleh merender apa pun jika tabs kosong', () => {
             const { container } = render(StatusTabs, { props: { tabs: [] } });
-            expect(container.querySelector('[role="group"]')).not.toBeInTheDocument();
+            expect(
+                container.querySelector('[role="group"]'),
+            ).not.toBeInTheDocument();
         });
 
         it('harus merender label dan count dari tab', () => {
@@ -43,7 +45,9 @@ describe('StatusTabs Component', () => {
                 },
             });
 
-            const activeButtons = screen.getAllByRole('button', { name: /Pending/i });
+            const activeButtons = screen.getAllByRole('button', {
+                name: /Pending/i,
+            });
             activeButtons.forEach((btn) => {
                 expect(btn).toHaveAttribute('aria-pressed', 'true');
             });

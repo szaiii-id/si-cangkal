@@ -40,87 +40,115 @@ class BookingPaymentService
         $uploader = auth()->user();
         $uploaderIsMitra = $uploader?->isMitra() === true;
 
-        $booking = DB::transaction(function () use ($booking, $file, $uploader, $uploaderIsMitra): Booking {
-            $this->deleteExistingProof($booking);
+        $updated = DB::transaction(function () use ($booking, $file): Booking {
+            // Lock baris booking: cegah bukti transfer baru menimpa booking
+            // yang baru saja diverifikasi/dibatalkan oleh request lain.
+            $locked = $this->bookingRepository->findByIdForUpdate($booking->id) ?? $booking;
 
-            $path = $this->storeProofFile($booking, $file);
+            if ($locked->status !== BookingStatus::PENDING_PAYMENT) {
+                throw ValidationException::withMessages([
+                    'booking' => ['Booking ini sudah tidak dalam status menunggu pembayaran.'],
+                ]);
+            }
 
-            $updated = $this->bookingRepository->update($booking, [
+            $this->deleteExistingProof($locked);
+
+            $path = $this->storeProofFile($locked, $file);
+
+            return $this->bookingRepository->update($locked, [
                 'payment_proof_path' => $path,
                 'payment_reject_reason' => null,
             ]);
-
-            $this->notifyProofUploaded($updated, $uploaderIsMitra ? 'mitra' : 'client');
-
-            AuditLogger::log('booking.payment_proof_uploaded', [
-                'actor_id' => $uploader?->id,
-                'actor_role' => $uploaderIsMitra ? 'mitra' : 'client',
-                'booking_id' => $updated->id,
-                'booking_kode' => $updated->kode,
-                'path' => $path,
-                'size' => $file->getSize(),
-                'mime' => $file->getMimeType(),
-            ]);
-
-            return $updated;
         });
 
-        return $booking;
+        // Notifikasi & audit di luar transaksi: kegagalan I/O tidak boleh
+        // membatalkan bukti transfer yang sudah tersimpan.
+        $this->notifyProofUploaded($updated, $uploaderIsMitra ? 'mitra' : 'client');
+
+        AuditLogger::log('booking.payment_proof_uploaded', [
+            'actor_id' => $uploader?->id,
+            'actor_role' => $uploaderIsMitra ? 'mitra' : 'client',
+            'booking_id' => $updated->id,
+            'booking_kode' => $updated->kode,
+            'path' => $updated->payment_proof_path,
+            'size' => $file->getSize(),
+            'mime' => $file->getMimeType(),
+        ]);
+
+        return $updated;
     }
 
     public function verifyPayment(Booking $booking, User $mitra): Booking
     {
-        if ($booking->mitra_id !== $mitra->id) {
-            throw ValidationException::withMessages([
-                'booking' => ['Anda tidak memiliki akses ke booking ini.'],
-            ]);
-        }
+        $updated = DB::transaction(function () use ($booking, $mitra): Booking {
+            // Kunci baris booking agar dua request verifikasi bersamaan
+            // diproses serial: hanya satu yang boleh membuat Payment dan
+            // mengubah status menjadi confirmed.
+            $locked = $this->bookingRepository->findByIdForUpdate($booking->id);
 
-        if ($booking->status !== BookingStatus::PENDING_PAYMENT) {
-            throw ValidationException::withMessages([
-                'booking' => ['Booking ini tidak dalam status menunggu pembayaran.'],
-            ]);
-        }
+            if ($locked === null) {
+                throw ValidationException::withMessages([
+                    'booking' => ['Booking tidak ditemukan.'],
+                ]);
+            }
 
-        $booking = DB::transaction(function () use ($booking, $mitra): Booking {
+            if ($locked->mitra_id !== $mitra->id) {
+                throw ValidationException::withMessages([
+                    'booking' => ['Anda tidak memiliki akses ke booking ini.'],
+                ]);
+            }
+
+            if ($locked->status !== BookingStatus::PENDING_PAYMENT) {
+                throw ValidationException::withMessages([
+                    'booking' => ['Booking ini tidak dalam status menunggu pembayaran.'],
+                ]);
+            }
+
+            // Garda tambahan untuk data lama yang statusnya belum sinkron.
+            if ($locked->payments()->where('jumlah', '>', 0)->exists()) {
+                throw ValidationException::withMessages([
+                    'booking' => ['Pembayaran booking ini sudah pernah diverifikasi.'],
+                ]);
+            }
+
             Payment::create([
-                'booking_id' => $booking->id,
-                'jumlah' => $booking->total_harga,
+                'booking_id' => $locked->id,
+                'jumlah' => $locked->total_harga,
                 'metode' => PaymentMetode::TRANSFER_MANUAL->value,
                 'verified_by' => $mitra->id,
                 'verified_at' => now(),
                 'catatan' => "Diverifikasi manual oleh Mitra: {$mitra->name}",
             ]);
 
-            $updated = $this->bookingRepository->update($booking, [
+            return $this->bookingRepository->update($locked, [
                 'status' => BookingStatus::CONFIRMED->value,
                 'payment_verified_at' => now(),
             ]);
-
-            $this->notifyClientPaymentConfirmed($updated);
-
-            AuditLogger::log('booking.payment_verified', [
-                'actor_id' => $mitra->id,
-                'actor_role' => 'mitra',
-                'booking_id' => $updated->id,
-                'booking_kode' => $updated->kode,
-                'total_harga' => (float) $updated->total_harga,
-            ]);
-
-            return $updated;
         });
 
+        // Efek samping di luar transaksi: notifikasi in-app/FCM, audit,
+        // dan event yang membuat Trip + E-Ticket.
+        $this->notifyClientPaymentConfirmed($updated);
+
+        AuditLogger::log('booking.payment_verified', [
+            'actor_id' => $mitra->id,
+            'actor_role' => 'mitra',
+            'booking_id' => $updated->id,
+            'booking_kode' => $updated->kode,
+            'total_harga' => (float) $updated->total_harga,
+        ]);
+
         try {
-            BookingConfirmed::dispatch($booking->refresh(), $mitra->id);
+            BookingConfirmed::dispatch($updated->refresh(), $mitra->id);
         } catch (Throwable $e) {
             Log::error('BookingPaymentService: dispatch BookingConfirmed gagal', [
-                'booking_id' => $booking->id,
-                'booking_kode' => $booking->kode,
+                'booking_id' => $updated->id,
+                'booking_kode' => $updated->kode,
                 'error' => $e->getMessage(),
             ]);
         }
 
-        return $booking->load('payments');
+        return $updated->load('payments');
     }
 
     public function rejectPayment(Booking $booking, User $mitra, string $reason): Booking

@@ -33,7 +33,14 @@ test.describe('Security — Private File & Storage Access Control', () => {
             durasi_hari: 1,
             durasi_malam: 0,
             harga_per_orang: 300_000,
-            days: [{ judul: 'Hari 1', jam_mulai: '09:00', jam_selesai: '15:00', lokasi: 'Martapura' }],
+            days: [
+                {
+                    judul: 'Hari 1',
+                    jam_mulai: '09:00',
+                    jam_selesai: '15:00',
+                    lokasi: 'Martapura',
+                },
+            ],
             facilities: [
                 { tipe: 'include', nama: 'Transportasi' },
                 { tipe: 'exclude', nama: 'Makan' },
@@ -62,7 +69,9 @@ test.describe('Security — Private File & Storage Access Control', () => {
         asGuest,
     }) => {
         await asGuest();
-        const response = await page.goto('/storage/private/payment-proofs/sample.jpg');
+        const response = await page.goto(
+            '/storage/private/payment-proofs/sample.jpg',
+        );
         expect([403, 404]).toContain(response?.status());
     });
 
@@ -96,7 +105,9 @@ test.describe('Security — Private File & Storage Access Control', () => {
         seed,
     }) => {
         await seed.login(page, unauthorizedClientEmail, 'password123');
-        const response = await page.goto(`/client/bookings/${bookingId}/payment-proof`);
+        const response = await page.goto(
+            `/client/bookings/${bookingId}/payment-proof`,
+        );
         expect(response?.status()).toBe(403);
     });
 
@@ -106,7 +117,9 @@ test.describe('Security — Private File & Storage Access Control', () => {
     }) => {
         await asClient();
         const fakeUuid = '00000000-0000-0000-0000-000000000000';
-        const response = await page.goto(`/client/e-tickets/${fakeUuid}/download`);
+        const response = await page.goto(
+            `/client/e-tickets/${fakeUuid}/download`,
+        );
         expect(response?.status()).toBe(404);
     });
 });

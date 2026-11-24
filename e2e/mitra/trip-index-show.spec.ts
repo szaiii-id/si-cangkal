@@ -58,8 +58,7 @@ async function seedMitraTrip(
         client_email: SEED_USERS.client.email,
         package_kode: pkg.kode,
         status: 'confirmed',
-        tanggal_keberangkatan:
-            options.tanggalKeberangkatan ?? getDateOffset(7),
+        tanggal_keberangkatan: options.tanggalKeberangkatan ?? getDateOffset(7),
         jumlah_peserta: options.jumlahPeserta ?? 2,
         participants: options.participants ?? [
             { nama: 'Peserta Trip Satu', umur: 27 },
@@ -169,7 +168,9 @@ test.describe('Mitra — Jadwal Perjalanan (Trip Index & Show)', () => {
                 'Cari kode trip atau nama paket...',
             );
             await searchInput.fill(first.trip.kode);
-            await expect(page).toHaveURL(new RegExp(`search=${first.trip.kode}`));
+            await expect(page).toHaveURL(
+                new RegExp(`search=${first.trip.kode}`),
+            );
 
             await expect(page.getByText(first.trip.kode)).toBeVisible();
             await expect(page.getByText(second.trip.kode)).toBeHidden();
@@ -247,10 +248,9 @@ test.describe('Mitra — Jadwal Perjalanan (Trip Index & Show)', () => {
             await expect(tripCardLink).toBeVisible();
 
             await Promise.all([
-                page.waitForURL(
-                    new RegExp(`/mitra/trips/${trip.trip_id}$`),
-                    { timeout: 20_000 },
-                ),
+                page.waitForURL(new RegExp(`/mitra/trips/${trip.trip_id}$`), {
+                    timeout: 20_000,
+                }),
                 tripCardLink.click(),
             ]);
 
@@ -284,12 +284,8 @@ test.describe('Mitra — Jadwal Perjalanan (Trip Index & Show)', () => {
             await expect(
                 page.getByRole('heading', { name: 'Fasilitas' }),
             ).toBeVisible();
-            await expect(
-                page.getByText('Perahu Klotok & Guide'),
-            ).toBeVisible();
-            await expect(
-                page.getByText('Pengeluaran Pribadi'),
-            ).toBeVisible();
+            await expect(page.getByText('Perahu Klotok & Guide')).toBeVisible();
+            await expect(page.getByText('Pengeluaran Pribadi')).toBeVisible();
 
             // Tombol Cetak Daftar Peserta (Manifest)
             const manifestLink = page.getByRole('link', {

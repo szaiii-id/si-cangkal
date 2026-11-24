@@ -23,7 +23,10 @@ declare module 'vitest' {
         toHaveFocus(): T;
         toHaveFormValues(values: Record<string, unknown>): T;
         toHaveStyle(css: string | Record<string, unknown>): T;
-        toHaveTextContent(text: string | RegExp, options?: { normalizeWhitespace: boolean }): T;
+        toHaveTextContent(
+            text: string | RegExp,
+            options?: { normalizeWhitespace: boolean },
+        ): T;
         toHaveValue(value?: string | string[] | number | null): T;
         toHaveDisplayValue(value: string | RegExp | (string | RegExp)[]): T;
         toBeChecked(): T;

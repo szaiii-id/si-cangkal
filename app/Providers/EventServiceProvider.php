@@ -4,27 +4,23 @@ namespace App\Providers;
 
 use App\Events\BookingConfirmed;
 use App\Listeners\CreateTripForBooking;
-use App\Listeners\NotifyClientListener;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
 /**
  * Registrasi event dan listener aplikasi.
  *
  * Meski Laravel 11+ mendukung auto-discovery, kita mendaftarkan mapping
- * secara eksplisit agar:
- * - Urutan listener dapat dijamin (Trip harus dibuat sebelum E-Ticket).
- * - Mapping mudah diaudit (siapa mendengarkan event apa).
- * - Perubahan listener tidak bergantung pada konvensi nama folder.
+ * secara eksplisit agar mapping mudah diaudit (siapa mendengarkan event
+ * apa) dan tidak bergantung pada konvensi nama folder.
  *
- * Alur untuk BookingConfirmed (urut dari atas ke bawah):
+ * Alur untuk BookingConfirmed:
  *
- *     1. CreateTripForBooking    (sync)   -> buat Trip + TripDay
- *     2. GenerateETicketListener (queue)  -> dispatch GenerateETicketJob
- *     3. NotifyClientListener    (queue)  -> email + audit DB
+ *     1. CreateTripForBooking (sync) -> buat Trip + TripDay, lalu
+ *                                      dispatch GenerateETicketJob.
  *
- * Listener 2 & 3 berjalan paralel di queue masing-masing setelah
- * listener 1 selesai, karena dispatcher memproses listener sinkron
- * lebih dulu, baru mengantrekan yang async.
+ * Notifikasi ke client sudah dikirim langsung oleh service terkait
+ * (NotificationDispatcher -> in-app + queued FCM job), jadi tidak perlu
+ * listener no-op yang hanya menulis log.
  */
 final class EventServiceProvider extends ServiceProvider
 {
@@ -36,7 +32,6 @@ final class EventServiceProvider extends ServiceProvider
     protected $listen = [
         BookingConfirmed::class => [
             CreateTripForBooking::class,
-            NotifyClientListener::class,
         ],
     ];
 
@@ -60,10 +55,6 @@ final class EventServiceProvider extends ServiceProvider
      * Tentukan apakah event dan listener harus ditemukan secara otomatis.
      *
      * Dimatikan karena kita mendaftarkan mapping eksplisit di atas.
-     * Auto-discovery tetap berjalan untuk event/listener lain yang
-     * mengikuti konvensi, tetapi tidak untuk BookingConfirmed (yang
-     * didaftarkan manual). Untuk kesederhanaan dan prediktabilitas,
-     * kita matikan sepenuhnya.
      */
     public function shouldDiscoverEvents(): bool
     {

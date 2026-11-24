@@ -5,7 +5,10 @@ import VerifyPaymentCard from '../VerifyPaymentCard.svelte';
 // ==========================================
 // MOCK CHILD COMPONENT (Mengarah ke file fisik)
 // ==========================================
-vi.mock('@/components/shared/PaymentProofPreview.svelte', () => import('@/components/shared/__mocks__/PaymentProofPreview.svelte'));
+vi.mock(
+    '@/components/shared/PaymentProofPreview.svelte',
+    () => import('@/components/shared/__mocks__/PaymentProofPreview.svelte'),
+);
 
 describe('VerifyPaymentCard Component', () => {
     beforeEach(() => {
@@ -29,8 +32,12 @@ describe('VerifyPaymentCard Component', () => {
                 },
             });
 
-            expect(screen.getByText('Verifikasi Pembayaran')).toBeInTheDocument();
-            expect(screen.getByText(/Bukti transfer sudah diunggah/)).toBeInTheDocument();
+            expect(
+                screen.getByText('Verifikasi Pembayaran'),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByText(/Bukti transfer sudah diunggah/),
+            ).toBeInTheDocument();
         });
 
         it('harus merender PaymentProofPreview (mock)', () => {
@@ -46,7 +53,9 @@ describe('VerifyPaymentCard Component', () => {
                 },
             });
 
-            expect(screen.getByTestId('payment-proof-preview')).toBeInTheDocument();
+            expect(
+                screen.getByTestId('payment-proof-preview'),
+            ).toBeInTheDocument();
         });
 
         it('harus merender tombol Verifikasi dan Tolak', () => {
@@ -62,8 +71,14 @@ describe('VerifyPaymentCard Component', () => {
                 },
             });
 
-            expect(screen.getByRole('button', { name: /Verifikasi dan terima pembayaran/i })).toBeInTheDocument();
-            expect(screen.getByRole('button', { name: /Tolak pembayaran/i })).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', {
+                    name: /Verifikasi dan terima pembayaran/i,
+                }),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: /Tolak pembayaran/i }),
+            ).toBeInTheDocument();
         });
     });
 
@@ -85,7 +100,9 @@ describe('VerifyPaymentCard Component', () => {
                 },
             });
 
-            const btn = screen.getByRole('button', { name: /Verifikasi dan terima pembayaran/i });
+            const btn = screen.getByRole('button', {
+                name: /Verifikasi dan terima pembayaran/i,
+            });
             await fireEvent.click(btn);
 
             expect(onVerify).toHaveBeenCalledTimes(1);
@@ -105,7 +122,9 @@ describe('VerifyPaymentCard Component', () => {
                 },
             });
 
-            const btn = screen.getByRole('button', { name: /Tolak pembayaran/i });
+            const btn = screen.getByRole('button', {
+                name: /Tolak pembayaran/i,
+            });
             await fireEvent.click(btn);
 
             expect(onReject).toHaveBeenCalledTimes(1);
@@ -129,7 +148,9 @@ describe('VerifyPaymentCard Component', () => {
                 },
             });
 
-            const btn = screen.getByRole('button', { name: /Sedang memverifikasi pembayaran/i });
+            const btn = screen.getByRole('button', {
+                name: /Sedang memverifikasi pembayaran/i,
+            });
             expect(btn).toBeDisabled();
             expect(screen.getByText('Memproses...')).toBeInTheDocument();
         });
@@ -152,7 +173,9 @@ describe('VerifyPaymentCard Component', () => {
                 },
             });
 
-            const btn = screen.getByRole('button', { name: /Verifikasi dan terima pembayaran/i });
+            const btn = screen.getByRole('button', {
+                name: /Verifikasi dan terima pembayaran/i,
+            });
             expect(btn).toBeDisabled();
         });
 
@@ -169,7 +192,9 @@ describe('VerifyPaymentCard Component', () => {
                 },
             });
 
-            const btn = screen.getByRole('button', { name: /Tolak pembayaran/i });
+            const btn = screen.getByRole('button', {
+                name: /Tolak pembayaran/i,
+            });
             expect(btn).toBeDisabled();
         });
     });

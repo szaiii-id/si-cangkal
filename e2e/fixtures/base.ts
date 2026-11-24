@@ -214,7 +214,7 @@ export const test = base.extend<Fixtures>({
     // ==========================================
     // seed
     // ==========================================
-    seed: async ({}, use) => {
+    seed: async ({ browserName: _browserName }, use) => {
         await use(seed);
     },
 
@@ -256,11 +256,4 @@ export const test = base.extend<Fixtures>({
 export { expect };
 
 // Re-export helper lain untuk convenience
-export {
-    SEED_USERS,
-    getSeedUser,
-    loginAs,
-    logout,
-    forceLogout,
-    type SeedRole,
-};
+export { SEED_USERS, getSeedUser, loginAs, logout, forceLogout, type SeedRole };

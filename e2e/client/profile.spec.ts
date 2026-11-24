@@ -23,7 +23,9 @@ test.describe('Client Profile', () => {
         await expect(SEL.CLIENT.profile.submit(page)).toBeDisabled();
     });
 
-    test('tombol reset mengembalikan nilai input ke data awal', async ({ page }) => {
+    test('tombol reset mengembalikan nilai input ke data awal', async ({
+        page,
+    }) => {
         const nameInput = SEL.CLIENT.profile.name(page);
         const originalName = await nameInput.inputValue();
 
@@ -56,7 +58,9 @@ test.describe('Client Profile', () => {
         await SEL.CLIENT.profile.submit(page).click();
 
         await expect(
-            SEL.LAYOUT.toastRegion(page).getByText(/Profil berhasil diperbarui/i),
+            SEL.LAYOUT.toastRegion(page).getByText(
+                /Profil berhasil diperbarui/i,
+            ),
         ).toBeVisible();
 
         // Reload untuk memastikan tersimpan di database
@@ -70,11 +74,15 @@ test.describe('Client Profile', () => {
         await SEL.CLIENT.profile.submit(page).click();
 
         await expect(
-            SEL.LAYOUT.toastRegion(page).getByText(/Profil berhasil diperbarui/i),
+            SEL.LAYOUT.toastRegion(page).getByText(
+                /Profil berhasil diperbarui/i,
+            ),
         ).toBeVisible();
     });
 
-    test('menampilkan error validasi jika nama dikosongkan', async ({ page }) => {
+    test('menampilkan error validasi jika nama dikosongkan', async ({
+        page,
+    }) => {
         const nameInput = SEL.CLIENT.profile.name(page);
         await nameInput.fill('   ');
 
@@ -83,7 +91,11 @@ test.describe('Client Profile', () => {
             .filter({ has: nameInput })
             .evaluate((form: HTMLFormElement) => form.requestSubmit());
 
-        await expect(page.getByText(/Terdapat 1 kesalahan pada form\./i)).toBeVisible();
-        await expect(page.getByText(/Nama lengkap wajib diisi\./i)).toBeVisible();
+        await expect(
+            page.getByText(/Terdapat 1 kesalahan pada form\./i),
+        ).toBeVisible();
+        await expect(
+            page.getByText(/Nama lengkap wajib diisi\./i),
+        ).toBeVisible();
     });
 });

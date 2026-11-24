@@ -6,7 +6,9 @@ import type { UserProfileFormData } from '@/types/models/user';
 // ==========================================
 // MOCK DATA
 // ==========================================
-const createMockForm = (overrides: Partial<UserProfileFormData> = {}): UserProfileFormData => ({
+const createMockForm = (
+    overrides: Partial<UserProfileFormData> = {},
+): UserProfileFormData => ({
     profile: {
         nama_penyedia_usaha: 'PT Travel Indah',
         nomor_identitas: '1234567890',
@@ -33,7 +35,9 @@ describe('UserProfileFields Component', () => {
             render(UserProfileFields, { props: { form: createMockForm() } });
 
             expect(screen.getByLabelText('Nama Usaha')).toBeInTheDocument();
-            expect(screen.getByLabelText('Nomor Identitas')).toBeInTheDocument();
+            expect(
+                screen.getByLabelText('Nomor Identitas'),
+            ).toBeInTheDocument();
         });
 
         it('harus merender input telepon, alamat, provinsi, kota, kode pos, deskripsi', () => {
@@ -44,16 +48,22 @@ describe('UserProfileFields Component', () => {
             expect(screen.getByLabelText('Provinsi')).toBeInTheDocument();
             expect(screen.getByLabelText('Kota')).toBeInTheDocument();
             expect(screen.getByLabelText('Kode Pos')).toBeInTheDocument();
-            expect(screen.getByLabelText('Deskripsi Usaha')).toBeInTheDocument();
+            expect(
+                screen.getByLabelText('Deskripsi Usaha'),
+            ).toBeInTheDocument();
         });
 
         it('harus menampilkan nilai awal dari props form', () => {
             render(UserProfileFields, { props: { form: createMockForm() } });
 
-            const namaInput = screen.getByLabelText('Nama Usaha') as HTMLInputElement;
+            const namaInput = screen.getByLabelText(
+                'Nama Usaha',
+            ) as HTMLInputElement;
             expect(namaInput.value).toBe('PT Travel Indah');
 
-            const teleponInput = screen.getByLabelText('Telepon') as HTMLInputElement;
+            const teleponInput = screen.getByLabelText(
+                'Telepon',
+            ) as HTMLInputElement;
             expect(teleponInput.value).toBe('081234567890');
         });
     });
@@ -63,22 +73,26 @@ describe('UserProfileFields Component', () => {
     // ==========================================
     describe('Error State', () => {
         it('harus menampilkan pesan error untuk nama usaha jika ada', () => {
-            render(UserProfileFields, { 
-                props: { 
-                    form: createMockForm(), 
-                    errors: { 'profile.nama_penyedia_usaha': 'Nama usaha wajib diisi' } 
-                } 
+            render(UserProfileFields, {
+                props: {
+                    form: createMockForm(),
+                    errors: {
+                        'profile.nama_penyedia_usaha': 'Nama usaha wajib diisi',
+                    },
+                },
             });
 
-            expect(screen.getByText('Nama usaha wajib diisi')).toBeInTheDocument();
+            expect(
+                screen.getByText('Nama usaha wajib diisi'),
+            ).toBeInTheDocument();
         });
 
         it('input harus memiliki aria-invalid=true jika error', () => {
-            render(UserProfileFields, { 
-                props: { 
-                    form: createMockForm(), 
-                    errors: { 'profile.nama_penyedia_usaha': 'Error' } 
-                } 
+            render(UserProfileFields, {
+                props: {
+                    form: createMockForm(),
+                    errors: { 'profile.nama_penyedia_usaha': 'Error' },
+                },
             });
 
             const namaInput = screen.getByLabelText('Nama Usaha');
@@ -93,8 +107,12 @@ describe('UserProfileFields Component', () => {
         it('harus memperbarui nilai input saat user mengetik', async () => {
             render(UserProfileFields, { props: { form: createMockForm() } });
 
-            const namaInput = screen.getByLabelText('Nama Usaha') as HTMLInputElement;
-            await fireEvent.input(namaInput, { target: { value: 'PT Travel Baru' } });
+            const namaInput = screen.getByLabelText(
+                'Nama Usaha',
+            ) as HTMLInputElement;
+            await fireEvent.input(namaInput, {
+                target: { value: 'PT Travel Baru' },
+            });
 
             expect(namaInput.value).toBe('PT Travel Baru');
         });
@@ -105,11 +123,13 @@ describe('UserProfileFields Component', () => {
     // ==========================================
     describe('Accessibility', () => {
         it('pesan error harus memiliki role="alert"', () => {
-            render(UserProfileFields, { 
-                props: { 
-                    form: createMockForm(), 
-                    errors: { 'profile.nama_penyedia_usaha': 'Nama usaha wajib diisi' } 
-                } 
+            render(UserProfileFields, {
+                props: {
+                    form: createMockForm(),
+                    errors: {
+                        'profile.nama_penyedia_usaha': 'Nama usaha wajib diisi',
+                    },
+                },
             });
 
             const errorMessage = screen.getByRole('alert');

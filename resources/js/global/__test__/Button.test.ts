@@ -44,7 +44,11 @@ describe('Button Component', () => {
 
         it('harus merender tag <a> jika props href dan method="get"', () => {
             render(Button, {
-                props: { href: '/dashboard', method: 'get', children: mockSnippet('Link') },
+                props: {
+                    href: '/dashboard',
+                    method: 'get',
+                    children: mockSnippet('Link'),
+                },
             });
             // Source menambahkan role="button" pada <a>, jadi query via button
             const link = screen.getByRole('button', { name: 'Link' });
@@ -55,7 +59,11 @@ describe('Button Component', () => {
 
         it('harus menerapkan class variant dan size dengan benar', () => {
             render(Button, {
-                props: { variant: 'danger', size: 'lg', children: mockSnippet('Hapus') },
+                props: {
+                    variant: 'danger',
+                    size: 'lg',
+                    children: mockSnippet('Hapus'),
+                },
             });
             const btn = screen.getByRole('button');
             expect(btn).toHaveClass('bg-red-600');
@@ -88,7 +96,11 @@ describe('Button Component', () => {
         it('harus mencegah klik jika loading=true', async () => {
             const handleClick = vi.fn();
             render(Button, {
-                props: { loading: true, onclick: handleClick, children: mockSnippet('Loading') },
+                props: {
+                    loading: true,
+                    onclick: handleClick,
+                    children: mockSnippet('Loading'),
+                },
             });
 
             const btn = screen.getByRole('button');
@@ -114,7 +126,11 @@ describe('Button Component', () => {
 
         it('harus memanggil router.post jika method="post"', async () => {
             render(Button, {
-                props: { href: '/logout', method: 'post', children: mockSnippet('Logout') },
+                props: {
+                    href: '/logout',
+                    method: 'post',
+                    children: mockSnippet('Logout'),
+                },
             });
 
             await fireEvent.click(screen.getByRole('button'));

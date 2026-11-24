@@ -30,8 +30,9 @@ vi.mock('@/api/auth', () => ({
 // ==========================================
 // MOCK CHILD COMPONENT (PasswordChecklist)
 // ==========================================
-vi.mock('@/components/ui/PasswordChecklist.svelte', () => 
-    import('@/components/ui/__mocks__/PasswordChecklist.svelte')
+vi.mock(
+    '@/components/ui/PasswordChecklist.svelte',
+    () => import('@/components/ui/__mocks__/PasswordChecklist.svelte'),
 );
 
 import { changePassword, logout } from '@/api/auth';
@@ -49,14 +50,22 @@ describe('ChangePassword Page', () => {
         it('harus merender 3 input password (lama, baru, konfirmasi)', () => {
             render(ChangePassword, { props: { mustChangePassword: false } });
 
-            expect(screen.getByLabelText(/^Password Lama/i)).toBeInTheDocument();
-            expect(screen.getByLabelText(/^Password Baru/i)).toBeInTheDocument();
-            expect(screen.getByLabelText(/Konfirmasi Password Baru/i)).toBeInTheDocument();
+            expect(
+                screen.getByLabelText(/^Password Lama/i),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByLabelText(/^Password Baru/i),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByLabelText(/Konfirmasi Password Baru/i),
+            ).toBeInTheDocument();
         });
 
         it('TIDAK boleh merender flash info wajib ganti', () => {
             render(ChangePassword, { props: { mustChangePassword: false } });
-            expect(screen.queryByText('Wajib Ganti Password')).not.toBeInTheDocument();
+            expect(
+                screen.queryByText('Wajib Ganti Password'),
+            ).not.toBeInTheDocument();
         });
     });
 
@@ -66,18 +75,26 @@ describe('ChangePassword Page', () => {
     describe('Rendering (Mode Wajib)', () => {
         it('TIDAK boleh merender input password lama', () => {
             render(ChangePassword, { props: { mustChangePassword: true } });
-            expect(screen.queryByLabelText(/^Password Lama/i)).not.toBeInTheDocument();
+            expect(
+                screen.queryByLabelText(/^Password Lama/i),
+            ).not.toBeInTheDocument();
         });
 
         it('harus merender input password baru dan konfirmasi', () => {
             render(ChangePassword, { props: { mustChangePassword: true } });
-            expect(screen.getByLabelText(/^Password Baru/i)).toBeInTheDocument();
-            expect(screen.getByLabelText(/Konfirmasi Password Baru/i)).toBeInTheDocument();
+            expect(
+                screen.getByLabelText(/^Password Baru/i),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByLabelText(/Konfirmasi Password Baru/i),
+            ).toBeInTheDocument();
         });
 
         it('harus merender flash info wajib ganti password', () => {
             render(ChangePassword, { props: { mustChangePassword: true } });
-            expect(screen.getByRole('note')).toHaveTextContent('Wajib Ganti Password');
+            expect(screen.getByRole('note')).toHaveTextContent(
+                'Wajib Ganti Password',
+            );
         });
     });
 
@@ -89,15 +106,21 @@ describe('ChangePassword Page', () => {
             render(ChangePassword, { props: { mustChangePassword: false } });
 
             // PERBAIKAN: Gunakan placeholder atau regex yang lebih ketat
-            await fireEvent.input(screen.getByPlaceholderText('Masukkan password lama Anda'), {
-                target: { value: 'oldpass' },
-            });
+            await fireEvent.input(
+                screen.getByPlaceholderText('Masukkan password lama Anda'),
+                {
+                    target: { value: 'oldpass' },
+                },
+            );
             await fireEvent.input(screen.getByLabelText(/^Password Baru/i), {
                 target: { value: 'newpassword123!' },
             });
-            await fireEvent.input(screen.getByLabelText(/Konfirmasi Password Baru/i), {
-                target: { value: 'newpassword123!' },
-            });
+            await fireEvent.input(
+                screen.getByLabelText(/Konfirmasi Password Baru/i),
+                {
+                    target: { value: 'newpassword123!' },
+                },
+            );
 
             await fireEvent.submit(document.querySelector('form')!);
 
@@ -107,7 +130,7 @@ describe('ChangePassword Page', () => {
                     password: 'newpassword123!',
                     password_confirmation: 'newpassword123!',
                 },
-                expect.any(Object)
+                expect.any(Object),
             );
         });
     });
@@ -122,9 +145,12 @@ describe('ChangePassword Page', () => {
             await fireEvent.input(screen.getByLabelText(/^Password Baru/i), {
                 target: { value: 'newpassword123!' },
             });
-            await fireEvent.input(screen.getByLabelText(/Konfirmasi Password Baru/i), {
-                target: { value: 'newpassword123!' },
-            });
+            await fireEvent.input(
+                screen.getByLabelText(/Konfirmasi Password Baru/i),
+                {
+                    target: { value: 'newpassword123!' },
+                },
+            );
 
             await fireEvent.submit(document.querySelector('form')!);
 
@@ -133,7 +159,7 @@ describe('ChangePassword Page', () => {
                     password: 'newpassword123!',
                     password_confirmation: 'newpassword123!',
                 },
-                expect.any(Object)
+                expect.any(Object),
             );
         });
     });
@@ -148,12 +174,19 @@ describe('ChangePassword Page', () => {
             await fireEvent.input(screen.getByLabelText(/^Password Baru/i), {
                 target: { value: 'newpassword123!' },
             });
-            await fireEvent.input(screen.getByLabelText(/Konfirmasi Password Baru/i), {
-                target: { value: 'berbeda123!' },
-            });
+            await fireEvent.input(
+                screen.getByLabelText(/Konfirmasi Password Baru/i),
+                {
+                    target: { value: 'berbeda123!' },
+                },
+            );
 
-            expect(screen.getByRole('alert')).toHaveTextContent('Konfirmasi password tidak cocok.');
-            expect(screen.getByRole('button', { name: /Simpan Password Baru/i })).toBeDisabled();
+            expect(screen.getByRole('alert')).toHaveTextContent(
+                'Konfirmasi password tidak cocok.',
+            );
+            expect(
+                screen.getByRole('button', { name: /Simpan Password Baru/i }),
+            ).toBeDisabled();
         });
     });
 
@@ -172,13 +205,18 @@ describe('ChangePassword Page', () => {
             await fireEvent.input(screen.getByLabelText(/^Password Baru/i), {
                 target: { value: 'weak' },
             });
-            await fireEvent.input(screen.getByLabelText(/Konfirmasi Password Baru/i), {
-                target: { value: 'weak' },
-            });
+            await fireEvent.input(
+                screen.getByLabelText(/Konfirmasi Password Baru/i),
+                {
+                    target: { value: 'weak' },
+                },
+            );
             await fireEvent.submit(document.querySelector('form')!);
 
             await waitFor(() => {
-                expect(screen.getByText('Password terlalu lemah')).toBeInTheDocument();
+                expect(
+                    screen.getByText('Password terlalu lemah'),
+                ).toBeInTheDocument();
             });
         });
 
@@ -197,7 +235,9 @@ describe('ChangePassword Page', () => {
         it('harus memanggil logout saat tombol "Keluar" diklik', async () => {
             render(ChangePassword, { props: { mustChangePassword: false } });
 
-            const logoutBtn = screen.getByRole('button', { name: /Keluar dari akun/i });
+            const logoutBtn = screen.getByRole('button', {
+                name: /Keluar dari akun/i,
+            });
             await fireEvent.click(logoutBtn);
 
             expect(logout).toHaveBeenCalledTimes(1);
@@ -209,7 +249,9 @@ describe('ChangePassword Page', () => {
     // ==========================================
     describe('Accessibility', () => {
         it('semua ikon SVG dekoratif harus memiliki aria-hidden="true"', () => {
-            const { container } = render(ChangePassword, { props: { mustChangePassword: false } });
+            const { container } = render(ChangePassword, {
+                props: { mustChangePassword: false },
+            });
             const svgs = container.querySelectorAll('svg');
 
             svgs.forEach((svg) => {
@@ -218,10 +260,15 @@ describe('ChangePassword Page', () => {
         });
 
         it('flash status sukses harus memiliki role="status"', () => {
-            mockPage.props.flash = { status: 'Password berhasil diubah', error: null };
+            mockPage.props.flash = {
+                status: 'Password berhasil diubah',
+                error: null,
+            };
             render(ChangePassword, { props: { mustChangePassword: false } });
 
-            expect(screen.getByRole('status')).toHaveTextContent('Password berhasil diubah');
+            expect(screen.getByRole('status')).toHaveTextContent(
+                'Password berhasil diubah',
+            );
         });
     });
 });

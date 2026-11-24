@@ -9,7 +9,8 @@ test.describe('Client Review — submit ulasan paket', () => {
         await asClient();
 
         const namaPaket = `Paket Review E2E ${Date.now()}`;
-        const komentar = 'Pengalaman perjalanan sangat menyenangkan dan teratur.';
+        const komentar =
+            'Pengalaman perjalanan sangat menyenangkan dan teratur.';
 
         const pkg = await seed.createPackage(page, {
             mitra_email: SEED_USERS.mitra.email,
@@ -54,7 +55,9 @@ test.describe('Client Review — submit ulasan paket', () => {
             .first()
             .click();
 
-        await expect(page.getByRole('heading', { name: 'Ulasan Client' })).toBeVisible();
+        await expect(
+            page.getByRole('heading', { name: 'Ulasan Client' }),
+        ).toBeVisible();
         await expect(page.getByText(komentar)).toBeVisible();
         await expect(page.getByText('4.0', { exact: true })).toBeVisible();
     });
@@ -81,6 +84,8 @@ test.describe('Client Review — submit ulasan paket', () => {
 
         await page.goto(`/client/bookings/${booking.booking_id}`);
 
-        await expect(page.getByRole('link', { name: /Beri Review/ })).toBeHidden();
+        await expect(
+            page.getByRole('link', { name: /Beri Review/ }),
+        ).toBeHidden();
     });
 });

@@ -45,17 +45,15 @@ test.describe('Dashboard Notifications — Mitra & Admin (/notifications)', () =
             await expect(
                 page.getByText('0 belum dibaca', { exact: true }),
             ).toBeVisible();
-            await expect(
-                page.getByText('Belum ada notifikasi'),
-            ).toBeVisible();
+            await expect(page.getByText('Belum ada notifikasi')).toBeVisible();
             await expect(
                 page.getByText('Notifikasi akan muncul di sini.'),
             ).toBeVisible();
 
             await expect(
-                page
-                    .locator('header')
-                    .getByRole('link', { name: /Notifikasi \d+ belum dibaca/i }),
+                page.locator('header').getByRole('link', {
+                    name: /Notifikasi \d+ belum dibaca/i,
+                }),
             ).toHaveCount(0);
             await expect(SEL.NOTIFICATIONS.markAllRead(page)).toHaveCount(0);
         });
@@ -174,9 +172,9 @@ test.describe('Dashboard Notifications — Mitra & Admin (/notifications)', () =
                 page.getByText('0 belum dibaca', { exact: true }),
             ).toBeVisible();
             await expect(
-                page
-                    .locator('header')
-                    .getByRole('link', { name: /Notifikasi \d+ belum dibaca/i }),
+                page.locator('header').getByRole('link', {
+                    name: /Notifikasi \d+ belum dibaca/i,
+                }),
             ).toHaveCount(0);
             await expect(unreadDots).toHaveCount(0);
             await expect(markAllBtn).toHaveCount(0);
@@ -206,7 +204,9 @@ test.describe('Dashboard Notifications — Mitra & Admin (/notifications)', () =
             await page.locator('#name').fill(`Admin Notif ${tag}`);
             await page.locator('#email').fill(newAdminEmail);
             await page.locator('#username').fill(newAdminUsername);
-            await page.getByPlaceholder('Minimal 8 karakter').fill(initialPassword);
+            await page
+                .getByPlaceholder('Minimal 8 karakter')
+                .fill(initialPassword);
 
             await Promise.all([
                 page.waitForResponse(
@@ -277,9 +277,9 @@ test.describe('Dashboard Notifications — Mitra & Admin (/notifications)', () =
                 page.getByText('0 belum dibaca', { exact: true }),
             ).toBeVisible();
             await expect(
-                page
-                    .locator('header')
-                    .getByRole('link', { name: /Notifikasi \d+ belum dibaca/i }),
+                page.locator('header').getByRole('link', {
+                    name: /Notifikasi \d+ belum dibaca/i,
+                }),
             ).toHaveCount(0);
             await expect(unreadDots).toHaveCount(0);
             await expect(markAllBtn).toHaveCount(0);
@@ -306,7 +306,9 @@ test.describe('Dashboard Notifications — Mitra & Admin (/notifications)', () =
             await page.locator('#name').fill(`Admin MarkAll ${tag}`);
             await page.locator('#email').fill(newAdminEmail);
             await page.locator('#username').fill(newAdminUsername);
-            await page.getByPlaceholder('Minimal 8 karakter').fill(adminPassword);
+            await page
+                .getByPlaceholder('Minimal 8 karakter')
+                .fill(adminPassword);
 
             await Promise.all([
                 page.waitForResponse(
@@ -338,12 +340,14 @@ test.describe('Dashboard Notifications — Mitra & Admin (/notifications)', () =
                 page.getByText('0 belum dibaca', { exact: true }),
             ).toBeVisible();
             await expect(
-                page
-                    .locator('header')
-                    .getByRole('link', { name: /Notifikasi \d+ belum dibaca/i }),
+                page.locator('header').getByRole('link', {
+                    name: /Notifikasi \d+ belum dibaca/i,
+                }),
             ).toHaveCount(0);
             await expect(
-                page.locator('main').getByLabel('Belum dibaca', { exact: true }),
+                page
+                    .locator('main')
+                    .getByLabel('Belum dibaca', { exact: true }),
             ).toHaveCount(0);
             await expect(markAllBtn).toHaveCount(0);
         });

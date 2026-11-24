@@ -100,10 +100,7 @@ export type {
     ClientReviewCreateProps,
 } from './client';
 
-export type {
-    AuthResetPasswordProps,
-    AuthChangePasswordProps,
-} from './auth';
+export type { AuthResetPasswordProps, AuthChangePasswordProps } from './auth';
 
 export type { NotificationsIndexProps } from './notification';
 
@@ -151,10 +148,7 @@ import type {
     ClientReviewCreateProps,
 } from './client';
 
-import type {
-    AuthResetPasswordProps,
-    AuthChangePasswordProps,
-} from './auth';
+import type { AuthResetPasswordProps, AuthChangePasswordProps } from './auth';
 
 import type { NotificationsIndexProps } from './notification';
 

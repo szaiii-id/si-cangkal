@@ -22,7 +22,9 @@ Alur request mengikuti lapisan:
 
 `routes/web.php` → Controller per role → FormRequest → Policy → Service → Repository (Contracts + Eloquent) → Model.
 
-Binding repository/service ada di `app/Providers/AppServiceProvider.php`. Auto-discovery event **dimatikan**; `BookingConfirmed` dipetakan eksplisit di `EventServiceProvider` ke `CreateTripForBooking` (sync) lalu `NotifyClientListener` (queued)—**urutan ini harus dipertahankan**.
+Binding repository/service ada di `app/Providers/AppServiceProvider.php`. Auto-discovery event **dimatikan**; `BookingConfirmed` dipetakan eksplisit di `EventServiceProvider` ke `CreateTripForBooking` (sync). Listener itu membuat `Trip` + `TripDay`, lalu mengantrekan `GenerateETicketJob`.
+
+Notifikasi in-app/Push FCM ditangani `NotificationDispatcher` (push diantrekan sebagai `SendPushNotificationJob`), bukan oleh listener event. Semua job antrean memakai `after_commit=true` agar tidak dijalankan sebelum transaksi database selesai.
 
 ## Tech stack
 

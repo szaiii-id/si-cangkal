@@ -3,8 +3,6 @@ import { loginAsCustom } from '../fixtures/auth';
 import { ClientBookingPage } from '../pages/ClientBookingPage';
 import { SEL } from '../fixtures/selectors';
 
-
-
 test.describe('Client Booking — E-Ticket & Unduhan PDF', () => {
     test('booking pending_payment tidak menampilkan kartu maupun tombol E-Ticket', async ({
         page,
@@ -27,12 +25,8 @@ test.describe('Client Booking — E-Ticket & Unduhan PDF', () => {
         const bookingPage = new ClientBookingPage(page);
         await bookingPage.gotoShow(booking.booking_id);
 
-        await expect(
-            SEL.CLIENT.booking.downloadETicket(page),
-        ).toBeHidden();
-        await expect(
-            SEL.CLIENT.booking.eticketProcessing(page),
-        ).toBeHidden();
+        await expect(SEL.CLIENT.booking.downloadETicket(page)).toBeHidden();
+        await expect(SEL.CLIENT.booking.eticketProcessing(page)).toBeHidden();
     });
 
     test('booking confirmed tanpa E-Ticket menampilkan state sedang diproses', async ({
@@ -56,14 +50,12 @@ test.describe('Client Booking — E-Ticket & Unduhan PDF', () => {
         const bookingPage = new ClientBookingPage(page);
         await bookingPage.gotoShow(booking.booking_id);
 
-        await expect(
-            page.getByRole('button', { name: /Aktifkan/i }),
-        ).toBeHidden({ timeout: 5_000 }).catch(() => {});
+        await expect(page.getByRole('button', { name: /Aktifkan/i }))
+            .toBeHidden({ timeout: 5_000 })
+            .catch(() => {});
 
         await expect(SEL.CLIENT.booking.eticketProcessing(page)).toBeVisible();
-        await expect(
-            SEL.CLIENT.booking.downloadETicket(page),
-        ).toBeHidden();
+        await expect(SEL.CLIENT.booking.downloadETicket(page)).toBeHidden();
     });
 
     test('booking confirmed dengan Trip & E-Ticket menampilkan tombol Download E-Ticket dan mengunduh PDF valid', async ({
@@ -95,7 +87,7 @@ test.describe('Client Booking — E-Ticket & Unduhan PDF', () => {
             'href',
             new RegExp(`/client/e-tickets/${ticket.uuid}/download$`),
         );
-        
+
         // Verifikasi endpoint download mengembalikan PDF valid
         const response = await page.request.get(ticket.download_url);
         expect(response.status()).toBe(200);

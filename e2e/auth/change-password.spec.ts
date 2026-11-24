@@ -62,10 +62,7 @@ test.describe('Auth — Change Password', () => {
             await expect(page).toHaveURL('/change-password');
         });
 
-        test('mitra bisa akses /change-password', async ({
-            page,
-            asMitra,
-        }) => {
+        test('mitra bisa akses /change-password', async ({ page, asMitra }) => {
             await asMitra();
             await page.goto('/change-password');
             await expect(page).toHaveURL('/change-password');

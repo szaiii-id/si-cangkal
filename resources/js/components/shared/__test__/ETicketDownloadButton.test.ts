@@ -20,7 +20,9 @@ import { requiresETicket } from '@/utils/bookingRules';
 // ==========================================
 // MOCK DATA
 // ==========================================
-const createMockETicket = (overrides: Partial<ETicketInfo> = {}): ETicketInfo => ({
+const createMockETicket = (
+    overrides: Partial<ETicketInfo> = {},
+): ETicketInfo => ({
     uuid: 'uuid-123',
     download_url: '/eticket/download/uuid-123.pdf',
     generated_at: '2026-10-16T10:00:00Z',
@@ -37,25 +39,33 @@ describe('ETicketDownloadButton Component', () => {
     // ==========================================
     describe('When E-Ticket Exists', () => {
         it('harus merender judul, tanggal, dan tombol download', () => {
-            render(ETicketDownloadButton, { 
-                props: { 
-                    eticket: createMockETicket(), 
+            render(ETicketDownloadButton, {
+                props: {
+                    eticket: createMockETicket(),
                     bookingStatus: 'confirmed',
-                    title: 'E-Ticket Wisata' 
-                } 
+                    title: 'E-Ticket Wisata',
+                },
             });
 
             expect(screen.getByText('E-Ticket Wisata')).toBeInTheDocument();
             expect(screen.getByText(/Diterbitkan/i)).toBeInTheDocument();
-            expect(screen.getByRole('link', { name: /Download E-Ticket/i })).toBeInTheDocument();
+            expect(
+                screen.getByRole('link', { name: /Download E-Ticket/i }),
+            ).toBeInTheDocument();
         });
 
         it('harus menerapkan atribut href dan target yang benar pada tombol download', () => {
-            render(ETicketDownloadButton, { 
-                props: { eticket: createMockETicket({ download_url: '/eticket/download/abc.pdf' }) } 
+            render(ETicketDownloadButton, {
+                props: {
+                    eticket: createMockETicket({
+                        download_url: '/eticket/download/abc.pdf',
+                    }),
+                },
             });
 
-            const link = screen.getByRole('link', { name: /Download E-Ticket/i });
+            const link = screen.getByRole('link', {
+                name: /Download E-Ticket/i,
+            });
             expect(link).toHaveAttribute('href', '/eticket/download/abc.pdf');
             expect(link).toHaveAttribute('target', '_blank');
             expect(link).toHaveAttribute('rel', 'noopener noreferrer');
@@ -71,24 +81,30 @@ describe('ETicketDownloadButton Component', () => {
         });
 
         it('harus merender status "Sedang Diproses" dan tombol "Cek Ulang"', () => {
-            render(ETicketDownloadButton, { 
-                props: { 
-                    eticket: null, 
+            render(ETicketDownloadButton, {
+                props: {
+                    eticket: null,
                     bookingStatus: 'confirmed',
-                    title: 'E-Ticket Wisata'
-                } 
+                    title: 'E-Ticket Wisata',
+                },
             });
 
-            expect(screen.getByText(/E-Ticket Wisata Sedang Diproses/i)).toBeInTheDocument();
-            expect(screen.getByRole('button', { name: /Refresh halaman/i })).toBeInTheDocument();
+            expect(
+                screen.getByText(/E-Ticket Wisata Sedang Diproses/i),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: /Refresh halaman/i }),
+            ).toBeInTheDocument();
         });
 
         it('harus memanggil router.reload saat tombol "Cek Ulang" diklik', async () => {
-            render(ETicketDownloadButton, { 
-                props: { eticket: null, bookingStatus: 'confirmed' } 
+            render(ETicketDownloadButton, {
+                props: { eticket: null, bookingStatus: 'confirmed' },
             });
 
-            const refreshBtn = screen.getByRole('button', { name: /Refresh halaman/i });
+            const refreshBtn = screen.getByRole('button', {
+                name: /Refresh halaman/i,
+            });
             await fireEvent.click(refreshBtn);
 
             expect(router.reload).toHaveBeenCalledWith({ only: ['eticket'] });
@@ -104,8 +120,8 @@ describe('ETicketDownloadButton Component', () => {
         });
 
         it('TIDAK boleh merender elemen visual apa pun jika eticket null dan status tidak membutuhkan E-Ticket', () => {
-            render(ETicketDownloadButton, { 
-                props: { eticket: null, bookingStatus: 'pending_payment' } 
+            render(ETicketDownloadButton, {
+                props: { eticket: null, bookingStatus: 'pending_payment' },
             });
 
             // PERBAIKAN: Cek tidak ada elemen semantik yang muncul
@@ -121,8 +137,8 @@ describe('ETicketDownloadButton Component', () => {
     // ==========================================
     describe('Accessibility', () => {
         it('ikon SVG harus disembunyikan dari screen reader', () => {
-            const { container } = render(ETicketDownloadButton, { 
-                props: { eticket: createMockETicket() } 
+            const { container } = render(ETicketDownloadButton, {
+                props: { eticket: createMockETicket() },
             });
 
             const svgs = container.querySelectorAll('svg');

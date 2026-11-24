@@ -83,21 +83,27 @@ describe('Navbar Component', () => {
         it('harus merender tombol Dashboard untuk Admin', () => {
             mockPage.props.auth.user = { role: 'admin' };
             render(Navbar);
-            const dashboardLink = screen.getByRole('link', { name: 'Dashboard' });
+            const dashboardLink = screen.getByRole('link', {
+                name: 'Dashboard',
+            });
             expect(dashboardLink).toHaveAttribute('href', '/admin/dashboard');
         });
 
         it('harus merender tombol Dashboard untuk Mitra', () => {
             mockPage.props.auth.user = { role: 'mitra' };
             render(Navbar);
-            const dashboardLink = screen.getByRole('link', { name: 'Dashboard' });
+            const dashboardLink = screen.getByRole('link', {
+                name: 'Dashboard',
+            });
             expect(dashboardLink).toHaveAttribute('href', '/mitra/dashboard');
         });
 
         it('harus merender tombol Dashboard untuk Client', () => {
             mockPage.props.auth.user = { role: 'client' };
             render(Navbar);
-            const dashboardLink = screen.getByRole('link', { name: 'Dashboard' });
+            const dashboardLink = screen.getByRole('link', {
+                name: 'Dashboard',
+            });
             expect(dashboardLink).toHaveAttribute('href', '/client/dashboard');
         });
 

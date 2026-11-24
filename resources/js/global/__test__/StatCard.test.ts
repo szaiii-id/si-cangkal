@@ -26,15 +26,19 @@ describe('StatCard Component', () => {
         });
 
         it('harus menerapkan warna default (pink) jika color tidak diberikan', () => {
-            const { container } = render(StatCard, { props: { label: 'Test', value: 10 } });
-            
+            const { container } = render(StatCard, {
+                props: { label: 'Test', value: 10 },
+            });
+
             const card = container.firstElementChild;
             expect(card).toHaveClass('border-pink/20');
         });
 
         it('harus menerapkan warna kustom jika color diberikan', () => {
-            const { container } = render(StatCard, { props: { label: 'Test', value: 10, color: 'green' } });
-            
+            const { container } = render(StatCard, {
+                props: { label: 'Test', value: 10, color: 'green' },
+            });
+
             const card = container.firstElementChild;
             expect(card).toHaveClass('border-green/20');
         });
@@ -45,31 +49,37 @@ describe('StatCard Component', () => {
     // ==========================================
     describe('Static vs Link Mode', () => {
         it('harus merender sebagai <div> (statis) jika href tidak diberikan', () => {
-            const { container } = render(StatCard, { props: { label: 'Test', value: 10 } });
-            
+            const { container } = render(StatCard, {
+                props: { label: 'Test', value: 10 },
+            });
+
             const card = container.firstElementChild;
             expect(card?.tagName).toBe('DIV');
             expect(screen.queryByRole('link')).not.toBeInTheDocument();
         });
 
         it('harus merender sebagai <a> (tautan) jika href diberikan', () => {
-            render(StatCard, { props: { label: 'Test', value: 10, href: '/admin/bookings' } });
-            
+            render(StatCard, {
+                props: { label: 'Test', value: 10, href: '/admin/bookings' },
+            });
+
             const link = screen.getByRole('link');
             expect(link).toBeInTheDocument();
             expect(link.tagName).toBe('A');
             expect(link).toHaveAttribute('href', '/admin/bookings');
         });
 
-        it('harus menerapkan class "group hover:shadow-md" hanya pada mode tautan', () => {
-            const { container, rerender } = render(StatCard, { props: { label: 'Test', value: 10 } });
-            
+        it('harus menerapkan class "group hover:shadow-md" hanya pada mode tautan', async () => {
+            const { container, rerender } = render(StatCard, {
+                props: { label: 'Test', value: 10 },
+            });
+
             let card = container.firstElementChild;
             expect(card).not.toHaveClass('group');
             expect(card).not.toHaveClass('hover:shadow-md');
 
             // Ubah ke mode tautan
-            rerender({ label: 'Test', value: 10, href: '/test' });
+            await rerender({ label: 'Test', value: 10, href: '/test' });
             card = container.firstElementChild;
             expect(card).toHaveClass('group');
             expect(card).toHaveClass('hover:shadow-md');
@@ -81,7 +91,9 @@ describe('StatCard Component', () => {
     // ==========================================
     describe('Accessibility', () => {
         it('ikon SVG harus disembunyikan dari screen reader (aria-hidden)', () => {
-            const { container } = render(StatCard, { props: { label: 'Test', value: 10 } });
+            const { container } = render(StatCard, {
+                props: { label: 'Test', value: 10 },
+            });
             const svg = container.querySelector('svg');
             expect(svg).toHaveAttribute('aria-hidden', 'true');
         });

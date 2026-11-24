@@ -1,10 +1,10 @@
 <?php
 
+use App\Jobs\SendPushNotificationJob;
 use App\Models\User;
-use App\Services\Notification\Contracts\FirebaseNotificationServiceInterface;
 use App\Services\Notification\Contracts\NotificationServiceInterface;
 use App\Services\Notification\NotificationDispatcher;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Queue;
 
 /*
 |==========================================================================
@@ -12,26 +12,20 @@ use Illuminate\Support\Facades\Log;
 |==========================================================================
 |
 | Cakupan:
-| - `send` — panggil `notificationService->create` (in-app) +
-|   `firebaseNotificationService->sendToDevice` (push FCM).
+| - `send` — panggil `notificationService->create` (in-app) sinkron.
+| - `send` — antrekan `SendPushNotificationJob` bila user punya fcm_token.
 | - `resolveUrl` — private, via reflection (pure function).
 |
-| Tidak butuh DB. Dua dependency adalah interface (mockable).
+| Job FCM diuji terpisah di `tests/Feature/Jobs/SendPushNotificationJobTest.php`.
 |
 */
 
 beforeEach(function () {
+    Queue::fake();
+
     $this->notificationService = Mockery::mock(NotificationServiceInterface::class);
-    $this->firebaseService = Mockery::mock(FirebaseNotificationServiceInterface::class);
 
-    $this->service = new NotificationDispatcher(
-        $this->notificationService,
-        $this->firebaseService,
-    );
-
-    Log::shouldReceive('info')->byDefault()->andReturnNull();
-    Log::shouldReceive('warning')->byDefault()->andReturnNull();
-    Log::shouldReceive('error')->byDefault()->andReturnNull();
+    $this->service = new NotificationDispatcher($this->notificationService);
 });
 
 afterEach(function () {
@@ -59,7 +53,7 @@ function invokeResolveUrl(NotificationDispatcher $service, string $tipe, User $u
 */
 
 describe('send — in-app only (tanpa fcm_token)', function () {
-    it('user tanpa fcm_token → create notif in-app saja, skip push', function () {
+    it('user tanpa fcm_token → create notif in-app saja, tanpa push job', function () {
         $user = makeUser(['id' => 10, 'role' => 'client', 'fcm_token' => null]);
 
         $this->notificationService->shouldReceive('create')
@@ -73,9 +67,6 @@ describe('send — in-app only (tanpa fcm_token)', function () {
                     && $d['url'] === '/client/bookings/1'),
             );
 
-        // `sendToDevice` TIDAK dipanggil (fcm_token null)
-        $this->firebaseService->shouldReceive('sendToDevice')->never();
-
         $this->service->send(
             user: $user,
             tipe: 'booking_created',
@@ -83,13 +74,14 @@ describe('send — in-app only (tanpa fcm_token)', function () {
             pesan: 'Pesan',
             data: ['booking_id' => 1],
         );
+
+        Queue::assertNotPushed(SendPushNotificationJob::class);
     });
 
-    it('user dengan fcm_token "" (empty) → skip push', function () {
+    it('user dengan fcm_token "" (empty) → skip push job', function () {
         $user = makeUser(['id' => 10, 'role' => 'mitra', 'fcm_token' => '']);
 
         $this->notificationService->shouldReceive('create')->once();
-        $this->firebaseService->shouldReceive('sendToDevice')->never();
 
         $this->service->send(
             user: $user,
@@ -97,107 +89,48 @@ describe('send — in-app only (tanpa fcm_token)', function () {
             judul: 'Info',
             pesan: 'Pesan',
         );
+
+        Queue::assertNotPushed(SendPushNotificationJob::class);
     });
 });
 
 /*
 |==========================================================================
-| KATEGORI 2 — send: IN-APP + PUSH (with fcm_token)
+| KATEGORI 2 — send: IN-APP + PUSH job (with fcm_token)
 |==========================================================================
 */
 
-describe('send — in-app + push FCM', function () {
-    it('user dengan fcm_token → create in-app + sendToDevice', function () {
+describe('send — in-app + push job', function () {
+    it('user dengan fcm_token → job dikirim dengan data string + tipe', function () {
         $user = makeUser(['id' => 10, 'role' => 'client', 'fcm_token' => 'device-token-abc']);
 
         $this->notificationService->shouldReceive('create')->once();
-
-        $this->firebaseService->shouldReceive('sendToDevice')
-            ->once()
-            ->with(
-                deviceToken: 'device-token-abc',
-                title: 'Pesanan Baru',
-                body: 'Pesan',
-                data: Mockery::on(fn ($d) => $d['tipe'] === 'booking_created'
-                    && $d['url'] === '/client/bookings/1'
-                    && $d['booking_id'] === '1'),  // ← stringify
-            );
 
         $this->service->send(
             user: $user,
             tipe: 'booking_created',
             judul: 'Pesanan Baru',
             pesan: 'Pesan',
-            data: ['booking_id' => 1],
-        );
-    });
-
-    it('fcm data: semua value jadi string (array_map strval)', function () {
-        $user = makeUser(['id' => 10, 'role' => 'client', 'fcm_token' => 'token']);
-
-        $this->notificationService->shouldReceive('create')->once();
-
-        $this->firebaseService->shouldReceive('sendToDevice')
-            ->once()
-            ->with(
-                deviceToken: 'token',
-                title: 'X',
-                body: 'Y',
-                data: Mockery::on(fn ($d) => $d['booking_id'] === '1'
-                    && $d['refund_id'] === '5'
-                    && is_string($d['booking_id'])
-                    && is_string($d['refund_id'])),
-            );
-
-        $this->service->send(
-            user: $user,
-            tipe: 'booking_created',
-            judul: 'X',
-            pesan: 'Y',
             data: ['booking_id' => 1, 'refund_id' => 5],
         );
+
+        Queue::assertPushed(SendPushNotificationJob::class, function (SendPushNotificationJob $job): bool {
+            return $job->userId === 10
+                && $job->tipe === 'booking_created'
+                && $job->judul === 'Pesanan Baru'
+                && $job->pesan === 'Pesan'
+                && $job->data['booking_id'] === '1'
+                && $job->data['refund_id'] === '5'
+                && $job->data['url'] === '/client/bookings/1'
+                && is_string($job->data['booking_id'])
+                && is_string($job->data['refund_id']);
+        });
     });
 });
 
 /*
 |==========================================================================
-| KATEGORI 3 — send: FCM error handling
-|==========================================================================
-*/
-
-describe('send — FCM gagal', function () {
-    it('firebase throw → di-catch, in-app tetap sukses', function () {
-        $user = makeUser(['id' => 10, 'role' => 'client', 'fcm_token' => 'token']);
-
-        $this->notificationService->shouldReceive('create')->once();
-
-        $this->firebaseService->shouldReceive('sendToDevice')
-            ->once()
-            ->andThrow(new RuntimeException('FCM down'));
-
-        Log::shouldReceive('warning')
-            ->once()
-            ->with('NotificationDispatcher: gagal push FCM', Mockery::on(
-                fn ($ctx) => $ctx['user_id'] === 10
-                    && $ctx['tipe'] === 'booking_created'
-                    && $ctx['error'] === 'FCM down'
-            ));
-
-        // Tidak throw
-        $this->service->send(
-            user: $user,
-            tipe: 'booking_created',
-            judul: 'X',
-            pesan: 'Y',
-        );
-
-        expect(true)->toBeTrue();
-    });
-});
-
-/*
-|==========================================================================
-| KATEGORI 4 — resolveUrl (via reflection)
+| KATEGORI 3 — resolveUrl (via reflection)
 |==========================================================================
 */
 
@@ -254,11 +187,25 @@ describe('resolveUrl — refund tipe', function () {
 });
 
 describe('resolveUrl — trip tipe', function () {
-    it('trip_started → /{role}/trips', function () {
+    it('trip_started + booking_id → /{role}/bookings/{id}', function () {
         $user = makeUser(['role' => 'mitra']);
 
         expect(invokeResolveUrl($this->service, 'trip_started', $user, ['booking_id' => 5]))
+            ->toBe('/mitra/bookings/5');
+    });
+
+    it('trip_started tanpa booking_id → /{role}/trips (mitra)', function () {
+        $user = makeUser(['role' => 'mitra']);
+
+        expect(invokeResolveUrl($this->service, 'trip_started', $user))
             ->toBe('/mitra/trips');
+    });
+
+    it('trip_started tanpa booking_id → /client/bookings (client)', function () {
+        $user = makeUser(['role' => 'client']);
+
+        expect(invokeResolveUrl($this->service, 'trip_started', $user))
+            ->toBe('/client/bookings');
     });
 });
 

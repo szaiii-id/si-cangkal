@@ -21,14 +21,24 @@ describe('UploadProofForm Component', () => {
     // ==========================================
     describe('When Proof Already Exists', () => {
         it('harus menampilkan pesan sukses jika hasProof=true', () => {
-            (useForm as any).mockReturnValue({ payment_proof: null, processing: false, errors: {}, post: vi.fn(), reset: vi.fn() });
-            
-            render(UploadProofForm, { 
-                props: { hasProof: true, uploadUrl: '/upload' } 
+            (useForm as any).mockReturnValue({
+                payment_proof: null,
+                processing: false,
+                errors: {},
+                post: vi.fn(),
+                reset: vi.fn(),
             });
 
-            expect(screen.getByText(/Bukti transfer sudah diunggah/i)).toBeInTheDocument();
-            expect(screen.queryByRole('button', { name: /Kirim Bukti Transfer/i })).not.toBeInTheDocument();
+            render(UploadProofForm, {
+                props: { hasProof: true, uploadUrl: '/upload' },
+            });
+
+            expect(
+                screen.getByText(/Bukti transfer sudah diunggah/i),
+            ).toBeInTheDocument();
+            expect(
+                screen.queryByRole('button', { name: /Kirim Bukti Transfer/i }),
+            ).not.toBeInTheDocument();
         });
     });
 
@@ -37,14 +47,24 @@ describe('UploadProofForm Component', () => {
     // ==========================================
     describe('When Proof Does Not Exist', () => {
         it('harus menampilkan input file dan tombol submit', () => {
-            (useForm as any).mockReturnValue({ payment_proof: null, processing: false, errors: {}, post: vi.fn(), reset: vi.fn() });
-            
-            render(UploadProofForm, { 
-                props: { hasProof: false, uploadUrl: '/upload' } 
+            (useForm as any).mockReturnValue({
+                payment_proof: null,
+                processing: false,
+                errors: {},
+                post: vi.fn(),
+                reset: vi.fn(),
             });
 
-            expect(screen.getByLabelText(/Pilih file bukti transfer/i)).toBeInTheDocument();
-            expect(screen.getByRole('button', { name: /Kirim Bukti Transfer/i })).toBeInTheDocument();
+            render(UploadProofForm, {
+                props: { hasProof: false, uploadUrl: '/upload' },
+            });
+
+            expect(
+                screen.getByLabelText(/Pilih file bukti transfer/i),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: /Kirim Bukti Transfer/i }),
+            ).toBeInTheDocument();
         });
     });
 
@@ -53,14 +73,22 @@ describe('UploadProofForm Component', () => {
     // ==========================================
     describe('File Validation', () => {
         it('harus menampilkan error jika file terlalu besar (>5MB)', async () => {
-            (useForm as any).mockReturnValue({ payment_proof: null, processing: false, errors: {}, post: vi.fn(), reset: vi.fn() });
-            
-            render(UploadProofForm, { 
-                props: { hasProof: false, uploadUrl: '/upload' } 
+            (useForm as any).mockReturnValue({
+                payment_proof: null,
+                processing: false,
+                errors: {},
+                post: vi.fn(),
+                reset: vi.fn(),
             });
 
-            const fileInput = screen.getByLabelText(/Pilih file bukti transfer/i);
-            
+            render(UploadProofForm, {
+                props: { hasProof: false, uploadUrl: '/upload' },
+            });
+
+            const fileInput = screen.getByLabelText(
+                /Pilih file bukti transfer/i,
+            );
+
             // Buat file palsu 6MB
             const file = new File([''], 'large.jpg', { type: 'image/jpeg' });
             Object.defineProperty(file, 'size', { value: 6 * 1024 * 1024 });
@@ -69,7 +97,9 @@ describe('UploadProofForm Component', () => {
 
             // PERBAIKAN: Sesuaikan regex dengan pesan dari validateImageFile
             await waitFor(() => {
-                expect(screen.getByText(/Ukuran bukti transfer maksimal 5MB/i)).toBeInTheDocument();
+                expect(
+                    screen.getByText(/Ukuran bukti transfer maksimal 5MB/i),
+                ).toBeInTheDocument();
             });
         });
     });
@@ -79,16 +109,16 @@ describe('UploadProofForm Component', () => {
     // ==========================================
     describe('Loading State', () => {
         it('harus menonaktifkan tombol dan menampilkan spinner saat processing', () => {
-            (useForm as any).mockReturnValue({ 
-                payment_proof: new File([''], 'test.jpg'), 
-                processing: true, 
-                errors: {}, 
-                post: vi.fn(), 
-                reset: vi.fn() 
+            (useForm as any).mockReturnValue({
+                payment_proof: new File([''], 'test.jpg'),
+                processing: true,
+                errors: {},
+                post: vi.fn(),
+                reset: vi.fn(),
             });
-            
-            render(UploadProofForm, { 
-                props: { hasProof: false, uploadUrl: '/upload' } 
+
+            render(UploadProofForm, {
+                props: { hasProof: false, uploadUrl: '/upload' },
             });
 
             const btn = screen.getByRole('button');
@@ -102,16 +132,16 @@ describe('UploadProofForm Component', () => {
     // ==========================================
     describe('Accessibility', () => {
         it('pesan error harus memiliki role="alert"', async () => {
-            (useForm as any).mockReturnValue({ 
-                payment_proof: null, 
-                processing: false, 
-                errors: { payment_proof: 'File tidak valid' }, 
-                post: vi.fn(), 
-                reset: vi.fn() 
+            (useForm as any).mockReturnValue({
+                payment_proof: null,
+                processing: false,
+                errors: { payment_proof: 'File tidak valid' },
+                post: vi.fn(),
+                reset: vi.fn(),
             });
-            
-            render(UploadProofForm, { 
-                props: { hasProof: false, uploadUrl: '/upload' } 
+
+            render(UploadProofForm, {
+                props: { hasProof: false, uploadUrl: '/upload' },
             });
 
             const errorMessage = screen.getByRole('alert');

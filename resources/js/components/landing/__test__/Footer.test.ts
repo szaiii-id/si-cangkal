@@ -23,7 +23,9 @@ describe('Footer Component', () => {
 
         it('harus merender deskripsi perusahaan', () => {
             render(Footer);
-            expect(screen.getByText(/Sistem Implementasi Capaian Akselerasi/i)).toBeInTheDocument();
+            expect(
+                screen.getByText(/Sistem Implementasi Capaian Akselerasi/i),
+            ).toBeInTheDocument();
         });
 
         it('harus merender informasi hak cipta', () => {
@@ -90,8 +92,14 @@ describe('Footer Component', () => {
             expect(navs.length).toBe(2);
 
             // Pastikan masing-masing memiliki aria-labelledby
-            expect(navs[0]).toHaveAttribute('aria-labelledby', 'footer-nav-heading');
-            expect(navs[1]).toHaveAttribute('aria-labelledby', 'footer-legal-heading');
+            expect(navs[0]).toHaveAttribute(
+                'aria-labelledby',
+                'footer-nav-heading',
+            );
+            expect(navs[1]).toHaveAttribute(
+                'aria-labelledby',
+                'footer-legal-heading',
+            );
         });
     });
 });

@@ -6,7 +6,9 @@ import type { PackageFacility } from '@/types/models/package';
 // ==========================================
 // MOCK DATA
 // ==========================================
-const createMockFacility = (overrides: Partial<PackageFacility> = {}): PackageFacility => ({
+const createMockFacility = (
+    overrides: Partial<PackageFacility> = {},
+): PackageFacility => ({
     id: 1,
     package_id: 1,
     tipe: 'include',
@@ -52,7 +54,11 @@ describe('PackageFacilities Component', () => {
 
         it('harus menampilkan fasilitas "exclude" di kolom Tidak Termasuk', () => {
             const facilities = [
-                createMockFacility({ id: 2, tipe: 'exclude', nama: 'Tiket Pesawat' }),
+                createMockFacility({
+                    id: 2,
+                    tipe: 'exclude',
+                    nama: 'Tiket Pesawat',
+                }),
             ];
             render(PackageFacilities, { props: { facilities } });
 
@@ -80,7 +86,11 @@ describe('PackageFacilities Component', () => {
             const { container } = render(PackageFacilities, {
                 props: {
                     facilities: [
-                        createMockFacility({ id: 1, tipe: 'include', nama: 'Makan' }),
+                        createMockFacility({
+                            id: 1,
+                            tipe: 'include',
+                            nama: 'Makan',
+                        }),
                     ],
                 },
             });

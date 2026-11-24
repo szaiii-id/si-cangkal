@@ -29,7 +29,11 @@ describe('Contact API Wrapper', () => {
             submitContactForm(payload);
 
             expect(router.post).toHaveBeenCalledOnce();
-            expect(router.post).toHaveBeenCalledWith('/contact', payload, undefined);
+            expect(router.post).toHaveBeenCalledWith(
+                '/contact',
+                payload,
+                undefined,
+            );
         });
     });
 
@@ -51,7 +55,11 @@ describe('Contact API Wrapper', () => {
 
             submitContactForm(payload, options);
 
-            expect(router.post).toHaveBeenCalledWith('/contact', payload, options);
+            expect(router.post).toHaveBeenCalledWith(
+                '/contact',
+                payload,
+                options,
+            );
         });
     });
 
@@ -68,7 +76,11 @@ describe('Contact API Wrapper', () => {
 
             submitContactForm(emptyPayload);
 
-            expect(router.post).toHaveBeenCalledWith('/contact', emptyPayload, undefined);
+            expect(router.post).toHaveBeenCalledWith(
+                '/contact',
+                emptyPayload,
+                undefined,
+            );
         });
 
         it('meneruskan teks panjang (pesan ekstrem)', () => {
@@ -80,7 +92,11 @@ describe('Contact API Wrapper', () => {
 
             submitContactForm(longPayload);
 
-            expect(router.post).toHaveBeenCalledWith('/contact', longPayload, undefined);
+            expect(router.post).toHaveBeenCalledWith(
+                '/contact',
+                longPayload,
+                undefined,
+            );
         });
 
         it('meneruskan karakter khusus & unicode', () => {
@@ -92,7 +108,11 @@ describe('Contact API Wrapper', () => {
 
             submitContactForm(specialPayload);
 
-            expect(router.post).toHaveBeenCalledWith('/contact', specialPayload, undefined);
+            expect(router.post).toHaveBeenCalledWith(
+                '/contact',
+                specialPayload,
+                undefined,
+            );
         });
     });
 

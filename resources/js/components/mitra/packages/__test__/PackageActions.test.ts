@@ -32,7 +32,9 @@ describe('PackageActions Component', () => {
             render(PackageActions, { props: defaultProps });
 
             expect(screen.getByLabelText('Edit paket')).toBeInTheDocument();
-            expect(screen.getByLabelText('Buat pesanan manual')).toBeInTheDocument();
+            expect(
+                screen.getByLabelText('Buat pesanan manual'),
+            ).toBeInTheDocument();
         });
     });
 
@@ -41,23 +43,37 @@ describe('PackageActions Component', () => {
     // ==========================================
     describe('Conditional Buttons', () => {
         it('harus merender "Lanjutkan Pembuatan" jika isDraft=true', () => {
-            render(PackageActions, { props: { ...defaultProps, isDraft: true } });
-            expect(screen.getByLabelText('Lanjutkan pembuatan paket')).toBeInTheDocument();
+            render(PackageActions, {
+                props: { ...defaultProps, isDraft: true },
+            });
+            expect(
+                screen.getByLabelText('Lanjutkan pembuatan paket'),
+            ).toBeInTheDocument();
         });
 
         it('TIDAK boleh merender "Lanjutkan Pembuatan" jika isDraft=false', () => {
-            render(PackageActions, { props: { ...defaultProps, isDraft: false } });
-            expect(screen.queryByLabelText('Lanjutkan pembuatan paket')).not.toBeInTheDocument();
+            render(PackageActions, {
+                props: { ...defaultProps, isDraft: false },
+            });
+            expect(
+                screen.queryByLabelText('Lanjutkan pembuatan paket'),
+            ).not.toBeInTheDocument();
         });
 
         it('harus merender "Arsipkan" jika isAktif=true', () => {
-            render(PackageActions, { props: { ...defaultProps, isAktif: true } });
+            render(PackageActions, {
+                props: { ...defaultProps, isAktif: true },
+            });
             expect(screen.getByLabelText('Arsipkan paket')).toBeInTheDocument();
         });
 
         it('harus merender "Aktifkan Kembali" jika isArsip=true', () => {
-            render(PackageActions, { props: { ...defaultProps, isArsip: true } });
-            expect(screen.getByLabelText('Aktifkan kembali paket')).toBeInTheDocument();
+            render(PackageActions, {
+                props: { ...defaultProps, isArsip: true },
+            });
+            expect(
+                screen.getByLabelText('Aktifkan kembali paket'),
+            ).toBeInTheDocument();
         });
     });
 
@@ -75,9 +91,13 @@ describe('PackageActions Component', () => {
 
         it('harus memanggil onRestore saat tombol "Aktifkan Kembali" diklik', async () => {
             const onRestore = vi.fn();
-            render(PackageActions, { props: { ...defaultProps, isArsip: true, onRestore } });
+            render(PackageActions, {
+                props: { ...defaultProps, isArsip: true, onRestore },
+            });
 
-            await fireEvent.click(screen.getByLabelText('Aktifkan kembali paket'));
+            await fireEvent.click(
+                screen.getByLabelText('Aktifkan kembali paket'),
+            );
             expect(onRestore).toHaveBeenCalledTimes(1);
         });
 
@@ -95,8 +115,10 @@ describe('PackageActions Component', () => {
     // ==========================================
     describe('Accessibility', () => {
         it('ikon SVG dekoratif harus disembunyikan dari screen reader', () => {
-            const { container } = render(PackageActions, { props: defaultProps });
-            
+            const { container } = render(PackageActions, {
+                props: defaultProps,
+            });
+
             const svgs = container.querySelectorAll('svg');
             svgs.forEach((svg) => {
                 expect(svg).toHaveAttribute('aria-hidden', 'true');

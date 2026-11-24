@@ -6,7 +6,9 @@ import type { BankAccount } from '@/types';
 // ==========================================
 // MOCK DATA
 // ==========================================
-const createMockAccount = (overrides: Partial<BankAccount> = {}): BankAccount => ({
+const createMockAccount = (
+    overrides: Partial<BankAccount> = {},
+): BankAccount => ({
     id: 1,
     tipe: 'bank',
     nama_penyedia: 'BCA',
@@ -26,8 +28,12 @@ describe('BankAccountDisplay Component', () => {
     // ==========================================
     describe('With Accounts', () => {
         it('harus merender nama bank dan nomor rekening yang disensor', () => {
-            render(BankAccountDisplay, { 
-                props: { accounts: [createMockAccount()], onEdit: vi.fn(), onAdd: vi.fn() } 
+            render(BankAccountDisplay, {
+                props: {
+                    accounts: [createMockAccount()],
+                    onEdit: vi.fn(),
+                    onAdd: vi.fn(),
+                },
             });
 
             expect(screen.getByText('BCA')).toBeInTheDocument();
@@ -36,24 +42,36 @@ describe('BankAccountDisplay Component', () => {
         });
 
         it('harus merender nama pemilik', () => {
-            render(BankAccountDisplay, { 
-                props: { accounts: [createMockAccount()], onEdit: vi.fn(), onAdd: vi.fn() } 
+            render(BankAccountDisplay, {
+                props: {
+                    accounts: [createMockAccount()],
+                    onEdit: vi.fn(),
+                    onAdd: vi.fn(),
+                },
             });
 
             expect(screen.getByText(/Budi Santoso/)).toBeInTheDocument();
         });
 
         it('harus menampilkan badge "Utama" jika is_primary=true', () => {
-            render(BankAccountDisplay, { 
-                props: { accounts: [createMockAccount({ is_primary: true })], onEdit: vi.fn(), onAdd: vi.fn() } 
+            render(BankAccountDisplay, {
+                props: {
+                    accounts: [createMockAccount({ is_primary: true })],
+                    onEdit: vi.fn(),
+                    onAdd: vi.fn(),
+                },
             });
 
             expect(screen.getByText('Utama')).toBeInTheDocument();
         });
 
         it('TIDAK menampilkan badge "Utama" jika is_primary=false', () => {
-            render(BankAccountDisplay, { 
-                props: { accounts: [createMockAccount({ is_primary: false })], onEdit: vi.fn(), onAdd: vi.fn() } 
+            render(BankAccountDisplay, {
+                props: {
+                    accounts: [createMockAccount({ is_primary: false })],
+                    onEdit: vi.fn(),
+                    onAdd: vi.fn(),
+                },
             });
 
             expect(screen.queryByText('Utama')).not.toBeInTheDocument();
@@ -65,19 +83,23 @@ describe('BankAccountDisplay Component', () => {
     // ==========================================
     describe('Without Accounts', () => {
         it('harus menampilkan pesan kosong', () => {
-            render(BankAccountDisplay, { 
-                props: { accounts: [], onEdit: vi.fn(), onAdd: vi.fn() } 
+            render(BankAccountDisplay, {
+                props: { accounts: [], onEdit: vi.fn(), onAdd: vi.fn() },
             });
 
-            expect(screen.getByText('Belum ada rekening yang ditambahkan.')).toBeInTheDocument();
+            expect(
+                screen.getByText('Belum ada rekening yang ditambahkan.'),
+            ).toBeInTheDocument();
         });
 
         it('harus menampilkan tombol "+ Tambah Rekening"', () => {
-            render(BankAccountDisplay, { 
-                props: { accounts: [], onEdit: vi.fn(), onAdd: vi.fn() } 
+            render(BankAccountDisplay, {
+                props: { accounts: [], onEdit: vi.fn(), onAdd: vi.fn() },
             });
 
-            expect(screen.getByLabelText('Tambah rekening baru')).toBeInTheDocument();
+            expect(
+                screen.getByLabelText('Tambah rekening baru'),
+            ).toBeInTheDocument();
         });
     });
 
@@ -87,21 +109,29 @@ describe('BankAccountDisplay Component', () => {
     describe('User Interaction', () => {
         it('harus memanggil onEdit saat tombol "Edit Rekening" diklik', async () => {
             const onEdit = vi.fn();
-            render(BankAccountDisplay, { 
-                props: { accounts: [createMockAccount()], onEdit, onAdd: vi.fn() } 
+            render(BankAccountDisplay, {
+                props: {
+                    accounts: [createMockAccount()],
+                    onEdit,
+                    onAdd: vi.fn(),
+                },
             });
 
-            await fireEvent.click(screen.getByLabelText('Edit rekening pembayaran'));
+            await fireEvent.click(
+                screen.getByLabelText('Edit rekening pembayaran'),
+            );
             expect(onEdit).toHaveBeenCalledTimes(1);
         });
 
         it('harus memanggil onAdd saat tombol "+ Tambah Rekening" diklik', async () => {
             const onAdd = vi.fn();
-            render(BankAccountDisplay, { 
-                props: { accounts: [], onEdit: vi.fn(), onAdd } 
+            render(BankAccountDisplay, {
+                props: { accounts: [], onEdit: vi.fn(), onAdd },
             });
 
-            await fireEvent.click(screen.getByLabelText('Tambah rekening baru'));
+            await fireEvent.click(
+                screen.getByLabelText('Tambah rekening baru'),
+            );
             expect(onAdd).toHaveBeenCalledTimes(1);
         });
     });
@@ -111,10 +141,14 @@ describe('BankAccountDisplay Component', () => {
     // ==========================================
     describe('Accessibility', () => {
         it('ikon SVG dekoratif harus disembunyikan dari screen reader', () => {
-            const { container } = render(BankAccountDisplay, { 
-                props: { accounts: [createMockAccount()], onEdit: vi.fn(), onAdd: vi.fn() } 
+            const { container } = render(BankAccountDisplay, {
+                props: {
+                    accounts: [createMockAccount()],
+                    onEdit: vi.fn(),
+                    onAdd: vi.fn(),
+                },
             });
-            
+
             const svgs = container.querySelectorAll('svg');
             svgs.forEach((svg) => {
                 expect(svg).toHaveAttribute('aria-hidden', 'true');
@@ -122,12 +156,14 @@ describe('BankAccountDisplay Component', () => {
         });
 
         it('empty state harus memiliki role="status"', () => {
-            render(BankAccountDisplay, { 
-                props: { accounts: [], onEdit: vi.fn(), onAdd: vi.fn() } 
+            render(BankAccountDisplay, {
+                props: { accounts: [], onEdit: vi.fn(), onAdd: vi.fn() },
             });
 
             const status = screen.getByRole('status');
-            expect(status).toHaveTextContent('Belum ada rekening yang ditambahkan.');
+            expect(status).toHaveTextContent(
+                'Belum ada rekening yang ditambahkan.',
+            );
         });
     });
 });

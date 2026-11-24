@@ -6,7 +6,8 @@ import RevenueChart from '../RevenueChart.svelte';
 // MOCK AreaChart (MENGGUNAKAN FILE FISIK)
 // ==========================================
 vi.mock('@faintshadow/flarecharts', async () => {
-    const { default: AreaChart } = await import('../__mocks__/AreaChart.svelte');
+    const { default: AreaChart } =
+        await import('../__mocks__/AreaChart.svelte');
     return { AreaChart };
 });
 
@@ -36,23 +37,35 @@ describe('RevenueChart Component', () => {
     // ==========================================
     describe('Rendering', () => {
         it('harus merender judul dan deskripsi', () => {
-            render(RevenueChart, { props: { monthly_revenue: [createMockRevenue()] } });
+            render(RevenueChart, {
+                props: { monthly_revenue: [createMockRevenue()] },
+            });
 
-            expect(screen.getByRole('heading', { name: 'Tren Pendapatan' })).toBeInTheDocument();
-            expect(screen.getByText('Pergerakan pendapatan 6 bulan terakhir')).toBeInTheDocument();
+            expect(
+                screen.getByRole('heading', { name: 'Tren Pendapatan' }),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByText('Pergerakan pendapatan 6 bulan terakhir'),
+            ).toBeInTheDocument();
         });
 
         it('harus merender tautan "Lihat Detail"', () => {
-            render(RevenueChart, { props: { monthly_revenue: [createMockRevenue()] } });
+            render(RevenueChart, {
+                props: { monthly_revenue: [createMockRevenue()] },
+            });
 
-            const link = screen.getByLabelText('Lihat detail laporan pendapatan');
+            const link = screen.getByLabelText(
+                'Lihat detail laporan pendapatan',
+            );
             expect(link).toBeInTheDocument();
             expect(link).toHaveAttribute('href', '/admin/reports');
             expect(link).toHaveTextContent('Lihat Detail');
         });
 
         it('harus merender AreaChart (mock)', () => {
-            render(RevenueChart, { props: { monthly_revenue: [createMockRevenue()] } });
+            render(RevenueChart, {
+                props: { monthly_revenue: [createMockRevenue()] },
+            });
 
             expect(screen.getByTestId('area-chart')).toBeInTheDocument();
         });

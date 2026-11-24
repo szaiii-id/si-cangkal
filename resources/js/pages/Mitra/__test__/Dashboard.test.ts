@@ -72,7 +72,10 @@ vi.mock('@/components/mitra/dashboard/RecentBookingsList.svelte', () => ({
     default: (anchor: Node, props: any) => {
         const el = document.createElement('div');
         el.setAttribute('data-testid', 'recent-bookings');
-        el.setAttribute('data-bookings-count', String(props.bookings?.length ?? 0));
+        el.setAttribute(
+            'data-bookings-count',
+            String(props.bookings?.length ?? 0),
+        );
         anchor.parentNode?.insertBefore(el, anchor);
         return {};
     },
@@ -161,9 +164,9 @@ describe('Mitra Dashboard', () => {
             const cards = screen.getByTestId('stats-cards');
 
             expect(cards).toHaveAttribute('data-revenue', '12500000');
-            expect(cards).toHaveAttribute('data-packages', '8');   // stats.packages.total
-            expect(cards).toHaveAttribute('data-trips', '14');     // stats.trips.total
-            expect(cards).toHaveAttribute('data-bookings', '7');   // stats.bookings.total
+            expect(cards).toHaveAttribute('data-packages', '8'); // stats.packages.total
+            expect(cards).toHaveAttribute('data-trips', '14'); // stats.trips.total
+            expect(cards).toHaveAttribute('data-bookings', '7'); // stats.bookings.total
         });
 
         it('merender RecentBookingsList', () => {

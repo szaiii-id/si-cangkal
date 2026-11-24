@@ -102,8 +102,24 @@ const makePackage = (overrides: Record<string, unknown> = {}) =>
         created_at: '2026-01-01T00:00:00Z',
         updated_at: '2026-01-01T00:00:00Z',
         days: [
-            { id: 1, hari_ke: 1, judul: 'Day 1', deskripsi: 'Desc 1', jam_mulai: '08:00', jam_selesai: '17:00', lokasi: 'Bali' },
-            { id: 2, hari_ke: 2, judul: 'Day 2', deskripsi: 'Desc 2', jam_mulai: '08:00', jam_selesai: '17:00', lokasi: 'Bali' },
+            {
+                id: 1,
+                hari_ke: 1,
+                judul: 'Day 1',
+                deskripsi: 'Desc 1',
+                jam_mulai: '08:00',
+                jam_selesai: '17:00',
+                lokasi: 'Bali',
+            },
+            {
+                id: 2,
+                hari_ke: 2,
+                judul: 'Day 2',
+                deskripsi: 'Desc 2',
+                jam_mulai: '08:00',
+                jam_selesai: '17:00',
+                lokasi: 'Bali',
+            },
         ],
         facilities: [
             { id: 1, tipe: 'include', nama: 'Hotel' },
@@ -134,7 +150,9 @@ describe('Mitra Packages — CompletePhase2 Page', () => {
     describe('Rendering', () => {
         it('menampilkan badge "Fase 2: Kelengkapan & Terbitkan"', () => {
             renderPage();
-            expect(screen.getByText('Fase 2: Kelengkapan & Terbitkan')).toBeInTheDocument();
+            expect(
+                screen.getByText('Fase 2: Kelengkapan & Terbitkan'),
+            ).toBeInTheDocument();
         });
 
         it('menampilkan stepper dengan 3 label step', () => {
@@ -147,19 +165,25 @@ describe('Mitra Packages — CompletePhase2 Page', () => {
         it('menampilkan DaysEditor pada step 1 (default)', () => {
             renderPage();
             expect(screen.getByTestId('days-editor')).toBeInTheDocument();
-            expect(screen.getByText(/Paket Anda berdurasi 2 hari/i)).toBeInTheDocument();
+            expect(
+                screen.getByText(/Paket Anda berdurasi 2 hari/i),
+            ).toBeInTheDocument();
         });
 
         it('menampilkan tombol Batal di step 1', () => {
             renderPage();
-            expect(screen.getByRole('link', { name: /Batal/i })).toBeInTheDocument();
+            expect(
+                screen.getByRole('link', { name: /Batal/i }),
+            ).toBeInTheDocument();
         });
     });
 
     describe('Interaction — Step 1', () => {
         it('nextStep blocked jika days.length < durasi_hari', async () => {
             renderPage(makePackage({ days: [] }));
-            await fireEvent.click(screen.getByRole('button', { name: /Lanjut/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Lanjut/i }),
+            );
             await syncUI();
 
             const { showToast } = await import('@/utils/toast.svelte');
@@ -171,7 +195,9 @@ describe('Mitra Packages — CompletePhase2 Page', () => {
 
         it('nextStep berhasil jika days lengkap → masuk step 2', async () => {
             renderPage();
-            await fireEvent.click(screen.getByRole('button', { name: /Lanjut/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Lanjut/i }),
+            );
             await syncUI();
 
             expect(screen.getByTestId('facilities-editor')).toBeInTheDocument();
@@ -181,8 +207,14 @@ describe('Mitra Packages — CompletePhase2 Page', () => {
 
     describe('Interaction — Step 2 (Fasilitas)', () => {
         it('nextStep blocked jika tidak ada include', async () => {
-            await goToStep2(makePackage({ facilities: [{ id: 1, tipe: 'exclude', nama: 'X' }] }));
-            await fireEvent.click(screen.getByRole('button', { name: /Lanjut/i }));
+            await goToStep2(
+                makePackage({
+                    facilities: [{ id: 1, tipe: 'exclude', nama: 'X' }],
+                }),
+            );
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Lanjut/i }),
+            );
             await syncUI();
 
             const { showToast } = await import('@/utils/toast.svelte');
@@ -193,8 +225,14 @@ describe('Mitra Packages — CompletePhase2 Page', () => {
         });
 
         it('nextStep blocked jika tidak ada exclude', async () => {
-            await goToStep2(makePackage({ facilities: [{ id: 1, tipe: 'include', nama: 'Y' }] }));
-            await fireEvent.click(screen.getByRole('button', { name: /Lanjut/i }));
+            await goToStep2(
+                makePackage({
+                    facilities: [{ id: 1, tipe: 'include', nama: 'Y' }],
+                }),
+            );
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Lanjut/i }),
+            );
             await syncUI();
 
             const { showToast } = await import('@/utils/toast.svelte');
@@ -206,7 +244,9 @@ describe('Mitra Packages — CompletePhase2 Page', () => {
 
         it('nextStep berhasil jika include & exclude ada → masuk step 3', async () => {
             await goToStep2();
-            await fireEvent.click(screen.getByRole('button', { name: /Lanjut/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Lanjut/i }),
+            );
             await syncUI();
 
             expect(screen.getByText('Paket Siap Terbit!')).toBeInTheDocument();
@@ -215,7 +255,9 @@ describe('Mitra Packages — CompletePhase2 Page', () => {
 
         it('tombol Kembali kembali ke step 1', async () => {
             await goToStep2();
-            await fireEvent.click(screen.getByRole('button', { name: /Kembali/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Kembali/i }),
+            );
             await syncUI();
 
             expect(screen.getByTestId('days-editor')).toBeInTheDocument();
@@ -225,7 +267,9 @@ describe('Mitra Packages — CompletePhase2 Page', () => {
     describe('Rendering — Step 3 (Review)', () => {
         it('menampilkan ringkasan paket', async () => {
             await goToStep2();
-            await fireEvent.click(screen.getByRole('button', { name: /Lanjut/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Lanjut/i }),
+            );
             await syncUI();
 
             expect(screen.getByText('Paket Bali')).toBeInTheDocument();
@@ -236,22 +280,34 @@ describe('Mitra Packages — CompletePhase2 Page', () => {
 
         it('menampilkan tombol Simpan & Terbitkan', async () => {
             await goToStep2();
-            await fireEvent.click(screen.getByRole('button', { name: /Lanjut/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Lanjut/i }),
+            );
             await syncUI();
 
-            expect(screen.getByRole('button', { name: /Simpan & Terbitkan/i })).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: /Simpan & Terbitkan/i }),
+            ).toBeInTheDocument();
         });
     });
 
     describe('Interaction — Submit', () => {
         it('memanggil updatePackage + publishPackage (draft)', async () => {
-            mockApi.updatePackage.mockImplementation((_id, _fd, opts) => opts.onSuccess?.());
-            mockApi.publishPackage.mockImplementation((_id, opts) => opts.onSuccess?.());
+            mockApi.updatePackage.mockImplementation((_id, _fd, opts) =>
+                opts.onSuccess?.(),
+            );
+            mockApi.publishPackage.mockImplementation((_id, opts) =>
+                opts.onSuccess?.(),
+            );
 
             await goToStep2();
-            await fireEvent.click(screen.getByRole('button', { name: /Lanjut/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Lanjut/i }),
+            );
             await syncUI();
-            await fireEvent.click(screen.getByRole('button', { name: /Simpan & Terbitkan/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Simpan & Terbitkan/i }),
+            );
             await syncUI();
 
             expect(mockApi.updatePackage).toHaveBeenCalledOnce();
@@ -259,12 +315,18 @@ describe('Mitra Packages — CompletePhase2 Page', () => {
         });
 
         it('hanya updatePackage jika status aktif', async () => {
-            mockApi.updatePackage.mockImplementation((_id, _fd, opts) => opts.onSuccess?.());
+            mockApi.updatePackage.mockImplementation((_id, _fd, opts) =>
+                opts.onSuccess?.(),
+            );
 
             await goToStep2(makePackage({ status: 'aktif' }));
-            await fireEvent.click(screen.getByRole('button', { name: /Lanjut/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Lanjut/i }),
+            );
             await syncUI();
-            await fireEvent.click(screen.getByRole('button', { name: /Simpan & Terbitkan/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Simpan & Terbitkan/i }),
+            );
             await syncUI();
 
             expect(mockApi.updatePackage).toHaveBeenCalledOnce();

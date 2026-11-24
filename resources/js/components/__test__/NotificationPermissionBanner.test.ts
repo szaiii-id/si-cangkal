@@ -35,24 +35,36 @@ describe('NotificationPermissionBanner', () => {
     // ==========================================
     describe('Rendering', () => {
         it('harus merender judul, deskripsi, dan tombol dengan benar', () => {
-            render(NotificationPermissionBanner, { props: { onDismiss: vi.fn() } });
+            render(NotificationPermissionBanner, {
+                props: { onDismiss: vi.fn() },
+            });
 
             expect(screen.getByRole('dialog')).toBeInTheDocument();
-            
+
             // PERBAIKAN: Gunakan getByRole('heading') untuk judul (h2)
-            expect(screen.getByRole('heading', { name: 'Aktifkan Notifikasi' })).toBeInTheDocument();
-            
+            expect(
+                screen.getByRole('heading', { name: 'Aktifkan Notifikasi' }),
+            ).toBeInTheDocument();
+
             // Teks deskripsi
-            expect(screen.getByText(/Dapatkan pemberitahuan langsung/)).toBeInTheDocument();
-            
+            expect(
+                screen.getByText(/Dapatkan pemberitahuan langsung/),
+            ).toBeInTheDocument();
+
             // Tombol
-            expect(screen.getByRole('button', { name: /Aktifkan Notifikasi/i })).toBeInTheDocument();
-            expect(screen.getByRole('button', { name: /Nanti Saja/i })).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: /Aktifkan Notifikasi/i }),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: /Nanti Saja/i }),
+            ).toBeInTheDocument();
         });
 
         it('harus memiliki atribut aksesibilitas (aria-modal, aria-labelledby)', () => {
-            render(NotificationPermissionBanner, { props: { onDismiss: vi.fn() } });
-            
+            render(NotificationPermissionBanner, {
+                props: { onDismiss: vi.fn() },
+            });
+
             const dialog = screen.getByRole('dialog');
             expect(dialog).toHaveAttribute('aria-modal', 'true');
             expect(dialog).toHaveAttribute('aria-labelledby', 'notif-title');
@@ -68,7 +80,9 @@ describe('NotificationPermissionBanner', () => {
             const onDismiss = vi.fn();
             render(NotificationPermissionBanner, { props: { onDismiss } });
 
-            await fireEvent.click(screen.getByRole('button', { name: /Nanti Saja/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Nanti Saja/i }),
+            );
             expect(onDismiss).toHaveBeenCalledTimes(1);
         });
 
@@ -88,24 +102,33 @@ describe('NotificationPermissionBanner', () => {
     describe('Allow Notification', () => {
         it('harus memanggil updateFcmToken dan onSuccess saat berhasil', async () => {
             (requestFcmToken as any).mockResolvedValue('fcm-token-123');
-            
-            (updateFcmToken as any).mockImplementation((_data: any, options: any) => {
-                options.onSuccess();
-                options.onFinish();
-            });
+
+            (updateFcmToken as any).mockImplementation(
+                (_data: any, options: any) => {
+                    options.onSuccess();
+                    options.onFinish();
+                },
+            );
 
             const onSuccess = vi.fn();
-            render(NotificationPermissionBanner, { props: { onDismiss: vi.fn(), onSuccess } });
+            render(NotificationPermissionBanner, {
+                props: { onDismiss: vi.fn(), onSuccess },
+            });
 
-            await fireEvent.click(screen.getByRole('button', { name: /Aktifkan Notifikasi/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Aktifkan Notifikasi/i }),
+            );
 
             await waitFor(() => {
                 expect(updateFcmToken).toHaveBeenCalledWith(
                     { token: 'fcm-token-123' },
-                    expect.any(Object)
+                    expect.any(Object),
                 );
                 expect(onSuccess).toHaveBeenCalled();
-                expect(showToast).toHaveBeenCalledWith('Notifikasi berhasil diaktifkan!', 'success');
+                expect(showToast).toHaveBeenCalledWith(
+                    'Notifikasi berhasil diaktifkan!',
+                    'success',
+                );
             });
         });
     });
@@ -120,29 +143,35 @@ describe('NotificationPermissionBanner', () => {
             const onDismiss = vi.fn();
             render(NotificationPermissionBanner, { props: { onDismiss } });
 
-            await fireEvent.click(screen.getByRole('button', { name: /Aktifkan Notifikasi/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Aktifkan Notifikasi/i }),
+            );
 
             await waitFor(() => {
                 expect(showToast).toHaveBeenCalledWith(
                     expect.stringContaining('Izin notifikasi tidak diberikan'),
-                    'warning'
+                    'warning',
                 );
                 expect(onDismiss).toHaveBeenCalled();
             });
         });
 
         it('harus menampilkan toast error jika requestFcmToken melempar error', async () => {
-            (requestFcmToken as any).mockRejectedValue(new Error('Network error'));
+            (requestFcmToken as any).mockRejectedValue(
+                new Error('Network error'),
+            );
 
             const onDismiss = vi.fn();
             render(NotificationPermissionBanner, { props: { onDismiss } });
 
-            await fireEvent.click(screen.getByRole('button', { name: /Aktifkan Notifikasi/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Aktifkan Notifikasi/i }),
+            );
 
             await waitFor(() => {
                 expect(showToast).toHaveBeenCalledWith(
                     'Terjadi kesalahan saat mengaktifkan notifikasi.',
-                    'error'
+                    'error',
                 );
                 expect(onDismiss).toHaveBeenCalled();
             });
@@ -154,15 +183,23 @@ describe('NotificationPermissionBanner', () => {
     // ==========================================
     describe('Loading State', () => {
         it('harus menonaktifkan tombol dan menampilkan spinner saat isRequesting=true', async () => {
-            (requestFcmToken as any).mockImplementation(() => new Promise(() => {}));
+            (requestFcmToken as any).mockImplementation(
+                () => new Promise(() => {}),
+            );
 
-            render(NotificationPermissionBanner, { props: { onDismiss: vi.fn() } });
+            render(NotificationPermissionBanner, {
+                props: { onDismiss: vi.fn() },
+            });
 
-            await fireEvent.click(screen.getByRole('button', { name: /Aktifkan Notifikasi/i }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Aktifkan Notifikasi/i }),
+            );
 
             await waitFor(() => {
                 expect(screen.getByText('Memproses...')).toBeInTheDocument();
-                expect(screen.getByRole('button', { name: /Nanti Saja/i })).toBeDisabled();
+                expect(
+                    screen.getByRole('button', { name: /Nanti Saja/i }),
+                ).toBeDisabled();
             });
         });
     });

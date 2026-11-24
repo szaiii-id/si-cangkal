@@ -2,7 +2,8 @@
 import { test, expect, SEED_USERS } from '../fixtures/base';
 import { SEL } from '../fixtures/selectors';
 
-test.describe.serial('Admin — Manajemen User (CRUD, Reset Password & Proteksi Self-Delete)', () => {
+test.describe
+    .serial('Admin — Manajemen User (CRUD, Reset Password & Proteksi Self-Delete)', () => {
     const baseRunId = Date.now();
     const initialPassword = 'AdminPass123!@#';
     let resetGeneratedPassword = '';
@@ -25,7 +26,9 @@ test.describe.serial('Admin — Manajemen User (CRUD, Reset Password & Proteksi 
         await page.goto('/admin/users', { waitUntil: 'domcontentloaded' });
 
         await expect(
-            page.getByRole('heading', { name: 'Manajemen User', exact: true }).last(),
+            page
+                .getByRole('heading', { name: 'Manajemen User', exact: true })
+                .last(),
         ).toBeVisible();
 
         // Pastikan baris akun admin yang sedang login tidak memiliki tombol "Hapus"
@@ -34,7 +37,9 @@ test.describe.serial('Admin — Manajemen User (CRUD, Reset Password & Proteksi 
             .filter({ hasText: SEED_USERS.admin.email })
             .first();
         await expect(selfRow).toBeVisible();
-        await expect(selfRow.getByRole('button', { name: /^Hapus$/i })).toHaveCount(0);
+        await expect(
+            selfRow.getByRole('button', { name: /^Hapus$/i }),
+        ).toHaveCount(0);
 
         // Uji pencarian berdasarkan email mitra seed
         const searchInput = page.getByPlaceholder(/Cari nama atau email/i);
@@ -53,7 +58,9 @@ test.describe.serial('Admin — Manajemen User (CRUD, Reset Password & Proteksi 
             .filter({ hasText: SEED_USERS.mitra.email })
             .first();
         await expect(mitraRow).toBeVisible({ timeout: 10_000 });
-        await expect(mitraRow.getByRole('link', { name: /^Detail$/i })).toBeVisible();
+        await expect(
+            mitraRow.getByRole('link', { name: /^Detail$/i }),
+        ).toBeVisible();
     });
 
     test('2. Membuat akun Admin baru menampilkan CredentialsModal dengan kredensial lengkap', async ({
@@ -64,7 +71,9 @@ test.describe.serial('Admin — Manajemen User (CRUD, Reset Password & Proteksi 
         const userData = getUserData(browserName);
         await asAdmin();
 
-        await page.goto('/admin/users/create', { waitUntil: 'domcontentloaded' });
+        await page.goto('/admin/users/create', {
+            waitUntil: 'domcontentloaded',
+        });
         await expect(page.locator('#name')).toBeVisible();
 
         await page.locator('#name').fill(userData.name);
@@ -104,7 +113,9 @@ test.describe.serial('Admin — Manajemen User (CRUD, Reset Password & Proteksi 
         // --- A. Buka Detail Mitra & test tombol reveal rekening ---
         await page.goto('/admin/users', { waitUntil: 'domcontentloaded' });
         await expect(
-            page.getByRole('heading', { name: 'Manajemen User', exact: true }).last(),
+            page
+                .getByRole('heading', { name: 'Manajemen User', exact: true })
+                .last(),
         ).toBeVisible();
 
         const searchInput = page.getByPlaceholder(/Cari nama atau email/i);
@@ -132,7 +143,9 @@ test.describe.serial('Admin — Manajemen User (CRUD, Reset Password & Proteksi 
             mitraRow.getByRole('link', { name: /^Detail$/i }).click(),
         ]);
 
-        await expect(page.getByText('Rekening Bank')).toBeVisible({ timeout: 10_000 });
+        await expect(page.getByText('Rekening Bank')).toBeVisible({
+            timeout: 10_000,
+        });
         const revealBtn = page.locator('button[title="Tampilkan"]').first();
         if (await revealBtn.isVisible()) {
             await revealBtn.click();
@@ -144,7 +157,9 @@ test.describe.serial('Admin — Manajemen User (CRUD, Reset Password & Proteksi 
         // --- B. Edit nama akun admin yang baru dibuat ---
         await page.goto('/admin/users', { waitUntil: 'domcontentloaded' });
         await expect(
-            page.getByRole('heading', { name: 'Manajemen User', exact: true }).last(),
+            page
+                .getByRole('heading', { name: 'Manajemen User', exact: true })
+                .last(),
         ).toBeVisible();
 
         await Promise.all([
@@ -200,7 +215,10 @@ test.describe.serial('Admin — Manajemen User (CRUD, Reset Password & Proteksi 
         ]);
 
         await expect(
-            page.locator('table tbody tr').filter({ hasText: updatedName }).first(),
+            page
+                .locator('table tbody tr')
+                .filter({ hasText: updatedName })
+                .first(),
         ).toBeVisible({ timeout: 10_000 });
     });
 
@@ -214,7 +232,9 @@ test.describe.serial('Admin — Manajemen User (CRUD, Reset Password & Proteksi 
 
         await page.goto('/admin/users', { waitUntil: 'domcontentloaded' });
         await expect(
-            page.getByRole('heading', { name: 'Manajemen User', exact: true }).last(),
+            page
+                .getByRole('heading', { name: 'Manajemen User', exact: true })
+                .last(),
         ).toBeVisible();
 
         // Tunggu hasil pencarian debounce selesai agar tidak menimpa flash.credentials saat reset
@@ -298,7 +318,9 @@ test.describe.serial('Admin — Manajemen User (CRUD, Reset Password & Proteksi 
                 timeout: 20_000,
                 waitUntil: 'commit',
             }),
-            verifyPage.getByRole('button', { name: /Simpan Password Baru/i }).click(),
+            verifyPage
+                .getByRole('button', { name: /Simpan Password Baru/i })
+                .click(),
         ]);
 
         await SEL.AUTH.login.email(verifyPage).fill(userData.email);
@@ -323,7 +345,9 @@ test.describe.serial('Admin — Manajemen User (CRUD, Reset Password & Proteksi 
 
         await page.goto('/admin/users', { waitUntil: 'domcontentloaded' });
         await expect(
-            page.getByRole('heading', { name: 'Manajemen User', exact: true }).last(),
+            page
+                .getByRole('heading', { name: 'Manajemen User', exact: true })
+                .last(),
         ).toBeVisible();
 
         // Tunggu hasil pencarian debounce selesai agar tabel tidak re-render di tengah klik Hapus
@@ -350,7 +374,9 @@ test.describe.serial('Admin — Manajemen User (CRUD, Reset Password & Proteksi 
         });
         await expect(deleteDialog).toBeVisible({ timeout: 5_000 });
 
-        const confirmBtn = deleteDialog.getByRole('button', { name: /Ya, Hapus/i });
+        const confirmBtn = deleteDialog.getByRole('button', {
+            name: /Ya, Hapus/i,
+        });
         await expect(confirmBtn).toBeEnabled();
 
         await Promise.all([

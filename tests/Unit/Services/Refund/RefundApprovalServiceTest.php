@@ -6,6 +6,8 @@ use App\Enums\RefundStatus;
 use App\Models\Booking;
 use App\Models\Refund;
 use App\Models\User;
+use App\Repositories\Contracts\BookingRepositoryInterface;
+use App\Repositories\Contracts\RefundRepositoryInterface;
 use App\Services\Notification\Contracts\NotificationDispatcherInterface;
 use App\Services\Refund\RefundApprovalService;
 use Illuminate\Support\Facades\DB;
@@ -29,7 +31,18 @@ use Psr\Log\LoggerInterface;
 
 beforeEach(function () {
     $this->notifier = Mockery::mock(NotificationDispatcherInterface::class);
-    $this->service = new RefundApprovalService($this->notifier);
+    $this->refundRepo = Mockery::mock(RefundRepositoryInterface::class);
+    $this->bookingRepo = Mockery::mock(BookingRepositoryInterface::class);
+
+    $this->service = new RefundApprovalService(
+        $this->refundRepo,
+        $this->bookingRepo,
+        $this->notifier,
+    );
+
+    // Lock baris: default null => service memakai model yang diberikan.
+    $this->refundRepo->shouldReceive('findByIdForUpdate')->byDefault()->andReturnNull();
+    $this->bookingRepo->shouldReceive('findByIdForUpdate')->byDefault()->andReturnNull();
 
     DB::shouldReceive('transaction')
         ->byDefault()

@@ -46,7 +46,7 @@ if (!Number.isInteger(TOTAL_SHARDS) || TOTAL_SHARDS < 1) {
 if (TOTAL_SHARDS > 32) {
     console.warn(
         `   TOTAL_SHARDS=${TOTAL_SHARDS} sangat besar. ` +
-        `Pastikan CPU & RAM cukup (1 shard ≈ 1 browser + 1 php -S).`,
+            `Pastikan CPU & RAM cukup (1 shard ≈ 1 browser + 1 php -S).`,
     );
 }
 
@@ -80,10 +80,7 @@ function killPid(pid: number, signal: NodeJS.Signals = 'SIGKILL'): boolean {
     }
 }
 
-async function waitPortFree(
-    port: number,
-    timeoutMs: number,
-): Promise<boolean> {
+async function waitPortFree(port: number, timeoutMs: number): Promise<boolean> {
     const deadline = Date.now() + timeoutMs;
 
     while (Date.now() < deadline) {
@@ -128,7 +125,9 @@ async function waitServerReady(
 // CLEANUP SERVER LAMA (PER PORT)
 // ==========================================
 if (!SKIP_CLEANUP) {
-    console.log(`🧹 Membersihkan server lama di port ${BASE_PORT}-${BASE_PORT + TOTAL_SHARDS - 1}...`);
+    console.log(
+        `🧹 Membersihkan server lama di port ${BASE_PORT}-${BASE_PORT + TOTAL_SHARDS - 1}...`,
+    );
 
     let killedCount = 0;
 
@@ -141,7 +140,9 @@ if (!SKIP_CLEANUP) {
             if (killPid(pid, 'SIGKILL')) {
                 killedCount++;
             } else {
-                console.warn(`  [port ${port}]    Gagal kill PID ${pid} (permission?)`);
+                console.warn(
+                    `  [port ${port}]    Gagal kill PID ${pid} (permission?)`,
+                );
             }
         }
     }
@@ -159,13 +160,15 @@ if (!SKIP_CLEANUP) {
             );
             console.error(
                 `   Cek manual: lsof -i:${port}\n` +
-                `   Atau kill manual: kill -9 ${pid ?? '<pid>'}`,
+                    `   Atau kill manual: kill -9 ${pid ?? '<pid>'}`,
             );
             process.exit(1);
         }
     }
 
-    console.log(` Cleanup selesai (${killedCount} proses di-kill, semua port bebas).\n`);
+    console.log(
+        ` Cleanup selesai (${killedCount} proses di-kill, semua port bebas).\n`,
+    );
 } else {
     console.log('⏭️  SKIP_CLEANUP=true — lewati cleanup.\n');
 }
@@ -204,10 +207,7 @@ const procs: ShardProc[] = [];
 for (let i = 0; i < TOTAL_SHARDS; i++) {
     const port = BASE_PORT + i;
 
-    const args = [
-        'test',
-        `--shard=${i + 1}/${TOTAL_SHARDS}`,
-    ];
+    const args = ['test', `--shard=${i + 1}/${TOTAL_SHARDS}`];
 
     if (SHARD_FILTER) {
         args.push(SHARD_FILTER);
@@ -262,14 +262,14 @@ if (!SKIP_HEALTHCHECK) {
             const pid = getPidOnPort(port);
             console.error(
                 `   Shard ${index} (port ${port}): ` +
-                `PID=${pid ?? 'tidak ada'} — cek log di atas.`,
+                    `PID=${pid ?? 'tidak ada'} — cek log di atas.`,
             );
         }
         console.error(
             '\n💡 Kemungkinan penyebab:\n' +
-            '   - Port dipakai proses lain (zombie)\n' +
-            '   - php -S gagal start (cek permission storage)\n' +
-            '   - APP_ENV salah (route /_test/* tidak terdaftar)\n',
+                '   - Port dipakai proses lain (zombie)\n' +
+                '   - php -S gagal start (cek permission storage)\n' +
+                '   - APP_ENV salah (route /_test/* tidak terdaftar)\n',
         );
     } else {
         console.log(' Semua shard siap.\n');
@@ -284,17 +284,19 @@ if (!SKIP_HEALTHCHECK) {
 const results = await Promise.all(
     procs.map(
         ({ index, startedAt, proc }) =>
-            new Promise<{ index: number; code: number | null; duration: number }>(
-                (resolve) => {
-                    proc.on('exit', (code) => {
-                        resolve({
-                            index,
-                            code,
-                            duration: Date.now() - startedAt,
-                        });
+            new Promise<{
+                index: number;
+                code: number | null;
+                duration: number;
+            }>((resolve) => {
+                proc.on('exit', (code) => {
+                    resolve({
+                        index,
+                        code,
+                        duration: Date.now() - startedAt,
                     });
-                },
-            ),
+                });
+            }),
     ),
 );
 

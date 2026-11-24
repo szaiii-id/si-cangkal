@@ -16,10 +16,8 @@ export const getPackages = (
 export const getPackage = (id: number, options?: MitraOptions) =>
     router.get(`/mitra/packages/${id}`, {}, options);
 
-export const createPackage = (
-    data: RequestPayload,
-    options?: MitraOptions,
-) => router.post('/mitra/packages', data, options);
+export const createPackage = (data: RequestPayload, options?: MitraOptions) =>
+    router.post('/mitra/packages', data, options);
 
 // post + _method=PUT: PHP tidak parse PUT multipart
 export const updatePackage = (
@@ -47,10 +45,8 @@ export const getCompletePhase2 = (id: number, options?: MitraOptions) =>
 // ==========================================
 // TRIPS
 // ==========================================
-export const getTrips = (
-    params: RequestPayload = {},
-    options?: MitraOptions,
-) => router.get('/mitra/trips', params, options);
+export const getTrips = (params: RequestPayload = {}, options?: MitraOptions) =>
+    router.get('/mitra/trips', params, options);
 
 /**
  * URL untuk cetak manifest (PDF).
@@ -58,6 +54,13 @@ export const getTrips = (
  */
 export const getTripManifestUrl = (id: number): string =>
     `/mitra/trips/${id}/manifest`;
+
+/**
+ * Tandai trip selesai (active -> completed).
+ * Backend juga menyinkronkan status booking + TripDay.
+ */
+export const completeTrip = (id: number, options?: MitraOptions) =>
+    router.post(`/mitra/trips/${id}/complete`, {}, options);
 
 // ==========================================
 // BOOKINGS
@@ -67,10 +70,8 @@ export const getBookings = (
     options?: MitraOptions,
 ) => router.get('/mitra/bookings', params, options);
 
-export const verifyPayment = (
-    bookingId: number,
-    options?: MitraOptions,
-) => router.post(`/mitra/bookings/${bookingId}/verify`, {}, options);
+export const verifyPayment = (bookingId: number, options?: MitraOptions) =>
+    router.post(`/mitra/bookings/${bookingId}/verify`, {}, options);
 
 export const rejectPayment = (
     bookingId: number,
@@ -124,10 +125,8 @@ export const submitOnboarding = (
     options?: MitraOptions,
 ) => router.post('/mitra/onboarding', data, options);
 
-export const updateProfile = (
-    data: RequestPayload,
-    options?: MitraOptions,
-) => router.post('/mitra/profile', data, options);
+export const updateProfile = (data: RequestPayload, options?: MitraOptions) =>
+    router.post('/mitra/profile', data, options);
 
 export const updateBankAccounts = (
     data: RequestPayload,
@@ -137,7 +136,5 @@ export const updateBankAccounts = (
 // ==========================================
 // PASSWORD
 // ==========================================
-export const updatePassword = (
-    data: RequestPayload,
-    options?: MitraOptions,
-) => router.put('/mitra/password', data, options);
+export const updatePassword = (data: RequestPayload, options?: MitraOptions) =>
+    router.put('/mitra/password', data, options);

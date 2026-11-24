@@ -81,14 +81,24 @@ vi.mock('@/global/FilterBar.svelte', () => ({
                 <button type="button" data-action="status-draft">draft</button>
             `;
 
-            (el.querySelector('[aria-label="Search"]') as HTMLInputElement).oninput = (e) =>
+            (
+                el.querySelector('[aria-label="Search"]') as HTMLInputElement
+            ).oninput = (e) =>
                 props.onSearch?.((e.target as HTMLInputElement).value);
 
-            (el.querySelector('[aria-label="Kategori"]') as HTMLSelectElement).onchange = (e) =>
+            (
+                el.querySelector('[aria-label="Kategori"]') as HTMLSelectElement
+            ).onchange = (e) =>
                 props.onKategoriChange?.((e.target as HTMLSelectElement).value);
 
-            el.querySelector('[data-action="clear"]')!.addEventListener('click', () => props.onClear?.());
-            el.querySelector('[data-action="status-draft"]')!.addEventListener('click', () => props.onStatusChange?.('draft'));
+            el.querySelector('[data-action="clear"]')!.addEventListener(
+                'click',
+                () => props.onClear?.(),
+            );
+            el.querySelector('[data-action="status-draft"]')!.addEventListener(
+                'click',
+                () => props.onStatusChange?.('draft'),
+            );
         };
 
         update();
@@ -160,7 +170,13 @@ const makeProps = (overrides: Record<string, unknown> = {}) => ({
         to: 1,
         links: [],
     },
-    filters: { search: '', status: '', kategori: '', sort: 'created_at', direction: 'desc' },
+    filters: {
+        search: '',
+        status: '',
+        kategori: '',
+        sort: 'created_at',
+        direction: 'desc',
+    },
     statusCounts: { draft: 0, aktif: 1, arsip: 0 },
     ...overrides,
 });
@@ -187,8 +203,12 @@ describe('Mitra Packages — Index Page', () => {
     describe('Rendering', () => {
         it('merender PageHeader + tombol Buat Paket Baru', () => {
             renderIndex();
-            expect(screen.getByTestId('page-header')).toHaveTextContent('Katalog Paket Wisata');
-            expect(screen.getByRole('link', { name: /Buat Paket Baru/i })).toHaveAttribute('href', '/mitra/packages/create');
+            expect(screen.getByTestId('page-header')).toHaveTextContent(
+                'Katalog Paket Wisata',
+            );
+            expect(
+                screen.getByRole('link', { name: /Buat Paket Baru/i }),
+            ).toHaveAttribute('href', '/mitra/packages/create');
         });
 
         it('merender FilterBar', () => {
@@ -197,9 +217,20 @@ describe('Mitra Packages — Index Page', () => {
         });
 
         it('merender EmptyState jika data kosong', () => {
-            renderIndex(makeProps({
-                packages: { data: [], current_page: 1, last_page: 1, total: 0, per_page: 15, from: 0, to: 0, links: [] },
-            }));
+            renderIndex(
+                makeProps({
+                    packages: {
+                        data: [],
+                        current_page: 1,
+                        last_page: 1,
+                        total: 0,
+                        per_page: 15,
+                        from: 0,
+                        to: 0,
+                        links: [],
+                    },
+                }),
+            );
             expect(screen.getByTestId('empty-state')).toBeInTheDocument();
         });
 
@@ -218,12 +249,20 @@ describe('Mitra Packages — Index Page', () => {
         });
 
         it('menampilkan harga_per_rombongan jika ada', () => {
-            renderIndex(makeProps({
-                packages: {
-                    data: [makePackage({ harga_per_rombongan: '5000000' })],
-                    current_page: 1, last_page: 1, total: 1, per_page: 15, from: 1, to: 1, links: [],
-                },
-            }));
+            renderIndex(
+                makeProps({
+                    packages: {
+                        data: [makePackage({ harga_per_rombongan: '5000000' })],
+                        current_page: 1,
+                        last_page: 1,
+                        total: 1,
+                        per_page: 15,
+                        from: 1,
+                        to: 1,
+                        links: [],
+                    },
+                }),
+            );
             expect(screen.getByText('Rp 5000000')).toBeInTheDocument();
             expect(screen.getByText('Harga Rombongan')).toBeInTheDocument();
         });
@@ -235,12 +274,20 @@ describe('Mitra Packages — Index Page', () => {
         });
 
         it('menampilkan placeholder inisial jika cover_image null', () => {
-            renderIndex(makeProps({
-                packages: {
-                    data: [makePackage({ cover_image: null })],
-                    current_page: 1, last_page: 1, total: 1, per_page: 15, from: 1, to: 1, links: [],
-                },
-            }));
+            renderIndex(
+                makeProps({
+                    packages: {
+                        data: [makePackage({ cover_image: null })],
+                        current_page: 1,
+                        last_page: 1,
+                        total: 1,
+                        per_page: 15,
+                        from: 1,
+                        to: 1,
+                        links: [],
+                    },
+                }),
+            );
             expect(screen.getByText('P')).toBeInTheDocument();
         });
     });
@@ -282,12 +329,23 @@ describe('Mitra Packages — Index Page', () => {
         });
 
         it('memanggil getPackages saat tombol clear filter diklik', async () => {
-            renderIndex(makeProps({
-                filters: { search: 'bali', status: 'aktif', kategori: 'budaya', sort: 'created_at', direction: 'desc' },
-            }));
+            renderIndex(
+                makeProps({
+                    filters: {
+                        search: 'bali',
+                        status: 'aktif',
+                        kategori: 'budaya',
+                        sort: 'created_at',
+                        direction: 'desc',
+                    },
+                }),
+            );
             await fireEvent.click(screen.getByText('Hapus Filter'));
 
-            expect(mockApi.getPackages).toHaveBeenCalledWith({}, expect.any(Object));
+            expect(mockApi.getPackages).toHaveBeenCalledWith(
+                {},
+                expect.any(Object),
+            );
         });
     });
 });

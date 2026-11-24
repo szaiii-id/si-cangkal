@@ -18,7 +18,11 @@ describe('ReportFilter Component', () => {
 
             expect(screen.getByLabelText('Dari Tanggal')).toBeInTheDocument();
             expect(screen.getByLabelText('Sampai Tanggal')).toBeInTheDocument();
-            expect(screen.getByRole('button', { name: /Terapkan filter tanggal/i })).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', {
+                    name: /Terapkan filter tanggal/i,
+                }),
+            ).toBeInTheDocument();
         });
 
         it('harus menampilkan nilai startDate dan endDate dari props', () => {
@@ -30,8 +34,12 @@ describe('ReportFilter Component', () => {
                 },
             });
 
-            const startInput = screen.getByLabelText('Dari Tanggal') as HTMLInputElement;
-            const endInput = screen.getByLabelText('Sampai Tanggal') as HTMLInputElement;
+            const startInput = screen.getByLabelText(
+                'Dari Tanggal',
+            ) as HTMLInputElement;
+            const endInput = screen.getByLabelText(
+                'Sampai Tanggal',
+            ) as HTMLInputElement;
 
             expect(startInput.value).toBe('2026-10-01');
             expect(endInput.value).toBe('2026-10-31');
@@ -52,7 +60,9 @@ describe('ReportFilter Component', () => {
                 },
             });
 
-            const btn = screen.getByRole('button', { name: /Terapkan filter tanggal/i });
+            const btn = screen.getByRole('button', {
+                name: /Terapkan filter tanggal/i,
+            });
             await fireEvent.click(btn);
 
             expect(onApply).toHaveBeenCalledTimes(1);
@@ -72,9 +82,13 @@ describe('ReportFilter Component', () => {
                 },
             });
 
-            const btn = screen.getByRole('button', { name: /Terapkan filter tanggal/i });
+            const btn = screen.getByRole('button', {
+                name: /Terapkan filter tanggal/i,
+            });
             expect(btn).toBeDisabled();
-            expect(screen.getByText(/tidak boleh lebih besar/i)).toBeInTheDocument();
+            expect(
+                screen.getByText(/tidak boleh lebih besar/i),
+            ).toBeInTheDocument();
         });
 
         it('harus mengaktifkan tombol jika rentang tanggal valid', () => {
@@ -86,7 +100,9 @@ describe('ReportFilter Component', () => {
                 },
             });
 
-            const btn = screen.getByRole('button', { name: /Terapkan filter tanggal/i });
+            const btn = screen.getByRole('button', {
+                name: /Terapkan filter tanggal/i,
+            });
             expect(btn).not.toBeDisabled();
         });
     });
@@ -105,7 +121,9 @@ describe('ReportFilter Component', () => {
                 },
             });
 
-            const btn = screen.getByRole('button', { name: /Terapkan filter tanggal/i });
+            const btn = screen.getByRole('button', {
+                name: /Terapkan filter tanggal/i,
+            });
             expect(btn).toBeDisabled();
             expect(screen.getByText(/Memproses.../i)).toBeInTheDocument();
         });

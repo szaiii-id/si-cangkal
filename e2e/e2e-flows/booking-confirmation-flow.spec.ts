@@ -91,7 +91,10 @@ function extractBookingId(page: Page): number {
 async function extractBookingKode(page: Page): Promise<string> {
     const kodeLocator = page.locator('text=/BKG-\\d{4}-\\d+/').first();
 
-    await expect(kodeLocator, 'Kode booking tidak muncul di halaman').toBeVisible({
+    await expect(
+        kodeLocator,
+        'Kode booking tidak muncul di halaman',
+    ).toBeVisible({
         timeout: 10_000,
     });
 
@@ -114,7 +117,7 @@ test.describe.serial('E2E Flow — Booking Confirmation', () => {
     // State antar step (hanya diisi oleh step yang relevan)
     let packageId: number;
     let bookingId: number;
-    let bookingKode: string;
+    let _bookingKode: string;
 
     // ==========================================
     // STEP 1 — CLIENT MEMBUAT BOOKING
@@ -168,7 +171,7 @@ test.describe.serial('E2E Flow — Booking Confirmation', () => {
 
         // --- Extract state untuk step berikutnya ---
         bookingId = extractBookingId(page);
-        bookingKode = await extractBookingKode(page);
+        _bookingKode = await extractBookingKode(page);
 
         // --- Assert: status pending_payment ---
         await expect(
@@ -308,17 +311,13 @@ test.describe.serial('E2E Flow — Booking Confirmation', () => {
         ).toMatch(/\/client\/e-tickets\/[\w-]+\/download/);
 
         const uuidMatch = href!.match(/\/e-tickets\/([\w-]+)\/download/);
-        expect(
-            uuidMatch,
-            'Href harus mengandung UUID E-Ticket',
-        ).not.toBeNull();
+        expect(uuidMatch, 'Href harus mengandung UUID E-Ticket').not.toBeNull();
 
         // --- Assert: endpoint download mengembalikan PDF valid ---
         const response = await page.request.get(href!);
-        expect(
-            response.status(),
-            'Download E-Ticket harus return 200',
-        ).toBe(200);
+        expect(response.status(), 'Download E-Ticket harus return 200').toBe(
+            200,
+        );
         expect(
             response.headers()['content-type'],
             'Response harus berupa PDF',

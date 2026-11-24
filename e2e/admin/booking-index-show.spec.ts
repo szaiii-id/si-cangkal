@@ -1,5 +1,4 @@
 import { test, expect, SEED_USERS } from '../fixtures/base';
-import { getDateOffset } from '../fixtures/selectors';
 import type { Page } from '@playwright/test';
 
 async function dismissNotificationPrompt(page: Page): Promise<void> {
@@ -101,21 +100,29 @@ test.describe('Admin — Monitoring Pesanan (Booking Index & Show)', () => {
             await page.waitForLoadState('networkidle');
 
             await expect(
-                page.getByRole('main').getByRole('heading', { name: 'Daftar Pesanan' }),
+                page
+                    .getByRole('main')
+                    .getByRole('heading', { name: 'Daftar Pesanan' }),
             ).toBeVisible();
 
             const table = page.getByRole('table', { name: 'Daftar Booking' });
 
-            const searchInput = page.getByPlaceholder('Cari kode pesanan, nama pelanggan...');
+            const searchInput = page.getByPlaceholder(
+                'Cari kode pesanan, nama pelanggan...',
+            );
             await searchInput.fill(booking.kode);
 
             await expect(table.getByText(booking.kode)).toBeVisible();
 
-            const todayBtn = page.getByRole('button', { name: /Pesanan Hari Ini/i });
+            const todayBtn = page.getByRole('button', {
+                name: /Pesanan Hari Ini/i,
+            });
             await todayBtn.click();
             await expect(page).toHaveURL(/is_today=1/);
 
-            await page.getByRole('button', { name: 'Hapus semua filter' }).click();
+            await page
+                .getByRole('button', { name: 'Hapus semua filter' })
+                .click();
             await expect(page).not.toHaveURL(/is_today=1/);
         });
     });
@@ -148,16 +155,22 @@ test.describe('Admin — Monitoring Pesanan (Booking Index & Show)', () => {
             await page.waitForLoadState('networkidle');
 
             // Verifikasi elemen halaman detail
-            await expect(page.getByText('Pesanan Telah Dikonfirmasi')).toBeVisible();
+            await expect(
+                page.getByText('Pesanan Telah Dikonfirmasi'),
+            ).toBeVisible();
             await expect(page.getByText(booking.kode).first()).toBeVisible();
 
             // Cek tombol Regenerate E-Ticket
-            const regenerateBtn = page.getByRole('button', { name: /Regenerate E-Ticket/i });
+            const regenerateBtn = page.getByRole('button', {
+                name: /Regenerate E-Ticket/i,
+            });
             await expect(regenerateBtn).toBeVisible();
             await regenerateBtn.click();
 
             const dialog = page.getByRole('dialog');
-            await expect(dialog.getByText('Regenerate E-Ticket?')).toBeVisible();
+            await expect(
+                dialog.getByText('Regenerate E-Ticket?'),
+            ).toBeVisible();
             await dialog.getByRole('button', { name: /Batal/i }).click(); // Batal agar test aman dan bersih
         });
 
@@ -183,8 +196,12 @@ test.describe('Admin — Monitoring Pesanan (Booking Index & Show)', () => {
             await page.goto(`/admin/bookings/${booking.booking_id}`);
             await page.waitForLoadState('networkidle');
 
-            await expect(page.getByText('Menunggu Konfirmasi Pembayaran dari Mitra')).toBeVisible();
-            await expect(page.getByRole('button', { name: /Regenerate E-Ticket/i })).toBeHidden();
+            await expect(
+                page.getByText('Menunggu Konfirmasi Pembayaran dari Mitra'),
+            ).toBeVisible();
+            await expect(
+                page.getByRole('button', { name: /Regenerate E-Ticket/i }),
+            ).toBeHidden();
         });
     });
 });

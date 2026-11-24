@@ -83,7 +83,11 @@ vi.mock('@/components/layout/DashboardLayout.svelte', () => ({
 vi.mock('@/global/PageHeader.svelte', () => ({
     default: (
         anchor: Node,
-        props: { title: string; description?: string; actions?: (anchor: Node) => void },
+        props: {
+            title: string;
+            description?: string;
+            actions?: (anchor: Node) => void;
+        },
     ) => {
         const el = document.createElement('div');
         el.setAttribute('data-testid', 'page-header');
@@ -175,7 +179,10 @@ vi.mock('@/global/EmptyState.svelte', () => ({
 // 10. MOCK — PAGINATION (statis)
 // ============================================================
 vi.mock('@/global/Pagination.svelte', () => ({
-    default: (anchor: Node, props: { meta: { total: number }; label: string }) => {
+    default: (
+        anchor: Node,
+        props: { meta: { total: number }; label: string },
+    ) => {
         const el = document.createElement('div');
         el.setAttribute('data-testid', 'pagination');
         el.textContent = `Total ${props.meta.total} ${props.label}`;
@@ -223,9 +230,24 @@ const makePagination = (data: any[], overrides = {}) => ({
 });
 
 const SAMPLE_CLIENTS = [
-    makeClient({ id: 1, name: 'Budi Santoso', username: 'budisan', email: 'budi@test.com' }),
-    makeClient({ id: 2, name: 'Siti Aminah', username: 'sitin', email: 'siti@test.com' }),
-    makeClient({ id: 3, name: 'Andi Wijaya', username: null, email: 'andi@test.com' }),
+    makeClient({
+        id: 1,
+        name: 'Budi Santoso',
+        username: 'budisan',
+        email: 'budi@test.com',
+    }),
+    makeClient({
+        id: 2,
+        name: 'Siti Aminah',
+        username: 'sitin',
+        email: 'siti@test.com',
+    }),
+    makeClient({
+        id: 3,
+        name: 'Andi Wijaya',
+        username: null,
+        email: 'andi@test.com',
+    }),
 ];
 
 // ============================================================
@@ -252,7 +274,12 @@ describe('Admin Clients — Index Page', () => {
                 filters: { search: '', per_page: 15 },
             });
 
-            expect(screen.getByRole('heading', { level: 1, name: 'Daftar Client' })).toBeInTheDocument();
+            expect(
+                screen.getByRole('heading', {
+                    level: 1,
+                    name: 'Daftar Client',
+                }),
+            ).toBeInTheDocument();
             expect(
                 screen.getByText(/Client yang mendaftar mandiri\. Read-only/i),
             ).toBeInTheDocument();
@@ -292,9 +319,15 @@ describe('Admin Clients — Index Page', () => {
                 filters: { search: '', per_page: 15 },
             });
 
-            expect(screen.getByRole('columnheader', { name: 'Client' })).toBeInTheDocument();
-            expect(screen.getByRole('columnheader', { name: 'Username' })).toBeInTheDocument();
-            expect(screen.getByRole('columnheader', { name: 'Terdaftar' })).toBeInTheDocument();
+            expect(
+                screen.getByRole('columnheader', { name: 'Client' }),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByRole('columnheader', { name: 'Username' }),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByRole('columnheader', { name: 'Terdaftar' }),
+            ).toBeInTheDocument();
         });
 
         it('merender satu row per client', () => {
@@ -315,12 +348,20 @@ describe('Admin Clients — Index Page', () => {
 
             const rows = screen.getAllByRole('row').slice(1); // skip header
 
-            expect(within(rows[0]).getByText('Budi Santoso')).toBeInTheDocument();
-            expect(within(rows[0]).getByText('budi@test.com')).toBeInTheDocument();
+            expect(
+                within(rows[0]).getByText('Budi Santoso'),
+            ).toBeInTheDocument();
+            expect(
+                within(rows[0]).getByText('budi@test.com'),
+            ).toBeInTheDocument();
             expect(within(rows[0]).getByText('budisan')).toBeInTheDocument();
 
-            expect(within(rows[1]).getByText('Siti Aminah')).toBeInTheDocument();
-            expect(within(rows[1]).getByText('siti@test.com')).toBeInTheDocument();
+            expect(
+                within(rows[1]).getByText('Siti Aminah'),
+            ).toBeInTheDocument();
+            expect(
+                within(rows[1]).getByText('siti@test.com'),
+            ).toBeInTheDocument();
             expect(within(rows[1]).getByText('sitin')).toBeInTheDocument();
         });
 
@@ -372,7 +413,9 @@ describe('Admin Clients — Index Page', () => {
             expect(emptyState).toHaveTextContent(
                 'Client yang mendaftar mandiri akan muncul di sini.',
             );
-            expect(screen.queryByRole('button', { name: 'Reset Filter' })).not.toBeInTheDocument();
+            expect(
+                screen.queryByRole('button', { name: 'Reset Filter' }),
+            ).not.toBeInTheDocument();
         });
 
         it('menampilkan EmptyState pencarian saat ada filter aktif', () => {
@@ -386,7 +429,9 @@ describe('Admin Clients — Index Page', () => {
             expect(emptyState).toHaveTextContent(
                 'Tidak ditemukan client dengan kata kunci "tidakada".',
             );
-            expect(screen.getByRole('button', { name: 'Reset Filter' })).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: 'Reset Filter' }),
+            ).toBeInTheDocument();
         });
 
         it('TIDAK merender table & pagination saat empty', () => {
@@ -410,7 +455,9 @@ describe('Admin Clients — Index Page', () => {
                 filters: { search: '', per_page: 15 },
             });
 
-            const input = screen.getByPlaceholderText(/Cari nama, email, atau username/i);
+            const input = screen.getByPlaceholderText(
+                /Cari nama, email, atau username/i,
+            );
             await fireEvent.input(input, { target: { value: 'budi' } });
 
             expect(getClients).not.toHaveBeenCalled();
@@ -422,7 +469,9 @@ describe('Admin Clients — Index Page', () => {
                 filters: { search: '', per_page: 15 },
             });
 
-            const input = screen.getByPlaceholderText(/Cari nama, email, atau username/i);
+            const input = screen.getByPlaceholderText(
+                /Cari nama, email, atau username/i,
+            );
             await fireEvent.input(input, { target: { value: 'budi' } });
 
             await vi.advanceTimersByTimeAsync(299);
@@ -442,7 +491,9 @@ describe('Admin Clients — Index Page', () => {
                 filters: { search: '', per_page: 15 },
             });
 
-            const input = screen.getByPlaceholderText(/Cari nama, email, atau username/i);
+            const input = screen.getByPlaceholderText(
+                /Cari nama, email, atau username/i,
+            );
             await fireEvent.input(input, { target: { value: 'b' } });
             await fireEvent.input(input, { target: { value: 'bu' } });
             await fireEvent.input(input, { target: { value: 'bud' } });
@@ -468,7 +519,9 @@ describe('Admin Clients — Index Page', () => {
                 filters: { search: 'admin', per_page: 15 },
             });
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Hapus Pencarian' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Hapus Pencarian' }),
+            );
 
             expect(getClients).toHaveBeenCalledOnce();
             expect(getClients).toHaveBeenCalledWith(
@@ -483,7 +536,9 @@ describe('Admin Clients — Index Page', () => {
                 filters: { search: 'tidakada', per_page: 15 },
             });
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Reset Filter' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Reset Filter' }),
+            );
 
             expect(getClients).toHaveBeenCalledWith(
                 { search: '', per_page: 15 },
@@ -503,15 +558,21 @@ describe('Admin Clients — Index Page', () => {
             });
 
             // Awal: default
-            expect(screen.getByTestId('empty-state')).toHaveTextContent('Belum ada client');
+            expect(screen.getByTestId('empty-state')).toHaveTextContent(
+                'Belum ada client',
+            );
 
             // Ketik search
-            const input = screen.getByPlaceholderText(/Cari nama, email, atau username/i);
+            const input = screen.getByPlaceholderText(
+                /Cari nama, email, atau username/i,
+            );
             await fireEvent.input(input, { target: { value: 'xyz' } });
             await syncUI();
 
             // Context berubah
-            expect(screen.getByTestId('empty-state')).toHaveTextContent('Tidak ada hasil ditemukan');
+            expect(screen.getByTestId('empty-state')).toHaveTextContent(
+                'Tidak ada hasil ditemukan',
+            );
             expect(screen.getByTestId('empty-state')).toHaveTextContent(
                 'Tidak ditemukan client dengan kata kunci "xyz".',
             );

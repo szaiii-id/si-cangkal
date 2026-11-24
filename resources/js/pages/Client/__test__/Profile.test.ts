@@ -73,8 +73,7 @@ const makeUser = (overrides: Record<string, unknown> = {}) => ({
     ...overrides,
 });
 
-const renderPage = (user = makeUser()) =>
-    render(Profile, { props: { user } });
+const renderPage = (user = makeUser()) => render(Profile, { props: { user } });
 
 // ============================================================
 // 7. TEST SUITE
@@ -90,7 +89,9 @@ describe('Client Profile', () => {
     describe('Rendering — Header', () => {
         it('menampilkan nama & username di header', () => {
             renderPage();
-            expect(screen.getByRole('heading', { level: 2, name: 'Budi Santoso' })).toBeInTheDocument();
+            expect(
+                screen.getByRole('heading', { level: 2, name: 'Budi Santoso' }),
+            ).toBeInTheDocument();
             expect(screen.getByText('@budisan')).toBeInTheDocument();
         });
 
@@ -116,7 +117,9 @@ describe('Client Profile', () => {
 
         it('menampilkan fallback "Client" saat nama kosong', () => {
             renderPage(makeUser({ name: '' }));
-            expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('Client');
+            expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(
+                'Client',
+            );
         });
 
         it('menampilkan fallback "@username" saat username kosong', () => {
@@ -131,19 +134,25 @@ describe('Client Profile', () => {
     describe('Rendering — Form', () => {
         it('menampilkan input nama dengan value awal', () => {
             renderPage();
-            const nameInput = screen.getByLabelText(/Nama Lengkap/i) as HTMLInputElement;
+            const nameInput = screen.getByLabelText(
+                /Nama Lengkap/i,
+            ) as HTMLInputElement;
             expect(nameInput.value).toBe('Budi Santoso');
         });
 
         it('menampilkan input username dengan value awal', () => {
             renderPage();
-            const usernameInput = screen.getByLabelText(/Username/i) as HTMLInputElement;
+            const usernameInput = screen.getByLabelText(
+                /Username/i,
+            ) as HTMLInputElement;
             expect(usernameInput.value).toBe('budisan');
         });
 
         it('menampilkan email sebagai read-only', () => {
             renderPage();
-            const emailInput = screen.getByLabelText(/Email/i) as HTMLInputElement;
+            const emailInput = screen.getByLabelText(
+                /Email/i,
+            ) as HTMLInputElement;
             expect(emailInput.readOnly).toBe(true);
             expect(emailInput.disabled).toBe(true);
             expect(emailInput.value).toBe('budi@test.com');
@@ -157,8 +166,10 @@ describe('Client Profile', () => {
         it('tombol Reset & Simpan disabled saat tidak ada perubahan', () => {
             renderPage();
             const resetBtn = screen.getByRole('button', { name: 'Reset' });
-            const saveBtn = screen.getByRole('button', { name: /Simpan Perubahan/i });
-            
+            const saveBtn = screen.getByRole('button', {
+                name: /Simpan Perubahan/i,
+            });
+
             expect(resetBtn).toBeDisabled();
             expect(saveBtn).toBeDisabled();
         });
@@ -170,11 +181,17 @@ describe('Client Profile', () => {
     describe('Interaction — Input Changes', () => {
         it('mengetik nama membuat tombol Save & Reset aktif', async () => {
             renderPage();
-            
-            const nameInput = screen.getByLabelText(/Nama Lengkap/i) as HTMLInputElement;
-            await fireEvent.input(nameInput, { target: { value: 'Budi Baru' } });
 
-            const saveBtn = screen.getByRole('button', { name: /Simpan Perubahan/i });
+            const nameInput = screen.getByLabelText(
+                /Nama Lengkap/i,
+            ) as HTMLInputElement;
+            await fireEvent.input(nameInput, {
+                target: { value: 'Budi Baru' },
+            });
+
+            const saveBtn = screen.getByRole('button', {
+                name: /Simpan Perubahan/i,
+            });
             expect(saveBtn).not.toBeDisabled();
 
             const resetBtn = screen.getByRole('button', { name: 'Reset' });
@@ -183,22 +200,34 @@ describe('Client Profile', () => {
 
         it('mengetik username membuat tombol Save aktif', async () => {
             renderPage();
-            
-            const usernameInput = screen.getByLabelText(/Username/i) as HTMLInputElement;
-            await fireEvent.input(usernameInput, { target: { value: 'budi-baru' } });
 
-            const saveBtn = screen.getByRole('button', { name: /Simpan Perubahan/i });
+            const usernameInput = screen.getByLabelText(
+                /Username/i,
+            ) as HTMLInputElement;
+            await fireEvent.input(usernameInput, {
+                target: { value: 'budi-baru' },
+            });
+
+            const saveBtn = screen.getByRole('button', {
+                name: /Simpan Perubahan/i,
+            });
             expect(saveBtn).not.toBeDisabled();
         });
 
         it('tidak menandai perubahan jika hanya mengetik lalu hapus', async () => {
             renderPage();
-            
-            const nameInput = screen.getByLabelText(/Nama Lengkap/i) as HTMLInputElement;
-            await fireEvent.input(nameInput, { target: { value: 'X' } });
-            await fireEvent.input(nameInput, { target: { value: 'Budi Santoso' } });
 
-            const saveBtn = screen.getByRole('button', { name: /Simpan Perubahan/i });
+            const nameInput = screen.getByLabelText(
+                /Nama Lengkap/i,
+            ) as HTMLInputElement;
+            await fireEvent.input(nameInput, { target: { value: 'X' } });
+            await fireEvent.input(nameInput, {
+                target: { value: 'Budi Santoso' },
+            });
+
+            const saveBtn = screen.getByRole('button', {
+                name: /Simpan Perubahan/i,
+            });
             expect(saveBtn).toBeDisabled();
         });
     });
@@ -209,9 +238,13 @@ describe('Client Profile', () => {
     describe('Interaction — Reset Form', () => {
         it('klik Reset mengembalikan form ke nilai awal', async () => {
             renderPage();
-            
-            const nameInput = screen.getByLabelText(/Nama Lengkap/i) as HTMLInputElement;
-            await fireEvent.input(nameInput, { target: { value: 'Budi Baru' } });
+
+            const nameInput = screen.getByLabelText(
+                /Nama Lengkap/i,
+            ) as HTMLInputElement;
+            await fireEvent.input(nameInput, {
+                target: { value: 'Budi Baru' },
+            });
 
             const resetBtn = screen.getByRole('button', { name: 'Reset' });
             await fireEvent.click(resetBtn);
@@ -221,7 +254,7 @@ describe('Client Profile', () => {
 
         it('klik Reset mengosongkan error', async () => {
             renderPage();
-            
+
             // Simulasi error muncul (dengan submit + onError)
             mockRouterPut.mockImplementationOnce((_url, _data, opts) => {
                 opts.onError({ name: 'Error test' });
@@ -229,10 +262,14 @@ describe('Client Profile', () => {
             });
 
             // First change + submit
-            const nameInput = screen.getByLabelText(/Nama Lengkap/i) as HTMLInputElement;
+            const nameInput = screen.getByLabelText(
+                /Nama Lengkap/i,
+            ) as HTMLInputElement;
             await fireEvent.input(nameInput, { target: { value: 'X' } });
 
-            const saveBtn = screen.getByRole('button', { name: /Simpan Perubahan/i });
+            const saveBtn = screen.getByRole('button', {
+                name: /Simpan Perubahan/i,
+            });
             await fireEvent.click(saveBtn);
 
             expect(screen.getByText('Error test')).toBeInTheDocument();
@@ -251,8 +288,10 @@ describe('Client Profile', () => {
     describe('Interaction — Submit', () => {
         it('TIDAK submit jika tidak ada perubahan', async () => {
             renderPage();
-            
-            const saveBtn = screen.getByRole('button', { name: /Simpan Perubahan/i });
+
+            const saveBtn = screen.getByRole('button', {
+                name: /Simpan Perubahan/i,
+            });
             await fireEvent.click(saveBtn);
 
             expect(mockRouterPut).not.toHaveBeenCalled();
@@ -260,13 +299,19 @@ describe('Client Profile', () => {
 
         it('memanggil router.put dengan payload & endpoint benar', async () => {
             renderPage();
-            
-            const nameInput = screen.getByLabelText(/Nama Lengkap/i) as HTMLInputElement;
-            await fireEvent.input(nameInput, { target: { value: 'Budi Baru' } });
+
+            const nameInput = screen.getByLabelText(
+                /Nama Lengkap/i,
+            ) as HTMLInputElement;
+            await fireEvent.input(nameInput, {
+                target: { value: 'Budi Baru' },
+            });
 
             mockRouterPut.mockImplementation(() => {}); // no-op
 
-            const saveBtn = screen.getByRole('button', { name: /Simpan Perubahan/i });
+            const saveBtn = screen.getByRole('button', {
+                name: /Simpan Perubahan/i,
+            });
             await fireEvent.click(saveBtn);
 
             expect(mockRouterPut).toHaveBeenCalledOnce();
@@ -279,32 +324,46 @@ describe('Client Profile', () => {
 
         it('menampilkan "Menyimpan..." selama processing', async () => {
             renderPage();
-            
-            const nameInput = screen.getByLabelText(/Nama Lengkap/i) as HTMLInputElement;
-            await fireEvent.input(nameInput, { target: { value: 'Budi Baru' } });
+
+            const nameInput = screen.getByLabelText(
+                /Nama Lengkap/i,
+            ) as HTMLInputElement;
+            await fireEvent.input(nameInput, {
+                target: { value: 'Budi Baru' },
+            });
 
             // Mock tidak panggil callback → processing tetap true
             mockRouterPut.mockImplementation(() => {});
 
-            const saveBtn = screen.getByRole('button', { name: /Simpan Perubahan/i });
+            const saveBtn = screen.getByRole('button', {
+                name: /Simpan Perubahan/i,
+            });
             await fireEvent.click(saveBtn);
 
             await Promise.resolve();
-            expect(screen.getByRole('button', { name: /Menyimpan/i })).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: /Menyimpan/i }),
+            ).toBeInTheDocument();
         });
 
         it('menampilkan toast success saat onSuccess', async () => {
             renderPage();
-            
-            const nameInput = screen.getByLabelText(/Nama Lengkap/i) as HTMLInputElement;
-            await fireEvent.input(nameInput, { target: { value: 'Budi Baru' } });
+
+            const nameInput = screen.getByLabelText(
+                /Nama Lengkap/i,
+            ) as HTMLInputElement;
+            await fireEvent.input(nameInput, {
+                target: { value: 'Budi Baru' },
+            });
 
             mockRouterPut.mockImplementation((_url, _data, opts) => {
                 opts.onSuccess();
                 opts.onFinish();
             });
 
-            const saveBtn = screen.getByRole('button', { name: /Simpan Perubahan/i });
+            const saveBtn = screen.getByRole('button', {
+                name: /Simpan Perubahan/i,
+            });
             await fireEvent.click(saveBtn);
 
             expect(showToast).toHaveBeenCalledWith(
@@ -315,16 +374,22 @@ describe('Client Profile', () => {
 
         it('menampilkan error jika onError', async () => {
             renderPage();
-            
-            const nameInput = screen.getByLabelText(/Nama Lengkap/i) as HTMLInputElement;
-            await fireEvent.input(nameInput, { target: { value: 'Budi Baru' } });
+
+            const nameInput = screen.getByLabelText(
+                /Nama Lengkap/i,
+            ) as HTMLInputElement;
+            await fireEvent.input(nameInput, {
+                target: { value: 'Budi Baru' },
+            });
 
             mockRouterPut.mockImplementation((_url, _data, opts) => {
                 opts.onError({ name: 'Nama sudah dipakai' });
                 opts.onFinish();
             });
 
-            const saveBtn = screen.getByRole('button', { name: /Simpan Perubahan/i });
+            const saveBtn = screen.getByRole('button', {
+                name: /Simpan Perubahan/i,
+            });
             await fireEvent.click(saveBtn);
 
             expect(screen.getByText('Nama sudah dipakai')).toBeInTheDocument();
@@ -336,19 +401,27 @@ describe('Client Profile', () => {
 
         it('menampilkan error alert dengan count', async () => {
             renderPage();
-            
-            const nameInput = screen.getByLabelText(/Nama Lengkap/i) as HTMLInputElement;
-            await fireEvent.input(nameInput, { target: { value: 'Budi Baru' } });
+
+            const nameInput = screen.getByLabelText(
+                /Nama Lengkap/i,
+            ) as HTMLInputElement;
+            await fireEvent.input(nameInput, {
+                target: { value: 'Budi Baru' },
+            });
 
             mockRouterPut.mockImplementation((_url, _data, opts) => {
                 opts.onError({ name: 'Error 1', username: 'Error 2' });
                 opts.onFinish();
             });
 
-            const saveBtn = screen.getByRole('button', { name: /Simpan Perubahan/i });
+            const saveBtn = screen.getByRole('button', {
+                name: /Simpan Perubahan/i,
+            });
             await fireEvent.click(saveBtn);
 
-            expect(screen.getByText(/Terdapat 2 kesalahan pada form/i)).toBeInTheDocument();
+            expect(
+                screen.getByText(/Terdapat 2 kesalahan pada form/i),
+            ).toBeInTheDocument();
         });
     });
 });

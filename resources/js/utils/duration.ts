@@ -90,7 +90,10 @@ export function formatDurasiFromRange(
     mulai: string | null | undefined,
     selesai: string | null | undefined,
 ): string {
-    return formatDurasi(hitungDurasiHari(mulai, selesai), hitungDurasiMalam(mulai, selesai));
+    return formatDurasi(
+        hitungDurasiHari(mulai, selesai),
+        hitungDurasiMalam(mulai, selesai),
+    );
 }
 
 // ==========================================

@@ -24,7 +24,7 @@ describe('Filter State Manager (filters.svelte.ts)', () => {
     // Helper pembuat filter yang aman
     const createTestFilter = (debounceMs = 300) => {
         // Variabel penampung untuk mengakses controller di dalam closure
-        let controller: any; 
+        let controller: any;
 
         controller = createFilter({
             url: '/admin/users',
@@ -83,7 +83,7 @@ describe('Filter State Manager (filters.svelte.ts)', () => {
             });
 
             filter.update('search', ' budi ');
-            expect(filter.hasActive()).toBe(false); 
+            expect(filter.hasActive()).toBe(false);
         });
     });
 
@@ -94,7 +94,7 @@ describe('Filter State Manager (filters.svelte.ts)', () => {
         it('harus MENUNDA pemanggilan router.get saat update() dipanggil (debounce)', () => {
             const filter = createTestFilter(300);
             filter.update('search', 'budi');
-            
+
             expect(router.get).not.toHaveBeenCalled();
 
             vi.advanceTimersByTime(299);
@@ -112,7 +112,7 @@ describe('Filter State Manager (filters.svelte.ts)', () => {
             expect(router.get).toHaveBeenCalledWith(
                 '/admin/users',
                 expect.objectContaining({ status: 'active' }),
-                expect.any(Object)
+                expect.any(Object),
             );
         });
 
@@ -129,7 +129,7 @@ describe('Filter State Manager (filters.svelte.ts)', () => {
             vi.advanceTimersByTime(100);
 
             filter.update('search', 'budi');
-            
+
             expect(router.get).not.toHaveBeenCalled();
 
             vi.advanceTimersByTime(300);
@@ -151,7 +151,7 @@ describe('Filter State Manager (filters.svelte.ts)', () => {
                     preserveState: true,
                     preserveScroll: true,
                     replace: true,
-                }
+                },
             );
         });
     });
@@ -162,7 +162,7 @@ describe('Filter State Manager (filters.svelte.ts)', () => {
     describe('clear() Function', () => {
         it('harus mereset semua state ke string kosong dan memanggil router', () => {
             const filter = createTestFilter();
-            
+
             filter.update('search', 'budi');
             filter.update('status', 'active');
             filter.update('page', 3);
@@ -171,12 +171,12 @@ describe('Filter State Manager (filters.svelte.ts)', () => {
 
             expect(filter.values.search).toBe('');
             expect(filter.values.status).toBe('');
-            expect(filter.values.page).toBe(''); 
+            expect(filter.values.page).toBe('');
 
             expect(router.get).toHaveBeenCalledWith(
                 '/admin/users',
                 {},
-                expect.any(Object)
+                expect.any(Object),
             );
         });
     });

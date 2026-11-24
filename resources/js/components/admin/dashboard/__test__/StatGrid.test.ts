@@ -31,7 +31,7 @@ describe('StatGrid Component', () => {
     describe('Rendering', () => {
         it('harus merender semua label statistik', () => {
             render(StatGrid, { props: { stats: createMockStats() } });
-            
+
             expect(screen.getByText('Total Pendapatan')).toBeInTheDocument();
             expect(screen.getByText('Total Mitra')).toBeInTheDocument();
             expect(screen.getByText('Total Booking')).toBeInTheDocument();
@@ -65,7 +65,7 @@ describe('StatGrid Component', () => {
     describe('Detail Links', () => {
         it('harus merender tautan "Detail" untuk Mitra', () => {
             render(StatGrid, { props: { stats: createMockStats() } });
-            
+
             const link = screen.getByLabelText('Lihat detail Total Mitra');
             expect(link).toBeInTheDocument();
             expect(link).toHaveAttribute('href', '/admin/mitras');
@@ -73,7 +73,7 @@ describe('StatGrid Component', () => {
 
         it('harus merender tautan "Detail" untuk Booking', () => {
             render(StatGrid, { props: { stats: createMockStats() } });
-            
+
             const link = screen.getByLabelText('Lihat detail Total Booking');
             expect(link).toBeInTheDocument();
             expect(link).toHaveAttribute('href', '/admin/bookings');
@@ -81,7 +81,7 @@ describe('StatGrid Component', () => {
 
         it('harus merender tautan "Detail" untuk Trip', () => {
             render(StatGrid, { props: { stats: createMockStats() } });
-            
+
             const link = screen.getByLabelText('Lihat detail Total Trip');
             expect(link).toBeInTheDocument();
             expect(link).toHaveAttribute('href', '/admin/trips');
@@ -93,8 +93,10 @@ describe('StatGrid Component', () => {
     // ==========================================
     describe('Accessibility', () => {
         it('ikon SVG dekoratif harus disembunyikan dari screen reader', () => {
-            const { container } = render(StatGrid, { props: { stats: createMockStats() } });
-            
+            const { container } = render(StatGrid, {
+                props: { stats: createMockStats() },
+            });
+
             const svgs = container.querySelectorAll('svg');
             svgs.forEach((svg) => {
                 expect(svg).toHaveAttribute('aria-hidden', 'true');

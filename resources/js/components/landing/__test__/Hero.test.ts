@@ -26,26 +26,36 @@ describe('Hero Component', () => {
     describe('Guest View', () => {
         it('harus menampilkan judul dan deskripsi utama', () => {
             render(Hero);
-            
-            expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/Sinergi Pariwisata Banua/i);
-            expect(screen.getByText(/Sistem Implementasi Capaian Akselerasi/i)).toBeInTheDocument();
+
+            expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+                /Sinergi Pariwisata Banua/i,
+            );
+            expect(
+                screen.getByText(/Sistem Implementasi Capaian Akselerasi/i),
+            ).toBeInTheDocument();
         });
 
         it('harus menampilkan tombol "Gabung Mitra Travel" dan "Masuk Sistem"', () => {
             render(Hero);
-            
-            const registerBtn = screen.getByRole('link', { name: /Gabung Mitra Travel/i });
+
+            const registerBtn = screen.getByRole('link', {
+                name: /Gabung Mitra Travel/i,
+            });
             expect(registerBtn).toBeInTheDocument();
             expect(registerBtn).toHaveAttribute('href', '/register/mitra');
 
-            const loginBtn = screen.getByRole('link', { name: /Masuk Sistem/i });
+            const loginBtn = screen.getByRole('link', {
+                name: /Masuk Sistem/i,
+            });
             expect(loginBtn).toBeInTheDocument();
             expect(loginBtn).toHaveAttribute('href', '/login');
         });
 
         it('TIDAK boleh menampilkan tombol "Kembali ke Dashboard"', () => {
             render(Hero);
-            expect(screen.queryByText(/Kembali ke Dashboard/i)).not.toBeInTheDocument();
+            expect(
+                screen.queryByText(/Kembali ke Dashboard/i),
+            ).not.toBeInTheDocument();
         });
     });
 
@@ -57,7 +67,9 @@ describe('Hero Component', () => {
             mockPage.props.auth.user = { role: 'admin' };
             render(Hero);
 
-            const dashBtn = screen.getByRole('link', { name: /Kembali ke Dashboard/i });
+            const dashBtn = screen.getByRole('link', {
+                name: /Kembali ke Dashboard/i,
+            });
             expect(dashBtn).toBeInTheDocument();
             expect(dashBtn).toHaveAttribute('href', '/admin/dashboard');
         });
@@ -66,7 +78,9 @@ describe('Hero Component', () => {
             mockPage.props.auth.user = { role: 'mitra' };
             render(Hero);
 
-            const dashBtn = screen.getByRole('link', { name: /Kembali ke Dashboard/i });
+            const dashBtn = screen.getByRole('link', {
+                name: /Kembali ke Dashboard/i,
+            });
             expect(dashBtn).toHaveAttribute('href', '/mitra/dashboard');
         });
 
@@ -74,7 +88,9 @@ describe('Hero Component', () => {
             mockPage.props.auth.user = { role: 'client' };
             render(Hero);
 
-            const dashBtn = screen.getByRole('link', { name: /Kembali ke Dashboard/i });
+            const dashBtn = screen.getByRole('link', {
+                name: /Kembali ke Dashboard/i,
+            });
             expect(dashBtn).toHaveAttribute('href', '/client/dashboard');
         });
 
@@ -82,7 +98,9 @@ describe('Hero Component', () => {
             mockPage.props.auth.user = { role: 'client' };
             render(Hero);
 
-            expect(screen.queryByText(/Gabung Mitra Travel/i)).not.toBeInTheDocument();
+            expect(
+                screen.queryByText(/Gabung Mitra Travel/i),
+            ).not.toBeInTheDocument();
             expect(screen.queryByText(/Masuk Sistem/i)).not.toBeInTheDocument();
         });
     });
@@ -113,10 +131,13 @@ describe('Hero Component', () => {
         it('gambar non-utama harus memiliki loading="lazy"', () => {
             render(Hero);
 
-            const lazyImages = screen.getAllByRole('img').filter(
-                (img) => img.getAttribute('alt') !== 'Destinasi Wisata Utama'
-            );
-            
+            const lazyImages = screen
+                .getAllByRole('img')
+                .filter(
+                    (img) =>
+                        img.getAttribute('alt') !== 'Destinasi Wisata Utama',
+                );
+
             lazyImages.forEach((img) => {
                 expect(img).toHaveAttribute('loading', 'lazy');
             });

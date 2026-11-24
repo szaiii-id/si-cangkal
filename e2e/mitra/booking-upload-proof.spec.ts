@@ -54,7 +54,9 @@ test.describe('Mitra — Upload Bukti Transfer Pesanan Manual', () => {
             });
 
             await seed.login(page, otherMitraEmail, 'password123');
-            const response = await page.goto(`/mitra/bookings/${booking.booking_id}`);
+            const response = await page.goto(
+                `/mitra/bookings/${booking.booking_id}`,
+            );
             expect(response?.status()).toBe(403);
         });
     });
@@ -102,7 +104,9 @@ test.describe('Mitra — Upload Bukti Transfer Pesanan Manual', () => {
 
             const fileInput = page.locator('input[type="file"]').first();
             const alertBox = page.getByRole('alert').first();
-            const uploadBtn = page.getByRole('button', { name: 'Unggah Bukti' });
+            const uploadBtn = page.getByRole('button', {
+                name: 'Unggah Bukti',
+            });
 
             // 1. Uji file PDF (validasi client-side langsung menampilkan alert & tombol Unggah Bukti tidak muncul)
             await fileInput.setInputFiles({
@@ -133,14 +137,19 @@ test.describe('Mitra — Upload Bukti Transfer Pesanan Manual', () => {
                 buffer: VALID_JPEG_BUFFER,
             });
 
-            await expect(page.getByAltText('Preview bukti transfer')).toBeVisible();
+            await expect(
+                page.getByAltText('Preview bukti transfer'),
+            ).toBeVisible();
             await expect(uploadBtn).toBeVisible();
 
             await Promise.all([
                 page.waitForResponse(
                     (res) =>
-                        res.url().includes(`/mitra/bookings/${booking.booking_id}/upload-proof`) &&
-                        res.request().method() === 'POST',
+                        res
+                            .url()
+                            .includes(
+                                `/mitra/bookings/${booking.booking_id}/upload-proof`,
+                            ) && res.request().method() === 'POST',
                 ),
                 uploadBtn.click(),
             ]);

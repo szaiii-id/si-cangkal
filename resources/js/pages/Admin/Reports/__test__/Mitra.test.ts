@@ -61,7 +61,11 @@ vi.mock('@/components/layout/DashboardLayout.svelte', () => ({
 vi.mock('@/global/PageHeader.svelte', () => ({
     default: (
         anchor: Node,
-        props: { title: string; description?: string; actions?: (anchor: Node) => void },
+        props: {
+            title: string;
+            description?: string;
+            actions?: (anchor: Node) => void;
+        },
     ) => {
         const el = document.createElement('div');
         el.setAttribute('data-testid', 'page-header');
@@ -160,7 +164,10 @@ vi.mock('@/components/reports/ExportButtons.svelte', () => ({
 // 10. MOCK — MITRA SUMMARY
 // ============================================================
 vi.mock('@/components/admin/reports/MitraSummary.svelte', () => ({
-    default: (anchor: Node, props: { totalMitra: number; totalTrip: number }) => {
+    default: (
+        anchor: Node,
+        props: { totalMitra: number; totalTrip: number },
+    ) => {
         const el = document.createElement('div');
         el.setAttribute('data-testid', 'mitra-summary');
         el.setAttribute('data-total-mitra', String(props.totalMitra));
@@ -221,8 +228,7 @@ const makeProps = (overrides = {}) => ({
     ...overrides,
 });
 
-const renderPage = (props = makeProps()) =>
-    render(Mitra, { props });
+const renderPage = (props = makeProps()) => render(Mitra, { props });
 
 // ============================================================
 // 15. TEST SUITE
@@ -241,7 +247,10 @@ describe('Admin Reports — Mitra Performance Page', () => {
             renderPage();
 
             expect(
-                screen.getByRole('heading', { level: 1, name: 'Kinerja Mitra' }),
+                screen.getByRole('heading', {
+                    level: 1,
+                    name: 'Kinerja Mitra',
+                }),
             ).toBeInTheDocument();
             expect(
                 screen.getByText(/Evaluasi performa pemandu wisata Anda/i),
@@ -308,7 +317,9 @@ describe('Admin Reports — Mitra Performance Page', () => {
         it('memanggil getMitraReport dengan startDate & endDate saat ini', async () => {
             renderPage();
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Apply' }),
+            );
 
             expect(getMitraReport).toHaveBeenCalledOnce();
             expect(getMitraReport).toHaveBeenCalledWith(
@@ -328,7 +339,9 @@ describe('Admin Reports — Mitra Performance Page', () => {
             });
             await syncUI();
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Apply' }),
+            );
 
             expect(getMitraReport).toHaveBeenCalledWith(
                 { start_date: '2026-02-01', end_date: '2026-03-31' },
@@ -376,7 +389,11 @@ describe('Admin Reports — Mitra Performance Page', () => {
         it('handle mitras kosong', () => {
             renderPage(
                 makeProps({
-                    data: { total_mitra: 0, total_trip_completed: 0, mitras: [] },
+                    data: {
+                        total_mitra: 0,
+                        total_trip_completed: 0,
+                        mitras: [],
+                    },
                 }),
             );
 
@@ -389,7 +406,11 @@ describe('Admin Reports — Mitra Performance Page', () => {
         it('handle total 0', () => {
             renderPage(
                 makeProps({
-                    data: { total_mitra: 0, total_trip_completed: 0, mitras: [] },
+                    data: {
+                        total_mitra: 0,
+                        total_trip_completed: 0,
+                        mitras: [],
+                    },
                 }),
             );
 
@@ -401,11 +422,16 @@ describe('Admin Reports — Mitra Performance Page', () => {
         it('handle tanggal sama (start = end)', async () => {
             renderPage(
                 makeProps({
-                    filters: { start_date: '2026-01-01', end_date: '2026-01-01' },
+                    filters: {
+                        start_date: '2026-01-01',
+                        end_date: '2026-01-01',
+                    },
                 }),
             );
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Apply' }),
+            );
 
             expect(getMitraReport).toHaveBeenCalledWith(
                 { start_date: '2026-01-01', end_date: '2026-01-01' },

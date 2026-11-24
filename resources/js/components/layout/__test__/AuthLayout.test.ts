@@ -6,7 +6,10 @@ import AuthLayout from '../AuthLayout.svelte';
 // ==========================================
 // MOCK DEPENDENCIES (Mengarah ke file fisik)
 // ==========================================
-vi.mock('@/components/ui/ToastContainer.svelte', () => import('@/components/ui/__mocks__/ToastContainer.svelte'));
+vi.mock(
+    '@/components/ui/ToastContainer.svelte',
+    () => import('@/components/ui/__mocks__/ToastContainer.svelte'),
+);
 
 describe('AuthLayout Component', () => {
     // Helper untuk membuat snippet children
@@ -67,7 +70,9 @@ describe('AuthLayout Component', () => {
                 props: { title: 'Login', children: mockChildren },
             });
 
-            const decorativeDiv = container.querySelector('[aria-hidden="true"]');
+            const decorativeDiv = container.querySelector(
+                '[aria-hidden="true"]',
+            );
             expect(decorativeDiv).toBeInTheDocument();
             expect(decorativeDiv).toHaveClass('pointer-events-none');
         });

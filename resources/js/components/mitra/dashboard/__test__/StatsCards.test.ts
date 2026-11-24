@@ -61,7 +61,7 @@ describe('StatsCards Component', () => {
     describe('Links', () => {
         it('harus merender tautan "Kelola Paket"', () => {
             render(StatsCards, { props: defaultProps });
-            
+
             const link = screen.getByLabelText('Kelola Paket (Paket Wisata)');
             expect(link).toBeInTheDocument();
             expect(link).toHaveAttribute('href', '/mitra/packages');
@@ -69,7 +69,7 @@ describe('StatsCards Component', () => {
 
         it('harus merender tautan "Lihat Trip"', () => {
             render(StatsCards, { props: defaultProps });
-            
+
             const link = screen.getByLabelText('Lihat Trip (Trip)');
             expect(link).toBeInTheDocument();
             expect(link).toHaveAttribute('href', '/mitra/trips');
@@ -77,7 +77,7 @@ describe('StatsCards Component', () => {
 
         it('harus merender tautan "Lihat Booking"', () => {
             render(StatsCards, { props: defaultProps });
-            
+
             const link = screen.getByLabelText('Lihat Booking (Booking Masuk)');
             expect(link).toBeInTheDocument();
             expect(link).toHaveAttribute('href', '/mitra/bookings');
@@ -90,7 +90,7 @@ describe('StatsCards Component', () => {
     describe('Accessibility', () => {
         it('ikon SVG dekoratif harus disembunyikan dari screen reader', () => {
             const { container } = render(StatsCards, { props: defaultProps });
-            
+
             const svgs = container.querySelectorAll('svg');
             svgs.forEach((svg) => {
                 expect(svg.closest('[aria-hidden="true"]')).toBeInTheDocument();

@@ -24,16 +24,39 @@ vi.mock('@/api/auth', () => ({
 
 vi.mock('@/utils/menus', () => ({
     clientMenu: [
-        { label: 'Beranda', href: '/client/dashboard', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
-        { label: 'Katalog', href: '/client/catalog', icon: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z' },
-        { label: 'Pesanan', href: '/client/bookings', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2' },
-        { label: 'Profil', href: '/client/profile', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
+        {
+            label: 'Beranda',
+            href: '/client/dashboard',
+            icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
+        },
+        {
+            label: 'Katalog',
+            href: '/client/catalog',
+            icon: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z',
+        },
+        {
+            label: 'Pesanan',
+            href: '/client/bookings',
+            icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2',
+        },
+        {
+            label: 'Profil',
+            href: '/client/profile',
+            icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
+        },
     ],
 }));
 
 const mockPage = vi.hoisted(() => ({
     props: {
-        auth: { user: { id: 1, name: 'Client', role: 'client', has_fcm_token: false } },
+        auth: {
+            user: {
+                id: 1,
+                name: 'Client',
+                role: 'client',
+                has_fcm_token: false,
+            },
+        },
         unread_notifications: 3,
     },
     url: '/client/dashboard',
@@ -76,7 +99,9 @@ describe('ClientLayout Component', () => {
         });
 
         it('menyembunyikan header saat hideNavbar = true', () => {
-            render(ClientLayout, { props: { children: mockChildren, hideNavbar: true } });
+            render(ClientLayout, {
+                props: { children: mockChildren, hideNavbar: true },
+            });
 
             expect(screen.queryByTitle('Keluar')).not.toBeInTheDocument();
             expect(screen.getByTestId('mock-children')).toBeInTheDocument();
@@ -128,7 +153,10 @@ describe('ClientLayout Component', () => {
                 name: /Notifikasi 3 belum dibaca/i,
             });
             expect(notificationLink).toBeInTheDocument();
-            expect(notificationLink).toHaveAttribute('href', '/client/notifications');
+            expect(notificationLink).toHaveAttribute(
+                'href',
+                '/client/notifications',
+            );
             expect(notificationLink).toHaveTextContent('3');
         });
 
@@ -136,7 +164,9 @@ describe('ClientLayout Component', () => {
             mockPage.props.unread_notifications = 0;
             render(ClientLayout, { props: { children: mockChildren } });
 
-            const notificationLink = screen.getByRole('link', { name: 'Notifikasi' });
+            const notificationLink = screen.getByRole('link', {
+                name: 'Notifikasi',
+            });
             expect(notificationLink).toBeInTheDocument();
             expect(notificationLink).not.toHaveTextContent('3');
             expect(notificationLink).not.toHaveTextContent(/belum dibaca/i);

@@ -11,7 +11,7 @@ describe('FormatCurrency & FormatNumber', () => {
     describe('formatCurrency()', () => {
         it('harus memformat angka dengan benar (Happy Path)', () => {
             expect(formatCurrency(850000)).toBe('Rp 850.000');
-            expect(formatCurrency(1500000.50)).toBe('Rp 1.500.001'); // dibulatkan
+            expect(formatCurrency(1500000.5)).toBe('Rp 1.500.001'); // dibulatkan
             expect(formatCurrency(0)).toBe('Rp 0');
         });
 
@@ -115,7 +115,7 @@ describe('copyToClipboard()', () => {
         vi.stubGlobal('navigator', {});
 
         await expect(copyToClipboard('text')).rejects.toThrow(
-            'Clipboard API tidak tersedia'
+            'Clipboard API tidak tersedia',
         );
     });
 });

@@ -34,7 +34,12 @@ test.describe('Mitra — Manifest Peserta Trip', () => {
                 durasi_hari: 1,
                 durasi_malam: 0,
                 harga_per_orang: 350_000,
-                days: [{ judul: 'Hari 1: Eksplorasi Lokasi', lokasi: 'Banjarbaru' }],
+                days: [
+                    {
+                        judul: 'Hari 1: Eksplorasi Lokasi',
+                        lokasi: 'Banjarbaru',
+                    },
+                ],
                 facilities: [{ tipe: 'include', nama: 'Dokumentasi & Snack' }],
             });
 
@@ -45,7 +50,11 @@ test.describe('Mitra — Manifest Peserta Trip', () => {
                 tanggal_keberangkatan: getDateOffset(7),
                 jumlah_peserta: 1,
                 participants: [
-                    { nama: 'Peserta Auth Manifest', umur: 25, no_hp: '081233334444' },
+                    {
+                        nama: 'Peserta Auth Manifest',
+                        umur: 25,
+                        no_hp: '081233334444',
+                    },
                 ],
             });
 
@@ -118,8 +127,12 @@ test.describe('Mitra — Manifest Peserta Trip', () => {
                 durasi_hari: 1,
                 durasi_malam: 0,
                 harga_per_orang: 400_000,
-                days: [{ judul: 'Hari 1: Susur Sungai', lokasi: 'Banjarmasin' }],
-                facilities: [{ tipe: 'include', nama: 'Perahu Klotok & Guide' }],
+                days: [
+                    { judul: 'Hari 1: Susur Sungai', lokasi: 'Banjarmasin' },
+                ],
+                facilities: [
+                    { tipe: 'include', nama: 'Perahu Klotok & Guide' },
+                ],
             });
 
             const booking = await seed.createBooking(page, {
@@ -129,8 +142,16 @@ test.describe('Mitra — Manifest Peserta Trip', () => {
                 tanggal_keberangkatan: getDateOffset(10),
                 jumlah_peserta: 2,
                 participants: [
-                    { nama: 'Peserta Manifest Satu', umur: 25, no_hp: '081233334444' },
-                    { nama: 'Peserta Manifest Dua', umur: 27, no_hp: '081255556666' },
+                    {
+                        nama: 'Peserta Manifest Satu',
+                        umur: 25,
+                        no_hp: '081233334444',
+                    },
+                    {
+                        nama: 'Peserta Manifest Dua',
+                        umur: 27,
+                        no_hp: '081255556666',
+                    },
                 ],
             });
 

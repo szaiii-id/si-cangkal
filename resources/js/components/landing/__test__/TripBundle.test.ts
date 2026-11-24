@@ -21,9 +21,13 @@ describe('TripBundle Component', () => {
             render(TripBundle);
 
             expect(
-                screen.getByRole('heading', { name: /Destinasi Unggulan Daerah Kita/i }),
+                screen.getByRole('heading', {
+                    name: /Destinasi Unggulan Daerah Kita/i,
+                }),
             ).toBeInTheDocument();
-            expect(screen.getByText(/Jelajahi berbagai paket perjalanan/i)).toBeInTheDocument();
+            expect(
+                screen.getByText(/Jelajahi berbagai paket perjalanan/i),
+            ).toBeInTheDocument();
         });
 
         it('harus merender 3 tombol carousel utama (satu untuk setiap bundle)', () => {
@@ -56,7 +60,9 @@ describe('TripBundle Component', () => {
             expect(locationTexts.length).toBeGreaterThan(0);
 
             expect(
-                screen.getByText('Eksplorasi alam liar dengan fasilitas premium.'),
+                screen.getByText(
+                    'Eksplorasi alam liar dengan fasilitas premium.',
+                ),
             ).toBeInTheDocument();
         });
 
@@ -85,7 +91,9 @@ describe('TripBundle Component', () => {
             const locationTexts = screen.getAllByText('Kepulauan Kotabaru');
             expect(locationTexts.length).toBeGreaterThan(0);
             expect(
-                screen.getByText('Relaksasi eksklusif di surga bahari tersembunyi.'),
+                screen.getByText(
+                    'Relaksasi eksklusif di surga bahari tersembunyi.',
+                ),
             ).toBeInTheDocument();
         });
     });
@@ -99,13 +107,17 @@ describe('TripBundle Component', () => {
             flushSync();
 
             // Awalnya paket 1 (Ekspedisi Puncak Meratus)
-            expect(screen.getAllByText('Pegunungan Meratus').length).toBeGreaterThan(0);
+            expect(
+                screen.getAllByText('Pegunungan Meratus').length,
+            ).toBeGreaterThan(0);
 
             // Majukan waktu 4 detik -> previousBundle() pindah ke paket 3 (Budaya & Alam Loksado)
             vi.advanceTimersByTime(4000);
             flushSync();
 
-            expect(screen.getAllByText('Kawasan Loksado').length).toBeGreaterThan(0);
+            expect(
+                screen.getAllByText('Kawasan Loksado').length,
+            ).toBeGreaterThan(0);
         });
 
         it('harus berhenti autoplay saat mouse hover', async () => {
@@ -122,7 +134,9 @@ describe('TripBundle Component', () => {
             vi.advanceTimersByTime(8000);
             flushSync();
 
-            expect(screen.getAllByText('Pegunungan Meratus').length).toBeGreaterThan(0);
+            expect(
+                screen.getAllByText('Pegunungan Meratus').length,
+            ).toBeGreaterThan(0);
         });
     });
 

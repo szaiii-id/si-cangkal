@@ -30,9 +30,13 @@ vi.mock('@inertiajs/svelte', () => ({
 // MOCK — UTILS
 // ============================================================
 vi.mock('@/utils/bookingRules', () => ({
-    canClientCancelBooking: vi.fn((status: string) => status === 'pending_payment'),
+    canClientCancelBooking: vi.fn(
+        (status: string) => status === 'pending_payment',
+    ),
     needsMitraCancel: vi.fn((status: string) => status === 'confirmed'),
-    getBookingStatusDescription: vi.fn((status: string) => `Deskripsi untuk ${status}`),
+    getBookingStatusDescription: vi.fn(
+        (status: string) => `Deskripsi untuk ${status}`,
+    ),
 }));
 
 vi.mock('@/utils/countdown', () => ({
@@ -45,7 +49,9 @@ vi.mock('@/utils/countdown', () => ({
 vi.mock('@/utils/formatCurrency', () => ({
     formatCurrency: vi.fn((v: string | number) => `Rp ${v}`),
 }));
-vi.mock('@/utils/formatDate', () => ({ formatDate: vi.fn((v) => `Date: ${v}`) }));
+vi.mock('@/utils/formatDate', () => ({
+    formatDate: vi.fn((v) => `Date: ${v}`),
+}));
 vi.mock('@/utils/duration', () => ({ formatDurasi: vi.fn(() => '3H 2M') }));
 vi.mock('@/utils/toast.svelte', () => ({ showToast: vi.fn() }));
 vi.mock('@/utils/enums', () => ({
@@ -171,7 +177,13 @@ const makeBooking = (overrides: Record<string, unknown> = {}) =>
         catatan: null,
         created_at: '2026-01-01T00:00:00Z',
         has_payment_proof: false,
-        package: { id: 1, nama: 'Paket Bali', kode: 'PKT-001', durasi_hari: 3, durasi_malam: 2 },
+        package: {
+            id: 1,
+            nama: 'Paket Bali',
+            kode: 'PKT-001',
+            durasi_hari: 3,
+            durasi_malam: 2,
+        },
         participants: [{ id: 1, nama: 'Budi' }],
         payments: [],
         mitra: {
@@ -218,8 +230,12 @@ describe('Client Bookings — Show Page', () => {
     describe('Rendering — Header & Banner', () => {
         it('menampilkan banner status dan tombol kembali', () => {
             renderPage();
-            expect(screen.getByTestId('status-banner')).toHaveTextContent('Status: pending_payment');
-            expect(screen.getByRole('link', { name: /Kembali ke Pesanan Saya/i })).toHaveAttribute('href', '/client/bookings');
+            expect(screen.getByTestId('status-banner')).toHaveTextContent(
+                'Status: pending_payment',
+            );
+            expect(
+                screen.getByRole('link', { name: /Kembali ke Pesanan Saya/i }),
+            ).toHaveAttribute('href', '/client/bookings');
         });
     });
 
@@ -232,12 +248,16 @@ describe('Client Bookings — Show Page', () => {
 
         it('meneruskan data ke ParticipantList', () => {
             renderPage();
-            expect(screen.getByTestId('participant-list')).toHaveTextContent('1 peserta');
+            expect(screen.getByTestId('participant-list')).toHaveTextContent(
+                '1 peserta',
+            );
         });
 
         it('meneruskan data ke PaymentHistory', () => {
             renderPage({ booking: makeBooking({ payments: [{ id: 1 }] }) });
-            expect(screen.getByTestId('payment-history')).toHaveTextContent('1 pembayaran');
+            expect(screen.getByTestId('payment-history')).toHaveTextContent(
+                '1 pembayaran',
+            );
         });
     });
 
@@ -245,14 +265,18 @@ describe('Client Bookings — Show Page', () => {
         it('menampilkan UploadProofForm dan rekening jika status pending_payment', () => {
             renderPage();
             expect(screen.getByTestId('upload-proof')).toBeInTheDocument();
-            expect(screen.getByText('Rekening Tujuan Transfer')).toBeInTheDocument();
+            expect(
+                screen.getByText('Rekening Tujuan Transfer'),
+            ).toBeInTheDocument();
             expect(screen.getByText('BCA')).toBeInTheDocument();
             expect(screen.getByText('123456789')).toBeInTheDocument();
         });
 
         it('TIDAK menampilkan UploadProofForm jika status confirmed', () => {
             renderPage({ booking: makeBooking({ status: 'confirmed' }) });
-            expect(screen.queryByTestId('upload-proof')).not.toBeInTheDocument();
+            expect(
+                screen.queryByTestId('upload-proof'),
+            ).not.toBeInTheDocument();
         });
     });
 
@@ -263,26 +287,36 @@ describe('Client Bookings — Show Page', () => {
         });
 
         it('menampilkan RefundStatusCard jika refunds tidak kosong', () => {
-            renderPage({ refunds: [{ amount: '500000', status: 'SUCCEEDED' }] });
-            expect(screen.getByTestId('refund-card')).toHaveTextContent('Refund: 500000');
+            renderPage({
+                refunds: [{ amount: '500000', status: 'SUCCEEDED' }],
+            });
+            expect(screen.getByTestId('refund-card')).toHaveTextContent(
+                'Refund: 500000',
+            );
         });
     });
 
     describe('Interaction — Cancel Booking', () => {
         it('menampilkan tombol Batalkan Pesanan jika status pending_payment', () => {
             renderPage();
-            expect(screen.getByRole('button', { name: 'Batalkan Pesanan' })).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: 'Batalkan Pesanan' }),
+            ).toBeInTheDocument();
         });
 
         it('menampilkan info pembatalan via mitra jika status confirmed', () => {
             renderPage({ booking: makeBooking({ status: 'confirmed' }) });
-            expect(screen.getByText('Pembatalan via Mitra')).toBeInTheDocument();
+            expect(
+                screen.getByText('Pembatalan via Mitra'),
+            ).toBeInTheDocument();
         });
 
         it('membuka ConfirmModal saat tombol batalkan diklik', async () => {
             renderPage();
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Batalkan Pesanan' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Batalkan Pesanan' }),
+            );
             await syncUI();
 
             const modal = screen.getByTestId('confirm-modal');
@@ -292,16 +326,20 @@ describe('Client Bookings — Show Page', () => {
         it('memanggil router.post /cancel saat konfirmasi modal diklik', async () => {
             renderPage();
 
-            await fireEvent.click(screen.getByRole('button', { name: 'Batalkan Pesanan' }));
+            await fireEvent.click(
+                screen.getByRole('button', { name: 'Batalkan Pesanan' }),
+            );
             await syncUI();
 
-            const confirmBtn = screen.getByRole('button', { name: 'Ya, Batalkan' });
+            const confirmBtn = screen.getByRole('button', {
+                name: 'Ya, Batalkan',
+            });
             await fireEvent.click(confirmBtn);
 
             expect(mockRouter.post).toHaveBeenCalledWith(
                 '/client/bookings/1/cancel',
                 {},
-                expect.any(Object)
+                expect.any(Object),
             );
         });
     });
@@ -317,7 +355,9 @@ describe('Client Bookings — Show Page', () => {
 
             renderPage();
 
-            const copyBtn = screen.getByRole('button', { name: /Salin Rekening/i });
+            const copyBtn = screen.getByRole('button', {
+                name: /Salin Rekening/i,
+            });
             await fireEvent.click(copyBtn);
 
             expect(writeTextMock).toHaveBeenCalledWith('123456789');
