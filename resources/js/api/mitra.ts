@@ -85,6 +85,40 @@ export const cancelBooking = (
     options?: MitraOptions,
 ) => router.post(`/mitra/bookings/${bookingId}/cancel`, data, options);
 
+/**
+ * Request data (bukan navigasi halaman) untuk membuat link checkout DOKU.
+ * CSRF dibaca dari meta tag Blade; redirect ke DOKU dilakukan oleh client
+ * setelah mitra menyalin link ini.
+ */
+function csrfToken(): string {
+    return (
+        document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')
+            ?.content ?? ''
+    );
+}
+
+export async function createPaymentLink(
+    bookingId: number,
+): Promise<{ url: string; expires_at: string | null }> {
+    const response = await fetch(`/mitra/bookings/${bookingId}/payment-link`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'X-CSRF-TOKEN': csrfToken(),
+        },
+    });
+
+    if (!response.ok) {
+        throw new Error('Gagal membuat link pembayaran.');
+    }
+
+    return (await response.json()) as {
+        url: string;
+        expires_at: string | null;
+    };
+}
+
 export const uploadPaymentProof = (
     bookingId: number,
     data: RequestPayload,

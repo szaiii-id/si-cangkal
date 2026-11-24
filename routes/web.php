@@ -246,6 +246,7 @@ Route::middleware('auth')->group(function () {
                     Route::post('/{booking}/verify', [MitraBookingController::class, 'verifyPayment'])->name('verify');
                     Route::post('/{booking}/reject', [MitraBookingController::class, 'rejectPayment'])->name('reject');
                     Route::post('/{booking}/upload-proof', [MitraBookingController::class, 'uploadProof'])->middleware('auth.throttle:upload-proof')->name('upload-proof');
+                    Route::post('/{booking}/payment-link', [MitraBookingController::class, 'paymentLink'])->middleware('throttle:10,1')->name('payment-link');
                     Route::get('/{booking}/payment-proof', [MitraBookingController::class, 'downloadProof'])->middleware('throttle:10,1')->name('payment-proof');
                 });
 

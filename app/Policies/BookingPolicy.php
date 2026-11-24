@@ -136,6 +136,19 @@ final class BookingPolicy
     }
 
     /**
+     * Buat payment link DOKU untuk booking manual.
+     *
+     * Hanya mitra pemilik yang bisa membuat link, dan hanya saat booking
+     * masih menunggu pembayaran.
+     */
+    public function createPaymentLink(User $user, Booking $booking): bool
+    {
+        return $user->isMitra()
+            && $booking->mitra_id === $user->id
+            && $booking->status === BookingStatus::PENDING_PAYMENT;
+    }
+
+    /**
      * Menolak bukti pembayaran.
      *
      * Aturan bisnis sama dengan verifikasi: mitra pemilik,
