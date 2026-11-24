@@ -81,8 +81,42 @@ Sumber kebenaran adalah `.env.example`. Variabel yang paling sering diubah:
 | `VITE_FIREBASE_*`      | kosong                                        | Konfigurasi Firebase sisi client           |
 | `GOOGLE_CLIENT_*`      | kosong                                        | Login Google OAuth                         |
 | `AUTH_THROTTLE_*`      | lihat `.env.example`                          | Batas percobaan login/register/dll.        |
+| `DOKU_*`               | lihat bagian Sandbox DOKU                     | Payment gateway sandbox (Fase 1)           |
 
 Zona waktu: DB menyimpan **UTC**. Untuk logika "hari ini"/"sekarang" pakai `App\Support\Timezone`, **jangan** `now()` langsung. Timezone user/trip berformat IANA; default `Asia/Makassar`.
+
+### Sandbox DOKU (Fase 1)
+
+Fase 1 hanya memakai **sandbox**. Semua kode membaca kredensial lewat `config('payment.doku.*')`; satu-satunya tempat yang memanggil `env('DOKU_...')` adalah `config/payment.php`.
+
+Yang perlu disiapkan di dashboard sandbox (`sandbox.doku.com`):
+
+1. Ambil **Client ID** dan **Active Secret Key** di **Integrations > API Keys**. `DOKU Public Key` dan `Merchant Public Key` belum dipakai.
+2. Aktifkan kanal QRIS, VA (BCA/Mandiri/BRI/BNI), dan e-wallet (DANA/OVO/ShopeePay) di **Settings > Payment Settings**.
+3. Aktifkan **Split Settlement** di **Setting > Service**, lalu daftarkan rekening mitra di **Setting > Bank Account**. `Bank Settlement ID` disimpan per mitra di database, bukan di `.env`.
+4. Set Notification URL dengan path `/payments/doku/webhook` untuk tiap kanal yang dipakai.
+
+Karena DOKU **melarang ngrok** dan tidak dapat mengirim notifikasi ke `localhost`, gunakan tunnel:
+
+```bash
+# terminal 1
+php artisan serve
+
+# terminal 2
+bash scripts/doku-tunnel.sh
+# akan menampilkan https://<id>.lhr.life
+```
+
+Salin URL tersebut ke `DOKU_NOTIFICATION_URL` dengan akhiran `/payments/doku/webhook`. URL gratis bersifat sementara; perbarui `.env` setiap kali tunnel dibuka ulang. Set `DOKU_SANDBOX_ENABLED=true` hanya jika ingin menjalankan E2E sandbox.
+
+Verifikasi konfigurasi:
+
+```bash
+php artisan config:show payment
+grep -rn "env('DOKU_" app routes resources tests --include='*.php' --include='*.ts' --include='*.svelte'
+```
+
+Perintah `grep` harus menghasilkan **kosong**.
 
 ## Testing & quality gate
 
