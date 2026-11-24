@@ -1,0 +1,95 @@
+{
+    "$schema": "https://opencode.ai/config.json",
+    "mcp": {
+        "timeout": {
+            "startup": 120000,
+            "catalog": 60000
+        },
+        "servers": {
+            "serena": {
+                "type": "local",
+                "command": [
+                    "uvx",
+                    "--from",
+                    "serena-agent",
+                    "serena",
+                    "start-mcp-server",
+                    "--context",
+                    "ide-assistant",
+                    "--project",
+                    "."
+                ],
+                "disabled": false
+            },
+            "context7": {
+                "type": "local",
+                "command": ["npx", "-y", "@upstash/context7-mcp"],
+                "disabled": false
+            },
+            "sequential-thinking": {
+                "type": "local",
+                "command": [
+                    "npx",
+                    "-y",
+                    "@modelcontextprotocol/server-sequential-thinking"
+                ],
+                "disabled": false
+            },
+            "github": {
+                "type": "remote",
+                "url": "https://api.githubcopilot.com/mcp/",
+                "oauth": false,
+                "disabled": false,
+                "headers": {
+                    "Authorization": "Bearer {file:~/.secrets/github-pat}",
+                    "X-MCP-Toolsets": "context,repos,issues,pull_requests,actions"
+                }
+            },
+            "postgres": {
+                "type": "local",
+                "command": [
+                    "docker",
+                    "run",
+                    "-i",
+                    "--rm",
+                    "-e",
+                    "DATABASE_URI",
+                    "crystaldba/postgres-mcp",
+                    "--access-mode=restricted"
+                ],
+                "environment": {
+                    "DATABASE_URI": "{file:~/.secrets/test-database-url}"
+                },
+                "disabled": false
+            },
+            "playwright": {
+                "type": "local",
+                "command": ["npx", "-y", "@playwright/mcp"],
+                "disabled": true
+            }
+        }
+    },
+    "permissions": [
+        {
+            "action": "shell",
+            "resource": "git push --force *",
+            "effect": "ask"
+        },
+        { "action": "shell", "resource": "rm -rf *", "effect": "ask" },
+        {
+            "action": "shell",
+            "resource": "php artisan migrate:fresh*",
+            "effect": "ask"
+        }
+    ],
+    "agents": {
+        "reviewer": {
+            "description": "Review perubahan tanpa mengubah file",
+            "mode": "subagent",
+            "system": "Review terhadap spesifikasi, keamanan (OWASP), aksesibilitas (WCAG AA), dan test yang hilang. Laporkan temuan sebagai Critical / Important / Minor.",
+            "permissions": [
+                { "action": "edit", "resource": "*", "effect": "deny" }
+            ]
+        }
+    }
+}

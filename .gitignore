@@ -86,3 +86,5 @@ Homestead.yaml
 /boost.json
 /opencode.json
 /opencode.jsonc
+/.serena/
+/.superpowers/
