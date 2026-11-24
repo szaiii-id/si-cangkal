@@ -168,6 +168,32 @@ Route::prefix('_test')
          * }
          * Response: { ok: true, user_id: int }
          */
+        /**
+         * Set rekening bank mitra sebagai tujuan settlement DOKU (sandbox).
+         *
+         * @example
+         *   POST /_test/settle-bank-account
+         *   { "email": "mitra@test.com", "settlement_bank_account_id": "SBA-0001" }
+         */
+        Route::post('/settle-bank-account', function (Request $request): JsonResponse {
+            $validated = $request->validate([
+                'email' => ['required', 'email', 'exists:users,email'],
+                'settlement_bank_account_id' => ['required', 'string', 'max:100'],
+            ]);
+
+            $user = User::query()->where('email', $validated['email'])->firstOrFail();
+            $account = MitraBankAccount::query()
+                ->where('user_id', $user->id)
+                ->firstOrFail();
+
+            $account->update([
+                'settlement_bank_account_id' => $validated['settlement_bank_account_id'],
+                'settlement_verified_at' => now(),
+            ]);
+
+            return response()->json(['ok' => true]);
+        });
+
         Route::post('/reset-user', function (Request $request) use ($userPayload): JsonResponse {
             $validated = $request->validate([
                 'email' => ['required', 'string', 'email'],

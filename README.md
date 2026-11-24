@@ -118,6 +118,18 @@ grep -rn "env('DOKU_" app routes resources tests --include='*.php' --include='*.
 
 Perintah `grep` harus menghasilkan **kosong**.
 
+Alur sandbox Fase 1:
+
+1. Client/bagian manual membuat booking `pending_payment`.
+2. Client memilih **Bayar dengan DOKU** (atau mitra membuat payment link).
+3. Link checkout diakses dari simulator: `https://sandbox.doku.com/integration/simulator/`.
+4. Webhook `POST /payments/doku/webhook` diverifikasi signature-nya, lalu booking menjadi `confirmed`.
+5. Dana ditahan (`hold_settlement`) dan split ke rekening mitra.
+6. Setelah mitra menyelesaikan trip, `ReleaseDokuSettlementJob` melepas dana; dana tiba H+1.
+7. Refund gateway memakai Refund API DOKU; bila issuer menolak, status refund tetap `PENDING` dan dijadwalkan ulang.
+
+E2E `e2e/payment/doku-sandbox.spec.ts` otomatis **skip** kecuali `DOKU_SANDBOX_ENABLED=true`. Pastikan `.env.testing`/shell juga memiliki kredensial sandbox, tunnel aktif, dan `DOKU_E2E_SETTLEMENT_BANK_ACCOUNT_ID` sesuai rekening yang didaftarkan di dashboard sandbox.
+
 ## Testing & quality gate
 
 ```bash
@@ -138,6 +150,9 @@ bun run test:e2e
 bun run test:e2e e2e/auth/login.spec.ts --project=chromium
 bun run test:e2e:shard:4
 bun run test:e2e:rate-limit
+
+# E2E sandbox DOKU (opsional, butuh tunnel + kredensial sandbox)
+bun run test:e2e e2e/payment/doku-sandbox.spec.ts --project=chromium
 ```
 
 `bun run check` **bukan** `svelte-check`; keduanya harus dijalankan. Komponen di `resources/js/components/ui/*` dikecualikan dari format/lint Vite+.

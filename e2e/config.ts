@@ -66,6 +66,20 @@ export const CI = {
 } as const;
 
 // ==========================================
+// DOKU SANDBOX
+// ==========================================
+/**
+ * E2E pembayaran DOKU hanya aktif bila DOKU_SANDBOX_ENABLED=true.
+ * Butuh kredensial sandbox, tunnel HTTPS publik, dan settlement bank id
+ * yang terdaftar di dashboard sandbox DOKU.
+ */
+export const DOKU = {
+    sandboxEnabled: process.env.DOKU_SANDBOX_ENABLED === 'true',
+    settlementBankAccountId:
+        process.env.DOKU_E2E_SETTLEMENT_BANK_ACCOUNT_ID ?? 'SBA-E2E-001',
+} as const;
+
+// ==========================================
 // SHARD
 // ==========================================
 /**

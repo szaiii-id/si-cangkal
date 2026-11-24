@@ -444,6 +444,23 @@ export const seed = {
         );
     },
 
+    /**
+     * Tandai rekening mitra sebagai tujuan settlement DOKU sandbox.
+     *
+     * @example
+     *   await seed.settleBankAccount(page, 'mitra@test.com', 'SBA-0001');
+     */
+    async settleBankAccount(
+        page: Page,
+        email: string,
+        settlementBankAccountId: string,
+    ): Promise<{ ok: boolean }> {
+        return apiPost<{ ok: boolean }>(page, '/_test/settle-bank-account', {
+            email,
+            settlement_bank_account_id: settlementBankAccountId,
+        });
+    },
+
     // ==========================================
     // TRIP
     // ==========================================
