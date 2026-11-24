@@ -62,6 +62,11 @@ Route::post('/payments/doku/webhook', [PaymentWebhookController::class, 'store']
     ->middleware('throttle:60,1')
     ->name('payments.doku.webhook');
 
+// Webhook Sub Account V2 punya format ack berbeda dari webhook Checkout.
+Route::post('/payments/doku/sub-account/webhook', [PaymentWebhookController::class, 'subAccount'])
+    ->middleware('throttle:60,1')
+    ->name('payments.doku.sub-account.webhook');
+
 Route::prefix('legal')->name('legal.')->group(function () {
     Route::get('/privacy', [LegalController::class, 'privacy'])->name('privacy');
     Route::get('/terms', [LegalController::class, 'terms'])->name('terms');

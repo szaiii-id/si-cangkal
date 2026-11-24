@@ -50,6 +50,7 @@ return Application::configure(basePath: dirname(__DIR__))
             // Webhook DOKU tidak punya session/CSRF token; keamanan
             // dijamin lewat verifikasi Signature HMAC-SHA256.
             'payments/doku/webhook',
+            'payments/doku/sub-account/webhook',
         ]);
 
         $middleware->alias([

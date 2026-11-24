@@ -56,6 +56,34 @@ final class PaymentWebhookController extends Controller
         return response()->noContent();
     }
 
+    /**
+     * Ack untuk notifikasi Sub Account V2.
+     *
+     * DOKU mengharapkan HTTP 200 dengan responseCode 2000000. Detail event
+     * disimpan untuk rekonsiliasi; pemrosesan lanjutan menyusul.
+     */
+    public function subAccount(Request $request): JsonResponse
+    {
+        /** @var array<string, mixed> $payload */
+        $payload = $request->json()->all();
+        $referenceNo = (string) data_get($payload, 'referenceNo', '');
+
+        if ($referenceNo !== '') {
+            WebhookEvent::query()->firstOrCreate(
+                [
+                    'provider' => 'doku-sub-account',
+                    'request_id' => $referenceNo,
+                ],
+                ['payload' => $payload],
+            );
+        }
+
+        return response()->json([
+            'responseCode' => '2000000',
+            'responseMessage' => 'Successful',
+        ]);
+    }
+
     private function storeEvent(DokuNotification $notification): bool
     {
         // Cek dulu agar duplicate sequential tidak mengabort transaksi test

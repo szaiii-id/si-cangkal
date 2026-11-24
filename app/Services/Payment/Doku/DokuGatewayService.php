@@ -29,7 +29,18 @@ final class DokuGatewayService implements PaymentGatewayServiceInterface
 {
     public function createCharge(Booking $booking, int $dueMinutes = 60, int $sequence = 1): DokuChargeResult
     {
-        $bankAccount = $this->settlementAccountFor($booking);
+        $bankAccount = $this->primaryBankAccountFor($booking);
+        $hasSubAccount = filled($bankAccount->doku_profile_id)
+            || filled($bankAccount->doku_account_no)
+            || filled($bankAccount->doku_split_rule_id);
+
+        // DOKU gagal silent bila account.id / split_rule_id tidak valid.
+        // Jangan pernah mengirim payload setengah lengkap.
+        if ($hasSubAccount && (! filled($bankAccount->doku_account_no)
+            || ! filled($bankAccount->doku_split_rule_id))) {
+            throw new RuntimeException('Data sub-account DOKU mitra tidak lengkap.');
+        }
+
         $requestId = DokuIdempotencyKey::forCharge($booking, $sequence);
         $timestamp = now()->utc()->format('Y-m-d\TH:i:s\Z');
         $checkoutPath = (string) config('payment.doku.checkout_path');
@@ -60,15 +71,7 @@ final class DokuGatewayService implements PaymentGatewayServiceInterface
                 'id' => (string) $booking->user_id,
                 'email' => (string) $booking->client?->email,
             ],
-            'additional_info' => [
-                'hold_settlement' => true,
-                'settlement' => [[
-                    'bank_account_settlement_id' => (string) $bankAccount->settlement_bank_account_id,
-                    'value' => 100,
-                    'type' => 'PERCENTAGE',
-                ]],
-                'override_notification_url' => (string) config('payment.doku.notification_url'),
-            ],
+            'additional_info' => $this->routingPayload($bankAccount, $hasSubAccount),
         ];
 
         $bodyJson = json_encode($payload, JSON_THROW_ON_ERROR);
@@ -265,6 +268,63 @@ final class DokuGatewayService implements PaymentGatewayServiceInterface
             status: (string) data_get($payload, 'transaction.status', ''),
             payload: $payload,
         );
+    }
+
+    /**
+     * Rekening bank utama mitra, tanpa asumsi sudah terdaftar di DOKU.
+     */
+    private function primaryBankAccountFor(Booking $booking): MitraBankAccount
+    {
+        $mitra = $booking->mitra;
+
+        if ($mitra === null) {
+            throw new RuntimeException('Booking tidak memiliki mitra.');
+        }
+
+        $account = $mitra->bankAccounts()
+            ->orderByDesc('is_primary')
+            ->first();
+
+        if ($account === null) {
+            throw new RuntimeException('Mitra belum memiliki rekening bank.');
+        }
+
+        return $account;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function routingPayload(MitraBankAccount $account, bool $hasSubAccount): array
+    {
+        $payload = [
+            'hold_settlement' => true,
+            'override_notification_url' => (string) config('payment.doku.notification_url'),
+        ];
+
+        if ($hasSubAccount) {
+            $payload['account'] = [
+                'id' => (string) $account->doku_account_no,
+                'split_rule_id' => (string) $account->doku_split_rule_id,
+            ];
+
+            return $payload;
+        }
+
+        if (! filled($account->settlement_bank_account_id)
+            || ! filled($account->settlement_verified_at)) {
+            throw new RuntimeException(
+                'Mitra belum memiliki rekening settlement DOKU yang terverifikasi.',
+            );
+        }
+
+        $payload['settlement'] = [[
+            'bank_account_settlement_id' => (string) $account->settlement_bank_account_id,
+            'value' => 100,
+            'type' => 'PERCENTAGE',
+        ]];
+
+        return $payload;
     }
 
     private function settlementAccountFor(Booking $booking): MitraBankAccount
