@@ -153,6 +153,36 @@ describe('POST /payments/xendit/webhook', function () {
         Bus::assertDispatched(ProcessXenditNotificationJob::class, 2);
     });
 
+    it('event refund sukses lalu gagal dengan payment_id sama tetap dua-duanya diproses', function () {
+        $headers = ['X-Callback-Token' => 'callback-token-rahasia'];
+
+        $sukses = [
+            'event' => 'refund.succeeded',
+            'data' => [
+                'payment_id' => 'py-refund-sama',
+                'reference_id' => 'refund-1',
+                'status' => 'SUCCEEDED',
+                'amount' => 500_000,
+            ],
+        ];
+
+        $gagal = $sukses;
+        $gagal['event'] = 'refund.failed';
+        $gagal['data']['status'] = 'FAILED';
+
+        $this->postJson('/payments/xendit/webhook', $sukses, $headers)->assertOk();
+        $this->postJson('/payments/xendit/webhook', $gagal, $headers)->assertOk();
+
+        expect(WebhookEvent::where('provider', 'xendit')->count())->toBe(2);
+
+        Bus::assertDispatched(ProcessXenditNotificationJob::class, 2);
+
+        $this->assertDatabaseHas('webhook_events', [
+            'event' => 'refund.failed',
+            'status' => 'FAILED',
+        ]);
+    });
+
     it('menghapus penanda idempotensi bila dispatch queue gagal', function () {
         Bus::shouldReceive('dispatch')
             ->once()

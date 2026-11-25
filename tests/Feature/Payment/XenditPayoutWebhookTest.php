@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\Payment\XenditNotificationProcessor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+use RuntimeException;
 
 uses(RefreshDatabase::class);
 
@@ -85,6 +86,42 @@ describe('webhook kegagalan payout', function () {
 
         expect($this->payment->fresh()->settled_at)->not->toBeNull()
             ->and($this->payment->fresh()->gateway_status)->toBe('SETTLED');
+    });
+
+    it('webhook payout sebelum payout_id tersimpan di-retry dan settle tepat sekali', function () {
+        // Simulasikan webhook yang mendahului commit job payout.
+        $this->payment->update([
+            'gateway_payload' => ['payment_id' => 'py-123', 'payout_attempt' => 1],
+        ]);
+
+        $event = payoutWebhookEvent('succeeded', '');
+
+        expect(fn () => app(XenditNotificationProcessor::class)->process($event))
+            ->toThrow(RuntimeException::class);
+
+        expect($this->payment->fresh()->settled_at)->toBeNull();
+
+        // Job payout selesai menyimpan payout_id, lalu webhook dikirim ulang.
+        $this->payment->update([
+            'gateway_payload' => [
+                'payment_id' => 'py-123',
+                'payout_id' => 'po-123',
+                'payout_attempt' => 1,
+            ],
+        ]);
+
+        app(XenditNotificationProcessor::class)->process($event);
+
+        $settledAt = $this->payment->fresh()->settled_at;
+
+        expect($settledAt)->not->toBeNull()
+            ->and($this->payment->fresh()->gateway_status)->toBe('SETTLED');
+
+        // Pengiriman ketiga tidak mengubah waktu settle.
+        app(XenditNotificationProcessor::class)->process($event);
+
+        expect($this->payment->fresh()->settled_at?->toIso8601String())
+            ->toBe($settledAt?->toIso8601String());
     });
 
     it('tidak mengulang payout bila rekening tujuan invalid', function () {

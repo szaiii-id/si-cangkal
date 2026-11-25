@@ -194,4 +194,28 @@ describe('refund gateway Xendit', function () {
             ->and($this->booking->fresh()->status)->toBe(BookingStatus::CANCELLED)
             ->and(Payment::where('booking_id', $this->booking->id)->where('jumlah', '<', 0)->count())->toBe(1);
     });
+
+    it('refund.failed tidak menulis Payment negatif dan tidak membatalkan booking', function () {
+        $this->refund->update([
+            'gateway_status' => 'PENDING',
+            'gateway_refund_id' => 'rfd-gagal',
+        ]);
+
+        app(XenditNotificationProcessor::class)->process(new XenditWebhookEvent(
+            event: 'refund.failed',
+            paymentId: 'py-abc',
+            payoutId: null,
+            referenceId: 'refund-'.$this->refund->id,
+            amount: 500_000.0,
+            status: 'FAILED',
+            payload: ['data' => ['failure_code' => 'INSUFFICIENT_FUNDS']],
+        ));
+
+        $refund = $this->refund->fresh();
+
+        expect($refund->status)->toBe(RefundStatus::PENDING)
+            ->and($refund->gateway_status)->toBe('FAILED')
+            ->and(Payment::where('booking_id', $this->booking->id)->where('jumlah', '<', 0)->count())->toBe(0)
+            ->and($this->booking->fresh()->status)->toBe(BookingStatus::CONFIRMED);
+    });
 });
