@@ -2,30 +2,30 @@
 
 namespace App\Services\Payment;
 
-use App\Data\Doku\DokuChargeResult;
+use App\Data\Xendit\XenditSessionResult;
 use App\Enums\PaymentGateway;
 use App\Enums\PaymentMetode;
 use App\Models\Booking;
 use App\Models\Payment;
-use App\Services\Payment\Contracts\PaymentGatewayServiceInterface;
+use App\Services\Payment\Contracts\XenditPaymentServiceInterface;
 
 /**
- * Satu-satunya entry point pembuatan charge.
+ * Satu-satunya entry point pembuatan Payment Session Xendit.
  *
- * Menghindari charge ganda untuk booking yang sama dan menyimpan jejak
- * pembayaran gateway ke tabel payments.
+ * Menghindari session ganda untuk booking yang sama dan menyimpan jejak
+ * pembayaran ke tabel payments.
  */
 final class PaymentChargeService
 {
     public function __construct(
-        private readonly PaymentGatewayServiceInterface $gateway,
+        private readonly XenditPaymentServiceInterface $gateway,
     ) {}
 
-    public function createForBooking(Booking $booking, ?int $dueMinutes = null): DokuChargeResult
+    public function createForBooking(Booking $booking, ?int $dueMinutes = null): XenditSessionResult
     {
         $existing = Payment::query()
             ->where('booking_id', $booking->id)
-            ->where('gateway', PaymentGateway::DOKU)
+            ->where('gateway', PaymentGateway::XENDIT)
             ->where('gateway_status', 'pending')
             ->whereNull('released_at')
             ->latest()
@@ -41,60 +41,49 @@ final class PaymentChargeService
 
         $sequence = 1 + (int) Payment::query()
             ->where('booking_id', $booking->id)
-            ->where('gateway', PaymentGateway::DOKU)
+            ->where('gateway', PaymentGateway::XENDIT)
             ->count();
 
-        $result = $this->gateway->createCharge(
-            $booking,
-            $dueMinutes ?? $this->defaultDueMinutes($booking),
-            $sequence,
-        );
+        $result = $this->gateway->createSession($booking, $sequence);
 
         Payment::create([
             'booking_id' => $booking->id,
             'jumlah' => $booking->total_harga,
-            'metode' => PaymentMetode::DOKU,
-            'gateway' => PaymentGateway::DOKU,
+            'metode' => PaymentMetode::XENDIT,
+            'gateway' => PaymentGateway::XENDIT,
             'gateway_order_id' => $booking->kode,
-            'gateway_request_id' => $result->requestId,
+            'gateway_request_id' => $result->sessionId,
             'gateway_status' => 'pending',
-            'gateway_payload' => $result->payload,
+            'gateway_payload' => [
+                'payment_link_url' => $result->checkoutUrl,
+                'payment_session_id' => $result->sessionId,
+                'payment_request_id' => $result->paymentRequestId,
+                ...$result->payload,
+            ],
         ]);
 
         return $result;
     }
 
-    private function defaultDueMinutes(Booking $booking): int
+    private function resultFromPayment(Payment $payment): ?XenditSessionResult
     {
-        if ($booking->expired_at === null) {
-            return 60;
-        }
+        $checkoutUrl = (string) data_get($payment->gateway_payload, 'payment_link_url', '');
+        $sessionId = (string) ($payment->gateway_request_id ?? '');
 
-        return max(5, (int) now()->diffInMinutes($booking->expired_at, false));
-    }
-
-    private function resultFromPayment(Payment $payment): ?DokuChargeResult
-    {
-        $payload = $payment->gateway_payload;
-
-        if (! is_array($payload)) {
+        if ($checkoutUrl === '' || $sessionId === '') {
             return null;
         }
 
-        $checkoutUrl = (string) data_get($payload, 'response.payment.url', '');
-        $requestId = (string) ($payment->gateway_request_id ?? '');
+        $payload = is_array($payment->gateway_payload) ? $payment->gateway_payload : [];
+        $paymentRequestId = data_get($payload, 'payment_request_id');
 
-        if ($checkoutUrl === '' || $requestId === '') {
-            return null;
-        }
-
-        $sessionId = data_get($payload, 'response.order.session_id');
-
-        return new DokuChargeResult(
+        return new XenditSessionResult(
+            sessionId: $sessionId,
             checkoutUrl: $checkoutUrl,
-            requestId: $requestId,
-            sessionId: is_scalar($sessionId) ? (string) $sessionId : null,
             payload: $payload,
+            paymentRequestId: is_string($paymentRequestId) && $paymentRequestId !== ''
+                ? $paymentRequestId
+                : null,
         );
     }
 }

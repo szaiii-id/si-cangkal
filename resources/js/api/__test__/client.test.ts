@@ -19,7 +19,7 @@ import {
     cancelBooking,
     createReview,
     uploadProof,
-    createDokuCharge,
+    createXenditCharge,
     getPaymentProofUrl,
     getETicketDownloadUrl,
 } from '../client';
@@ -84,8 +84,8 @@ describe('Client API Wrapper', () => {
             );
         });
 
-        it('createDokuCharge() memanggil POST /client/bookings/{id}/pay', () => {
-            createDokuCharge(42);
+        it('createXenditCharge() memanggil POST /client/bookings/{id}/pay', () => {
+            createXenditCharge(42);
             expect(router.post).toHaveBeenCalledWith(
                 '/client/bookings/42/pay',
                 {},

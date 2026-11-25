@@ -49,7 +49,7 @@ describe('Mitra API Wrapper', () => {
             const fetchMock = vi.fn().mockResolvedValue({
                 ok: true,
                 json: async () => ({
-                    url: 'https://sandbox.doku.com/checkout-link-v2/abc',
+                    url: 'https://dev.xen.to/abc123',
                     expires_at: '2026-11-25T00:00:00Z',
                 }),
             });
@@ -67,7 +67,7 @@ describe('Mitra API Wrapper', () => {
                 }),
             );
             expect(result.url).toBe(
-                'https://sandbox.doku.com/checkout-link-v2/abc',
+                'https://dev.xen.to/abc123',
             );
 
             vi.unstubAllGlobals();

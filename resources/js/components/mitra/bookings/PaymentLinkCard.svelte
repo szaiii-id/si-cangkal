@@ -41,7 +41,7 @@
             Link Pembayaran
         </h3>
         <p class="text-xs text-gray-600 leading-relaxed mb-4">
-            Buat link checkout DOKU lalu salin untuk dikirim ke client. Transfer manual tetap bisa dipakai.
+            Buat link checkout Xendit lalu salin untuk dikirim ke client. Transfer manual tetap bisa dipakai.
         </p>
 
         <button

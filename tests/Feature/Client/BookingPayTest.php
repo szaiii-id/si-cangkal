@@ -3,7 +3,6 @@
 use App\Enums\BookingStatus;
 use App\Enums\PaymentGateway;
 use App\Models\Booking;
-use App\Models\MitraBankAccount;
 use App\Models\Package;
 use App\Models\Payment;
 use App\Models\User;
@@ -17,28 +16,25 @@ uses(RefreshDatabase::class);
 | Endpoint checkout client
 |==========================================================================
 |
-| POST /client/bookings/{booking}/pay mengembalikan URL checkout DOKU.
-| Transfer manual tetap tersedia sebagai opsi terpisah.
+| POST /client/bookings/{booking}/pay mengembalikan URL Payment Session
+| Xendit. Transfer manual tetap tersedia sebagai opsi terpisah.
 |
 */
 
 beforeEach(function () {
     config([
-        'payment.doku.client_id' => 'MCH-SANDBOX-001',
-        'payment.doku.secret_key' => 'secret-sandbox',
-        'payment.doku.notification_url' => 'https://tunnel.lhr.life/payments/doku/webhook',
+        'payment.xendit.secret_key' => 'xnd_development_test_key',
+        'payment.xendit.callback_token' => 'callback-token-rahasia',
     ]);
 
     Http::preventStrayRequests();
 
     Http::fake([
-        'api-sandbox.doku.com/checkout/v1/payment' => Http::response([
-            'message' => ['SUCCESS'],
-            'response' => [
-                'order' => ['session_id' => 'sess-1'],
-                'payment' => ['url' => 'https://sandbox.doku.com/checkout-link-v2/abc123'],
-            ],
-        ]),
+        'https://api.xendit.co/sessions' => Http::response([
+            'payment_session_id' => 'ps-1234567890123456789012345',
+            'payment_link_url' => 'https://dev.xen.to/abc123',
+            'status' => 'ACTIVE',
+        ], 201),
     ]);
 
     $this->mitra = User::factory()->mitra()->create(['must_change_password' => false]);
@@ -55,33 +51,31 @@ beforeEach(function () {
             'status' => BookingStatus::PENDING_PAYMENT,
             'total_harga' => 1_000_000,
         ]);
-
-    MitraBankAccount::create([
-        'user_id' => $this->mitra->id,
-        'tipe' => 'bank',
-        'nama_penyedia' => 'BCA',
-        'nomor_rekening' => '1234567890',
-        'nama_pemilik' => 'Mitra Travel',
-        'is_primary' => true,
-        'settlement_bank_account_id' => 'SBA-0001-123',
-        'settlement_verified_at' => now(),
-    ]);
 });
 
 describe('POST /client/bookings/{booking}/pay', function () {
-    it('mengembalikan URL checkout untuk pemilik booking', function () {
+    it('mengembalikan URL checkout Xendit untuk pemilik booking', function () {
         $response = $this->actingAs($this->client)
             ->postJson("/client/bookings/{$this->booking->id}/pay");
 
         // Tanpa header X-Inertia, Inertia::location menjadi redirect 302.
-        // Saat dipanggil lewat router Inertia, response menjadi 409 + Location.
-        $response->assertRedirect('https://sandbox.doku.com/checkout-link-v2/abc123');
+        $response->assertRedirect('https://dev.xen.to/abc123');
 
         $this->assertDatabaseHas('payments', [
             'booking_id' => $this->booking->id,
-            'gateway' => PaymentGateway::DOKU->value,
+            'gateway' => PaymentGateway::XENDIT->value,
             'gateway_status' => 'pending',
+            'gateway_request_id' => 'ps-1234567890123456789012345',
         ]);
+    });
+
+    it('memakai ulang session yang masih pending', function () {
+        $this->actingAs($this->client)->postJson("/client/bookings/{$this->booking->id}/pay");
+        $this->actingAs($this->client)->postJson("/client/bookings/{$this->booking->id}/pay");
+
+        expect(Payment::where('booking_id', $this->booking->id)->count())->toBe(1);
+
+        Http::assertSentCount(1);
     });
 
     it('menolak client bukan pemilik booking', function () {

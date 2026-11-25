@@ -86,8 +86,8 @@ export const cancelBooking = (
 ) => router.post(`/mitra/bookings/${bookingId}/cancel`, data, options);
 
 /**
- * Request data (bukan navigasi halaman) untuk membuat link checkout DOKU.
- * CSRF dibaca dari meta tag Blade; redirect ke DOKU dilakukan oleh client
+ * Request data (bukan navigasi halaman) untuk membuat Payment Session Xendit.
+ * CSRF dibaca dari meta tag Blade; redirect ke Xendit dilakukan oleh client
  * setelah mitra menyalin link ini.
  */
 function csrfToken(): string {

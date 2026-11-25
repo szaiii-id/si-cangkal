@@ -47,11 +47,11 @@ export const uploadProof = (
 ) => router.post(`/client/bookings/${bookingId}/upload-proof`, data, options);
 
 /**
- * Buat link checkout DOKU untuk booking pending.
- * Backend memakai Inertia::location sehingga router akan membuka URL
- * eksternal secara otomatis sebagai hard redirect.
+ * Buat Payment Session Xendit untuk booking pending.
+ * Backend memakai Inertia::location sehingga router akan membuka halaman
+ * checkout Xendit secara otomatis sebagai hard redirect.
  */
-export const createDokuCharge = (bookingId: number, options?: ClientOptions) =>
+export const createXenditCharge = (bookingId: number, options?: ClientOptions) =>
     router.post(`/client/bookings/${bookingId}/pay`, {}, options);
 
 // ==========================================

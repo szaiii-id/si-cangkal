@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { createDokuCharge } from '@/api/client';
+    import { createXenditCharge } from '@/api/client';
     import { showToast } from '@/utils/toast.svelte';
 
     // ==========================================
@@ -23,9 +23,9 @@
 
         processing = true;
 
-        // Inertia::location dari backend akan membuka halaman checkout DOKU
+        // Inertia::location dari backend akan membuka halaman checkout Xendit
         // secara otomatis. Di sini hanya mengatur state dan error handling.
-        createDokuCharge(bookingId, {
+        createXenditCharge(bookingId, {
             onError: () => {
                 processing = false;
                 showToast(
@@ -52,13 +52,13 @@
         {#if canUseGateway}
             <div class="rounded-2xl border border-blue/30 bg-blue/5 p-4 flex flex-col">
                 <div class="flex items-center justify-between mb-2">
-                    <h3 class="text-sm font-extrabold text-dark">Bayar dengan DOKU</h3>
+                    <h3 class="text-sm font-extrabold text-dark">Bayar dengan Xendit</h3>
                     <span class="px-1.5 py-0.5 rounded text-[8px] font-extrabold bg-blue-dark text-white">
                         QRIS · VA · E-WALLET
                     </span>
                 </div>
                 <p class="text-[11px] text-gray-600 leading-relaxed mb-4 flex-1">
-                    Pembayaran diverifikasi otomatis. E-Ticket langsung dibuat setelah pembayaran berhasil.
+                    Pembayaran diverifikasi otomatis. Dana diteruskan ke rekening mitra setelah pembayaran berhasil. E-Ticket langsung dibuat.
                 </p>
 
                 <button

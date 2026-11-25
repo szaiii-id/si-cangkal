@@ -194,8 +194,8 @@ final class BookingController extends Controller
 
         $result = $chargeService->createForBooking($booking);
 
-        // Inertia::location memberi tahu client untuk membuka URL eksternal
-        // DOKU. Ini tetap memakai router Inertia (tanpa fetch manual).
+        // Inertia::location memberi tahu client untuk membuka halaman checkout
+        // Xendit. Ini tetap memakai router Inertia (tanpa fetch manual).
         return Inertia::location($result->checkoutUrl);
     }
 

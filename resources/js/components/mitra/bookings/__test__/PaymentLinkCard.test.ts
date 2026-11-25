@@ -43,7 +43,7 @@ describe('PaymentLinkCard', () => {
 
     it('membuat link lalu menyalinnya ke clipboard', async () => {
         vi.mocked(createPaymentLink).mockResolvedValue({
-            url: 'https://sandbox.doku.com/checkout-link-v2/xyz',
+            url: 'https://dev.xen.to/xyz789',
             expires_at: '2026-11-25T00:00:00Z',
         });
 
@@ -58,7 +58,7 @@ describe('PaymentLinkCard', () => {
         expect(createPaymentLink).toHaveBeenCalledWith(7);
         await waitFor(() => {
             expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
-                'https://sandbox.doku.com/checkout-link-v2/xyz',
+                'https://dev.xen.to/xyz789',
             );
         });
         expect(showToast).toHaveBeenCalledWith(
