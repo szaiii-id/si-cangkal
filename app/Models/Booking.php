@@ -30,6 +30,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string|null $payment_proof_path
  * @property CarbonImmutable|null $payment_verified_at
  * @property string|null $payment_reject_reason
+ * @property string $sumber
  * @property CarbonImmutable|null $expired_at
  * @property string|null $catatan
  * @property CarbonImmutable|null $created_at
@@ -53,10 +54,18 @@ class Booking extends Model
     use SoftDeletes;
 
     /**
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'sumber' => 'aplikasi',
+    ];
+
+    /**
      * @var list<string>
      */
     protected $fillable = [
         'kode',
+        'sumber',
         'package_id',
         'user_id',
         'mitra_id',
