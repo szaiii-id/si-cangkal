@@ -163,8 +163,10 @@ Sebelum selesai mengerjakan fitur backend/frontend, jalankan: `bun run check`, `
 
 Perintah tersebut juga dijalankan GitHub Actions setiap push/PR ke `main`:
 
-- `.github/workflows/tests.yml` — Pint, PHPStan, `bun run check`, `bun run types:check`, Pest (dengan Postgres 16), Vitest, dan audit dependency
+- `.github/workflows/tests.yml` — Pint, PHPStan, `bun run check`, `bun run types:check`, Pest (dengan Postgres 16), Vitest, dan audit dependency. **Semua gate bersifat blocking.** `bun run audit:check` memakai allowlist advisori yang tercatat dan kedaluwarsa di `scripts/audit-check.ts`.
 - `.github/workflows/e2e.yml` — Playwright chromium/firefox/webkit + rate-limit, lengkap dengan upload report
+
+Versi Bun di CI dipaku (`1.4.2`, variabel `BUN_VERSION`) agar perubahan rilis Bun tidak memecah build tanpa perubahan kode.
 
 `.github/dependabot.yml` memantau pembaruan GitHub Actions, Composer, JavaScript/Bun, dan Docker setiap minggu.
 
