@@ -66,9 +66,7 @@ describe('Mitra API Wrapper', () => {
                     }),
                 }),
             );
-            expect(result.url).toBe(
-                'https://dev.xen.to/abc123',
-            );
+            expect(result.url).toBe('https://dev.xen.to/abc123');
 
             vi.unstubAllGlobals();
         });

@@ -4,6 +4,7 @@ use App\Models\MitraBankAccount;
 use App\Models\Profile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
@@ -658,7 +659,7 @@ describe('Edge Cases — nomor_rekening regex', function () {
 
 describe('Onboarding tanpa gateway', function () {
     it('hanya menyimpan profil dan rekening ke database lokal', function () {
-        \Illuminate\Support\Facades\Bus::fake();
+        Bus::fake();
 
         $this->actingAs($this->mitra)->post('/mitra/onboarding', [
             'nama_penyedia_usaha' => 'PT Travel Jaya',
@@ -673,7 +674,7 @@ describe('Onboarding tanpa gateway', function () {
             ],
         ])->assertRedirect();
 
-        \Illuminate\Support\Facades\Bus::assertNothingDispatched();
+        Bus::assertNothingDispatched();
 
         expect(MitraBankAccount::where('user_id', $this->mitra->id)->count())->toBe(1)
             ->and(Profile::where('user_id', $this->mitra->id)->count())->toBe(1);

@@ -9,7 +9,6 @@ use App\Services\Payment\Contracts\XenditPaymentServiceInterface;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -24,7 +23,7 @@ final class PaymentWebhookController extends Controller
         private readonly XenditPaymentServiceInterface $gateway,
     ) {}
 
-    public function store(Request $request): JsonResponse|Response
+    public function store(Request $request): JsonResponse
     {
         try {
             $notification = $this->gateway->verifyWebhook(

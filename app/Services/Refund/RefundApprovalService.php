@@ -69,7 +69,7 @@ class RefundApprovalService
         }
 
         $gatewaySuccess = $gatewayResult?->status === 'SUCCEEDED';
-        $gatewayMessage = $gatewayResult?->status ?? 'tidak ada respons';
+        $gatewayMessage = $gatewaySuccess ? $gatewayResult->status : 'tidak ada respons';
         $gatewayRefundNo = $gatewayResult?->refundId;
 
         $refund = DB::transaction(function () use (

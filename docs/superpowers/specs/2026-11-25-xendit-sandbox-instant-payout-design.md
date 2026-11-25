@@ -80,13 +80,13 @@ Approach 2 dipilih karena seluruh fitur yang dibutuhkan tersedia di Test Mode ta
 ### Konfigurasi dan enum
 
 - `config/payment.php` hanya berisi blok `xendit` (semua `DOKU_*` dihapus):
-  - `base_url` = `https://api.xendit.co`
-  - `secret_key` = `env('XENDIT_SECRET_KEY')`
-  - `callback_token` = `env('XENDIT_CALLBACK_TOKEN')`
-  - `payment_api_version` = `2024-11-11`
-  - `payout_api_version` = `2025-09-01`
-  - `instant_payout_enabled` = `env('XENDIT_INSTANT_PAYOUT_ENABLED', false)`
-  - `platform_fee_percent` = `0` (komisi, bila ada, dihitung di aplikasi karena split rule butuh XenPlatform)
+    - `base_url` = `https://api.xendit.co`
+    - `secret_key` = `env('XENDIT_SECRET_KEY')`
+    - `callback_token` = `env('XENDIT_CALLBACK_TOKEN')`
+    - `payment_api_version` = `2024-11-11`
+    - `payout_api_version` = `2025-09-01`
+    - `instant_payout_enabled` = `env('XENDIT_INSTANT_PAYOUT_ENABLED', false)`
+    - `platform_fee_percent` = `0` (komisi, bila ada, dihitung di aplikasi karena split rule butuh XenPlatform)
 - `PaymentGateway::DOKU` diganti `PaymentGateway::XENDIT`; `PaymentMetode::DOKU` diganti `PaymentMetode::XENDIT`. Mirror frontend diperbarui.
 
 ### Adapter Xendit (menggantikan kontrak DOKU)
@@ -109,10 +109,10 @@ Bind interface di `AppServiceProvider`.
 
 - `PaymentChargeService` tetap satu-satunya entry point. Ia memilih adapter berdasarkan konfigurasi gateway aktif.
 - `Payment` yang dibuat untuk Xendit menyimpan:
-  - `gateway = xendit`, `metode = xendit`
-  - `gateway_order_id = booking.kode`
-  - `gateway_request_id = payment_session_id`
-  - `gateway_payload` = `payment_link_url`, `payment_session_id`, `payment_request_id`, lalu `payment_id` dari webhook
+    - `gateway = xendit`, `metode = xendit`
+    - `gateway_order_id = booking.kode`
+    - `gateway_request_id = payment_session_id`
+    - `gateway_payload` = `payment_link_url`, `payment_session_id`, `payment_request_id`, lalu `payment_id` dari webhook
 - `PaymentOptionsCard.svelte` menampilkan label gateway aktif ("Bayar dengan Xendit"), badge QRIS/VA/E-Wallet, dan kalimat "Dana diteruskan ke rekening mitra setelah pembayaran berhasil" — sengaja meniru bahasa produksi.
 
 ### Webhook
@@ -163,7 +163,7 @@ Sumber: halaman `create-account`, `your-dashboard`, `api-keys`, `payments-integr
 - Signup + verifikasi email + pertanyaan bisnis dasar sudah memberi akses langsung ke **Test Mode dengan dana virtual**. KYC/business verification hanya membuka Live Mode.
 - Akun baru mulai dengan **nol secret key**; test secret key harus di-generate sendiri dengan permission `Write` untuk money-out dan `Read` untuk GET.
 - "All payment channels are available by default in test mode." Pengecualian: sebagian flow dibatasi partner (KYC/regional), misalnya Direct Debit Indonesia butuh bantuan CS dan Kredivo UAT dilakukan di Live.
-- Help Center secara eksplisit mencantumkan saat KYC masih tertunda: *"Generate API Key in Test mode dashboard for simulation purposes"*, *"Simulate payments using the Test API key"*, *"Simulate transactions (Money-In) via Invoice/Payment Link"*, *"Simulate Single Disbursement, Batch Disbursement, & Payout (Money-Out)"*, dan *"Download the Report of your testing transactions"*.
+- Help Center secara eksplisit mencantumkan saat KYC masih tertunda: _"Generate API Key in Test mode dashboard for simulation purposes"_, _"Simulate payments using the Test API key"_, _"Simulate transactions (Money-In) via Invoice/Payment Link"_, _"Simulate Single Disbursement, Batch Disbursement, & Payout (Money-Out)"_, dan _"Download the Report of your testing transactions"_.
 - Simulasi payout test mode: payload valid → `SUCCEEDED`; `account_number` tertentu memicu failure code tertentu; `INSUFFICIENT_BALANCE` bila nominal melebihi saldo. Top-up Test Mode langsung terisi, dana tidak nyata dan tidak bisa ditarik; bila saldo kosong bisa minta dummy balance ke CS.
 - Endpoint test-only: `POST /v3/payment_requests/{id}/simulate` mengembalikan `PENDING` lalu hasil lewat webhook; `POST /v1/disputes/simulate` (maks 5 per 24 jam, butuh payment settled).
 - Docs webhook Xendit menyebut ngrok secara eksplisit untuk menerima webhook saat development. Jadi E2E dengan webhook sungguhan memungkinkan tanpa endpoint suntikan.

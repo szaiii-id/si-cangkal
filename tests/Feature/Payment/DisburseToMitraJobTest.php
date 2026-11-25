@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\Payment\XenditNotificationProcessor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
 
@@ -109,7 +110,7 @@ describe('DisburseToMitraJob', function () {
         ]);
 
         expect(fn () => Bus::dispatchSync(new DisburseToMitraJob($this->booking->id)))
-            ->toThrow(\Illuminate\Http\Client\RequestException::class);
+            ->toThrow(RequestException::class);
 
         expect($this->payment->fresh()->released_at)->toBeNull();
     });

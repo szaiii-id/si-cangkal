@@ -35,6 +35,7 @@
 ### Task 1: Konfigurasi, enum, dan mirror frontend
 
 **Files:**
+
 - Modify: `config/payment.php`
 - Modify: `app/Enums/PaymentGateway.php`
 - Modify: `app/Enums/PaymentMetode.php`
@@ -43,6 +44,7 @@
 - Test: `tests/Feature/Payment/XenditConfigTest.php`, `resources/js/utils/__tests__/payment.test.ts`
 
 **Interfaces:**
+
 - Produces: `config('payment.xendit.*')` dengan kunci `base_url`, `secret_key`, `callback_token`, `payment_api_version` (`2024-11-11`), `payout_api_version` (`2025-09-01`), `instant_payout_enabled`, `platform_fee_percent`, `webhook_path`.
 
 - [ ] **Step 1: Tulis test config gagal** — `expect(config('payment.xendit.base_url'))->toBe('https://api.xendit.co')`, `expect(config('payment.xendit.payment_api_version'))->toBe('2024-11-11')`, `expect(config('payment')->has('doku'))->toBeFalse()`, dan `expect(PaymentGateway::XENDIT->value)->toBe('xendit')`.
@@ -54,6 +56,7 @@
 ### Task 2: DTO, kontrak, dan adapter Xendit
 
 **Files:**
+
 - Create: `app/Data/Xendit/XenditSessionResult.php`, `XenditWebhookEvent.php`, `XenditRefundResult.php`, `XenditPayoutResult.php`, `XenditStatus.php`
 - Create: `app/Services/Payment/Contracts/XenditPaymentServiceInterface.php`
 - Create: `app/Services/Payment/Xendit/XenditGatewayService.php`
@@ -61,14 +64,15 @@
 - Test: `tests/Unit/Payment/XenditGatewayServiceTest.php`
 
 **Interfaces:**
+
 - Produces:
-  - `createSession(Booking $booking, int $sequence = 1): XenditSessionResult`
-  - `verifyWebhook(string $rawBody, ?string $callbackToken): XenditWebhookEvent`
-  - `checkStatus(Booking $booking): XenditStatus`
-  - `refund(Payment $payment, Refund $refund): XenditRefundResult`
-  - `payout(Booking $booking, Payment $payment): XenditPayoutResult`
-  - `getPayout(string $payoutId): XenditPayoutResult`
-  - `XenditWebhookEvent` punya `event`, `paymentId`, `payoutId`, `referenceId`, `amount`, `status`, `payload`.
+    - `createSession(Booking $booking, int $sequence = 1): XenditSessionResult`
+    - `verifyWebhook(string $rawBody, ?string $callbackToken): XenditWebhookEvent`
+    - `checkStatus(Booking $booking): XenditStatus`
+    - `refund(Payment $payment, Refund $refund): XenditRefundResult`
+    - `payout(Booking $booking, Payment $payment): XenditPayoutResult`
+    - `getPayout(string $payoutId): XenditPayoutResult`
+    - `XenditWebhookEvent` punya `event`, `paymentId`, `payoutId`, `referenceId`, `amount`, `status`, `payload`.
 
 - [ ] **Step 1: Tulis test gagal** — payload `POST /sessions` mengandung `session_type=PAY`, `mode=PAYMENT_LINK`, `country=ID`, `currency=IDR`, `reference_id=booking.kode`; tidak ada `for-user-id`/`with-split-rule`; `verifyWebhook` menolak token salah.
 - [ ] **Step 2: Jalankan test, pastikan gagal.**
@@ -80,6 +84,7 @@
 ### Task 3: Checkout client dan link mitra
 
 **Files:**
+
 - Modify: `app/Services/Payment/PaymentChargeService.php`
 - Modify: `app/Http/Controllers/Client/BookingController.php`
 - Modify: `resources/js/api/client.ts`, `resources/js/api/mitra.ts`
@@ -87,6 +92,7 @@
 - Test: `tests/Feature/Client/BookingPayTest.php`, Vitest komponen terkait
 
 **Interfaces:**
+
 - Consumes: `XenditPaymentServiceInterface::createSession()`.
 - Produces: `PaymentChargeService::createForBooking(Booking $booking, ?int $dueMinutes = null): XenditSessionResult`; `Payment` tersimpan dengan `gateway=xendit`, `gateway_request_id=payment_session_id`, `gateway_payload.payment_link_url`.
 
@@ -100,6 +106,7 @@
 ### Task 4: Webhook, idempotensi, dan konfirmasi booking
 
 **Files:**
+
 - Create: `app/Jobs/ProcessXenditNotificationJob.php`
 - Create: `app/Services/Payment/XenditNotificationProcessor.php`
 - Modify: `app/Http/Controllers/PaymentWebhookController.php`
@@ -108,6 +115,7 @@
 - Test: `tests/Feature/Payment/XenditWebhookTest.php`, `tests/Feature/Payment/ProcessXenditNotificationJobTest.php`
 
 **Interfaces:**
+
 - Consumes: `verifyWebhook()`.
 - Produces: `XenditNotificationProcessor::process(XenditWebhookEvent $event): void`; webhook route `POST /payments/xendit/webhook` nama `payments.xendit.webhook`.
 
@@ -122,12 +130,14 @@
 ### Task 5: Payout ke rekening mitra
 
 **Files:**
+
 - Create: `app/Jobs/DisburseToMitraJob.php`
 - Modify: `app/Services/Trip/TripService.php`
 - Delete: `app/Jobs/ReleaseDokuSettlementJob.php`
 - Test: `tests/Feature/Payment/DisburseToMitraJobTest.php`, `tests/Feature/Payment/XenditSettlementTest.php`
 
 **Interfaces:**
+
 - Consumes: `XenditPaymentServiceInterface::payout()`/`getPayout()`; `XenditWebhookEvent` untuk `v3_payout.succeeded`.
 - Produces: `DisburseToMitraJob(int $bookingId)`; `released_at` saat payout `ACCEPTED`, `settled_at` saat webhook sukses, `gateway_status=SETTLED`.
 
@@ -141,12 +151,14 @@
 ### Task 6: Refund gateway dan fallback manual
 
 **Files:**
+
 - Modify: `app/Services/Refund/RefundApprovalService.php`
 - Modify: `app/Services/Refund/RefundInitiationService.php`
 - Delete: `app/Jobs/SyncDokuRefundJob.php`
 - Test: `tests/Feature/Payment/XenditRefundTest.php`, `tests/Feature/Mitra/RefundValidationTest.php`
 
 **Interfaces:**
+
 - Consumes: `XenditPaymentServiceInterface::refund()` dengan `payment_id`.
 - Produces: `RefundInitiationService::completeManuallyAfterPayout(Refund $refund, User $mitra, ?string $catatan): Refund`.
 
@@ -159,6 +171,7 @@
 ### Task 7: Hapus jejak DOKU dan onboarding sub-account
 
 **Files:**
+
 - Modify: `app/Http/Controllers/Mitra/OnboardingController.php`, `app/Http/Controllers/Auth/AuthController.php`
 - Modify: `routes/web-testing.php`, `e2e/config.ts`, `e2e/fixtures/seed.ts`
 - Delete: `app/Data/Doku/*`, `app/Services/Payment/Doku/*`, `app/Services/Payment/Contracts/PaymentGatewayServiceInterface.php`, `app/Console/Commands/GenerateDokuKeyPair.php`, spec E2E DOKU, test DOKU, `resources/js/routes/payments/doku/*`
@@ -174,6 +187,7 @@
 ### Task 8: E2E, dokumentasi, dan panduan dashboard Xendit
 
 **Files:**
+
 - Create: `e2e/payment/xendit-payment.spec.ts`
 - Modify: `e2e/README.md`, `README.md`, `docs/superpowers/specs/...design.md`
 - Test: E2E + build
@@ -200,9 +214,9 @@
 1. Daftar akun Xendit, verifikasi email, isi pertanyaan bisnis dasar → masuk **Test Mode**. Jangan ajukan verifikasi bisnis/KYC.
 2. Settings → API Keys → **Generate Secret Key**. Beri permission: `Payment Write`, `Payment Read`, `Payout/Money-out Write`, `Balance/Transaction Read` (sesuai nama yang tersedia di dashboard).
 3. Settings → Webhooks → daftarkan URL:
-   - Payment Session / Payment event → `https://<host>/payments/xendit/webhook`
-   - Payout event → `https://<host>/payments/xendit/webhook` (endpoint yang sama)
-   - Salin **Callback Verification Token** (`x-callback-token`).
+    - Payment Session / Payment event → `https://<host>/payments/xendit/webhook`
+    - Payout event → `https://<host>/payments/xendit/webhook` (endpoint yang sama)
+    - Salin **Callback Verification Token** (`x-callback-token`).
 4. Untuk lokal: jalankan tunnel (mis. ngrok) ke `http://localhost:8000` dan pakai URL-nya sebagai callback URL testing. Docs Xendit menyebut ngrok untuk keperluan ini.
 5. Balance → **Top Up** di Test Mode bila saldo kosong; dana simulasi, tidak nyata, tidak bisa ditarik. Bila tidak ada menu top-up, email CS untuk minta dummy balance.
 6. Isi `.env` lokal (nilai tidak pernah dimasukkan ke repo): `XENDIT_SECRET_KEY`, `XENDIT_CALLBACK_TOKEN`, `XENDIT_INSTANT_PAYOUT_ENABLED=false`. Semua sudah dibaca lewat `config/payment.php`.

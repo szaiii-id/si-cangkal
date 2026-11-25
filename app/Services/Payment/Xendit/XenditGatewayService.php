@@ -12,7 +12,9 @@ use App\Models\Booking;
 use App\Models\MitraBankAccount;
 use App\Models\Payment;
 use App\Models\Refund;
+use App\Models\User;
 use App\Services\Payment\Contracts\XenditPaymentServiceInterface;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -40,7 +42,7 @@ final class XenditGatewayService implements XenditPaymentServiceInterface
     public function createSession(Booking $booking, int $sequence = 1): XenditSessionResult
     {
         $client = $booking->client;
-        $nama = trim((string) ($client?->name ?? 'Client'));
+        $nama = trim((string) ($client->name ?? 'Client'));
         $parts = explode(' ', $nama, 2);
 
         $payload = $this->request()
@@ -53,9 +55,8 @@ final class XenditGatewayService implements XenditPaymentServiceInterface
                 'country' => 'ID',
                 'customer' => [
                     'type' => 'INDIVIDUAL',
-                    'reference_id' => 'client-'.$booking->client_id,
-                    'email' => $client?->email,
-                    'mobile_number' => $client?->phone,
+                    'reference_id' => 'client-'.$client->id,
+                    'email' => $client->email,
                     'individual_detail' => [
                         'given_names' => $parts[0] !== '' ? $parts[0] : 'Client',
                         'surname' => $parts[1] ?? null,
@@ -275,7 +276,7 @@ final class XenditGatewayService implements XenditPaymentServiceInterface
         return 'ID_'.preg_replace('/[^A-Z0-9]/', '', $key);
     }
 
-    private function request(): \Illuminate\Http\Client\PendingRequest
+    private function request(): PendingRequest
     {
         return Http::asJson()->withBasicAuth((string) config('payment.xendit.secret_key'), '');
     }
