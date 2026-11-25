@@ -50,6 +50,7 @@ return Application::configure(basePath: dirname(__DIR__))
             // Webhook Xendit tidak punya session/CSRF token; keamanan
             // dijamin lewat verifikasi x-callback-token.
             'payments/xendit/webhook',
+            'xendit/webhook',
         ]);
 
         $middleware->alias([

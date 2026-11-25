@@ -84,6 +84,14 @@ describe('POST /payments/xendit/webhook', function () {
         Bus::assertDispatched(ProcessXenditNotificationJob::class, 1);
     });
 
+    it('menerima webhook pada path alias /xendit/webhook', function () {
+        $this->postJson('/xendit/webhook', xenditPaymentWebhook($this->booking), [
+            'X-Callback-Token' => 'callback-token-rahasia',
+        ])->assertOk();
+
+        Bus::assertDispatched(ProcessXenditNotificationJob::class, 1);
+    });
+
     it('menolak webhook dengan token salah', function () {
         $this->postJson('/payments/xendit/webhook', xenditPaymentWebhook($this->booking), [
             'X-Callback-Token' => 'salah',

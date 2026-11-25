@@ -62,6 +62,11 @@ Route::post(config('payment.xendit.webhook_path'), [PaymentWebhookController::cl
     ->middleware('throttle:60,1')
     ->name('payments.xendit.webhook');
 
+// Alias untuk callback URL yang sudah terdaftar di dashboard Xendit.
+Route::post('/xendit/webhook', [PaymentWebhookController::class, 'store'])
+    ->middleware('throttle:60,1')
+    ->name('payments.xendit.webhook.alias');
+
 Route::prefix('legal')->name('legal.')->group(function () {
     Route::get('/privacy', [LegalController::class, 'privacy'])->name('privacy');
     Route::get('/terms', [LegalController::class, 'terms'])->name('terms');
