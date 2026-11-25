@@ -1,0 +1,35 @@
+<?php
+
+namespace App\Jobs;
+
+use App\Data\Xendit\XenditWebhookEvent;
+use App\Services\Payment\XenditNotificationProcessor;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+
+/**
+ * Job pemroses notifikasi Xendit yang sudah terverifikasi tokennya.
+ *
+ * Dijalankan setelah controller membalas 200 agar Xendit tidak timeout.
+ */
+final class ProcessXenditNotificationJob implements ShouldQueue
+{
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
+
+    public int $tries = 3;
+
+    public function __construct(
+        public readonly XenditWebhookEvent $notification,
+    ) {}
+
+    public function handle(XenditNotificationProcessor $processor): void
+    {
+        $processor->process($this->notification);
+    }
+}

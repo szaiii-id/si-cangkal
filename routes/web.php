@@ -56,16 +56,11 @@ Route::get('/e-tickets/{uuid}', [PublicETicketController::class, 'show'])
     ->middleware('throttle:e-ticket-verify')
     ->name('e-tickets.verify');
 
-// Webhook publik DOKU. CSRF dikecualikan di bootstrap/app.php; signature
-// diverifikasi di controller dan notifikasi diproses lewat queue.
-Route::post('/payments/doku/webhook', [PaymentWebhookController::class, 'store'])
+// Webhook publik Xendit. CSRF dikecualikan di bootstrap/app.php; callback
+// token diverifikasi di controller dan notifikasi diproses lewat queue.
+Route::post(config('payment.xendit.webhook_path'), [PaymentWebhookController::class, 'store'])
     ->middleware('throttle:60,1')
-    ->name('payments.doku.webhook');
-
-// Webhook Sub Account V2 punya format ack berbeda dari webhook Checkout.
-Route::post('/payments/doku/sub-account/webhook', [PaymentWebhookController::class, 'subAccount'])
-    ->middleware('throttle:60,1')
-    ->name('payments.doku.sub-account.webhook');
+    ->name('payments.xendit.webhook');
 
 Route::prefix('legal')->name('legal.')->group(function () {
     Route::get('/privacy', [LegalController::class, 'privacy'])->name('privacy');

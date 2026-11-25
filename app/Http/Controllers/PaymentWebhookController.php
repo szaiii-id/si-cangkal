@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Data\Doku\DokuNotification;
-use App\Jobs\ProcessDokuNotificationJob;
+use App\Data\Xendit\XenditWebhookEvent;
+use App\Jobs\ProcessXenditNotificationJob;
 use App\Models\WebhookEvent;
-use App\Services\Payment\Contracts\PaymentGatewayServiceInterface;
+use App\Services\Payment\Contracts\XenditPaymentServiceInterface;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -13,100 +13,64 @@ use Illuminate\Http\Response;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Endpoint webhook publik DOKU.
+ * Endpoint webhook publik Xendit.
  *
- * Handler sengaja tipis: verifikasi signature, simpan event untuk
- * idempotensi, balas 2xx segera, lalu serahkan sisanya ke queue.
+ * Handler sengaja tipis: verifikasi callback token, simpan event untuk
+ * idempotensi, balas 200 segera, lalu serahkan sisanya ke queue.
  */
 final class PaymentWebhookController extends Controller
 {
     public function __construct(
-        private readonly PaymentGatewayServiceInterface $gateway,
+        private readonly XenditPaymentServiceInterface $gateway,
     ) {}
 
-    public function store(Request $request): Response|JsonResponse
+    public function store(Request $request): JsonResponse|Response
     {
-        $rawBody = $request->getContent();
-
-        $headers = [
-            'Client-Id' => (string) $request->header('Client-Id'),
-            'Request-Id' => (string) $request->header('Request-Id'),
-            'Request-Timestamp' => (string) $request->header('Request-Timestamp'),
-            'Signature' => (string) $request->header('Signature'),
-        ];
-
-        $targetPath = '/'.ltrim($request->path(), '/');
-
         try {
-            $notification = $this->gateway->verifyNotification(
-                $rawBody,
-                $headers,
-                $targetPath,
+            $notification = $this->gateway->verifyWebhook(
+                $request->getContent(),
+                $request->header('X-Callback-Token'),
             );
         } catch (ValidationException) {
-            return response()->json(['message' => 'Signature tidak valid.'], 401);
+            return response()->json(['message' => 'Callback token tidak valid.'], 401);
         }
 
         if (! $this->storeEvent($notification)) {
-            return response()->noContent();
+            return response()->json(['status' => 'ok']);
         }
 
-        ProcessDokuNotificationJob::dispatch($notification);
+        ProcessXenditNotificationJob::dispatch($notification);
 
-        return response()->noContent();
+        return response()->json(['status' => 'ok']);
     }
 
-    /**
-     * Ack untuk notifikasi Sub Account V2.
-     *
-     * DOKU mengharapkan HTTP 200 dengan responseCode 2000000. Detail event
-     * disimpan untuk rekonsiliasi; pemrosesan lanjutan menyusul.
-     */
-    public function subAccount(Request $request): JsonResponse
+    private function storeEvent(XenditWebhookEvent $notification): bool
     {
-        /** @var array<string, mixed> $payload */
-        $payload = $request->json()->all();
-        $referenceNo = (string) data_get($payload, 'referenceNo', '');
+        $requestId = $notification->paymentId
+            ?? $notification->payoutId
+            ?? $notification->event;
 
-        if ($referenceNo !== '') {
-            WebhookEvent::query()->firstOrCreate(
-                [
-                    'provider' => 'doku-sub-account',
-                    'request_id' => $referenceNo,
-                ],
-                ['payload' => $payload],
-            );
+        if ($requestId === '') {
+            return false;
         }
 
-        return response()->json([
-            'responseCode' => '2000000',
-            'responseMessage' => 'Successful',
-        ]);
-    }
-
-    private function storeEvent(DokuNotification $notification): bool
-    {
-        // Cek dulu agar duplicate sequential tidak mengabort transaksi test
-        // (RefreshDatabase membungkus tiap test dalam satu transaksi).
-        // Unique index tetap menjadi garda terakhir untuk race condition.
+        // Cek dulu agar duplicate sequential tidak mengabort transaksi test.
         if (WebhookEvent::query()
-            ->where('provider', 'doku')
-            ->where('request_id', $notification->requestId)
+            ->where('provider', 'xendit')
+            ->where('request_id', $requestId)
             ->exists()) {
             return false;
         }
 
         try {
             WebhookEvent::query()->create([
-                'provider' => 'doku',
-                'request_id' => $notification->requestId,
+                'provider' => 'xendit',
+                'request_id' => $requestId,
                 'payload' => $notification->payload,
             ]);
 
             return true;
         } catch (UniqueConstraintViolationException) {
-            // Webhook yang sama sudah diterima sebelumnya. Balas 2xx agar
-            // DOKU berhenti retry, tapi jangan antrekan job kedua kalinya.
             return false;
         }
     }
