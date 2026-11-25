@@ -58,7 +58,7 @@
                     </span>
                 </div>
                 <p class="text-[11px] text-gray-600 leading-relaxed mb-4 flex-1">
-                    Pembayaran diverifikasi otomatis. Dana diteruskan ke rekening mitra setelah pembayaran berhasil. E-Ticket langsung dibuat.
+                    Pembayaran diverifikasi otomatis. Dana dikirim ke rekening mitra setelah trip selesai. E-Ticket langsung dibuat.
                 </p>
 
                 <button

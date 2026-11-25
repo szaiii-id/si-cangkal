@@ -69,7 +69,7 @@ test.describe('Pembayaran Xendit (Test Mode)', () => {
                     payment_id: `py-e2e-${booking.booking_id}`,
                     payment_request_id: `pr-e2e-${booking.booking_id}`,
                     reference_id: booking.kode,
-                    amount: 250_000,
+                    request_amount: 250_000,
                     status: 'SUCCEEDED',
                 },
             },

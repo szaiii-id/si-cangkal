@@ -1,5 +1,6 @@
 <?php
 
+use App\Data\Xendit\XenditWebhookEvent;
 use App\Enums\BookingStatus;
 use App\Enums\PaymentGateway;
 use App\Enums\PaymentMetode;
@@ -9,6 +10,7 @@ use App\Models\Package;
 use App\Models\Payment;
 use App\Models\Refund;
 use App\Models\User;
+use App\Services\Payment\XenditNotificationProcessor;
 use App\Services\Refund\RefundApprovalService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
@@ -87,6 +89,7 @@ describe('refund gateway Xendit', function () {
         $this->payment->update([
             'gateway_payload' => ['payment_id' => 'py-abc', 'payout_id' => 'po-123'],
             'released_at' => now(),
+            'settled_at' => now(),
             'gateway_status' => 'SETTLED',
         ]);
 
@@ -101,5 +104,37 @@ describe('refund gateway Xendit', function () {
             'id' => $this->booking->id,
             'status' => BookingStatus::CANCELLED->value,
         ]);
+    });
+
+    it('menunggu webhook bila gateway mengembalikan PENDING', function () {
+        Http::fake([
+            'https://api.xendit.co/v3/refunds' => Http::response([
+                'refund_id' => 'rfd-pending',
+                'status' => 'PENDING',
+            ]),
+        ]);
+
+        $refund = app(RefundApprovalService::class)->approve($this->refund, $this->mitra, null);
+
+        expect($refund->status)->toBe(RefundStatus::PENDING)
+            ->and($refund->gateway_status)->toBe('PENDING')
+            ->and($this->booking->fresh()->status)->toBe(BookingStatus::CONFIRMED)
+            ->and(Payment::where('booking_id', $this->booking->id)->where('jumlah', '<', 0)->count())->toBe(0);
+
+        $event = new XenditWebhookEvent(
+            event: 'refund.succeeded',
+            paymentId: 'py-abc',
+            payoutId: null,
+            referenceId: 'refund-'.$refund->id,
+            amount: 500_000.0,
+            status: 'SUCCEEDED',
+            payload: [],
+        );
+
+        app(XenditNotificationProcessor::class)->process($event);
+
+        expect($refund->fresh()->status)->toBe(RefundStatus::SUCCEEDED)
+            ->and($this->booking->fresh()->status)->toBe(BookingStatus::CANCELLED)
+            ->and(Payment::where('booking_id', $this->booking->id)->where('jumlah', '<', 0)->count())->toBe(1);
     });
 });

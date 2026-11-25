@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Enums\PaymentGateway;
 use App\Models\Payment;
+use App\Models\Refund;
 use App\Repositories\Contracts\BookingRepositoryInterface;
 use App\Services\Notification\Contracts\NotificationDispatcherInterface;
 use App\Services\Payment\Contracts\XenditPaymentServiceInterface;
@@ -70,12 +71,30 @@ final class DisburseToMitraJob implements ShouldQueue
             return;
         }
 
+        // Refund masih diproses: dana harus tetap tertahan.
+        if (Refund::active()->where('booking_id', $booking->id)->exists()) {
+            Log::info('DisburseToMitraJob: dilewati, refund masih aktif', [
+                'booking_id' => $booking->id,
+            ]);
+
+            return;
+        }
+
         try {
             $result = $gateway->payout($booking, $payment);
         } catch (Throwable $e) {
             Log::error('DisburseToMitraJob: gagal mengirim payout', [
                 'booking_id' => $booking->id,
                 'error' => $e->getMessage(),
+            ]);
+
+            // Idempotency-key Xendit meng-cache respons 4xx. Naikkan attempt
+            // supaya retry berikutnya memakai key baru.
+            $payment->update([
+                'gateway_payload' => [
+                    ...$payload,
+                    'payout_attempt' => ((int) data_get($payload, 'payout_attempt', 1)) + 1,
+                ],
             ]);
 
             throw $e;

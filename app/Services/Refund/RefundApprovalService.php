@@ -45,7 +45,8 @@ class RefundApprovalService
         // Dana sudah cair ke rekening mitra: gateway tidak bisa menarik dana
         // kembali. Selesaikan refund yang sudah ada lewat jalur manual.
         if ($gatewayPayment !== null
-            && filled(data_get($gatewayPayment->gateway_payload, 'payout_id'))) {
+            && filled(data_get($gatewayPayment->gateway_payload, 'payout_id'))
+            && $gatewayPayment->settled_at !== null) {
             return $this->refundInitiation->completeManuallyAfterPayout(
                 $refund,
                 $mitra,
@@ -68,8 +69,12 @@ class RefundApprovalService
             }
         }
 
-        $gatewaySuccess = $gatewayResult?->status === 'SUCCEEDED';
-        $gatewayMessage = $gatewaySuccess ? $gatewayResult->status : 'tidak ada respons';
+        // Xendit mengembalikan PENDING bila refund masih diproses issuer;
+        // hasil akhirnya menyusul lewat webhook refund.succeeded/failed.
+        $gatewayStatus = $gatewayResult?->status;
+        $gatewaySuccess = in_array($gatewayStatus, ['SUCCEEDED', 'PENDING'], true);
+        $gatewayPending = $gatewayStatus === 'PENDING';
+        $gatewayMessage = $gatewayStatus ?? 'tidak ada respons';
         $gatewayRefundNo = $gatewayResult?->refundId;
 
         $refund = DB::transaction(function () use (
@@ -78,6 +83,7 @@ class RefundApprovalService
             $catatan,
             $gatewayPayment,
             $gatewaySuccess,
+            $gatewayPending,
             $gatewayMessage,
             $gatewayRefundNo,
         ): Refund {
@@ -111,11 +117,17 @@ class RefundApprovalService
             }
 
             $locked->update([
-                'status' => RefundStatus::SUCCEEDED->value,
+                'status' => $gatewayPending
+                    ? RefundStatus::PENDING->value
+                    : RefundStatus::SUCCEEDED->value,
                 'gateway_refund_id' => $gatewaySuccess ? $gatewayRefundNo : null,
-                'gateway_status' => $gatewaySuccess ? 'SUCCESS' : null,
+                'gateway_status' => $gatewayPending ? 'PENDING' : ($gatewaySuccess ? 'SUCCESS' : null),
                 'catatan' => trim(($locked->catatan ?? '')."\n{$noteLine}"),
             ]);
+
+            if ($gatewayPending) {
+                return $locked->refresh()->load('booking.client');
+            }
 
             Payment::create([
                 'booking_id' => $booking->id,

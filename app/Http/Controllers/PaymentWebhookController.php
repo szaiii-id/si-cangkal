@@ -34,24 +34,21 @@ final class PaymentWebhookController extends Controller
             return response()->json(['message' => 'Callback token tidak valid.'], 401);
         }
 
-        if (! $this->storeEvent($notification)) {
-            return response()->json(['status' => 'ok']);
-        }
-
-        ProcessXenditNotificationJob::dispatch($notification);
-
-        return response()->json(['status' => 'ok']);
-    }
-
-    private function storeEvent(XenditWebhookEvent $notification): bool
-    {
         $requestId = $notification->paymentId
             ?? $notification->payoutId
             ?? $notification->event;
 
-        if ($requestId === '') {
-            return false;
+        if ($requestId === '' || ! $this->storeEvent($notification, $requestId)) {
+            return response()->json(['status' => 'ok']);
         }
+
+        ProcessXenditNotificationJob::dispatch($notification, $requestId);
+
+        return response()->json(['status' => 'ok']);
+    }
+
+    private function storeEvent(XenditWebhookEvent $notification, string $requestId): bool
+    {
 
         // Cek dulu agar duplicate sequential tidak mengabort transaksi test.
         if (WebhookEvent::query()

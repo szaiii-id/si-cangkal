@@ -5,15 +5,18 @@ namespace App\Services\Payment;
 use App\Data\Xendit\XenditWebhookEvent;
 use App\Enums\BookingStatus;
 use App\Enums\PaymentGateway;
+use App\Enums\PaymentMetode;
 use App\Events\BookingConfirmed;
 use App\Jobs\DisburseToMitraJob;
 use App\Models\Booking;
 use App\Models\Payment;
+use App\Models\Refund;
 use App\Repositories\Contracts\BookingRepositoryInterface;
 use App\Services\Notification\Contracts\NotificationDispatcherInterface;
 use App\Support\AuditLogger;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -31,6 +34,12 @@ final class XenditNotificationProcessor
 
     public function process(XenditWebhookEvent $event): void
     {
+        if (str_starts_with($event->event, 'refund.')) {
+            $this->processRefund($event);
+
+            return;
+        }
+
         if (str_starts_with($event->event, 'v3_payout.')) {
             $this->processPayout($event);
 
@@ -95,6 +104,13 @@ final class XenditNotificationProcessor
                 return null;
             }
 
+            // Re-check amount dan reference di dalam lock agar perubahan
+            // payload antara lookup dan transaksi tidak bisa ditipu.
+            if ((int) $freshPayment->jumlah !== (int) $event->amount
+                || $freshPayment->gateway_order_id !== $event->referenceId) {
+                return null;
+            }
+
             $payload = is_array($freshPayment->gateway_payload)
                 ? $freshPayment->gateway_payload
                 : [];
@@ -148,12 +164,108 @@ final class XenditNotificationProcessor
         }
     }
 
+    private function processRefund(XenditWebhookEvent $event): void
+    {
+        $referenceId = $event->referenceId;
+
+        if ($referenceId === null || ! str_starts_with($referenceId, 'refund-')) {
+            return;
+        }
+
+        $refund = Refund::find((int) substr($referenceId, 7));
+
+        if ($refund === null || $refund->gateway_status !== 'PENDING') {
+            return;
+        }
+
+        if ($event->event === 'refund.failed') {
+            $refund->update([
+                'gateway_status' => 'FAILED',
+                'catatan' => trim(($refund->catatan ?? '')."\n[Xendit] Refund gagal: ".(string) data_get($event->payload, 'data.failure_code', '')),
+            ]);
+
+            AuditLogger::log('refund.gateway_failed', [
+                'actor_id' => null,
+                'actor_role' => 'system',
+                'refund_id' => $refund->id,
+                'booking_id' => $refund->booking_id,
+            ]);
+
+            return;
+        }
+
+        if ($event->event !== 'refund.succeeded') {
+            return;
+        }
+
+        $completed = DB::transaction(function () use ($refund): bool {
+            $locked = Refund::query()->whereKey($refund->id)->lockForUpdate()->first();
+
+            if ($locked === null || $locked->gateway_status !== 'PENDING') {
+                return false;
+            }
+
+            $locked->update([
+                'status' => 'SUCCEEDED',
+                'gateway_status' => 'SUCCESS',
+            ]);
+
+            Payment::create([
+                'booking_id' => $locked->booking_id,
+                'jumlah' => -$locked->amount,
+                'metode' => PaymentMetode::XENDIT,
+                'gateway' => PaymentGateway::XENDIT,
+                'verified_at' => now(),
+                'catatan' => 'Refund gateway Xendit berhasil.',
+            ]);
+
+            $booking = $locked->booking;
+
+            if ($booking !== null) {
+                $booking->update(['status' => BookingStatus::CANCELLED->value]);
+            }
+
+            AuditLogger::log('refund.approved', [
+                'actor_id' => null,
+                'actor_role' => 'system',
+                'refund_id' => $locked->id,
+                'booking_id' => $locked->booking_id,
+                'amount' => (float) $locked->amount,
+                'gateway' => PaymentGateway::XENDIT->value,
+            ]);
+
+            return true;
+        });
+
+        if (! $completed) {
+            return;
+        }
+
+        $client = $refund->booking?->client;
+
+        if ($client !== null) {
+            try {
+                $this->notificationDispatcher->send(
+                    user: $client,
+                    tipe: 'refund_succeeded',
+                    judul: 'Refund Berhasil',
+                    pesan: "Dana refund sebesar {$refund->amountRupiah()} untuk booking {$refund->booking->kode} telah diproses.",
+                    data: ['refund_id' => $refund->id, 'booking_id' => $refund->booking_id],
+                );
+            } catch (Throwable $e) {
+                Log::warning('XenditNotificationProcessor: gagal notifikasi refund', [
+                    'refund_id' => $refund->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+    }
+
     private function processPayout(XenditWebhookEvent $event): void
     {
-        if ($event->event !== 'v3_payout.succeeded' || $event->payoutId === null) {
-            Log::info('XenditNotificationProcessor: event payout diabaikan', [
+        if ($event->payoutId === null) {
+            Log::info('XenditNotificationProcessor: event payout tanpa payout_id diabaikan', [
                 'event' => $event->event,
-                'payout_id' => $event->payoutId,
             ]);
 
             return;
@@ -165,29 +277,100 @@ final class XenditNotificationProcessor
             ->get()
             ->first(fn (Payment $item): bool => data_get($item->gateway_payload, 'payout_id') === $event->payoutId);
 
-        if ($payment === null || $payment->settled_at !== null) {
+        if ($payment === null) {
+            // Bisa terjadi bila webhook tiba sebelum job menyimpan payout_id.
+            // Melempar membuat job gagal agar dedupe dihapus dan Xendit
+            // mengirim ulang event setelah payout_id tersedia.
+            throw new RuntimeException('Payout '.$event->payoutId.' belum tercatat di database.');
+        }
+
+        if ($payment->settled_at !== null) {
             return;
         }
 
-        DB::transaction(function () use ($payment): void {
+        if ($event->event === 'v3_payout.succeeded') {
+            DB::transaction(function () use ($payment, $event): void {
+                $locked = Payment::query()->whereKey($payment->id)->lockForUpdate()->first();
+
+                if ($locked === null || $locked->settled_at !== null) {
+                    return;
+                }
+
+                $locked->update([
+                    'settled_at' => now(),
+                    'gateway_status' => 'SETTLED',
+                ]);
+
+                AuditLogger::log('payment.payout_settled', [
+                    'actor_id' => null,
+                    'actor_role' => 'system',
+                    'booking_id' => $locked->booking_id,
+                    'payout_id' => $event->payoutId,
+                ]);
+            });
+
+            return;
+        }
+
+        if (! in_array($event->event, [
+            'v3_payout.failed',
+            'v3_payout.reversed',
+            'v3_payout.rejected',
+        ], true)) {
+            Log::info('XenditNotificationProcessor: event payout dicatat', [
+                'event' => $event->event,
+                'payout_id' => $event->payoutId,
+            ]);
+
+            return;
+        }
+
+        $failureCode = (string) data_get($event->payload, 'data.failure_code', '');
+        $retryable = in_array($failureCode, [
+            'INSUFFICIENT_BALANCE',
+            'TEMPORARY_TRANSFER_ERROR',
+            'REJECTED_BY_CHANNEL',
+        ], true);
+
+        DB::transaction(function () use ($payment, $failureCode, $retryable): void {
             $locked = Payment::query()->whereKey($payment->id)->lockForUpdate()->first();
 
             if ($locked === null || $locked->settled_at !== null) {
                 return;
             }
 
-            $locked->update([
-                'settled_at' => now(),
-                'gateway_status' => 'SETTLED',
-            ]);
+            $payload = is_array($locked->gateway_payload) ? $locked->gateway_payload : [];
+            $payload['payout_failure_code'] = $failureCode;
 
-            AuditLogger::log('payment.payout_settled', [
+            if ($retryable) {
+                $payload['payout_attempt'] = ((int) data_get($payload, 'payout_attempt', 1)) + 1;
+                unset($payload['payout_id']);
+
+                $locked->update([
+                    'released_at' => null,
+                    'gateway_status' => 'SUCCESS',
+                    'gateway_payload' => $payload,
+                ]);
+            } else {
+                $locked->update([
+                    'gateway_status' => 'PAYOUT_FAILED',
+                    'gateway_payload' => $payload,
+                ]);
+            }
+
+            AuditLogger::log('payment.payout_failed', [
                 'actor_id' => null,
                 'actor_role' => 'system',
                 'booking_id' => $locked->booking_id,
-                'payout_id' => data_get($locked->gateway_payload, 'payout_id'),
+                'payout_id' => data_get($payload, 'payout_id'),
+                'failure_code' => $failureCode,
+                'retryable' => $retryable,
             ]);
         });
+
+        if ($retryable) {
+            DisburseToMitraJob::dispatch($payment->booking_id);
+        }
     }
 
     private function notifyClient(Booking $booking): void

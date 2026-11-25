@@ -59,7 +59,7 @@ final class XenditGatewayService implements XenditPaymentServiceInterface
                     'email' => $client->email,
                     'individual_detail' => [
                         'given_names' => $parts[0] !== '' ? $parts[0] : 'Client',
-                        'surname' => $parts[1] ?? null,
+                        ...isset($parts[1]) ? ['surname' => $parts[1]] : [],
                     ],
                 ],
                 'description' => 'Pembayaran booking '.$booking->kode,
@@ -115,7 +115,9 @@ final class XenditGatewayService implements XenditPaymentServiceInterface
             paymentId: $this->nullableString($data['payment_id'] ?? null),
             payoutId: $this->nullableString($data['payout_id'] ?? null),
             referenceId: $this->nullableString($data['reference_id'] ?? null),
-            amount: (float) ($data['amount'] ?? $data['source_amount'] ?? 0),
+            // Webhook payment.capture Xendit memakai `request_amount`,
+            // bukan `amount` (field lama). Fallback untuk payload payout.
+            amount: (float) ($data['request_amount'] ?? $data['amount'] ?? $data['source_amount'] ?? 0),
             status: (string) ($data['status'] ?? ''),
             payload: $body,
         );
@@ -155,7 +157,9 @@ final class XenditGatewayService implements XenditPaymentServiceInterface
         $response = $this->request()
             ->withHeader('api-version', (string) config('payment.xendit.payment_api_version'))
             ->post($this->url('/v3/refunds'), [
-                'reference_id' => 'refund-'.$refund->id.'-'.Str::random(6),
+                // Deterministik: retry yang sama menghasilkan 409 DUPLICATE_ERROR
+                // dari Xendit, bukan dua refund sungguhan.
+                'reference_id' => 'refund-'.$refund->id,
                 'payment_id' => $paymentId,
                 'amount' => (float) $refund->amount,
                 'reason' => $this->refundReason($refund->reason),
@@ -187,6 +191,7 @@ final class XenditGatewayService implements XenditPaymentServiceInterface
             throw new RuntimeException('Mitra belum memiliki rekening bank.');
         }
 
+        $attempt = max(1, (int) (data_get($payment->gateway_payload, 'payout_attempt') ?? 1));
         $fee = max(0, (float) config('payment.xendit.platform_fee_percent', 0));
         $amount = max(0, (float) $payment->jumlah * (1 - $fee / 100));
         $nama = trim((string) $account->nama_pemilik);
@@ -194,19 +199,21 @@ final class XenditGatewayService implements XenditPaymentServiceInterface
 
         $response = $this->request()
             ->withHeader('api-version', (string) config('payment.xendit.payout_api_version'))
-            ->withHeader('idempotency-key', 'payout-'.$booking->kode)
+            ->withHeader('idempotency-key', 'payout-'.$booking->kode.'-'.$attempt)
             ->post($this->url('/v3/payouts'), [
                 'reference_id' => $booking->kode,
                 'recipient' => [
                     'type' => 'INDIVIDUAL',
                     'given_name' => $parts[0] !== '' ? $parts[0] : 'Mitra',
-                    'surname' => $parts[1] ?? null,
+                    ...isset($parts[1]) ? ['surname' => $parts[1]] : [],
                     'relationship' => 'BUSINESS_PARTNER',
                     'account_details' => [
                         'currency' => 'IDR',
                         'account_country' => 'ID',
                         'account_holder_name' => $account->nama_pemilik,
                         'account_number' => $account->nomor_rekening,
+                        // Perlu diverifikasi dengan curl sandbox: field ini tidak ada
+                        // di enum RoutingType1 OpenAPI, tapi dipakai untuk bank IDR.
                         'routing_type_1' => 'BANK_CODE',
                         'routing_value_1' => $this->bankChannelCode((string) $account->nama_penyedia),
                     ],
@@ -273,7 +280,9 @@ final class XenditGatewayService implements XenditPaymentServiceInterface
             return self::BANK_CHANNELS[$key];
         }
 
-        return 'ID_'.preg_replace('/[^A-Z0-9]/', '', $key);
+        throw new RuntimeException(
+            "Bank '{$namaPenyedia}' belum dipetakan ke channel payout Xendit.",
+        );
     }
 
     private function request(): PendingRequest

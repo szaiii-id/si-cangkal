@@ -128,7 +128,7 @@ Alur pembayaran:
 
 Flag `XENDIT_INSTANT_PAYOUT_ENABLED=true` memindah trigger payout ke saat webhook pembayaran sukses — berguna untuk demo, bukan kebijakan produksi.
 
-E2E `e2e/payment/xendit-payment.spec.ts` memakai `POST /v3/payment_requests/{id}/simulate` (test-only) dan webhook sungguhan melalui tunnel. Aktifkan dengan `XENDIT_E2E_ENABLED=true`.
+E2E `e2e/payment/xendit-payment.spec.ts` menguji alur checkout ke halaman Xendit Test Mode, lalu mengirim payload webhook bertanda tangan ke endpoint aplikasi (bukan webhook yang dipicu Xendit). Spec ini **skip** kecuali `XENDIT_E2E_ENABLED=true` dan `XENDIT_CALLBACK_TOKEN` terisi. Untuk pembuktian penuh dengan webhook asli dari Xendit, jalankan manual dengan tunnel aktif dan verifikasi status `SETTLED` di database.
 
 ## Testing & quality gate
 

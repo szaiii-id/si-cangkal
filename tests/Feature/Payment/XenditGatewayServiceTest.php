@@ -84,7 +84,7 @@ describe('adapter Xendit', function () {
     it('menolak webhook dengan callback token yang salah', function () {
         $payload = json_encode([
             'event' => 'payment.capture',
-            'data' => ['payment_id' => 'py-123', 'reference_id' => $this->booking->kode, 'amount' => 1_000_000, 'status' => 'SUCCEEDED'],
+            'data' => ['payment_id' => 'py-123', 'reference_id' => $this->booking->kode, 'request_amount' => 1_000_000, 'status' => 'SUCCEEDED'],
         ], JSON_THROW_ON_ERROR);
 
         expect(fn () => app(XenditPaymentServiceInterface::class)
@@ -153,7 +153,7 @@ describe('adapter Xendit', function () {
             $data = $request->data();
 
             return $request->hasHeader('api-version', '2025-09-01')
-                && $request->hasHeader('idempotency-key', 'payout-'.$this->booking->kode)
+                && $request->hasHeader('idempotency-key', 'payout-'.$this->booking->kode.'-1')
                 && ! $request->hasHeader('for-user-id')
                 && $data['reference_id'] === $this->booking->kode
                 && $data['recipient']['account_details']['account_number'] === '1234567890'

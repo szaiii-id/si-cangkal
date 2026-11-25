@@ -53,7 +53,7 @@ function xenditPaymentWebhook(Booking $booking, int $amount = 1_000_000): array
             'payment_id' => 'py-123',
             'payment_request_id' => 'pr-123',
             'reference_id' => $booking->kode,
-            'amount' => $amount,
+            'request_amount' => $amount,
             'status' => 'SUCCEEDED',
         ],
     ];
@@ -103,6 +103,34 @@ describe('POST /payments/xendit/webhook', function () {
         expect(WebhookEvent::where('provider', 'xendit')->count())->toBe(1);
 
         Bus::assertDispatched(ProcessXenditNotificationJob::class, 1);
+    });
+
+    it('menghapus penanda idempotensi bila pemrosesan gagal', function () {
+        WebhookEvent::query()->create([
+            'provider' => 'xendit',
+            'request_id' => 'py-failed',
+            'payload' => [],
+        ]);
+
+        $job = new ProcessXenditNotificationJob(
+            new XenditWebhookEvent(
+                event: 'payment.capture',
+                paymentId: 'py-failed',
+                payoutId: null,
+                referenceId: $this->booking->kode,
+                amount: 1_000_000.0,
+                status: 'SUCCEEDED',
+                payload: [],
+            ),
+            'py-failed',
+        );
+
+        $job->failed();
+
+        expect(WebhookEvent::query()
+            ->where('provider', 'xendit')
+            ->where('request_id', 'py-failed')
+            ->count())->toBe(0);
     });
 });
 
