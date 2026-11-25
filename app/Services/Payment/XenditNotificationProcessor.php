@@ -6,6 +6,7 @@ use App\Data\Xendit\XenditWebhookEvent;
 use App\Enums\BookingStatus;
 use App\Enums\PaymentGateway;
 use App\Events\BookingConfirmed;
+use App\Jobs\DisburseToMitraJob;
 use App\Models\Booking;
 use App\Models\Payment;
 use App\Repositories\Contracts\BookingRepositoryInterface;
@@ -30,6 +31,12 @@ final class XenditNotificationProcessor
 
     public function process(XenditWebhookEvent $event): void
     {
+        if (str_starts_with($event->event, 'v3_payout.')) {
+            $this->processPayout($event);
+
+            return;
+        }
+
         if ($event->event !== 'payment.capture' || $event->status !== 'SUCCEEDED') {
             return;
         }
@@ -135,6 +142,52 @@ final class XenditNotificationProcessor
                 'error' => $e->getMessage(),
             ]);
         }
+
+        if (config('payment.xendit.instant_payout_enabled')) {
+            DisburseToMitraJob::dispatch($booking->id);
+        }
+    }
+
+    private function processPayout(XenditWebhookEvent $event): void
+    {
+        if ($event->event !== 'v3_payout.succeeded' || $event->payoutId === null) {
+            Log::info('XenditNotificationProcessor: event payout diabaikan', [
+                'event' => $event->event,
+                'payout_id' => $event->payoutId,
+            ]);
+
+            return;
+        }
+
+        $payment = Payment::query()
+            ->where('gateway', PaymentGateway::XENDIT)
+            ->whereNotNull('released_at')
+            ->get()
+            ->first(fn (Payment $item): bool => data_get($item->gateway_payload, 'payout_id') === $event->payoutId);
+
+        if ($payment === null || $payment->settled_at !== null) {
+            return;
+        }
+
+        DB::transaction(function () use ($payment): void {
+            $locked = Payment::query()->whereKey($payment->id)->lockForUpdate()->first();
+
+            if ($locked === null || $locked->settled_at !== null) {
+                return;
+            }
+
+            $locked->update([
+                'settled_at' => now(),
+                'gateway_status' => 'SETTLED',
+            ]);
+
+            AuditLogger::log('payment.payout_settled', [
+                'actor_id' => null,
+                'actor_role' => 'system',
+                'booking_id' => $locked->booking_id,
+                'payout_id' => data_get($locked->gateway_payload, 'payout_id'),
+            ]);
+        });
     }
 
     private function notifyClient(Booking $booking): void

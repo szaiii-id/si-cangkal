@@ -5,7 +5,7 @@ namespace App\Services\Trip;
 use App\Enums\BookingStatus;
 use App\Enums\PackageFacilityTipe;
 use App\Enums\TripStatus;
-use App\Jobs\ReleaseDokuSettlementJob;
+use App\Jobs\DisburseToMitraJob;
 use App\Models\Booking;
 use App\Models\Package;
 use App\Models\PackageDay;
@@ -261,8 +261,8 @@ class TripService
         }
 
         // Dana gateway baru dilepas setelah trip benar-benar selesai.
-        // Job akan mengabaikan booking tanpa payment DOKU.
-        ReleaseDokuSettlementJob::dispatch($updated->booking_id);
+        // Job akan mengabaikan booking tanpa payment Xendit.
+        DisburseToMitraJob::dispatch($updated->booking_id);
 
         return $updated;
     }
