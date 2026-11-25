@@ -47,7 +47,25 @@ final class XenditNotificationProcessor
             return;
         }
 
-        if ($event->event !== 'payment.capture' || $event->status !== 'SUCCEEDED') {
+        if (in_array($event->event, [
+            'payment.failure',
+            'payment_request.expiry',
+            'payment_session.expired',
+        ], true)) {
+            $this->markUnsuccessful($event);
+
+            return;
+        }
+
+        if ($event->event !== 'payment.capture') {
+            Log::info('XenditNotificationProcessor: event tidak diproses', [
+                'event' => $event->event,
+            ]);
+
+            return;
+        }
+
+        if ($event->status !== 'SUCCEEDED') {
             return;
         }
 
@@ -386,6 +404,77 @@ final class XenditNotificationProcessor
 
         if ($retryable) {
             DisburseToMitraJob::dispatch($payment->booking_id);
+        }
+    }
+
+    private function markUnsuccessful(XenditWebhookEvent $event): void
+    {
+        if ($event->referenceId === null) {
+            return;
+        }
+
+        $payment = Payment::query()
+            ->where('gateway', PaymentGateway::XENDIT)
+            ->where('gateway_order_id', $event->referenceId)
+            ->where('gateway_status', 'pending')
+            ->latest()
+            ->first();
+
+        if ($payment === null) {
+            return;
+        }
+
+        $newStatus = $event->event === 'payment.failure' ? 'FAILED' : 'EXPIRED';
+        $alasan = $newStatus === 'FAILED'
+            ? 'Pembayaran gagal.'
+            : 'Link pembayaran kedaluwarsa.';
+
+        $updated = DB::transaction(function () use ($payment, $newStatus, $alasan): ?Payment {
+            $locked = Payment::query()->whereKey($payment->id)->lockForUpdate()->first();
+
+            if ($locked === null || $locked->gateway_status !== 'pending') {
+                return null;
+            }
+
+            $locked->update([
+                'gateway_status' => $newStatus,
+                'catatan' => trim(($locked->catatan ?? '')."\n[Xendit] {$alasan}"),
+            ]);
+
+            AuditLogger::log('payment.unsuccessful', [
+                'actor_id' => null,
+                'actor_role' => 'system',
+                'booking_id' => $locked->booking_id,
+                'payment_id' => $locked->id,
+                'status' => $newStatus,
+            ]);
+
+            return $locked;
+        });
+
+        if ($updated === null) {
+            return;
+        }
+
+        $client = $updated->booking?->client;
+
+        if ($client === null) {
+            return;
+        }
+
+        try {
+            $this->notificationDispatcher->send(
+                user: $client,
+                tipe: 'payment_rejected',
+                judul: 'Pembayaran Belum Berhasil',
+                pesan: "Pembayaran booking {$updated->booking->kode} {$alasan} Silakan coba lagi.",
+                data: ['booking_id' => $updated->booking_id],
+            );
+        } catch (Throwable $e) {
+            Log::warning('XenditNotificationProcessor: gagal notifikasi pembayaran gagal', [
+                'payment_id' => $updated->id,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 

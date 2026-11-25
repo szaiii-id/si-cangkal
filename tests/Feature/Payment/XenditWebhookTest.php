@@ -179,6 +179,40 @@ describe('XenditNotificationProcessor', function () {
             ->and($this->payment->fresh()->gateway_status)->toBe('pending');
     });
 
+    it('menandai payment gagal tanpa mengubah status booking', function () {
+        $event = new XenditWebhookEvent(
+            event: 'payment.failure',
+            paymentId: 'py-123',
+            payoutId: null,
+            referenceId: $this->booking->kode,
+            amount: 1_000_000.0,
+            status: 'FAILED',
+            payload: [],
+        );
+
+        app(XenditNotificationProcessor::class)->process($event);
+
+        expect($this->payment->fresh()->gateway_status)->toBe('FAILED')
+            ->and($this->booking->fresh()->status)->toBe(BookingStatus::PENDING_PAYMENT);
+    });
+
+    it('menandai payment kedaluwarsa tanpa mengubah status booking', function () {
+        $event = new XenditWebhookEvent(
+            event: 'payment_session.expired',
+            paymentId: null,
+            payoutId: null,
+            referenceId: $this->booking->kode,
+            amount: 0.0,
+            status: 'EXPIRED',
+            payload: [],
+        );
+
+        app(XenditNotificationProcessor::class)->process($event);
+
+        expect($this->payment->fresh()->gateway_status)->toBe('EXPIRED')
+            ->and($this->booking->fresh()->status)->toBe(BookingStatus::PENDING_PAYMENT);
+    });
+
     it('tidak memproses ulang payment yang sudah SUCCESS', function () {
         $this->payment->update(['gateway_status' => 'SUCCESS']);
 
