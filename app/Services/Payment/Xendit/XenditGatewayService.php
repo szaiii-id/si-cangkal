@@ -66,10 +66,11 @@ final class XenditGatewayService implements XenditPaymentServiceInterface
                 'success_return_url' => route('client.bookings.show', $booking),
                 'cancel_return_url' => route('client.bookings.show', $booking),
                 'locale' => 'id',
+                // Xendit mewajibkan semua nilai metadata berupa string.
                 'metadata' => [
-                    'booking_id' => $booking->id,
+                    'booking_id' => (string) $booking->id,
                     'booking_kode' => $booking->kode,
-                    'sequence' => $sequence,
+                    'sequence' => (string) $sequence,
                 ],
             ]);
 
@@ -166,8 +167,8 @@ final class XenditGatewayService implements XenditPaymentServiceInterface
                 'amount' => (float) $refund->amount,
                 'reason' => $this->refundReason($refund->reason),
                 'metadata' => [
-                    'refund_id' => $refund->id,
-                    'booking_id' => $payment->booking_id,
+                    'refund_id' => (string) $refund->id,
+                    'booking_id' => (string) $payment->booking_id,
                 ],
             ]);
 

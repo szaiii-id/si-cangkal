@@ -75,6 +75,8 @@ describe('adapter Xendit', function () {
                 && $data['country'] === 'ID'
                 && $data['currency'] === 'IDR'
                 && $data['amount'] === 1_000_000
+                && is_string($data['metadata']['booking_id'])
+                && is_string($data['metadata']['sequence'])
                 && ! $request->hasHeader('for-user-id')
                 && ! $request->hasHeader('with-split-rule')
                 && $request->hasHeader('Authorization', 'Basic '.base64_encode('xnd_development_test_key:'));
@@ -201,7 +203,9 @@ describe('adapter Xendit', function () {
                 && ! $request->hasHeader('for-user-id')
                 && $data['payment_id'] === 'py-abc'
                 && $data['amount'] === 500_000.0
-                && $data['reason'] === 'CANCELLATION';
+                && $data['reason'] === 'CANCELLATION'
+                && is_string($data['metadata']['refund_id'])
+                && is_string($data['metadata']['booking_id']);
         });
     });
 });
