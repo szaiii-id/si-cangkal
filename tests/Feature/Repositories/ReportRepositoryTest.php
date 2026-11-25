@@ -1,8 +1,11 @@
 <?php
 
+use App\Enums\BookingStatus;
+use App\Enums\PaymentMetode;
 use App\Enums\RefundStatus;
 use App\Models\Booking;
 use App\Models\Package;
+use App\Models\Payment;
 use App\Models\Refund;
 use App\Models\Trip;
 use App\Models\User;
@@ -169,6 +172,38 @@ describe('Data Integrity — getRevenueData', function () {
         expect($result['gross_revenue'])->toBe(1_000_000.0)
             ->and($result['total_refund'])->toBe(200_000.0)
             ->and($result['total_revenue'])->toBe(800_000.0);
+    });
+
+    it('net dihitung dari ledger Payment meski booking refund sudah CANCELLED', function () {
+        $booking = Booking::factory()->create([
+            'status' => BookingStatus::CANCELLED->value,
+            'total_harga' => 1_000_000,
+        ]);
+
+        Payment::create([
+            'booking_id' => $booking->id,
+            'jumlah' => 1_000_000,
+            'metode' => PaymentMetode::TRANSFER_MANUAL->value,
+            'verified_at' => now(),
+        ]);
+
+        Payment::create([
+            'booking_id' => $booking->id,
+            'jumlah' => -300_000,
+            'metode' => PaymentMetode::TRANSFER_MANUAL->value,
+            'verified_at' => now(),
+        ]);
+
+        Refund::factory()->succeeded()->create([
+            'booking_id' => $booking->id,
+            'amount' => 300_000,
+        ]);
+
+        $result = $this->repo->getRevenueData('2026-01-01', '2026-01-31');
+
+        expect($result['gross_revenue'])->toBe(1_000_000.0)
+            ->and($result['total_refund'])->toBe(300_000.0)
+            ->and($result['total_revenue'])->toBe(700_000.0);
     });
 
     it('transactions berisi data booking dengan keys yang diharapkan', function () {

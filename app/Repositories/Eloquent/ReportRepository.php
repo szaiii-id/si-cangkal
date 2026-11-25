@@ -3,6 +3,7 @@
 namespace App\Repositories\Eloquent;
 
 use App\Models\Booking;
+use App\Models\Payment;
 use App\Models\Refund;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -14,15 +15,13 @@ class ReportRepository
      */
     public function getRevenueData(string $startDate, string $endDate): array
     {
-        // 1. Hitung Pendapatan Kotor (Gross)
-        $grossRevenue = Booking::whereIn('status', ['confirmed', 'completed'])
-            ->whereBetween('created_at', [$startDate.' 00:00:00', $endDate.' 23:59:59'])
-            ->sum('total_harga');
+        $range = [$startDate.' 00:00:00', $endDate.' 23:59:59'];
 
-        // 2. Hitung Total Refund (Hanya yang SUCCEEDED)
-        $totalRefund = Refund::where('status', 'SUCCEEDED')
-            ->whereBetween('created_at', [$startDate.' 00:00:00', $endDate.' 23:59:59'])
-            ->sum('amount');
+        // Sumber kebenaran = ledger Payment. Booking yang sudah direfund
+        // berstatus CANCELLED, jadi kalau gross masih dihitung dari booking
+        // aktif, pendapatannya hilang tapi refund tetap dikurangi (double count).
+        $grossRevenue = $this->grossFromLedger($range);
+        $totalRefund = $this->refundFromLedger($range);
 
         // 3. Hitung Pendapatan Bersih (Net)
         $netRevenue = $grossRevenue - $totalRefund;
@@ -90,16 +89,32 @@ class ReportRepository
         $isSqlite = DB::connection()->getDriverName() === 'sqlite';
         $dateFormat = $isSqlite ? "strftime('%Y-%m', created_at)" : "TO_CHAR(created_at, 'YYYY-MM')";
 
-        // Pendapatan Kotor per bulan
-        $grossData = Booking::selectRaw("$dateFormat as bulan, SUM(total_harga) as total")
+        // Ledger Payment per bulan (sumber kebenaran).
+        $grossData = Payment::query()
+            ->selectRaw("$dateFormat as bulan, SUM(jumlah) as total")
+            ->where('jumlah', '>', 0)
+            ->where('created_at', '>=', $sixMonthsAgo)
+            ->groupBy('bulan')
+            ->pluck('total', 'bulan')
+            ->toArray();
+
+        $refundData = Payment::query()
+            ->selectRaw("$dateFormat as bulan, SUM(ABS(jumlah)) as total")
+            ->where('jumlah', '<', 0)
+            ->where('created_at', '>=', $sixMonthsAgo)
+            ->groupBy('bulan')
+            ->pluck('total', 'bulan')
+            ->toArray();
+
+        // Fallback data lama yang belum punya baris Payment.
+        $legacyGross = Booking::selectRaw("$dateFormat as bulan, SUM(total_harga) as total")
             ->whereIn('status', ['confirmed', 'completed'])
             ->where('created_at', '>=', $sixMonthsAgo)
             ->groupBy('bulan')
             ->pluck('total', 'bulan')
             ->toArray();
 
-        // Refund per bulan
-        $refundData = Refund::selectRaw("$dateFormat as bulan, SUM(amount) as total")
+        $legacyRefund = Refund::selectRaw("$dateFormat as bulan, SUM(amount) as total")
             ->where('status', 'SUCCEEDED')
             ->where('created_at', '>=', $sixMonthsAgo)
             ->groupBy('bulan')
@@ -112,7 +127,16 @@ class ReportRepository
             $key = $date->format('Y-m');
 
             $gross = (float) ($grossData[$key] ?? 0);
+
+            if ($gross <= 0) {
+                $gross = (float) ($legacyGross[$key] ?? 0);
+            }
+
             $refund = (float) ($refundData[$key] ?? 0);
+
+            if ($refund <= 0) {
+                $refund = (float) ($legacyRefund[$key] ?? 0);
+            }
 
             $result[] = [
                 'bulan' => $date->translatedFormat('M'),
@@ -121,5 +145,48 @@ class ReportRepository
         }
 
         return $result;
+    }
+
+    /**
+     * Kredit (pembayaran masuk) dari ledger. Data lama tanpa Payment
+     * tetap dibaca dari booking aktif supaya laporan historis tidak kosong.
+     *
+     * @param  array{0: string, 1: string}  $range
+     */
+    private function grossFromLedger(array $range): float
+    {
+        $credits = (float) Payment::query()
+            ->where('jumlah', '>', 0)
+            ->whereBetween('created_at', $range)
+            ->sum('jumlah');
+
+        if ($credits > 0) {
+            return $credits;
+        }
+
+        return (float) Booking::whereIn('status', ['confirmed', 'completed'])
+            ->whereBetween('created_at', $range)
+            ->sum('total_harga');
+    }
+
+    /**
+     * Debit (refund keluar) dari ledger, dengan fallback ke Refund SUCCEEDED.
+     *
+     * @param  array{0: string, 1: string}  $range
+     */
+    private function refundFromLedger(array $range): float
+    {
+        $debits = (float) Payment::query()
+            ->where('jumlah', '<', 0)
+            ->whereBetween('created_at', $range)
+            ->sum(DB::raw('ABS(jumlah)'));
+
+        if ($debits > 0) {
+            return $debits;
+        }
+
+        return (float) Refund::where('status', 'SUCCEEDED')
+            ->whereBetween('created_at', $range)
+            ->sum('amount');
     }
 }
