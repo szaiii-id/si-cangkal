@@ -27,8 +27,6 @@ return [
 
         'payment_api_version' => '2024-11-11',
 
-        'payout_api_version' => '2025-09-01',
-
         // Payout instan dipakai hanya untuk demo; default tetap menunggu
         // trip selesai seperti perilaku bisnis sebelumnya.
         'instant_payout_enabled' => env('XENDIT_INSTANT_PAYOUT_ENABLED', false),

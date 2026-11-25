@@ -40,7 +40,8 @@ final class XenditNotificationProcessor
             return;
         }
 
-        if (str_starts_with($event->event, 'v3_payout.')) {
+        if (str_starts_with($event->event, 'v3_payout.')
+            || str_starts_with($event->event, 'payout.')) {
             $this->processPayout($event);
 
             return;
@@ -263,6 +264,21 @@ final class XenditNotificationProcessor
 
     private function processPayout(XenditWebhookEvent $event): void
     {
+        // Disbursement legacy mengirim payout.succeeded / payout.failed;
+        // payout v3 mengirim v3_payout.*. Perlakukan keduanya sama.
+        $eventName = str_starts_with($event->event, 'payout.')
+            ? 'v3_payout.'.substr($event->event, strlen('payout.'))
+            : $event->event;
+        $event = new XenditWebhookEvent(
+            event: $eventName,
+            paymentId: $event->paymentId,
+            payoutId: $event->payoutId,
+            referenceId: $event->referenceId,
+            amount: $event->amount,
+            status: $event->status,
+            payload: $event->payload,
+        );
+
         if ($event->payoutId === null) {
             Log::info('XenditNotificationProcessor: event payout tanpa payout_id diabaikan', [
                 'event' => $event->event,

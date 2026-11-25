@@ -123,7 +123,7 @@ Alur pembayaran:
 2. Client memilih **Bayar dengan Xendit** (atau mitra membuat payment link).
 3. Aplikasi membuat Payment Session `POST /sessions`; client diarahkan ke halaman checkout Xendit yang menampilkan QRIS/VA/e-wallet/kartu.
 4. Webhook `payment.capture` diverifikasi lewat `x-callback-token`, booking menjadi `confirmed`, E-Ticket dibuat.
-5. Dana ditahan sampai trip selesai. Setelah mitra menyelesaikan trip, `DisburseToMitraJob` memanggil `POST /v3/payouts` ke rekening mitra. Webhook `v3_payout.succeeded` menandai dana `SETTLED`.
+5. Dana ditahan sampai trip selesai. Setelah mitra menyelesaikan trip, `DisburseToMitraJob` memanggil `POST /disbursements` ke rekening mitra. Endpoint `/v3/payouts` ditolak untuk bank domestik Indonesia pada sandbox ini, jadi aplikasi memakai endpoint legacy yang masih aktif di Test Mode. Webhook `payout.succeeded` (atau `v3_payout.succeeded`) menandai dana `SETTLED`.
 6. Refund sebelum payout memakai `POST /v3/refunds`; setelah dana cair, refund dialihkan ke jalur manual mitra.
 
 Flag `XENDIT_INSTANT_PAYOUT_ENABLED=true` memindah trigger payout ke saat webhook pembayaran sukses — berguna untuk demo, bukan kebijakan produksi.

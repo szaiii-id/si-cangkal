@@ -50,7 +50,6 @@ function createSettledPaymentForDisbursement(Booking $booking): Payment
 beforeEach(function () {
     config([
         'payment.xendit.secret_key' => 'xnd_development_test_key',
-        'payment.xendit.payout_api_version' => '2025-09-01',
     ]);
 
     Http::preventStrayRequests();
@@ -73,9 +72,9 @@ beforeEach(function () {
 describe('DisburseToMitraJob', function () {
     it('mengirim payout dan menyimpan payout_id', function () {
         Http::fake([
-            'https://api.xendit.co/v3/payouts' => Http::response([
-                'payout_id' => 'po-123',
-                'status' => 'ACCEPTED',
+            'https://api.xendit.co/disbursements' => Http::response([
+                'id' => 'po-123',
+                'status' => 'PENDING',
             ]),
         ]);
 
@@ -87,7 +86,7 @@ describe('DisburseToMitraJob', function () {
             ->and($payment->released_at)->not->toBeNull()
             ->and($payment->gateway_status)->toBe('PAYOUT_REQUESTED');
 
-        Http::assertSent(fn (Request $request): bool => $request->url() === 'https://api.xendit.co/v3/payouts');
+        Http::assertSent(fn (Request $request): bool => $request->url() === 'https://api.xendit.co/disbursements');
     });
 
     it('tidak mengirim payout dua kali', function () {
@@ -103,7 +102,7 @@ describe('DisburseToMitraJob', function () {
 
     it('melempar error ketika saldo tidak cukup agar job di-retry', function () {
         Http::fake([
-            'https://api.xendit.co/v3/payouts' => Http::response([
+            'https://api.xendit.co/disbursements' => Http::response([
                 'error_code' => 'INSUFFICIENT_BALANCE',
                 'message' => 'Saldo tidak cukup.',
             ], 400),

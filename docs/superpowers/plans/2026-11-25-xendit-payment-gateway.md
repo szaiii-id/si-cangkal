@@ -45,7 +45,7 @@
 
 **Interfaces:**
 
-- Produces: `config('payment.xendit.*')` dengan kunci `base_url`, `secret_key`, `callback_token`, `payment_api_version` (`2024-11-11`), `payout_api_version` (`2025-09-01`), `instant_payout_enabled`, `platform_fee_percent`, `webhook_path`.
+- Produces: `config('payment.xendit.*')` dengan kunci `base_url`, `secret_key`, `callback_token`, `payment_api_version` (`2024-11-11`), `instant_payout_enabled`, `platform_fee_percent`, `webhook_path`. Payout memakai endpoint legacy `/disbursements` (terverifikasi di sandbox), bukan `/v3/payouts`.
 
 - [ ] **Step 1: Tulis test config gagal** — `expect(config('payment.xendit.base_url'))->toBe('https://api.xendit.co')`, `expect(config('payment.xendit.payment_api_version'))->toBe('2024-11-11')`, `expect(config('payment')->has('doku'))->toBeFalse()`, dan `expect(PaymentGateway::XENDIT->value)->toBe('xendit')`.
 - [ ] **Step 2: Jalankan test, pastikan gagal** — `php artisan test tests/Feature/Payment/XenditConfigTest.php`.

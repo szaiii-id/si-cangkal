@@ -42,10 +42,10 @@ function createRequestedPayoutPayment(Booking $booking): Payment
     ]);
 }
 
-function payoutWebhookEvent(string $status, string $failureCode): XenditWebhookEvent
+function payoutWebhookEvent(string $status, string $failureCode, string $prefix = 'v3_payout.'): XenditWebhookEvent
 {
     return new XenditWebhookEvent(
-        event: 'v3_payout.'.$status,
+        event: $prefix.$status,
         paymentId: null,
         payoutId: 'po-123',
         referenceId: null,
@@ -77,6 +77,14 @@ describe('webhook kegagalan payout', function () {
             ->and(data_get($payment->gateway_payload, 'payout_id'))->toBeNull();
 
         Bus::assertDispatched(DisburseToMitraJob::class, 1);
+    });
+
+    it('memproses webhook payout legacy yang memakai prefiks payout.', function () {
+        app(XenditNotificationProcessor::class)
+            ->process(payoutWebhookEvent('succeeded', '', 'payout.'));
+
+        expect($this->payment->fresh()->settled_at)->not->toBeNull()
+            ->and($this->payment->fresh()->gateway_status)->toBe('SETTLED');
     });
 
     it('tidak mengulang payout bila rekening tujuan invalid', function () {

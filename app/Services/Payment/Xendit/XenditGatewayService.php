@@ -30,13 +30,13 @@ use RuntimeException;
 final class XenditGatewayService implements XenditPaymentServiceInterface
 {
     private const BANK_CHANNELS = [
-        'BCA' => 'ID_BCA',
-        'BRI' => 'ID_BRI',
-        'BNI' => 'ID_BNI',
-        'MANDIRI' => 'ID_MANDIRI',
-        'PERMATA' => 'ID_PERMATA',
-        'CIMB' => 'ID_CIMB',
-        'BSI' => 'ID_BSI',
+        'BCA' => 'BCA',
+        'BRI' => 'BRI',
+        'BNI' => 'BNI',
+        'MANDIRI' => 'MANDIRI',
+        'PERMATA' => 'PERMATA',
+        'CIMB' => 'CIMB',
+        'BSI' => 'BSI',
     ];
 
     public function createSession(Booking $booking, int $sequence = 1): XenditSessionResult
@@ -113,8 +113,10 @@ final class XenditGatewayService implements XenditPaymentServiceInterface
         return new XenditWebhookEvent(
             event: (string) ($body['event'] ?? ''),
             paymentId: $this->nullableString($data['payment_id'] ?? null),
-            payoutId: $this->nullableString($data['payout_id'] ?? null),
-            referenceId: $this->nullableString($data['reference_id'] ?? null),
+            // Payout v3 memakai payout_id; disbursement legacy memakai id
+            // dan reference_id/external_id.
+            payoutId: $this->nullableString($data['payout_id'] ?? $data['id'] ?? null),
+            referenceId: $this->nullableString($data['reference_id'] ?? $data['external_id'] ?? null),
             // Webhook payment.capture Xendit memakai `request_amount`,
             // bukan `amount` (field lama). Fallback untuk payload payout.
             amount: (float) ($data['request_amount'] ?? $data['amount'] ?? $data['source_amount'] ?? 0),
@@ -194,44 +196,19 @@ final class XenditGatewayService implements XenditPaymentServiceInterface
         $attempt = max(1, (int) (data_get($payment->gateway_payload, 'payout_attempt') ?? 1));
         $fee = max(0, (float) config('payment.xendit.platform_fee_percent', 0));
         $amount = max(0, (float) $payment->jumlah * (1 - $fee / 100));
-        $nama = trim((string) $account->nama_pemilik);
-        $parts = explode(' ', $nama, 2);
 
-        $response = $this->request()
-            ->withHeader('api-version', (string) config('payment.xendit.payout_api_version'))
-            ->withHeader('idempotency-key', 'payout-'.$booking->kode.'-'.$attempt)
-            ->post($this->url('/v3/payouts'), [
-                'reference_id' => $booking->kode,
-                'recipient' => [
-                    'type' => 'INDIVIDUAL',
-                    'given_name' => $parts[0] !== '' ? $parts[0] : 'Mitra',
-                    ...isset($parts[1]) ? ['surname' => $parts[1]] : [],
-                    'relationship' => 'BUSINESS_PARTNER',
-                    'account_details' => [
-                        'currency' => 'IDR',
-                        'account_country' => 'ID',
-                        'account_holder_name' => $account->nama_pemilik,
-                        'account_number' => $account->nomor_rekening,
-                        // Perlu diverifikasi dengan curl sandbox: field ini tidak ada
-                        // di enum RoutingType1 OpenAPI, tapi dipakai untuk bank IDR.
-                        'routing_type_1' => 'BANK_CODE',
-                        'routing_value_1' => $this->bankChannelCode((string) $account->nama_penyedia),
-                    ],
-                    'address' => ['country' => 'ID'],
-                ],
-                'payout_details' => [
-                    'source_currency' => 'IDR',
-                    'source_amount' => (int) $amount,
-                    'destination_currency' => 'IDR',
-                ],
-                'source_of_fund' => 'BUSINESS_REVENUE',
-                'purpose_code' => 'OTHER',
-                'description' => 'Payout booking '.$booking->kode,
-                'metadata' => [
-                    'booking_id' => $booking->id,
-                    'payment_id' => $payment->id,
-                ],
-            ]);
+        // Payout v3 tidak bisa merutekan bank domestik Indonesia pada akun
+        // sandbox ini. Endpoint /disbursements (legacy, masih aktif di Test
+        // Mode tanpa KYC/XenPlatform) menerima bank_code + account_number.
+        $response = $this->request()->post($this->url('/disbursements'), [
+            'external_id' => 'payout-'.$booking->kode.'-'.$attempt,
+            'bank_code' => $this->bankCode((string) $account->nama_penyedia),
+            'account_number' => $account->nomor_rekening,
+            'account_holder_name' => $account->nama_pemilik,
+            'amount' => (int) $amount,
+            'currency' => 'IDR',
+            'description' => 'Payout booking '.$booking->kode,
+        ]);
 
         $response->throw();
 
@@ -240,9 +217,7 @@ final class XenditGatewayService implements XenditPaymentServiceInterface
 
     public function getPayout(string $payoutId): XenditPayoutResult
     {
-        $response = $this->request()
-            ->withHeader('api-version', (string) config('payment.xendit.payout_api_version'))
-            ->get($this->url('/v3/payouts/'.$payoutId));
+        $response = $this->request()->get($this->url('/disbursements/'.$payoutId));
 
         $response->throw();
 
@@ -255,7 +230,7 @@ final class XenditGatewayService implements XenditPaymentServiceInterface
         $body = $response->json();
 
         return new XenditPayoutResult(
-            payoutId: (string) ($body['payout_id'] ?? ''),
+            payoutId: (string) ($body['id'] ?? $body['payout_id'] ?? ''),
             status: (string) ($body['status'] ?? ''),
             payload: $body,
         );
@@ -272,7 +247,7 @@ final class XenditGatewayService implements XenditPaymentServiceInterface
         };
     }
 
-    private function bankChannelCode(string $namaPenyedia): string
+    private function bankCode(string $namaPenyedia): string
     {
         $key = Str::upper(trim($namaPenyedia));
 
@@ -281,7 +256,7 @@ final class XenditGatewayService implements XenditPaymentServiceInterface
         }
 
         throw new RuntimeException(
-            "Bank '{$namaPenyedia}' belum dipetakan ke channel payout Xendit.",
+            "Bank '{$namaPenyedia}' belum dipetakan ke bank_code payout Xendit.",
         );
     }
 

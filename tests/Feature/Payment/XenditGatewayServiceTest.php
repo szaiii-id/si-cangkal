@@ -125,9 +125,9 @@ describe('adapter Xendit', function () {
         ]);
 
         Http::fake([
-            'https://api.xendit.co/v3/payouts' => Http::response([
-                'payout_id' => 'po-123',
-                'status' => 'ACCEPTED',
+            'https://api.xendit.co/disbursements' => Http::response([
+                'id' => 'po-123',
+                'status' => 'PENDING',
             ]),
         ]);
 
@@ -143,25 +143,23 @@ describe('adapter Xendit', function () {
         $result = app(XenditPaymentServiceInterface::class)->payout($this->booking, $payment);
 
         expect($result->payoutId)->toBe('po-123')
-            ->and($result->status)->toBe('ACCEPTED');
+            ->and($result->status)->toBe('PENDING');
 
         Http::assertSent(function (Request $request): bool {
-            if ($request->url() !== 'https://api.xendit.co/v3/payouts') {
+            if ($request->url() !== 'https://api.xendit.co/disbursements') {
                 return false;
             }
 
             $data = $request->data();
 
-            return $request->hasHeader('api-version', '2025-09-01')
-                && $request->hasHeader('idempotency-key', 'payout-'.$this->booking->kode.'-1')
-                && ! $request->hasHeader('for-user-id')
-                && $data['reference_id'] === $this->booking->kode
-                && $data['recipient']['account_details']['account_number'] === '1234567890'
-                && $data['recipient']['account_details']['account_holder_name'] === 'Mitra Travel'
-                && $data['recipient']['account_details']['routing_value_1'] === 'ID_BCA'
-                && $data['payout_details']['source_amount'] === 1_000_000
-                && $data['source_of_fund'] === 'BUSINESS_REVENUE'
-                && ! array_key_exists('split_rule_id', $data);
+            return ! $request->hasHeader('for-user-id')
+                && ! $request->hasHeader('with-split-rule')
+                && $data['external_id'] === 'payout-'.$this->booking->kode.'-1'
+                && $data['bank_code'] === 'BCA'
+                && $data['account_number'] === '1234567890'
+                && $data['account_holder_name'] === 'Mitra Travel'
+                && $data['amount'] === 1_000_000
+                && $data['currency'] === 'IDR';
         });
     });
 

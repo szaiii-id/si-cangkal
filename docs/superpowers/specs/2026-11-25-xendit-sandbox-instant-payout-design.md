@@ -84,7 +84,6 @@ Approach 2 dipilih karena seluruh fitur yang dibutuhkan tersedia di Test Mode ta
     - `secret_key` = `env('XENDIT_SECRET_KEY')`
     - `callback_token` = `env('XENDIT_CALLBACK_TOKEN')`
     - `payment_api_version` = `2024-11-11`
-    - `payout_api_version` = `2025-09-01`
     - `instant_payout_enabled` = `env('XENDIT_INSTANT_PAYOUT_ENABLED', false)`
     - `platform_fee_percent` = `0` (komisi, bila ada, dihitung di aplikasi karena split rule butuh XenPlatform)
 - `PaymentGateway::DOKU` diganti `PaymentGateway::XENDIT`; `PaymentMetode::DOKU` diganti `PaymentMetode::XENDIT`. Mirror frontend diperbarui.
@@ -125,7 +124,8 @@ Bind interface di `AppServiceProvider`.
 ### Payout instan
 
 - `DisburseToMitraJob` di-dispatch setelah commit dari processor **hanya bila** flag `instant_payout_enabled` aktif.
-- Idempotency key = `payout-{$booking->kode}`; `payout_id` disimpan ke `payments.gateway_payload`. Job menolak booking yang sudah punya `payout_id`.
+- Idempotensi memakai `external_id = payout-{$booking->kode}-{attempt}`; `payout_id` (field `id` dari response disbursement) disimpan ke `payments.gateway_payload`. Job menolak booking yang sudah punya `payout_id`.
+- **Hasil uji sandbox 2026-11-25:** `POST /v3/payouts` ditolak untuk bank domestik Indonesia (`No identifiers were matching for the provided channel`), sedangkan `POST /disbursements` dengan `bank_code: "BCA"` mengembalikan HTTP 200. Karena itu adapter memakai endpoint legacy `/disbursements`, yang tetap tersedia di Test Mode tanpa KYC/XenPlatform. Webhook payout legacy (`payout.succeeded`/`payout.failed`) dinormalisasi ke penanganan `v3_payout.*`.
 - Rekening diambil dari `mitra->bankAccounts()->where('is_primary', true)`; `nama_pemilik` dan `nomor_rekening` dipakai apa adanya, `nama_penyedia` dipetakan eksplisit ke channel code bank (mis. BCA → `ID_BCA`). Bank yang tidak dikenal membuat job gagal dengan pesan jelas, bukan mengirim payload setengah jadi.
 - Jumlah payout = 100% dari `payments.jumlah` karena `platform_fee_percent = 0`. Bila komisi dinas dipungut, nilainya dihitung di aplikasi dan dipotong sebelum payout, lalu dicatat di ledger. Tidak memakai split rule XenPlatform.
 - Retry: `INSUFFICIENT_BALANCE` → backoff beberapa kali; `INVALID_DESTINATION`, `ACCOUNT_NAME_MISMATCH`, `TRANSFER_ERROR` → gagal permanen, notifikasi admin.
