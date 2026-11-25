@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\Booking;
+use App\Observers\BookingObserver;
 use App\Repositories\Contracts\BookingRepositoryInterface;
 use App\Repositories\Contracts\PackageRepositoryInterface;
 use App\Repositories\Contracts\ProfileRepositoryInterface;
@@ -102,6 +104,8 @@ final class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Booking::observe(BookingObserver::class);
+
         $this->configureDefaults();
         $this->configureRateLimiting();
     }
