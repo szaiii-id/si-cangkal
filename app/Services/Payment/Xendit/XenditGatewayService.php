@@ -186,6 +186,24 @@ final class XenditGatewayService implements XenditPaymentServiceInterface
         );
     }
 
+    public function getRefund(string $refundId): XenditRefundResult
+    {
+        $response = $this->request()
+            ->withHeader('api-version', (string) config('payment.xendit.payment_api_version'))
+            ->get($this->url('/v3/refunds/'.$refundId));
+
+        $response->throw();
+
+        /** @var array<string, mixed> $body */
+        $body = $response->json();
+
+        return new XenditRefundResult(
+            refundId: (string) ($body['refund_id'] ?? ''),
+            status: (string) ($body['status'] ?? ''),
+            payload: $body,
+        );
+    }
+
     public function payout(Booking $booking, Payment $payment): XenditPayoutResult
     {
         $account = $booking->mitra?->bankAccounts()

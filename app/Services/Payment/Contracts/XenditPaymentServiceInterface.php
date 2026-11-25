@@ -27,6 +27,8 @@ interface XenditPaymentServiceInterface
 
     public function refund(Payment $payment, Refund $refund): XenditRefundResult;
 
+    public function getRefund(string $refundId): XenditRefundResult;
+
     public function payout(Booking $booking, Payment $payment): XenditPayoutResult;
 
     public function getPayout(string $payoutId): XenditPayoutResult;

@@ -41,3 +41,15 @@ Schedule::command('trips:activate')
     ->withoutOverlapping()
     ->onOneServer()
     ->runInBackground();
+
+// ==========================================
+// REKONSILIASI XENDIT
+// ==========================================
+// Webhook bisa terlambat/tidak sampai. Job ini mengecek status payout dan
+// refund langsung ke Xendit tiap 5 menit.
+Schedule::command('payment:reconcile-xendit')
+    ->everyFiveMinutes()
+    ->name('payment:reconcile-xendit')
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->runInBackground();

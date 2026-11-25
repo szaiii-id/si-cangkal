@@ -166,6 +166,24 @@ describe('adapter Xendit', function () {
         });
     });
 
+    it('mengambil status refund dari Xendit', function () {
+        Http::fake([
+            'https://api.xendit.co/v3/refunds/rfd-123' => Http::response([
+                'refund_id' => 'rfd-123',
+                'status' => 'SUCCEEDED',
+            ]),
+        ]);
+
+        $result = app(XenditPaymentServiceInterface::class)->getRefund('rfd-123');
+
+        expect($result->refundId)->toBe('rfd-123')
+            ->and($result->status)->toBe('SUCCEEDED');
+
+        Http::assertSent(fn (Request $request): bool => $request->method() === 'GET'
+            && $request->url() === 'https://api.xendit.co/v3/refunds/rfd-123'
+            && $request->hasHeader('api-version', '2024-11-11'));
+    });
+
     it('mengirim refund memakai payment_id', function () {
         Http::fake([
             'https://api.xendit.co/v3/refunds' => Http::response([
