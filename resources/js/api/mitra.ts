@@ -99,7 +99,7 @@ function csrfToken(): string {
 
 export async function createPaymentLink(
     bookingId: number,
-): Promise<{ url: string; expires_at: string | null }> {
+): Promise<{ url: string; expires_at: string | null; checkout_url: string }> {
     const response = await fetch(`/mitra/bookings/${bookingId}/payment-link`, {
         method: 'POST',
         headers: {

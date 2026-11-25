@@ -18,10 +18,10 @@ final class InvoiceService implements InvoiceServiceInterface
 
         return (string) Pdf::loadView('pdf.invoice', [
             'booking' => $booking,
-            'packageName' => $booking->package?->nama ?? 'Paket Wisata',
-            'mitraName' => $booking->mitra?->name ?? '-',
-            'clientName' => $booking->client?->name ?? '-',
-            'clientEmail' => $booking->client?->email ?? '-',
+            'packageName' => $booking->package->nama,
+            'mitraName' => $booking->mitra->name,
+            'clientName' => $booking->client->name,
+            'clientEmail' => $booking->client->email,
         ])->setPaper('a4')->output();
     }
 

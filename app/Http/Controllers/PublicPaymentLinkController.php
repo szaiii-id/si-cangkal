@@ -29,31 +29,31 @@ final class PublicPaymentLinkController extends Controller
 
         abort_if($link === null || $booking === null, 404);
 
-        /** @var Payment|null $payment */
         $payment = Payment::query()
             ->where('booking_id', $booking->id)
             ->where('gateway', PaymentGateway::XENDIT)
             ->latest()
             ->first();
 
-        $canPay = $booking->status === BookingStatus::PENDING_PAYMENT
-            && $payment?->gateway_status === 'pending';
+        $checkoutUrl = $booking->status === BookingStatus::PENDING_PAYMENT
+            && $payment !== null
+            && $payment->gateway_status === 'pending'
+            ? (string) data_get($payment->gateway_payload, 'payment_link_url', '')
+            : '';
 
         return response()
             ->view('payment-links.show', [
                 'token' => $token,
                 'bookingKode' => $booking->kode,
-                'namaPaket' => $booking->package?->nama ?? 'Paket Wisata',
+                'namaPaket' => $booking->package->nama,
                 'tanggalKeberangkatan' => $booking->tanggal_keberangkatan
                     ?->translatedFormat('d F Y') ?? '-',
                 'jumlahPeserta' => $booking->jumlah_peserta,
                 'totalHarga' => (float) $booking->total_harga,
                 'namaClient' => PiiMask::name($booking->client?->name),
                 'statusBooking' => $booking->status->label(),
-                'canPay' => $canPay,
-                'checkoutUrl' => $canPay
-                    ? (string) data_get($payment?->gateway_payload, 'payment_link_url', '')
-                    : '',
+                'canPay' => $checkoutUrl !== '',
+                'checkoutUrl' => $checkoutUrl,
                 'expiresAt' => $link->expires_at?->translatedFormat('d M Y H:i') ?? '-',
             ])
             ->header('X-Robots-Tag', 'noindex, nofollow, noarchive')

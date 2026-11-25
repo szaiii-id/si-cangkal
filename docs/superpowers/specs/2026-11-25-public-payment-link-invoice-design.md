@@ -57,8 +57,8 @@ Pendekatan 1 dipilih karena paling profesional untuk kasus pemesan offline/WA da
 - Tabel baru `booking_payment_links`: `id`, `booking_id` (FK, cascade), `token` (uuid, unique), `expires_at` (nullable), `revoked_at` (nullable), timestamps.
 - Token dibuat dengan `Str::uuid()`, bukan dari ID/kode booking.
 - Saat link dibuat:
-  - bila masih ada payment Xendit `pending` dan token aktif untuk booking itu → **pakai ulang token** yang ada;
-  - bila tidak ada → cabut token lama dan buat token baru.
+    - bila masih ada payment Xendit `pending` dan token aktif untuk booking itu → **pakai ulang token** yang ada;
+    - bila tidak ada → cabut token lama dan buat token baru.
 - `expires_at` token diambil dari `data_get($payment->gateway_payload, 'expires_at')`; fallback ke `booking.expired_at` bila tidak ada.
 - `Mitra\BookingController::paymentLink()` mengembalikan `url` = `route('payments.public', $token)`, `expires_at` dari sumber di atas, dan `checkout_url` tetap dikirim via notifikasi in-app seperti sekarang.
 - Perbaikan `expires_at` juga berlaku untuk endpoint client yang mengembalikan URL checkout.
@@ -70,8 +70,8 @@ Pendekatan 1 dipilih karena paling profesional untuk kasus pemesan offline/WA da
 - Controller menolak 404 bila token tidak ada, sudah dicabut, atau kedaluwarsa.
 - Data yang tampil: kode booking, nama paket (dari snapshot package bila ada), tanggal keberangkatan, jumlah peserta, total harga, status, dan nama client yang **disamarkan** (pola `maskName()` milik `PublicETicketController`).
 - Tombol:
-  - **Bayar dengan Xendit** → URL dari `payments.gateway_payload.payment_link_url`; bila payment tidak lagi `pending`, tombol disembunyikan dan ditampilkan status terkait.
-  - **Unduh Invoice PDF** → route invoice.
+    - **Bayar dengan Xendit** → URL dari `payments.gateway_payload.payment_link_url`; bila payment tidak lagi `pending`, tombol disembunyikan dan ditampilkan status terkait.
+    - **Unduh Invoice PDF** → route invoice.
 - Header dan throttle mengikuti `e-tickets.verify` (`throttle:30,1` per IP atau limiter baru `payment-link-view`).
 - View: `resources/views/payment-links/show.blade.php`, tanpa Inertia, ringan untuk HP.
 

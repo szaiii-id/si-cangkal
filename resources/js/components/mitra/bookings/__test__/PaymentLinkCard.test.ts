@@ -27,7 +27,7 @@ describe('PaymentLinkCard', () => {
         });
 
         expect(
-            screen.getByRole('button', { name: /Buat & Salin Link/i }),
+            screen.getByRole('button', { name: /Salin Tautan Pembayaran/i }),
         ).toBeInTheDocument();
     });
 
@@ -37,14 +37,15 @@ describe('PaymentLinkCard', () => {
         });
 
         expect(
-            screen.queryByRole('button', { name: /Buat & Salin Link/i }),
+            screen.queryByRole('button', { name: /Salin Tautan Pembayaran/i }),
         ).not.toBeInTheDocument();
     });
 
     it('membuat link lalu menyalinnya ke clipboard', async () => {
         vi.mocked(createPaymentLink).mockResolvedValue({
-            url: 'https://dev.xen.to/xyz789',
+            url: '/bayar/token123',
             expires_at: '2026-11-25T00:00:00Z',
+            checkout_url: 'https://dev.xen.to/xyz789',
         });
 
         render(PaymentLinkCard, {
@@ -52,13 +53,13 @@ describe('PaymentLinkCard', () => {
         });
 
         await fireEvent.click(
-            screen.getByRole('button', { name: /Buat & Salin Link/i }),
+            screen.getByRole('button', { name: /Salin Tautan Pembayaran/i }),
         );
 
         expect(createPaymentLink).toHaveBeenCalledWith(7);
         await waitFor(() => {
             expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
-                'https://dev.xen.to/xyz789',
+                '/bayar/token123',
             );
         });
         expect(showToast).toHaveBeenCalledWith(
@@ -77,7 +78,7 @@ describe('PaymentLinkCard', () => {
         });
 
         const button = screen.getByRole('button', {
-            name: /Buat & Salin Link/i,
+            name: /Salin Tautan Pembayaran/i,
         });
         await fireEvent.click(button);
 
@@ -95,7 +96,7 @@ describe('PaymentLinkCard', () => {
         });
 
         await fireEvent.click(
-            screen.getByRole('button', { name: /Buat & Salin Link/i }),
+            screen.getByRole('button', { name: /Salin Tautan Pembayaran/i }),
         );
 
         await waitFor(() => {

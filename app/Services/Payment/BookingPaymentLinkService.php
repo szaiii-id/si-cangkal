@@ -89,7 +89,7 @@ final class BookingPaymentLinkService
     private function sendEmail(BookingPaymentLink $link): void
     {
         $booking = $link->booking;
-        $email = $booking->client?->email ?? '';
+        $email = $booking->client->email;
 
         if ($booking->sumber !== 'manual' || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
             return;

@@ -17,6 +17,14 @@
     // STATE
     // ==========================================
     let processing = $state(false);
+    let expiresAt = $state<string | null>(null);
+
+    function formatExpires(value: string): string {
+        return new Date(value).toLocaleString('id-ID', {
+            dateStyle: 'medium',
+            timeStyle: 'short',
+        });
+    }
 
     async function buatDanSalin() {
         if (processing) return;
@@ -25,8 +33,9 @@
 
         try {
             const result = await createPaymentLink(bookingId);
+            expiresAt = result.expires_at;
             await navigator.clipboard.writeText(result.url);
-            showToast('Link pembayaran tersalin. Kirim ke client.', 'success');
+            showToast('Tautan tersalin. Kirim via WhatsApp ke client.', 'success');
         } catch {
             showToast('Gagal membuat link pembayaran.', 'error');
         } finally {
@@ -41,7 +50,7 @@
             Link Pembayaran
         </h3>
         <p class="text-xs text-gray-600 leading-relaxed mb-4">
-            Buat link checkout Xendit lalu salin untuk dikirim ke client. Transfer manual tetap bisa dipakai.
+            Buat satu tautan berisi tombol bayar dan invoice. Salin lalu kirim via WhatsApp ke pemesan. Transfer manual tetap bisa dipakai.
         </p>
 
         <button
@@ -54,7 +63,13 @@
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
             </svg>
-            {processing ? 'Membuat...' : 'Buat & Salin Link'}
+            {processing ? 'Membuat...' : 'Salin Tautan Pembayaran'}
         </button>
+
+        {#if expiresAt}
+            <p class="mt-3 text-[11px] text-gray-500">
+                Berlaku sampai {formatExpires(expiresAt)}
+            </p>
+        {/if}
     </div>
 {/if}

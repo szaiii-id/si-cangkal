@@ -33,6 +33,7 @@
 ### Task 1: Schema & model
 
 **Files:**
+
 - Create: `database/migrations/2026_11_25_000001_add_sumber_to_bookings_table.php`
 - Create: `database/migrations/2026_11_25_000002_create_booking_payment_links_table.php`
 - Create: `app/Models/BookingPaymentLink.php`
@@ -40,6 +41,7 @@
 - Test: `tests/Feature/Payment/BookingPaymentLinkSchemaTest.php`
 
 **Interfaces:**
+
 - Produces: `BookingPaymentLink` dengan `token`, `booking_id`, `expires_at`, `revoked_at`, relasi `booking()`, scope `active()`.
 - Produces: `bookings.sumber` (`aplikasi`|`manual`).
 
@@ -52,6 +54,7 @@
 ### Task 2: Lifecycle token di PaymentChargeService
 
 **Files:**
+
 - Create: `app/Services/Payment/BookingPaymentLinkService.php`
 - Modify: `app/Services/Payment/PaymentChargeService.php`
 - Modify: `app/Http/Controllers/Mitra/BookingController.php`
@@ -59,6 +62,7 @@
 - Test: `tests/Feature/Payment/BookingPaymentLinkServiceTest.php`, `tests/Feature/Client/BookingPayTest.php`
 
 **Interfaces:**
+
 - Consumes: `XenditSessionResult` (punya `payload`, `checkoutUrl`, `sessionId`).
 - Produces: `BookingPaymentLinkService::forBooking(Booking $booking, XenditSessionResult $session): BookingPaymentLink` (reuse token aktif atau rotasi), `::revokeActive(Booking $booking): void`, `::findByToken(string $token): ?BookingPaymentLink`.
 - Produces: `Mitra\BookingController::paymentLink()` mengembalikan `{url, expires_at, checkout_url}`.
@@ -73,12 +77,14 @@
 ### Task 3: Halaman publik
 
 **Files:**
+
 - Create: `app/Http/Controllers/PublicPaymentLinkController.php`
 - Create: `resources/views/payment-links/show.blade.php`
 - Modify: `routes/web.php`, `bootstrap/app.php`
 - Test: `tests/Feature/Payment/PublicPaymentLinkTest.php`
 
 **Interfaces:**
+
 - Consumes: `BookingPaymentLinkService::findByToken()`.
 - Produces: `GET /payments/{token}` nama `payments.public` (Blade `payment-links.show`).
 
@@ -92,6 +98,7 @@
 ### Task 4: Invoice PDF
 
 **Files:**
+
 - Create: `app/Services/Invoice/Contracts/InvoiceServiceInterface.php`
 - Create: `app/Services/Invoice/InvoiceService.php`
 - Create: `resources/views/pdf/invoice.blade.php`
@@ -99,6 +106,7 @@
 - Test: `tests/Feature/Payment/InvoiceTest.php`
 
 **Interfaces:**
+
 - Produces: `InvoiceService::pdfForBooking(Booking $booking): string` (output PDF), `::fileName(Booking $booking): string` → `Invoice-{kode}.pdf`.
 - Produces: `GET /payments/{token}/invoice` nama `payments.public.invoice`.
 
@@ -112,12 +120,14 @@
 ### Task 5: Email otomatis
 
 **Files:**
+
 - Create: `app/Mail/BookingPaymentLinkMail.php`
 - Create: `resources/views/emails/booking-payment-link.blade.php`
 - Modify: `app/Services/Payment/BookingPaymentLinkService.php`
 - Test: `tests/Feature/Payment/BookingPaymentLinkMailTest.php`
 
 **Interfaces:**
+
 - Produces: `BookingPaymentLinkMail` dengan `$url`, `$booking`, `$invoicePdf`; `attachData($invoicePdf, fileName(), ['mime' => 'application/pdf'])`.
 
 - [ ] **Step 1: Tulis test gagal** — `Mail::fake()`, token baru untuk booking `manual` meng-queue satu mail; reuse token tidak mengirim mail; booking `aplikasi` tidak mengirim mail.
@@ -129,11 +139,13 @@
 ### Task 6: Pencabutan terpusat via observer
 
 **Files:**
+
 - Create: `app/Observers/BookingObserver.php`
 - Modify: `app/Providers/AppServiceProvider.php`
 - Test: `tests/Feature/Payment/BookingPaymentLinkRevocationTest.php`
 
 **Interfaces:**
+
 - Consumes: `BookingPaymentLinkService::revokeActive()`.
 
 - [ ] **Step 1: Tulis test gagal** — setiap transisi ke `PAYMENT_VERIFIED`, `CONFIRMED`, `IN_PROGRESS`, `COMPLETED`, `CANCELLED` mencabut token; transisi ke `PENDING_PAYMENT` tidak.
@@ -145,11 +157,13 @@
 ### Task 7: UI mitra & gate akhir
 
 **Files:**
+
 - Modify: `resources/js/components/mitra/bookings/PaymentLinkCard.svelte`
 - Modify: `resources/js/api/mitra.ts`
 - Test: Vitest komponen, seluruh gate
 
 **Interfaces:**
+
 - Consumes: `Mitra\BookingController::paymentLink()` yang mengembalikan `url` (route publik) dan `expires_at`.
 
 - [ ] **Step 1: Tulis test gagal** — kartu menampilkan tombol "Salin Tautan Pembayaran" yang menyalin `url` dari API dan menampilkan `expires_at`.

@@ -45,8 +45,7 @@ final class BookingPaymentLinkMail extends Mailable implements ShouldQueue
             Attachment::fromData(
                 fn (): string => $this->invoicePdf,
                 'Invoice-'.$this->booking->kode.'.pdf',
-                ['mime' => 'application/pdf'],
-            ),
+            )->withMime('application/pdf'),
         ];
     }
 }
