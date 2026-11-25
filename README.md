@@ -95,7 +95,7 @@ Semua kode membaca kredensial lewat `config('payment.xendit.*')`. Satu-satunya t
 
 1. Daftar akun, verifikasi email, isi pertanyaan bisnis dasar → langsung mendapat akses **Test Mode** dengan dana virtual. **Jangan ajukan verifikasi bisnis/KYC.**
 2. Settings → API Keys → **Generate Secret Key**. Beri permission `Payment Write`, `Payment Read`, `Payout/Money-out Write`, dan `Balance/Transaction Read`.
-3. Settings → Webhooks → daftarkan URL `https://<host>/payments/xendit/webhook` untuk event Payment dan Payout (bisa memakai satu endpoint yang sama).
+3. Settings → Webhooks → daftarkan URL `https://<host>/payments/xendit/webhook` untuk event Payment, Payment Session, Refund, dan Payout v3 (bisa memakai satu endpoint yang sama). Path alias `/xendit/webhook` juga diterima bila URL sudah terdaftar dengan path itu.
 4. Salin **Callback Verification Token** (`x-callback-token`) dari halaman yang sama.
 5. Untuk lokal, buka tunnel HTTPS ke `http://localhost:8000` (mis. `ngrok http 8000`) dan pakai URL-nya sebagai callback URL testing. Dokumentasi Xendit menyebut ngrok untuk keperluan ini.
 6. Balance → **Top Up** di Test Mode bila saldo kosong. Dana simulasi tidak nyata dan tidak bisa ditarik; bila menu top-up tidak ada, minta dummy balance ke CS Xendit.
