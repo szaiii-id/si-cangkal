@@ -67,6 +67,7 @@ describe('invoice PDF', function () {
             'mitraName' => 'Mitra Uji',
             'clientName' => 'Klien Uji',
             'clientEmail' => 'klien@example.com',
+            'showEmail' => true,
         ])->render();
 
         expect(str_contains($html, 'Peserta Rahasia'))->toBeFalse();
@@ -82,9 +83,25 @@ describe('invoice PDF', function () {
             'mitraName' => 'Mitra Uji',
             'clientName' => 'Klien Uji',
             'clientEmail' => 'klien@example.com',
+            'showEmail' => true,
         ])->render();
 
         expect(str_contains($html, '2.000.000'))->toBeTrue();
+    });
+
+    it('invoice publik tidak menampilkan email client', function () {
+        [$booking] = createInvoiceLink();
+
+        $html = view('pdf.invoice', [
+            'booking' => $booking->loadMissing('participants'),
+            'packageName' => 'Paket Uji',
+            'mitraName' => 'Mitra Uji',
+            'clientName' => 'Klien Uji',
+            'clientEmail' => $booking->client->email,
+            'showEmail' => false,
+        ])->render();
+
+        expect(str_contains($html, $booking->client->email))->toBeFalse();
     });
 
     it('menolak token yang sudah dicabut', function () {

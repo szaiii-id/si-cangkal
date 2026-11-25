@@ -23,8 +23,10 @@
     <div class="row">
         <div>
             <strong>Ditagihkan kepada</strong><br>
-            {{ $clientName }}<br>
-            {{ $clientEmail }}
+            {{ $clientName }}
+            @if($showEmail)
+                <br>{{ $clientEmail }}
+            @endif
         </div>
         <div class="right">
             <strong>Dari</strong><br>

@@ -12,7 +12,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
  */
 final class InvoiceService implements InvoiceServiceInterface
 {
-    public function pdfForBooking(Booking $booking): string
+    public function pdfForBooking(Booking $booking, bool $includeEmail = true): string
     {
         $booking->loadMissing(['package', 'client', 'mitra', 'participants', 'payments']);
 
@@ -22,6 +22,7 @@ final class InvoiceService implements InvoiceServiceInterface
             'mitraName' => $booking->mitra->name,
             'clientName' => $booking->client->name,
             'clientEmail' => $booking->client->email,
+            'showEmail' => $includeEmail,
         ])->setPaper('a4')->output();
     }
 

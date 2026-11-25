@@ -6,7 +6,7 @@ use App\Models\Booking;
 
 interface InvoiceServiceInterface
 {
-    public function pdfForBooking(Booking $booking): string;
+    public function pdfForBooking(Booking $booking, bool $includeEmail = true): string;
 
     public function fileName(Booking $booking): string;
 }

@@ -69,7 +69,7 @@ final class PublicPaymentLinkController extends Controller
 
         abort_if($link === null || $booking === null, 404);
 
-        return response($invoices->pdfForBooking($booking), 200, [
+        return response($invoices->pdfForBooking($booking, false), 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'attachment; filename='.$invoices->fileName($booking),
             'X-Robots-Tag' => 'noindex, nofollow, noarchive',

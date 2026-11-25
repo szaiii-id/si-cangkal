@@ -115,6 +115,35 @@ test.describe('Accessibility Audit (WCAG 2.1 AA — Axe-Core)', () => {
                 { url: '/verify-email', label: 'Verify Email (/verify-email)' },
             ]);
         });
+
+        test('halaman pembayaran publik dan verifikasi tiket bebas pelanggaran critical/serious', async ({
+            page,
+            asGuest,
+            seed,
+        }) => {
+            test.setTimeout(120_000);
+            await asGuest();
+
+            const booking = await seed.createBooking(page, {
+                client_email: SEED_USERS.client.email,
+                package_kode: 'PKG-2026-001',
+                status: 'pending_payment',
+                jumlah_peserta: 1,
+            });
+            const link = await seed.createPaymentLink(page, booking.booking_id);
+            const ticket = await seed.generateETicket(page, 'TRP-2026-001');
+
+            await auditRoutes(page, [
+                {
+                    url: `/bayar/${link.token}`,
+                    label: 'Halaman Pembayaran Publik (/bayar/{token})',
+                },
+                {
+                    url: `/e-tickets/${ticket.uuid}`,
+                    label: 'Verifikasi E-Ticket (/e-tickets/{uuid})',
+                },
+            ]);
+        });
     });
 
     // ==========================================
