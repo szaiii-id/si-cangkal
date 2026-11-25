@@ -75,6 +75,7 @@ describe('adapter Xendit', function () {
                 && $data['country'] === 'ID'
                 && $data['currency'] === 'IDR'
                 && $data['amount'] === 1_000_000
+                && $data['customer']['reference_id'] === 'client'.$this->client->id.'booking'.$this->booking->id.'seq1'
                 && is_string($data['metadata']['booking_id'])
                 && is_string($data['metadata']['sequence'])
                 && ! $request->hasHeader('for-user-id')

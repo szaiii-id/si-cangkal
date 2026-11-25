@@ -55,7 +55,9 @@ final class XenditGatewayService implements XenditPaymentServiceInterface
                 'country' => 'ID',
                 'customer' => [
                     'type' => 'INDIVIDUAL',
-                    'reference_id' => 'client-'.$client->id,
+                    // Harus unik per checkout: Xendit menolak reference_id
+                    // customer yang dipakai ulang pada session berbeda.
+                    'reference_id' => 'client'.$client->id.'booking'.$booking->id.'seq'.$sequence,
                     'email' => $client->email,
                     'individual_detail' => [
                         'given_names' => $parts[0] !== '' ? $parts[0] : 'Client',
