@@ -34,6 +34,7 @@ use App\Http\Controllers\Notification\FcmTokenController;
 use App\Http\Controllers\Notification\NotificationController;
 use App\Http\Controllers\PaymentWebhookController;
 use App\Http\Controllers\PublicETicketController;
+use App\Http\Controllers\PublicPaymentLinkController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -51,6 +52,12 @@ Route::post('/contact', [ContactController::class, 'store'])
 
 // Verifikasi E-Ticket lewat scan QR. UUID berfungsi sebagai capability URL;
 // halaman hanya menampilkan data aman (tanpa email/HP/daftar peserta).
+// Halaman pembayaran publik untuk booking manual/WA. Token bersifat
+// capability URL: tanpa login, diproteksi throttle, tidak diindeks.
+Route::get('/bayar/{token}', [PublicPaymentLinkController::class, 'show'])
+    ->middleware('throttle:30,1')
+    ->name('payments.public');
+
 Route::get('/e-tickets/{uuid}', [PublicETicketController::class, 'show'])
     ->whereUuid('uuid')
     ->middleware('throttle:e-ticket-verify')

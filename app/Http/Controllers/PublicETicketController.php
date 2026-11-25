@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\BookingStatus;
 use App\Enums\TripStatus;
 use App\Services\ETicket\ETicketService;
+use App\Support\PiiMask;
 use Illuminate\Http\Response;
 
 /**
@@ -65,7 +66,7 @@ final class PublicETicketController extends Controller
                 'tanggalMulai' => $trip->tanggal_mulai->translatedFormat('d F Y'),
                 'tanggalSelesai' => $trip->tanggal_selesai->translatedFormat('d F Y'),
                 'jumlahPeserta' => $trip->jumlah_peserta,
-                'namaClient' => $this->maskName($booking->client?->name),
+                'namaClient' => PiiMask::name($booking->client?->name),
                 'statusBooking' => $booking->status->label(),
                 'statusTrip' => $trip->status->label(),
             ])
@@ -73,30 +74,5 @@ final class PublicETicketController extends Controller
             ->header('Referrer-Policy', 'no-referrer')
             ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
             ->header('Pragma', 'no-cache');
-    }
-
-    /**
-     * Samarkan nama client: "Budi Santoso" -> "Budi S.".
-     *
-     * Nama lengkap tidak perlu ditampilkan di halaman publik; petugas
-     * hanya butuh konfirmasi awal sebelum mencocokkan identitas.
-     */
-    private function maskName(?string $name): string
-    {
-        $name = trim((string) $name);
-
-        if ($name === '') {
-            return '-';
-        }
-
-        $parts = preg_split('/\s+/', $name) ?: [];
-
-        if (count($parts) === 1) {
-            return $parts[0];
-        }
-
-        $lastInitial = mb_substr((string) end($parts), 0, 1);
-
-        return $parts[0].' '.$lastInitial.'.';
     }
 }
