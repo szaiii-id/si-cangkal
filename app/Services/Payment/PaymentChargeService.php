@@ -19,6 +19,7 @@ final class PaymentChargeService
 {
     public function __construct(
         private readonly XenditPaymentServiceInterface $gateway,
+        private readonly BookingPaymentLinkService $paymentLink,
     ) {}
 
     public function createForBooking(Booking $booking, ?int $dueMinutes = null): XenditSessionResult
@@ -35,6 +36,8 @@ final class PaymentChargeService
             $existingResult = $this->resultFromPayment($existing);
 
             if ($existingResult !== null) {
+                $this->paymentLink->forBooking($booking, $existingResult);
+
                 return $existingResult;
             }
         }
@@ -61,6 +64,8 @@ final class PaymentChargeService
                 ...$result->payload,
             ],
         ]);
+
+        $this->paymentLink->forBooking($booking, $result);
 
         return $result;
     }

@@ -145,6 +145,14 @@ class Booking extends Model
     }
 
     /**
+     * @return HasMany<BookingPaymentLink, $this>
+     */
+    public function paymentLinks(): HasMany
+    {
+        return $this->hasMany(BookingPaymentLink::class);
+    }
+
+    /**
      * @return HasMany<Refund, $this>
      */
     public function refunds(): HasMany

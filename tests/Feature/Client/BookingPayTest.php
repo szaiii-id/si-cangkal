@@ -3,6 +3,7 @@
 use App\Enums\BookingStatus;
 use App\Enums\PaymentGateway;
 use App\Models\Booking;
+use App\Models\BookingPaymentLink;
 use App\Models\Package;
 use App\Models\Payment;
 use App\Models\User;
@@ -67,6 +68,11 @@ describe('POST /client/bookings/{booking}/pay', function () {
             'gateway_status' => 'pending',
             'gateway_request_id' => 'ps-1234567890123456789012345',
         ]);
+
+        expect(BookingPaymentLink::query()
+            ->where('booking_id', $this->booking->id)
+            ->active()
+            ->exists())->toBeTrue();
     });
 
     it('memakai ulang session yang masih pending', function () {

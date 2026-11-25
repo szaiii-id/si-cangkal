@@ -4,6 +4,7 @@ use App\Enums\BookingStatus;
 use App\Enums\PaymentGateway;
 use App\Enums\PaymentMetode;
 use App\Models\Booking;
+use App\Models\BookingPaymentLink;
 use App\Models\MitraBankAccount;
 use App\Models\Package;
 use App\Models\Payment;
@@ -31,11 +32,15 @@ beforeEach(function () {
     ]);
 
     Http::preventStrayRequests();
+
+    $this->sessionExpiresAt = now()->addMinutes(30)->toIso8601String();
+
     Http::fake([
         'https://api.xendit.co/sessions' => Http::response([
             'payment_session_id' => 'ps-1234567890123456789012345',
             'payment_link_url' => 'https://dev.xen.to/link123',
             'status' => 'ACTIVE',
+            'expires_at' => $this->sessionExpiresAt,
         ], 201),
     ]);
 
@@ -88,8 +93,13 @@ describe('POST /mitra/bookings/{booking}/payment-link', function () {
             ->postJson("/mitra/bookings/{$this->booking->id}/payment-link");
 
         $response->assertOk()
-            ->assertJsonPath('url', 'https://dev.xen.to/link123')
-            ->assertJsonStructure(['url', 'expires_at']);
+            ->assertJsonPath('url', '/bayar/'.BookingPaymentLink::query()
+                ->where('booking_id', $this->booking->id)
+                ->active()
+                ->firstOrFail()
+                ->token)
+            ->assertJsonPath('expires_at', $this->sessionExpiresAt)
+            ->assertJsonStructure(['url', 'expires_at', 'checkout_url']);
 
         $this->assertDatabaseHas('payments', [
             'booking_id' => $this->booking->id,

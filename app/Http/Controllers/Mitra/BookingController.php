@@ -10,6 +10,7 @@ use App\Http\Requests\Mitra\UploadPaymentProofRequest;
 use App\Http\Resources\BookingResource;
 use App\Http\Resources\ReviewResource;
 use App\Models\Booking;
+use App\Models\BookingPaymentLink;
 use App\Repositories\Contracts\ReviewRepositoryInterface;
 use App\Services\Booking\BookingCancellationService;
 use App\Services\Booking\BookingPaymentService;
@@ -120,9 +121,14 @@ final class BookingController extends Controller
             'gateway_request_id' => $result->sessionId,
         ]);
 
+        /** @var BookingPaymentLink|null $link */
+        $link = $booking->paymentLinks()->active()->latest()->first();
+
         return response()->json([
-            'url' => $result->checkoutUrl,
-            'expires_at' => $booking->expired_at?->toIso8601String(),
+            'url' => $link !== null ? '/bayar/'.$link->token : $result->checkoutUrl,
+            'expires_at' => $link?->expires_at?->toIso8601String()
+                ?? $booking->expired_at?->toIso8601String(),
+            'checkout_url' => $result->checkoutUrl,
         ]);
     }
 
