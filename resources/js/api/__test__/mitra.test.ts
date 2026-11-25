@@ -28,6 +28,7 @@ import {
     rejectPayment,
     cancelBooking,
     uploadPaymentProof,
+    createPaymentLink,
     createManualBooking,
     getRefunds,
     approveRefund,
@@ -41,6 +42,47 @@ import {
 describe('Mitra API Wrapper', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+    });
+
+    describe('createPaymentLink() — data request (bukan navigasi)', () => {
+        it('POST ke endpoint payment-link dengan header JSON', async () => {
+            const fetchMock = vi.fn().mockResolvedValue({
+                ok: true,
+                json: async () => ({
+                    url: 'https://dev.xen.to/abc123',
+                    expires_at: '2026-11-25T00:00:00Z',
+                }),
+            });
+            vi.stubGlobal('fetch', fetchMock);
+
+            const result = await createPaymentLink(7);
+
+            expect(fetchMock).toHaveBeenCalledWith(
+                '/mitra/bookings/7/payment-link',
+                expect.objectContaining({
+                    method: 'POST',
+                    headers: expect.objectContaining({
+                        'Content-Type': 'application/json',
+                    }),
+                }),
+            );
+            expect(result.url).toBe('https://dev.xen.to/abc123');
+
+            vi.unstubAllGlobals();
+        });
+
+        it('melempar error saat response tidak ok', async () => {
+            vi.stubGlobal(
+                'fetch',
+                vi.fn().mockResolvedValue({ ok: false, status: 403 }),
+            );
+
+            await expect(createPaymentLink(7)).rejects.toThrow(
+                'Gagal membuat link pembayaran.',
+            );
+
+            vi.unstubAllGlobals();
+        });
     });
 
     // ==========================================

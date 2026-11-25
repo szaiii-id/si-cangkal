@@ -2,6 +2,7 @@ import type { PaymentMetode } from '@/types';
 
 const LABEL: Record<PaymentMetode, string> = {
     transfer_manual: 'Transfer Manual',
+    xendit: 'Xendit',
 };
 
 export function paymentMetodeLabel(metode: string): string {

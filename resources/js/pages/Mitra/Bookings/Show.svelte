@@ -7,6 +7,7 @@
     import RefundStatusCard from '@/components/booking/RefundStatusCard.svelte';
     import PaymentProofPreview from '@/components/shared/PaymentProofPreview.svelte'; 
     import UploadPaymentProofCard from '@/components/mitra/bookings/UploadPaymentProofCard.svelte';
+    import PaymentLinkCard from '@/components/mitra/bookings/PaymentLinkCard.svelte';
     import VerifyPaymentCard from '@/components/mitra/bookings/VerifyPaymentCard.svelte';
     import StarRating from '@/components/review/StarRating.svelte';
 
@@ -206,6 +207,8 @@
     <!-- MAIN -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2 space-y-6">
+            <PaymentLinkCard bookingId={booking.id} canCreate={isPending} />
+
             <!-- UPLOAD BUKTI (Jika pending tanpa bukti) -->
             {#if isPending && !hasProof}
                 <UploadPaymentProofCard bookingId={booking.id} />

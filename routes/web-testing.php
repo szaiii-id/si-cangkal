@@ -21,9 +21,12 @@
  * Konsumer: E2E test suite (Playwright/Cypress/Dusk).
  */
 
+use App\Data\Xendit\XenditSessionResult;
 use App\Enums\BookingStatus;
 use App\Enums\PackageKategori;
 use App\Enums\PackageStatus;
+use App\Enums\PaymentGateway;
+use App\Enums\PaymentMetode;
 use App\Enums\TripStatus;
 use App\Models\AppNotification;
 use App\Models\Booking;
@@ -32,10 +35,12 @@ use App\Models\MitraBankAccount;
 use App\Models\Package;
 use App\Models\PackageDay;
 use App\Models\PackageFacility;
+use App\Models\Payment;
 use App\Models\Profile;
 use App\Models\Trip;
 use App\Models\User;
 use App\Services\ETicket\Contracts\ETicketServiceInterface;
+use App\Services\Payment\BookingPaymentLinkService;
 use App\Services\Trip\TripService;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\TestSeeder;
@@ -666,6 +671,53 @@ Route::prefix('_test')
                 'booking_id' => $booking->id,
                 'kode' => $booking->kode,
                 'status' => $booking->status->value,
+            ]);
+        });
+
+        /**
+         * POST /_test/create-payment-link
+         * Membuat Payment + token publik untuk keperluan a11y/E2E tanpa
+         * memanggil Xendit. Hanya tersedia saat APP_ENV=testing.
+         */
+        Route::post('/create-payment-link', function (
+            Request $request,
+            BookingPaymentLinkService $links,
+        ): JsonResponse {
+            $validated = $request->validate([
+                'booking_id' => ['required', 'integer', 'exists:bookings,id'],
+            ]);
+
+            $booking = Booking::findOrFail((int) $validated['booking_id']);
+
+            $payment = Payment::firstOrCreate(
+                [
+                    'booking_id' => $booking->id,
+                    'gateway' => PaymentGateway::XENDIT,
+                    'gateway_status' => 'pending',
+                ],
+                [
+                    'jumlah' => $booking->total_harga,
+                    'metode' => PaymentMetode::XENDIT,
+                    'gateway_order_id' => $booking->kode,
+                    'gateway_payload' => [
+                        'payment_link_url' => 'https://checkout-staging.xendit.co/sessions/test',
+                        'expires_at' => now()->addMinutes(30)->toIso8601String(),
+                    ],
+                ],
+            );
+
+            $session = new XenditSessionResult(
+                sessionId: 'ps-test',
+                checkoutUrl: 'https://checkout-staging.xendit.co/sessions/test',
+                payload: ['expires_at' => now()->addMinutes(30)->toIso8601String()],
+            );
+
+            $link = $links->forBooking($booking, $session);
+
+            return response()->json([
+                'ok' => true,
+                'token' => $link->token,
+                'payment_id' => $payment->id,
             ]);
         });
 

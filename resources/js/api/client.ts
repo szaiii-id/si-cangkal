@@ -46,6 +46,16 @@ export const uploadProof = (
     options?: ClientOptions,
 ) => router.post(`/client/bookings/${bookingId}/upload-proof`, data, options);
 
+/**
+ * Buat Payment Session Xendit untuk booking pending.
+ * Backend memakai Inertia::location sehingga router akan membuka halaman
+ * checkout Xendit secara otomatis sebagai hard redirect.
+ */
+export const createXenditCharge = (
+    bookingId: number,
+    options?: ClientOptions,
+) => router.post(`/client/bookings/${bookingId}/pay`, {}, options);
+
 // ==========================================
 // REVIEW
 // ==========================================

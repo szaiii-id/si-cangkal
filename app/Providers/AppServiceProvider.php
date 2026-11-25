@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\Booking;
+use App\Observers\BookingObserver;
 use App\Repositories\Contracts\BookingRepositoryInterface;
 use App\Repositories\Contracts\PackageRepositoryInterface;
 use App\Repositories\Contracts\ProfileRepositoryInterface;
@@ -18,12 +20,16 @@ use App\Repositories\Eloquent\TripRepository;
 use App\Repositories\Eloquent\UserRepository;
 use App\Services\ETicket\Contracts\ETicketServiceInterface;
 use App\Services\ETicket\ETicketService;
+use App\Services\Invoice\Contracts\InvoiceServiceInterface;
+use App\Services\Invoice\InvoiceService;
 use App\Services\Notification\Contracts\FirebaseNotificationServiceInterface;
 use App\Services\Notification\Contracts\NotificationDispatcherInterface;
 use App\Services\Notification\Contracts\NotificationServiceInterface;
 use App\Services\Notification\FirebaseNotificationService;
 use App\Services\Notification\NotificationDispatcher;
 use App\Services\Notification\NotificationService;
+use App\Services\Payment\Contracts\XenditPaymentServiceInterface;
+use App\Services\Payment\Xendit\XenditGatewayService;
 use App\Services\Trip\Contracts\TripStatusSynchronizerInterface;
 use App\Services\Trip\TripStatusSynchronizer;
 use Carbon\CarbonImmutable;
@@ -70,6 +76,14 @@ final class AppServiceProvider extends ServiceProvider
         );
 
         // ==========================================
+        // PAYMENT BINDINGS
+        // ==========================================
+        $this->app->bind(
+            XenditPaymentServiceInterface::class,
+            XenditGatewayService::class,
+        );
+
+        // ==========================================
         // TRIP BINDINGS
         // ==========================================
         $this->app->bind(
@@ -81,10 +95,17 @@ final class AppServiceProvider extends ServiceProvider
             ETicketServiceInterface::class,
             ETicketService::class,
         );
+
+        $this->app->bind(
+            InvoiceServiceInterface::class,
+            InvoiceService::class,
+        );
     }
 
     public function boot(): void
     {
+        Booking::observe(BookingObserver::class);
+
         $this->configureDefaults();
         $this->configureRateLimiting();
     }

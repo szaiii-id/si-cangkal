@@ -3,6 +3,7 @@
 namespace App\Services\Refund;
 
 use App\Enums\BookingStatus;
+use App\Enums\PaymentGateway;
 use App\Enums\PaymentMetode;
 use App\Enums\RefundStatus;
 use App\Models\Booking;
@@ -12,9 +13,12 @@ use App\Models\User;
 use App\Repositories\Contracts\BookingRepositoryInterface;
 use App\Repositories\Contracts\RefundRepositoryInterface;
 use App\Services\Notification\Contracts\NotificationDispatcherInterface;
+use App\Services\Payment\Contracts\XenditPaymentServiceInterface;
 use App\Support\AuditLogger;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class RefundApprovalService
 {
@@ -22,13 +26,67 @@ class RefundApprovalService
         private readonly RefundRepositoryInterface $refundRepository,
         private readonly BookingRepositoryInterface $bookingRepository,
         private readonly NotificationDispatcherInterface $notificationDispatcher,
+        private readonly XenditPaymentServiceInterface $paymentGateway,
+        private readonly RefundInitiationService $refundInitiation,
     ) {}
 
     public function approve(Refund $refund, User $mitra, ?string $catatan): Refund
     {
-        // Lock refund + booking di dalam transaksi: dua request approve
-        // bersamaan harus diproses serial agar Payment negatif tidak ganda.
-        $refund = DB::transaction(function () use ($refund, $mitra, $catatan): Refund {
+        // Guard awal mencegah HTTP call yang tidak perlu untuk refund yang
+        // sudah diproses. Guard ulang tetap ada di dalam transaksi.
+        $this->ensureRefundPending($refund);
+
+        $gatewayPayment = Payment::query()
+            ->where('booking_id', $refund->booking_id)
+            ->where('gateway', PaymentGateway::XENDIT)
+            ->latest()
+            ->first();
+
+        // Dana sudah cair ke rekening mitra: gateway tidak bisa menarik dana
+        // kembali. Selesaikan refund yang sudah ada lewat jalur manual.
+        if ($gatewayPayment !== null
+            && filled(data_get($gatewayPayment->gateway_payload, 'payout_id'))
+            && $gatewayPayment->settled_at !== null) {
+            return $this->refundInitiation->completeManuallyAfterPayout(
+                $refund,
+                $mitra,
+                $catatan,
+            );
+        }
+
+        $gatewayResult = null;
+
+        if ($gatewayPayment !== null) {
+            // HTTP call dilakukan DI LUAR transaksi agar lock booking tidak
+            // lama ditahan.
+            try {
+                $gatewayResult = $this->paymentGateway->refund($gatewayPayment, $refund);
+            } catch (Throwable $e) {
+                Log::warning('RefundApprovalService: gagal refund gateway', [
+                    'refund_id' => $refund->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        // Xendit mengembalikan PENDING bila refund masih diproses issuer;
+        // hasil akhirnya menyusul lewat webhook refund.succeeded/failed.
+        $gatewayStatus = $gatewayResult?->status;
+        $gatewaySuccess = in_array($gatewayStatus, ['SUCCEEDED', 'PENDING'], true);
+        $gatewayPending = $gatewayStatus === 'PENDING';
+        $gatewayMessage = $gatewayStatus ?? 'tidak ada respons';
+        $gatewayRefundNo = $gatewayResult?->refundId;
+
+        $refund = DB::transaction(function () use (
+            $refund,
+            $mitra,
+            $catatan,
+            $gatewayPayment,
+            $gatewaySuccess,
+            $gatewayPending,
+            $gatewayMessage,
+            $gatewayRefundNo,
+        ): Refund {
             $locked = $this->lockRefund($refund);
 
             $this->ensureRefundPending($locked);
@@ -39,18 +97,46 @@ class RefundApprovalService
             $amount = (float) $locked->amount;
             $noteLine = '[Approved] '.now()->format('Y-m-d H:i').($catatan !== null ? " - {$catatan}" : '');
 
+            // Gateway menolak (issuer tidak mendukung / limit refund).
+            // Status sengaja tetap PENDING agar mitra bisa retry manual.
+            if ($gatewayPayment !== null && ! $gatewaySuccess) {
+                $locked->update([
+                    'gateway_status' => 'FAILED',
+                    'catatan' => trim(($locked->catatan ?? '')."\n[Xendit] Refund gateway gagal: {$gatewayMessage}"),
+                ]);
+
+                AuditLogger::log('refund.gateway_failed', [
+                    'actor_id' => $mitra->id,
+                    'actor_role' => 'mitra',
+                    'refund_id' => $locked->id,
+                    'booking_id' => $booking->id,
+                    'message' => $gatewayMessage,
+                ]);
+
+                return $locked->refresh()->load('booking.client');
+            }
+
             $locked->update([
-                'status' => RefundStatus::SUCCEEDED->value,
+                'status' => $gatewayPending
+                    ? RefundStatus::PENDING->value
+                    : RefundStatus::SUCCEEDED->value,
+                'gateway_refund_id' => $gatewaySuccess ? $gatewayRefundNo : null,
+                'gateway_status' => $gatewayPending ? 'PENDING' : ($gatewaySuccess ? 'SUCCESS' : null),
                 'catatan' => trim(($locked->catatan ?? '')."\n{$noteLine}"),
             ]);
+
+            if ($gatewayPending) {
+                return $locked->refresh()->load('booking.client');
+            }
 
             Payment::create([
                 'booking_id' => $booking->id,
                 'jumlah' => -$amount,
-                'metode' => PaymentMetode::TRANSFER_MANUAL->value,
+                'metode' => $gatewaySuccess ? PaymentMetode::XENDIT : PaymentMetode::TRANSFER_MANUAL,
+                'gateway' => $gatewaySuccess ? PaymentGateway::XENDIT : PaymentGateway::MANUAL,
                 'verified_by' => $mitra->id,
                 'verified_at' => now(),
-                'catatan' => "Refund manual oleh Mitra: {$mitra->name}. Alasan: {$locked->reason->label()}",
+                'catatan' => "Refund oleh Mitra: {$mitra->name}. Alasan: {$locked->reason->label()}",
             ]);
 
             $booking->update([
@@ -66,14 +152,16 @@ class RefundApprovalService
                 'booking_kode' => $booking->kode,
                 'amount' => $amount,
                 'reason' => $locked->reason->value,
+                'gateway' => $gatewaySuccess ? PaymentGateway::XENDIT->value : PaymentGateway::MANUAL->value,
             ]);
 
             return $locked->refresh()->load('booking.client');
         });
 
-        // Notifikasi dikirim setelah commit: kegagalan FCM/IO tidak boleh
-        // membatalkan refund yang sudah sah.
-        $this->notifyRefundSucceededToClient($refund);
+        // Notifikasi sukses hanya untuk refund yang benar-benar berhasil.
+        if ($refund->status === RefundStatus::SUCCEEDED) {
+            $this->notifyRefundSucceededToClient($refund);
+        }
 
         return $refund;
     }

@@ -118,6 +118,12 @@ export type CreateTripResponse = {
     kode: string;
 };
 
+export type CreatePaymentLinkResponse = {
+    ok: boolean;
+    token: string;
+    payment_id: number;
+};
+
 export type GenerateETicketResponse = {
     ok: boolean;
     uuid: string;
@@ -441,6 +447,20 @@ export const seed = {
             page,
             '/_test/create-booking',
             options as unknown as ApiData,
+        );
+    },
+
+    /**
+     * Buat token tautan pembayaran publik untuk booking tertentu.
+     */
+    async createPaymentLink(
+        page: Page,
+        bookingId: number,
+    ): Promise<CreatePaymentLinkResponse> {
+        return apiPost<CreatePaymentLinkResponse>(
+            page,
+            '/_test/create-payment-link',
+            { booking_id: bookingId },
         );
     },
 

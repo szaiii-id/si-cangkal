@@ -10,11 +10,16 @@ use App\Http\Requests\Mitra\UploadPaymentProofRequest;
 use App\Http\Resources\BookingResource;
 use App\Http\Resources\ReviewResource;
 use App\Models\Booking;
+use App\Models\BookingPaymentLink;
 use App\Repositories\Contracts\ReviewRepositoryInterface;
 use App\Services\Booking\BookingCancellationService;
 use App\Services\Booking\BookingPaymentService;
 use App\Services\Booking\BookingQueryService;
+use App\Services\Notification\Contracts\NotificationDispatcherInterface;
+use App\Services\Payment\PaymentChargeService;
+use App\Support\AuditLogger;
 use App\Support\Storage;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -76,6 +81,54 @@ final class BookingController extends Controller
             'review' => $review !== null
                 ? (new ReviewResource($review->loadMissing('client:id,name')))->resolve()
                 : null,
+        ]);
+    }
+
+    /**
+     * Buat & kembalikan link checkout Xendit untuk booking manual.
+     *
+     * URL link hanya dikirim lewat notifikasi in-app client dan response
+     * endpoint. AuditLogger sengaja tidak menyimpan URL penuh.
+     */
+    public function paymentLink(
+        Booking $booking,
+        PaymentChargeService $chargeService,
+        NotificationDispatcherInterface $notificationDispatcher,
+    ): JsonResponse {
+        $this->authorize('createPaymentLink', $booking);
+
+        $result = $chargeService->createForBooking($booking);
+        $client = $booking->client;
+
+        if ($client !== null) {
+            $notificationDispatcher->send(
+                user: $client,
+                tipe: 'payment_link_created',
+                judul: 'Link Pembayaran Tersedia',
+                pesan: "Mitra telah menyiapkan link pembayaran untuk booking {$booking->kode}. Silakan selesaikan pembayaran Anda.",
+                data: [
+                    'booking_id' => $booking->id,
+                    'url' => $result->checkoutUrl,
+                ],
+            );
+        }
+
+        AuditLogger::log('booking.payment_link_created', [
+            'actor_id' => $booking->mitra_id,
+            'actor_role' => 'mitra',
+            'booking_id' => $booking->id,
+            'booking_kode' => $booking->kode,
+            'gateway_request_id' => $result->sessionId,
+        ]);
+
+        /** @var BookingPaymentLink|null $link */
+        $link = $booking->paymentLinks()->active()->latest()->first();
+
+        return response()->json([
+            'url' => $link !== null ? '/bayar/'.$link->token : $result->checkoutUrl,
+            'expires_at' => $link?->expires_at?->toIso8601String()
+                ?? $booking->expired_at?->toIso8601String(),
+            'checkout_url' => $result->checkoutUrl,
         ]);
     }
 

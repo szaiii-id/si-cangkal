@@ -67,9 +67,8 @@ class AuthController extends Controller
     /**
      * Proses pendaftaran Mitra secara manual.
      *
-     * Mitra register mandiri → langsung login → onboarding XenPlatform.
-     * (Mitra baru belum punya sub-account, jadi akan diarahkan ke /mitra/onboarding
-     * oleh middleware EnsureXenPlatformLive.)
+     * Mitra register mandiri → langsung login → onboarding lokal untuk
+     * melengkapi profil dan rekening bank. Tidak ada onboarding gateway.
      */
     public function registerMitra(RegisterRequest $request): RedirectResponse
     {

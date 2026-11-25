@@ -81,8 +81,54 @@ Sumber kebenaran adalah `.env.example`. Variabel yang paling sering diubah:
 | `VITE_FIREBASE_*`      | kosong                                        | Konfigurasi Firebase sisi client           |
 | `GOOGLE_CLIENT_*`      | kosong                                        | Login Google OAuth                         |
 | `AUTH_THROTTLE_*`      | lihat `.env.example`                          | Batas percobaan login/register/dll.        |
+| `XENDIT_*`             | lihat bagian Xendit Test Mode                 | Payment gateway Test Mode                  |
 
 Zona waktu: DB menyimpan **UTC**. Untuk logika "hari ini"/"sekarang" pakai `App\Support\Timezone`, **jangan** `now()` langsung. Timezone user/trip berformat IANA; default `Asia/Makassar`.
+
+### Xendit Test Mode
+
+Aplikasi memakai **Xendit Test Mode (sandbox)**. Semua fitur yang dipakai tersedia **tanpa KYC, tanpa XenPlatform, dan tanpa aktivasi channel**: Payment Session, webhook, refund, dan payout ke rekening mitra.
+
+Semua kode membaca kredensial lewat `config('payment.xendit.*')`. Satu-satunya tempat yang memanggil `env('XENDIT_...')` adalah `config/payment.php`.
+
+**Yang perlu dilakukan di dashboard Xendit:**
+
+1. Daftar akun, verifikasi email, isi pertanyaan bisnis dasar → langsung mendapat akses **Test Mode** dengan dana virtual. **Jangan ajukan verifikasi bisnis/KYC.**
+2. Settings → API Keys → **Generate Secret Key**. Beri permission `Payment Write`, `Payment Read`, `Payout/Money-out Write`, dan `Balance/Transaction Read`.
+3. Settings → Webhooks → daftarkan URL `https://<host>/payments/xendit/webhook` untuk event Payment, Payment Session, Refund, dan Payout v3 (bisa memakai satu endpoint yang sama). Path alias `/xendit/webhook` juga diterima bila URL sudah terdaftar dengan path itu.
+4. Salin **Callback Verification Token** (`x-callback-token`) dari halaman yang sama.
+5. Untuk lokal, buka tunnel HTTPS ke `http://localhost:8000` (mis. `ngrok http 8000`) dan pakai URL-nya sebagai callback URL testing. Dokumentasi Xendit menyebut ngrok untuk keperluan ini.
+6. Balance → **Top Up** di Test Mode bila saldo kosong. Dana simulasi tidak nyata dan tidak bisa ditarik; bila menu top-up tidak ada, minta dummy balance ke CS Xendit.
+
+Isi `.env` lokal (nilai tidak pernah di-commit):
+
+```dotenv
+XENDIT_SECRET_KEY=xnd_development_...
+XENDIT_CALLBACK_TOKEN=...
+XENDIT_INSTANT_PAYOUT_ENABLED=false
+```
+
+Verifikasi konfigurasi:
+
+```bash
+php artisan config:show payment
+grep -rn "env('XENDIT_" app routes resources tests --include='*.php' --include='*.ts' --include='*.svelte'
+```
+
+Perintah `grep` harus menghasilkan **kosong** di luar `config/payment.php`.
+
+Alur pembayaran:
+
+1. Mitra onboarding seperti biasa: profil + rekening tersimpan di database lokal. **Tidak ada request ke Xendit saat mitra daftar.**
+2. Client memilih **Bayar dengan Xendit** (atau mitra membuat payment link).
+3. Aplikasi membuat Payment Session `POST /sessions`; client diarahkan ke halaman checkout Xendit yang menampilkan QRIS/VA/e-wallet/kartu.
+4. Webhook `payment.capture` diverifikasi lewat `x-callback-token`, booking menjadi `confirmed`, E-Ticket dibuat.
+5. Dana ditahan sampai trip selesai. Setelah mitra menyelesaikan trip, `DisburseToMitraJob` memanggil `POST /disbursements` ke rekening mitra. Endpoint `/v3/payouts` ditolak untuk bank domestik Indonesia pada sandbox ini, jadi aplikasi memakai endpoint legacy yang masih aktif di Test Mode. Webhook `payout.succeeded` (atau `v3_payout.succeeded`) menandai dana `SETTLED`.
+6. Refund sebelum payout memakai `POST /v3/refunds`; setelah dana cair, refund dialihkan ke jalur manual mitra.
+
+Flag `XENDIT_INSTANT_PAYOUT_ENABLED=true` memindah trigger payout ke saat webhook pembayaran sukses — berguna untuk demo, bukan kebijakan produksi.
+
+E2E `e2e/payment/xendit-payment.spec.ts` menguji alur checkout ke halaman Xendit Test Mode, lalu mengirim payload webhook bertanda tangan ke endpoint aplikasi (bukan webhook yang dipicu Xendit). Spec ini **skip** kecuali `XENDIT_E2E_ENABLED=true` dan `XENDIT_CALLBACK_TOKEN` terisi. Untuk pembuktian penuh dengan webhook asli dari Xendit, jalankan manual dengan tunnel aktif dan verifikasi status `SETTLED` di database.
 
 ## Testing & quality gate
 
@@ -104,6 +150,9 @@ bun run test:e2e
 bun run test:e2e e2e/auth/login.spec.ts --project=chromium
 bun run test:e2e:shard:4
 bun run test:e2e:rate-limit
+
+# E2E pembayaran Xendit Test Mode (butuh tunnel + kredensial test)
+bun run test:e2e e2e/payment/xendit-payment.spec.ts --project=chromium
 ```
 
 `bun run check` **bukan** `svelte-check`; keduanya harus dijalankan. Komponen di `resources/js/components/ui/*` dikecualikan dari format/lint Vite+.

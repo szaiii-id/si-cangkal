@@ -207,6 +207,7 @@ describe('createManual — persistence', function () {
             'mitra_id' => $this->mitra->id,
             'status' => BookingStatus::PENDING_PAYMENT->value,
             'expired_at' => null,
+            'sumber' => 'manual',
         ]);
     });
 

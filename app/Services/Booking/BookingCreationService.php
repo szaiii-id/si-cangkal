@@ -113,6 +113,7 @@ class BookingCreationService
 
             $booking = $this->bookingRepository->create([
                 'kode' => $kode,
+                'sumber' => 'manual',
                 'package_id' => $package->id,
                 'user_id' => $client->id,
                 'mitra_id' => $mitra->id,

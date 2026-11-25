@@ -66,6 +66,21 @@ export const CI = {
 } as const;
 
 // ==========================================
+// XENDIT TEST MODE
+// ==========================================
+/**
+ * E2E pembayaran Xendit aktif bila XENDIT_E2E_ENABLED=true.
+ *
+ * Butuh secret key test, callback token, dan URL webhook yang bisa
+ * dijangkau Xendit (tunnel HTTPS untuk lokal). Semua fitur yang dipakai
+ * tersedia di Test Mode tanpa KYC, XenPlatform, atau aktivasi channel.
+ */
+export const XENDIT = {
+    e2eEnabled: process.env.XENDIT_E2E_ENABLED === 'true',
+    callbackToken: process.env.XENDIT_CALLBACK_TOKEN ?? '',
+} as const;
+
+// ==========================================
 // SHARD
 // ==========================================
 /**

@@ -115,6 +115,55 @@ test.describe('Accessibility Audit (WCAG 2.1 AA — Axe-Core)', () => {
                 { url: '/verify-email', label: 'Verify Email (/verify-email)' },
             ]);
         });
+
+        test('halaman pembayaran publik dan verifikasi tiket bebas pelanggaran critical/serious', async ({
+            page,
+            asGuest,
+            seed,
+        }) => {
+            test.setTimeout(120_000);
+            await asGuest();
+
+            const pkg = await seed.createPackage(page, {
+                mitra_email: SEED_USERS.mitra.email,
+                nama: `A11y Bayar ${Date.now()}`,
+                status: 'aktif',
+                durasi_hari: 1,
+                harga_per_orang: 250_000,
+            });
+            // Booking pending untuk halaman pembayaran publik.
+            const paymentBooking = await seed.createBooking(page, {
+                client_email: SEED_USERS.client.email,
+                package_kode: pkg.kode,
+                status: 'pending_payment',
+                jumlah_peserta: 1,
+            });
+            const link = await seed.createPaymentLink(
+                page,
+                paymentBooking.booking_id,
+            );
+
+            // Booking terpisah yang sudah dikonfirmasi untuk E-Ticket.
+            const tripBooking = await seed.createBooking(page, {
+                client_email: SEED_USERS.client.email,
+                package_kode: pkg.kode,
+                status: 'confirmed',
+                jumlah_peserta: 1,
+            });
+            const trip = await seed.createTrip(page, tripBooking.kode);
+            const ticket = await seed.generateETicket(page, trip.kode);
+
+            await auditRoutes(page, [
+                {
+                    url: `/bayar/${link.token}`,
+                    label: 'Halaman Pembayaran Publik (/bayar/{token})',
+                },
+                {
+                    url: `/e-tickets/${ticket.uuid}`,
+                    label: 'Verifikasi E-Ticket (/e-tickets/{uuid})',
+                },
+            ]);
+        });
     });
 
     // ==========================================

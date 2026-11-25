@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\PaymentGateway;
 use App\Enums\PaymentMetode;
 use Database\Factories\PaymentFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -21,6 +22,14 @@ use Illuminate\Support\Carbon;
  * @property int|null $verified_by
  * @property Carbon|null $verified_at
  * @property string|null $catatan
+ * @property PaymentGateway $gateway
+ * @property string|null $gateway_order_id
+ * @property string|null $gateway_request_id
+ * @property string|null $gateway_status
+ * @property array<string, mixed>|null $gateway_payload
+ * @property Carbon|null $paid_at
+ * @property Carbon|null $settled_at
+ * @property Carbon|null $released_at
  * @property Carbon $created_at
  * @property Carbon $updated_at
  * @property-read Booking|null $booking
@@ -44,6 +53,14 @@ class Payment extends Model
         'verified_by',
         'verified_at',
         'catatan',
+        'gateway',
+        'gateway_order_id',
+        'gateway_request_id',
+        'gateway_status',
+        'gateway_payload',
+        'paid_at',
+        'settled_at',
+        'released_at',
     ];
 
     /**
@@ -55,6 +72,11 @@ class Payment extends Model
             'metode' => PaymentMetode::class,
             'jumlah' => 'decimal:2',
             'verified_at' => 'datetime',
+            'gateway' => PaymentGateway::class,
+            'gateway_payload' => 'array',
+            'paid_at' => 'datetime',
+            'settled_at' => 'datetime',
+            'released_at' => 'datetime',
         ];
     }
 

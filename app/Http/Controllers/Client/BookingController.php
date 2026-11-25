@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Client;
 
+use App\Enums\BookingStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Client\ListBookingRequest;
 use App\Http\Requests\Client\StoreBookingRequest;
@@ -16,6 +17,7 @@ use App\Services\Booking\BookingCancellationService;
 use App\Services\Booking\BookingCreationService;
 use App\Services\Booking\BookingPaymentService;
 use App\Services\Booking\BookingQueryService;
+use App\Services\Payment\PaymentChargeService;
 use App\Services\Review\ReviewService;
 use App\Support\Storage;
 use Illuminate\Http\RedirectResponse;
@@ -23,6 +25,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
@@ -171,6 +174,29 @@ final class BookingController extends Controller
         } catch (ValidationException $e) {
             return back()->withErrors($e->errors());
         }
+    }
+
+    /**
+     * Buat Payment Session Xendit untuk booking yang masih menunggu pembayaran.
+     *
+     * Transfer manual tetap tersedia lewat jalur upload bukti; endpoint ini
+     * hanya menyiapkan opsi gateway.
+     */
+    public function pay(Booking $booking, PaymentChargeService $chargeService): SymfonyResponse
+    {
+        $this->authorize('view', $booking);
+
+        if ($booking->status !== BookingStatus::PENDING_PAYMENT) {
+            throw ValidationException::withMessages([
+                'status' => ['Booking ini tidak lagi menunggu pembayaran.'],
+            ]);
+        }
+
+        $result = $chargeService->createForBooking($booking);
+
+        // Inertia::location memberi tahu client untuk membuka halaman checkout
+        // Xendit. Ini tetap memakai router Inertia (tanpa fetch manual).
+        return Inertia::location($result->checkoutUrl);
     }
 
     public function uploadProof(UploadPaymentProofRequest $request, Booking $booking): RedirectResponse

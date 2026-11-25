@@ -19,6 +19,7 @@ import {
     cancelBooking,
     createReview,
     uploadProof,
+    createXenditCharge,
     getPaymentProofUrl,
     getETicketDownloadUrl,
 } from '../client';
@@ -79,6 +80,15 @@ describe('Client API Wrapper', () => {
             expect(router.post).toHaveBeenCalledWith(
                 '/client/bookings/42/cancel',
                 data,
+                undefined,
+            );
+        });
+
+        it('createXenditCharge() memanggil POST /client/bookings/{id}/pay', () => {
+            createXenditCharge(42);
+            expect(router.post).toHaveBeenCalledWith(
+                '/client/bookings/42/pay',
+                {},
                 undefined,
             );
         });
