@@ -81,78 +81,54 @@ Sumber kebenaran adalah `.env.example`. Variabel yang paling sering diubah:
 | `VITE_FIREBASE_*`      | kosong                                        | Konfigurasi Firebase sisi client           |
 | `GOOGLE_CLIENT_*`      | kosong                                        | Login Google OAuth                         |
 | `AUTH_THROTTLE_*`      | lihat `.env.example`                          | Batas percobaan login/register/dll.        |
-| `DOKU_*`               | lihat bagian Sandbox DOKU                     | Payment gateway sandbox (Fase 1)           |
+| `XENDIT_*`             | lihat bagian Xendit Test Mode                 | Payment gateway Test Mode                  |
 
 Zona waktu: DB menyimpan **UTC**. Untuk logika "hari ini"/"sekarang" pakai `App\Support\Timezone`, **jangan** `now()` langsung. Timezone user/trip berformat IANA; default `Asia/Makassar`.
 
-### Sandbox DOKU (Fase 1)
+### Xendit Test Mode
 
-Fase 1 hanya memakai **sandbox**. Semua kode membaca kredensial lewat `config('payment.doku.*')`; satu-satunya tempat yang memanggil `env('DOKU_...')` adalah `config/payment.php`.
+Aplikasi memakai **Xendit Test Mode (sandbox)**. Semua fitur yang dipakai tersedia **tanpa KYC, tanpa XenPlatform, dan tanpa aktivasi channel**: Payment Session, webhook, refund, dan payout ke rekening mitra.
 
-Yang perlu disiapkan di dashboard sandbox (`sandbox.doku.com`):
+Semua kode membaca kredensial lewat `config('payment.xendit.*')`. Satu-satunya tempat yang memanggil `env('XENDIT_...')` adalah `config/payment.php`.
 
-1. Ambil **Client ID** dan **Active Secret Key** di **Integrations > API Keys**. `DOKU Public Key` dan `Merchant Public Key` belum dipakai.
-2. Aktifkan kanal QRIS, VA (BCA/Mandiri/BRI/BNI), dan e-wallet (DANA/OVO/ShopeePay) di **Settings > Payment Settings**.
-3. Aktifkan **Split Settlement** di **Setting > Service**, lalu daftarkan rekening mitra di **Setting > Bank Account**. `Bank Settlement ID` disimpan per mitra di database, bukan di `.env`.
-4. Set Notification URL dengan path `/payments/doku/webhook` untuk tiap kanal yang dipakai.
+**Yang perlu dilakukan di dashboard Xendit:**
 
-Karena DOKU **melarang ngrok** dan tidak dapat mengirim notifikasi ke `localhost`, gunakan tunnel:
+1. Daftar akun, verifikasi email, isi pertanyaan bisnis dasar → langsung mendapat akses **Test Mode** dengan dana virtual. **Jangan ajukan verifikasi bisnis/KYC.**
+2. Settings → API Keys → **Generate Secret Key**. Beri permission `Payment Write`, `Payment Read`, `Payout/Money-out Write`, dan `Balance/Transaction Read`.
+3. Settings → Webhooks → daftarkan URL `https://<host>/payments/xendit/webhook` untuk event Payment dan Payout (bisa memakai satu endpoint yang sama).
+4. Salin **Callback Verification Token** (`x-callback-token`) dari halaman yang sama.
+5. Untuk lokal, buka tunnel HTTPS ke `http://localhost:8000` (mis. `ngrok http 8000`) dan pakai URL-nya sebagai callback URL testing. Dokumentasi Xendit menyebut ngrok untuk keperluan ini.
+6. Balance → **Top Up** di Test Mode bila saldo kosong. Dana simulasi tidak nyata dan tidak bisa ditarik; bila menu top-up tidak ada, minta dummy balance ke CS Xendit.
 
-```bash
-# terminal 1
-php artisan serve
+Isi `.env` lokal (nilai tidak pernah di-commit):
 
-# terminal 2
-bash scripts/doku-tunnel.sh
-# akan menampilkan https://<id>.lhr.life
+```dotenv
+XENDIT_SECRET_KEY=xnd_development_...
+XENDIT_CALLBACK_TOKEN=...
+XENDIT_INSTANT_PAYOUT_ENABLED=false
 ```
-
-Salin URL tersebut ke `DOKU_NOTIFICATION_URL` dengan akhiran `/payments/doku/webhook`. URL gratis bersifat sementara; perbarui `.env` setiap kali tunnel dibuka ulang. Set `DOKU_SANDBOX_ENABLED=true` hanya jika ingin menjalankan E2E sandbox.
 
 Verifikasi konfigurasi:
 
 ```bash
 php artisan config:show payment
-grep -rn "env('DOKU_" app routes resources tests --include='*.php' --include='*.ts' --include='*.svelte'
+grep -rn "env('XENDIT_" app routes resources tests --include='*.php' --include='*.ts' --include='*.svelte'
 ```
 
-Perintah `grep` harus menghasilkan **kosong**.
+Perintah `grep` harus menghasilkan **kosong** di luar `config/payment.php`.
 
-Alur sandbox Fase 1:
+Alur pembayaran:
 
-1. Client/bagian manual membuat booking `pending_payment`.
-2. Client memilih **Bayar dengan DOKU** (atau mitra membuat payment link).
-3. Link checkout diakses dari simulator: `https://sandbox.doku.com/integration/simulator/`.
-4. Webhook `POST /payments/doku/webhook` diverifikasi signature-nya, lalu booking menjadi `confirmed`.
-5. Dana ditahan (`hold_settlement`) dan split ke rekening mitra.
-6. Setelah mitra menyelesaikan trip, `ReleaseDokuSettlementJob` melepas dana; dana tiba H+1.
-7. Refund gateway memakai Refund API DOKU; bila issuer menolak, status refund tetap `PENDING` dan dijadwalkan ulang.
+1. Mitra onboarding seperti biasa: profil + rekening tersimpan di database lokal. **Tidak ada request ke Xendit saat mitra daftar.**
+2. Client memilih **Bayar dengan Xendit** (atau mitra membuat payment link).
+3. Aplikasi membuat Payment Session `POST /sessions`; client diarahkan ke halaman checkout Xendit yang menampilkan QRIS/VA/e-wallet/kartu.
+4. Webhook `payment.capture` diverifikasi lewat `x-callback-token`, booking menjadi `confirmed`, E-Ticket dibuat.
+5. Dana ditahan sampai trip selesai. Setelah mitra menyelesaikan trip, `DisburseToMitraJob` memanggil `POST /v3/payouts` ke rekening mitra. Webhook `v3_payout.succeeded` menandai dana `SETTLED`.
+6. Refund sebelum payout memakai `POST /v3/refunds`; setelah dana cair, refund dialihkan ke jalur manual mitra.
 
-E2E `e2e/payment/doku-sandbox.spec.ts` otomatis **skip** kecuali `DOKU_SANDBOX_ENABLED=true`. Pastikan `.env.testing`/shell juga memiliki kredensial sandbox, tunnel aktif, dan `DOKU_E2E_SETTLEMENT_BANK_ACCOUNT_ID` sesuai rekening yang didaftarkan di dashboard sandbox.
+Flag `XENDIT_INSTANT_PAYOUT_ENABLED=true` memindah trigger payout ke saat webhook pembayaran sukses — berguna untuk demo, bukan kebijakan produksi.
 
-### Fase 1b — Sub Account V2 (opsional)
-
-`fc-h2h-api` tidak menerima kredensial sandbox, sehingga otomatisasi rekening mitra di sandbox memakai **Sub Account V2**:
-
-```bash
-# 1. Buat keypair RSA (private key tidak akan di-commit)
-php artisan doku:generate-keypair
-
-# 2. Upload storage/app/doku/public.pem ke DOKU dashboard > Integrations > API Keys
-# 3. Isi .env
-#    DOKU_PRIVATE_KEY_PATH=storage/app/doku/private.pem
-```
-
-Alur otomatisnya:
-
-1. Onboarding mitra menyimpan rekening utama lalu `RegisterDokuSubAccountJob` mendaftarkan sub-account.
-2. Service menyimpan `doku_profile_id`, `doku_account_no`, dan `doku_split_rule_id` (split 100% ke mitra).
-3. Checkout mengirim `additionalInfo.account.id` + `split_rule_id`. Bila belum ada, aplikasi fallback ke `additional_info.settlement` dari Fase 1.
-4. Webhook Sub Account dibalas `200` dengan `{"responseCode":"2000000","responseMessage":"Successful"}`.
-
-Job dilewati dengan aman bila private key belum dikonfigurasi, sehingga onboarding mitra tetap berhasil di lokal.
-
-E2E `e2e/payment/doku-sub-account.spec.ts` otomatis **skip** kecuali `DOKU_SUB_ACCOUNT_E2E=true` dan public key sudah terdaftar. Perhatikan juga dua perilaku DOKU: split berjalan saat **settlement** (bukan saat bayar), dan `account.id`/`split_rule_id` yang salah **tidak mengembalikan error**—karena itu kode memvalidasi keduanya sebelum mengirim.
+E2E `e2e/payment/xendit-payment.spec.ts` memakai `POST /v3/payment_requests/{id}/simulate` (test-only) dan webhook sungguhan melalui tunnel. Aktifkan dengan `XENDIT_E2E_ENABLED=true`.
 
 ## Testing & quality gate
 
@@ -175,8 +151,8 @@ bun run test:e2e e2e/auth/login.spec.ts --project=chromium
 bun run test:e2e:shard:4
 bun run test:e2e:rate-limit
 
-# E2E sandbox DOKU (opsional, butuh tunnel + kredensial sandbox)
-bun run test:e2e e2e/payment/doku-sandbox.spec.ts --project=chromium
+# E2E pembayaran Xendit Test Mode (butuh tunnel + kredensial test)
+bun run test:e2e e2e/payment/xendit-payment.spec.ts --project=chromium
 ```
 
 `bun run check` **bukan** `svelte-check`; keduanya harus dijalankan. Komponen di `resources/js/components/ui/*` dikecualikan dari format/lint Vite+.

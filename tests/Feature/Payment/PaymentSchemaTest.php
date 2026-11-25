@@ -11,12 +11,12 @@ use Illuminate\Support\Facades\Schema;
 | SETUP — Integration Test (RefreshDatabase aktif untuk Feature)
 |==========================================================================
 |
-| Memastikan schema gateway DOKU sudah tersedia sebelum service dipakai.
+| Memastikan schema gateway Xendit sudah tersedia sebelum service dipakai.
 |
 */
 
 describe('schema pembayaran gateway', function () {
-    it('payments memiliki field gateway DOKU', function () {
+    it('payments memiliki field gateway Xendit', function () {
         expect(Schema::hasColumns('payments', [
             'gateway',
             'gateway_order_id',
@@ -36,15 +36,15 @@ describe('schema pembayaran gateway', function () {
         ]))->toBeTrue();
     });
 
-    it('mitra_bank_accounts memiliki field settlement DOKU', function () {
+    it('mitra_bank_accounts memiliki field rekening bank', function () {
         expect(Schema::hasColumns('mitra_bank_accounts', [
             'settlement_bank_account_id',
             'settlement_verified_at',
         ]))->toBeTrue();
     });
 
-    it('enum PaymentGateway memiliki nilai doku dan manual', function () {
-        expect(PaymentGateway::DOKU->value)->toBe('doku')
+    it('enum PaymentGateway memiliki nilai xendit dan manual', function () {
+        expect(PaymentGateway::XENDIT->value)->toBe('xendit')
             ->and(PaymentGateway::MANUAL->value)->toBe('manual');
     });
 

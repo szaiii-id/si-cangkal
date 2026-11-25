@@ -655,3 +655,27 @@ describe('Edge Cases — nomor_rekening regex', function () {
             ->assertSessionHasErrors('accounts.0.nomor_rekening');
     });
 });
+
+describe('Onboarding tanpa gateway', function () {
+    it('hanya menyimpan profil dan rekening ke database lokal', function () {
+        \Illuminate\Support\Facades\Bus::fake();
+
+        $this->actingAs($this->mitra)->post('/mitra/onboarding', [
+            'nama_penyedia_usaha' => 'PT Travel Jaya',
+            'no_hp' => '08123456789',
+            'accounts' => [
+                [
+                    'tipe' => 'bank',
+                    'nama_penyedia' => 'BCA',
+                    'nomor_rekening' => '1234567890',
+                    'nama_pemilik' => 'Budi Santoso',
+                ],
+            ],
+        ])->assertRedirect();
+
+        \Illuminate\Support\Facades\Bus::assertNothingDispatched();
+
+        expect(MitraBankAccount::where('user_id', $this->mitra->id)->count())->toBe(1)
+            ->and(Profile::where('user_id', $this->mitra->id)->count())->toBe(1);
+    });
+});

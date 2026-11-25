@@ -25,7 +25,6 @@ use App\Enums\BookingStatus;
 use App\Enums\PackageKategori;
 use App\Enums\PackageStatus;
 use App\Enums\TripStatus;
-use App\Jobs\RegisterDokuSubAccountJob;
 use App\Models\AppNotification;
 use App\Models\Booking;
 use App\Models\BookingParticipant;
@@ -37,7 +36,6 @@ use App\Models\Profile;
 use App\Models\Trip;
 use App\Models\User;
 use App\Services\ETicket\Contracts\ETicketServiceInterface;
-use App\Services\Payment\Doku\DokuSubAccountService;
 use App\Services\Trip\TripService;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\TestSeeder;
@@ -170,70 +168,6 @@ Route::prefix('_test')
          * }
          * Response: { ok: true, user_id: int }
          */
-        /**
-         * Set rekening bank mitra sebagai tujuan settlement DOKU (sandbox).
-         *
-         * @example
-         *   POST /_test/settle-bank-account
-         *   { "email": "mitra@test.com", "settlement_bank_account_id": "SBA-0001" }
-         */
-        Route::post('/settle-bank-account', function (Request $request): JsonResponse {
-            $validated = $request->validate([
-                'email' => ['required', 'email', 'exists:users,email'],
-                'settlement_bank_account_id' => ['required', 'string', 'max:100'],
-            ]);
-
-            $user = User::query()->where('email', $validated['email'])->firstOrFail();
-            $account = MitraBankAccount::query()
-                ->where('user_id', $user->id)
-                ->firstOrFail();
-
-            $account->update([
-                'settlement_bank_account_id' => $validated['settlement_bank_account_id'],
-                'settlement_verified_at' => now(),
-            ]);
-
-            return response()->json(['ok' => true]);
-        });
-
-        /**
-         * Daftarkan sub-account DOKU untuk mitra (Fase 1b, sandbox).
-         */
-        Route::post('/register-doku-sub-account', function (
-            Request $request,
-            DokuSubAccountService $service,
-        ): JsonResponse {
-            $validated = $request->validate([
-                'email' => ['required', 'email', 'exists:users,email'],
-            ]);
-
-            $user = User::query()->where('email', $validated['email'])->firstOrFail();
-            $account = $user->bankAccounts()->where('is_primary', true)->firstOrFail();
-
-            (new RegisterDokuSubAccountJob($account->id))->handle($service);
-            $account->refresh();
-
-            return response()->json([
-                'ok' => true,
-                'profile_id' => $account->doku_profile_id,
-                'account_no' => $account->doku_account_no,
-                'split_rule_id' => $account->doku_split_rule_id,
-            ]);
-        });
-
-        Route::post('/doku-sub-account', function (Request $request): JsonResponse {
-            $validated = $request->validate(['email' => ['required', 'email', 'exists:users,email']]);
-            $user = User::query()->where('email', $validated['email'])->firstOrFail();
-            $account = $user->bankAccounts()->where('is_primary', true)->first();
-
-            return response()->json([
-                'ok' => true,
-                'profile_id' => $account?->doku_profile_id,
-                'account_no' => $account?->doku_account_no,
-                'split_rule_id' => $account?->doku_split_rule_id,
-            ]);
-        });
-
         Route::post('/reset-user', function (Request $request) use ($userPayload): JsonResponse {
             $validated = $request->validate([
                 'email' => ['required', 'string', 'email'],

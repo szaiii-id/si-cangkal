@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Mitra;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Mitra\StoreOnboardingRequest;
-use App\Jobs\RegisterDokuSubAccountJob;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -42,26 +41,14 @@ final class OnboardingController extends Controller
 
         $mitra->bankAccounts()->delete();
 
-        $primaryAccount = null;
-
         foreach ($validated['accounts'] as $index => $account) {
-            $created = $mitra->bankAccounts()->create([
+            $mitra->bankAccounts()->create([
                 'tipe' => $account['tipe'],
                 'nama_penyedia' => $account['nama_penyedia'],
                 'nomor_rekening' => $account['nomor_rekening'],
                 'nama_pemilik' => $account['nama_pemilik'],
                 'is_primary' => $index === 0,
             ]);
-
-            if ($index === 0) {
-                $primaryAccount = $created;
-            }
-        }
-
-        // Fase 1b: daftarkan sub-account DOKU untuk mitra setelah rekening
-        // utama tersimpan. Job tidak mengirim request bila sudah terdaftar.
-        if ($primaryAccount !== null) {
-            RegisterDokuSubAccountJob::dispatch($primaryAccount->id);
         }
 
         return redirect()

@@ -136,7 +136,7 @@ final class BookingPolicy
     }
 
     /**
-     * Buat payment link DOKU untuk booking manual.
+     * Buat payment link Xendit untuk booking manual.
      *
      * Hanya mitra pemilik yang bisa membuat link, dan hanya saat booking
      * masih menunggu pembayaran.

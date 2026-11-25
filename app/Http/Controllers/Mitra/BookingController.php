@@ -84,7 +84,7 @@ final class BookingController extends Controller
     }
 
     /**
-     * Buat & kembalikan link checkout DOKU untuk booking manual.
+     * Buat & kembalikan link checkout Xendit untuk booking manual.
      *
      * URL link hanya dikirim lewat notifikasi in-app client dan response
      * endpoint. AuditLogger sengaja tidak menyimpan URL penuh.
@@ -117,7 +117,7 @@ final class BookingController extends Controller
             'actor_role' => 'mitra',
             'booking_id' => $booking->id,
             'booking_kode' => $booking->kode,
-            'gateway_request_id' => $result->requestId,
+            'gateway_request_id' => $result->sessionId,
         ]);
 
         return response()->json([

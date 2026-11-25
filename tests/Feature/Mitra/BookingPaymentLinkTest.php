@@ -21,27 +21,23 @@ uses(RefreshDatabase::class);
 | Payment link opsional untuk booking manual mitra
 |==========================================================================
 |
-| Mitra membuat & menyalin link checkout DOKU untuk dikirim ke client.
+| Mitra membuat & menyalin link checkout Xendit untuk dikirim ke client.
 | Upload bukti transfer manual tetap tersedia sebagai fallback.
 |
 */
 
 beforeEach(function () {
     config([
-        'payment.doku.client_id' => 'MCH-SANDBOX-001',
-        'payment.doku.secret_key' => 'secret-sandbox',
-        'payment.doku.notification_url' => 'https://tunnel.lhr.life/payments/doku/webhook',
+        'payment.xendit.secret_key' => 'xnd_development_test_key',
     ]);
 
     Http::preventStrayRequests();
     Http::fake([
-        'api-sandbox.doku.com/checkout/v1/payment' => Http::response([
-            'message' => ['SUCCESS'],
-            'response' => [
-                'order' => ['session_id' => 'sess-1'],
-                'payment' => ['url' => 'https://sandbox.doku.com/checkout-link-v2/link123'],
-            ],
-        ]),
+        'https://api.xendit.co/sessions' => Http::response([
+            'payment_session_id' => 'ps-1234567890123456789012345',
+            'payment_link_url' => 'https://dev.xen.to/link123',
+            'status' => 'ACTIVE',
+        ], 201),
     ]);
 
     $this->notifier = Mockery::mock(NotificationDispatcherInterface::class);
@@ -93,12 +89,12 @@ describe('POST /mitra/bookings/{booking}/payment-link', function () {
             ->postJson("/mitra/bookings/{$this->booking->id}/payment-link");
 
         $response->assertOk()
-            ->assertJsonPath('url', 'https://sandbox.doku.com/checkout-link-v2/link123')
+            ->assertJsonPath('url', 'https://dev.xen.to/link123')
             ->assertJsonStructure(['url', 'expires_at']);
 
         $this->assertDatabaseHas('payments', [
             'booking_id' => $this->booking->id,
-            'gateway' => PaymentGateway::DOKU->value,
+            'gateway' => PaymentGateway::XENDIT->value,
             'gateway_status' => 'pending',
         ]);
     });
@@ -130,7 +126,7 @@ describe('POST /mitra/bookings/{booking}/payment-link', function () {
                 judul: Mockery::type('string'),
                 pesan: Mockery::type('string'),
                 data: Mockery::on(fn ($d) => isset($d['url'])
-                    && str_contains((string) $d['url'], 'checkout-link-v2')),
+                    && str_contains((string) $d['url'], 'dev.xen.to')),
             );
 
         $this->actingAs($this->mitra)
@@ -138,12 +134,12 @@ describe('POST /mitra/bookings/{booking}/payment-link', function () {
             ->assertOk();
     });
 
-    it('regenerasi link memakai Request-Id baru', function () {
+    it('regenerasi link setelah session lama kedaluwarsa', function () {
         Payment::create([
             'booking_id' => $this->booking->id,
             'jumlah' => 1_000_000,
-            'metode' => PaymentMetode::DOKU,
-            'gateway' => PaymentGateway::DOKU,
+            'metode' => PaymentMetode::XENDIT,
+            'gateway' => PaymentGateway::XENDIT,
             'gateway_order_id' => $this->booking->kode,
             'gateway_request_id' => 'charge-1',
             'gateway_status' => 'EXPIRED',
@@ -153,9 +149,6 @@ describe('POST /mitra/bookings/{booking}/payment-link', function () {
             ->postJson("/mitra/bookings/{$this->booking->id}/payment-link")
             ->assertOk();
 
-        Http::assertSent(function (Request $request): bool {
-            return $request->hasHeader('Request-Id')
-                && $request->header('Request-Id')[0] !== 'charge-1';
-        });
+        Http::assertSentCount(1);
     });
 });

@@ -66,22 +66,18 @@ export const CI = {
 } as const;
 
 // ==========================================
-// DOKU SANDBOX
+// XENDIT TEST MODE
 // ==========================================
 /**
- * E2E pembayaran DOKU hanya aktif bila DOKU_SANDBOX_ENABLED=true.
- * Butuh kredensial sandbox, tunnel HTTPS publik, dan settlement bank id
- * yang terdaftar di dashboard sandbox DOKU.
+ * E2E pembayaran Xendit aktif bila XENDIT_E2E_ENABLED=true.
+ *
+ * Butuh secret key test, callback token, dan URL webhook yang bisa
+ * dijangkau Xendit (tunnel HTTPS untuk lokal). Semua fitur yang dipakai
+ * tersedia di Test Mode tanpa KYC, XenPlatform, atau aktivasi channel.
  */
-export const DOKU = {
-    sandboxEnabled: process.env.DOKU_SANDBOX_ENABLED === 'true',
-    settlementBankAccountId:
-        process.env.DOKU_E2E_SETTLEMENT_BANK_ACCOUNT_ID ?? 'SBA-E2E-001',
-    /**
-     * Sub Account V2 butuh private key RSA yang public key-nya sudah
-     * didaftarkan di dashboard DOKU. Spec 1b dilewati sampai flag ini aktif.
-     */
-    subAccountEnabled: process.env.DOKU_SUB_ACCOUNT_E2E === 'true',
+export const XENDIT = {
+    e2eEnabled: process.env.XENDIT_E2E_ENABLED === 'true',
+    callbackToken: process.env.XENDIT_CALLBACK_TOKEN ?? '',
 } as const;
 
 // ==========================================

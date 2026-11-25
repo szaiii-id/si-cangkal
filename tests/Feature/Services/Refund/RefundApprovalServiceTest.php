@@ -12,8 +12,9 @@ use App\Models\User;
 use App\Repositories\Contracts\BookingRepositoryInterface;
 use App\Repositories\Contracts\RefundRepositoryInterface;
 use App\Services\Notification\Contracts\NotificationDispatcherInterface;
-use App\Services\Payment\Contracts\PaymentGatewayServiceInterface;
+use App\Services\Payment\Contracts\XenditPaymentServiceInterface;
 use App\Services\Refund\RefundApprovalService;
+use App\Services\Refund\RefundInitiationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
@@ -50,7 +51,8 @@ beforeEach(function () {
         app(RefundRepositoryInterface::class),
         app(BookingRepositoryInterface::class),
         $this->notifier,
-        app(PaymentGatewayServiceInterface::class),
+        app(XenditPaymentServiceInterface::class),
+        app(RefundInitiationService::class),
     );
 
     // Mock Log::channel('audit') — AuditLogger::writer()

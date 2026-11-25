@@ -177,7 +177,7 @@ final class BookingController extends Controller
     }
 
     /**
-     * Buat link checkout DOKU untuk booking yang masih menunggu pembayaran.
+     * Buat Payment Session Xendit untuk booking yang masih menunggu pembayaran.
      *
      * Transfer manual tetap tersedia lewat jalur upload bukti; endpoint ini
      * hanya menyiapkan opsi gateway.
