@@ -4,11 +4,16 @@ namespace App\Services\Payment;
 
 use App\Data\Xendit\XenditSessionResult;
 use App\Enums\PaymentGateway;
+use App\Mail\BookingPaymentLinkMail;
 use App\Models\Booking;
 use App\Models\BookingPaymentLink;
 use App\Models\Payment;
+use App\Services\Invoice\Contracts\InvoiceServiceInterface;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Throwable;
 
 /**
  * Mengelola token capability untuk tautan pembayaran publik.
@@ -18,6 +23,10 @@ use Illuminate\Support\Str;
  */
 final class BookingPaymentLinkService
 {
+    public function __construct(
+        private readonly InvoiceServiceInterface $invoice,
+    ) {}
+
     public function forBooking(Booking $booking, XenditSessionResult $session): BookingPaymentLink
     {
         $expiresAt = $this->expiresAtFromSession($session);
@@ -52,6 +61,8 @@ final class BookingPaymentLinkService
             'expires_at' => $expiresAt,
         ]);
 
+        $this->sendEmail($link);
+
         return $link;
     }
 
@@ -75,6 +86,30 @@ final class BookingPaymentLinkService
         return $link;
     }
 
+    private function sendEmail(BookingPaymentLink $link): void
+    {
+        $booking = $link->booking;
+        $email = $booking->client?->email ?? '';
+
+        if ($booking->sumber !== 'manual' || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+            return;
+        }
+
+        try {
+            Mail::to($email)->queue(new BookingPaymentLinkMail(
+                url: route('payments.public', ['token' => $link->token]),
+                booking: $booking,
+                invoicePdf: $this->invoice->pdfForBooking($booking),
+            ));
+        } catch (Throwable $e) {
+            Log::warning('BookingPaymentLinkService: gagal mengantrekan email', [
+                'booking_id' => $booking->id,
+                'link_id' => $link->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
     private function expiresAtFromSession(XenditSessionResult $session): ?Carbon
     {
         $raw = data_get($session->payload, 'expires_at');
@@ -85,7 +120,7 @@ final class BookingPaymentLinkService
 
         try {
             return Carbon::parse($raw);
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return null;
         }
     }
