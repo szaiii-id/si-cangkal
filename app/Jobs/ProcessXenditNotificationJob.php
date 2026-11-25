@@ -15,8 +15,11 @@ use Illuminate\Queue\SerializesModels;
  * Job pemroses notifikasi Xendit yang sudah terverifikasi tokennya.
  *
  * Dijalankan setelah controller membalas 200 agar Xendit tidak timeout.
- * Bila job gagal, penanda idempotensi dihapus supaya webhook yang dikirim
- * ulang Xendit tetap bisa diproses.
+ *
+ * Bila job gagal permanen, penanda idempotensi **tidak dihapus**: Xendit
+ * tidak menjamin pengiriman ulang, sehingga menghapus marker hanya bisa
+ * menyebabkan event hilang. Job ditandai `failed_at` + `attempts` supaya
+ * reconciliation (T12) atau operator bisa menindaklanjuti.
  */
 final class ProcessXenditNotificationJob implements ShouldQueue
 {
@@ -42,6 +45,9 @@ final class ProcessXenditNotificationJob implements ShouldQueue
         WebhookEvent::query()
             ->where('provider', 'xendit')
             ->where('request_id', $this->eventKey)
-            ->delete();
+            ->update([
+                'attempts' => $this->attempts(),
+                'failed_at' => now(),
+            ]);
     }
 }
