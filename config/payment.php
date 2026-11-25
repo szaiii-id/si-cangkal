@@ -5,46 +5,37 @@
 | Konfigurasi Payment Gateway
 |--------------------------------------------------------------------------
 |
-| Fase 1 hanya mendukung environment sandbox DOKU. Kredensial produksi
-| sengaja ditolak supaya tidak terjadi transaksi uang sungguhan sebelum
-| seluruh alur webhook, hold, split settlement, dan refund terverifikasi.
+| SI-CANGKAL memakai Xendit Test Mode (sandbox). Seluruh fitur yang dipakai
+| tersedia tanpa KYC, tanpa XenPlatform, dan tanpa aktivasi channel:
+| Payment Session, webhook, refund, dan payout ke rekening bank.
 |
-| SEMUA pembacaan environment variable DOKU hanya terjadi di file ini.
-| Kode lain wajib memakai config('payment.doku.*').
+| SEMUA pembacaan environment variable XENDIT hanya terjadi di file ini.
+| Kode lain wajib memakai config('payment.xendit.*').
+|
+| Nilai XENDIT_SECRET_KEY dan XENDIT_CALLBACK_TOKEN diisi manual di .env
+| lokal setelah secret key dan callback token dibuat di dashboard Xendit.
 |
 */
 
-$dokuEnv = env('DOKU_ENV', 'sandbox');
-
-if ($dokuEnv !== 'sandbox') {
-    throw new RuntimeException(
-        'Fase 1 hanya mendukung DOKU sandbox. Set DOKU_ENV=sandbox.',
-    );
-}
-
 return [
-    'doku' => [
-        'env' => $dokuEnv,
+    'xendit' => [
+        'base_url' => 'https://api.xendit.co',
 
-        'base_url' => 'https://api-sandbox.doku.com',
+        'secret_key' => env('XENDIT_SECRET_KEY'),
 
-        'client_id' => env('DOKU_CLIENT_ID'),
+        'callback_token' => env('XENDIT_CALLBACK_TOKEN'),
 
-        'secret_key' => env('DOKU_SECRET_KEY'),
+        'payment_api_version' => '2024-11-11',
 
-        'notification_url' => env('DOKU_NOTIFICATION_URL'),
+        'payout_api_version' => '2025-09-01',
 
-        'checkout_path' => '/checkout/v1/payment',
+        // Payout instan dipakai hanya untuk demo; default tetap menunggu
+        // trip selesai seperti perilaku bisnis sebelumnya.
+        'instant_payout_enabled' => env('XENDIT_INSTANT_PAYOUT_ENABLED', false),
 
-        'release_path' => '/finance/v1/release',
+        // Komisi dinas dihitung di aplikasi karena split rule butuh XenPlatform.
+        'platform_fee_percent' => env('XENDIT_PLATFORM_FEE_PERCENT', 0),
 
-        'refund_path' => '/cancellation/credit-card/refund',
-
-        // Fase 1b — Sub Account V2
-        'b2b_token_path' => '/authorization/v1/access-token/b2b',
-
-        'private_key_path' => env('DOKU_PRIVATE_KEY_PATH'),
-
-        'sandbox_enabled' => env('DOKU_SANDBOX_ENABLED', false),
+        'webhook_path' => '/payments/xendit/webhook',
     ],
 ];

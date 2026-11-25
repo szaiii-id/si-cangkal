@@ -22,7 +22,7 @@ export type BookingStatus =
     | 'completed'
     | 'cancelled';
 
-export type PaymentMetode = 'transfer_manual' | 'doku';
+export type PaymentMetode = 'transfer_manual' | 'xendit';
 
 // ==========================================
 // TRIP

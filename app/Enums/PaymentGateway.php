@@ -6,14 +6,14 @@ namespace App\Enums;
  * Sumber pembayaran sebuah transaksi.
  *
  * `manual` adalah alur lama: client transfer ke rekening mitra lalu
- * mitra memverifikasi bukti transfer. `doku` adalah alur gateway:
- * pembayaran diverifikasi lewat webhook DOKU dan dananya di-split
- * langsung ke rekening mitra.
+ * mitra memverifikasi bukti transfer. `xendit` adalah alur gateway:
+ * pembayaran diverifikasi lewat webhook Xendit dan dananya dikirim
+ * ke rekening mitra lewat payout.
  */
 enum PaymentGateway: string
 {
     case MANUAL = 'manual';
-    case DOKU = 'doku';
+    case XENDIT = 'xendit';
 
     /**
      * Label untuk tampilan (Bahasa Indonesia).
@@ -22,12 +22,12 @@ enum PaymentGateway: string
     {
         return match ($this) {
             self::MANUAL => 'Transfer Manual',
-            self::DOKU => 'DOKU',
+            self::XENDIT => 'Xendit',
         };
     }
 
     public function isGateway(): bool
     {
-        return $this === self::DOKU;
+        return $this === self::XENDIT;
     }
 }

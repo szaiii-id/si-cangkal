@@ -5,13 +5,13 @@ namespace App\Enums;
 enum PaymentMetode: string
 {
     case TRANSFER_MANUAL = 'transfer_manual';
-    case DOKU = 'doku';
+    case XENDIT = 'xendit';
 
     public function label(): string
     {
         return match ($this) {
             self::TRANSFER_MANUAL => 'Transfer Manual',
-            self::DOKU => 'DOKU',
+            self::XENDIT => 'Xendit',
         };
     }
 
@@ -19,7 +19,7 @@ enum PaymentMetode: string
     {
         return match ($this) {
             self::TRANSFER_MANUAL => 'bg-blue/10 text-blue-dark border border-blue/20',
-            self::DOKU => 'bg-purple/10 text-purple-dark border border-purple/20',
+            self::XENDIT => 'bg-purple/10 text-purple-dark border border-purple/20',
         };
     }
 
