@@ -6,7 +6,7 @@ use App\Models\Payment;
 use App\Repositories\Contracts\BookingRepositoryInterface;
 use App\Services\Booking\BookingPaymentService;
 use App\Services\Notification\Contracts\NotificationDispatcherInterface;
-use Illuminate\Contracts\Filesystem\Filesystem;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -33,6 +33,11 @@ beforeEach(function () {
     DB::shouldReceive('transaction')
         ->byDefault()
         ->andReturnUsing(fn ($callback) => $callback());
+
+    // Unit test tidak membuka transaksi nyata: jalankan afterCommit langsung.
+    DB::shouldReceive('afterCommit')
+        ->byDefault()
+        ->andReturnUsing(fn (callable $callback) => $callback());
 
     // Lock baris: default null => service memakai booking yang diberikan.
     // Test verifyPayment meng-override dengan booking yang sama.
@@ -258,7 +263,7 @@ describe('Edge Cases — uploadProof storeProofFile fail', function () {
     it('storeProofFile return false → ValidationException', function () {
         Storage::shouldReceive('disk')
             ->with('local')
-            ->andReturn(Mockery::mock(Filesystem::class, function ($m) {
+            ->andReturn(Mockery::mock(FilesystemAdapter::class, function ($m) {
                 $m->shouldReceive('exists')->andReturn(false);
                 $m->shouldReceive('putFileAs')->andReturn(false);
             }));
