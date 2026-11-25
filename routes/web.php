@@ -269,6 +269,7 @@ Route::middleware('auth')->group(function () {
                 Route::get('/refunds', [MitraRefundController::class, 'index'])->name('refunds.index');
                 Route::post('/refunds/{refund}/approve', [MitraRefundController::class, 'approve'])->name('refunds.approve');
                 Route::post('/refunds/{refund}/reject', [MitraRefundController::class, 'reject'])->name('refunds.reject');
+                Route::post('/refunds/{refund}/proof', [MitraRefundController::class, 'uploadProof'])->middleware('throttle:10,1')->name('refunds.proof');
             });
         });
 

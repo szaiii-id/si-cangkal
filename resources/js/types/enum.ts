@@ -49,7 +49,12 @@ export type PackageFacilityTipe = 'include' | 'exclude';
 // REFUND
 // ==========================================
 
-export type RefundStatus = 'PENDING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
+export type RefundStatus =
+    | 'PENDING'
+    | 'AWAITING_PROOF'
+    | 'SUCCEEDED'
+    | 'FAILED'
+    | 'CANCELLED';
 
 export type RefundReason =
     | 'CANCELLATION'

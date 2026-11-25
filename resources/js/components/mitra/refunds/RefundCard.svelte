@@ -21,16 +21,19 @@
         refund,
         onApprove,
         onReject,
+        onUploadProof,
     }: {
         refund: RefundItem;
         onApprove: (r: RefundItem) => void;
         onReject: (r: RefundItem) => void;
+        onUploadProof?: (r: RefundItem) => void;
     } = $props();
 
     // ==========================================
     // DERIVED
     // ==========================================
     let isPending = $derived(refund.status === 'PENDING');
+    let isAwaitingProof = $derived(refund.status === 'AWAITING_PROOF');
 </script>
 
 <article class="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow p-4 sm:p-5">
@@ -100,6 +103,15 @@
                     Tolak Pengajuan
                 </button>
             </div>
+        {:else if isAwaitingProof}
+            <button
+                type="button"
+                onclick={() => onUploadProof?.(refund)}
+                class="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-white bg-blue-700 hover:bg-blue-800 transition-colors"
+                aria-label={`Unggah bukti transfer untuk refund #${refund.id}`}
+            >
+                Unggah Bukti Transfer
+            </button>
         {:else}
             <div class="py-2 px-3 bg-gray-50 rounded-lg text-center border border-gray-100" role="status">
                 <p class="text-[11px] font-bold text-gray-500">

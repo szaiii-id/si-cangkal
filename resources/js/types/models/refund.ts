@@ -20,6 +20,9 @@ export type RefundEloquent = {
     refund_fee_amount: string | null;
     initiated_by_mitra: number | null;
     catatan: string | null;
+    proof_path?: string | null;
+    proof_uploaded_at?: string | null;
+    proof_uploaded_by?: number | null;
     created_at: string;
     updated_at: string;
 
@@ -49,6 +52,9 @@ export type RefundResource = {
     refund_fee_amount: string | null;
     refundFeeRupiah: string;
     catatan: string | null;
+    hasProof?: boolean;
+    proof_uploaded_at?: string | null;
+    proof_uploaded_by?: number | null;
     created_at: string;
 
     // Relasi opsional

@@ -2,6 +2,7 @@ import type { RefundReason, RefundStatus } from '@/types';
 
 const STATUS_LABEL: Record<RefundStatus, string> = {
     PENDING: 'Sedang Diproses',
+    AWAITING_PROOF: 'Menunggu Bukti Transfer',
     SUCCEEDED: 'Berhasil',
     FAILED: 'Gagal',
     CANCELLED: 'Dibatalkan',
@@ -9,6 +10,7 @@ const STATUS_LABEL: Record<RefundStatus, string> = {
 
 const STATUS_BADGE: Record<RefundStatus, string> = {
     PENDING: 'bg-sun/10 text-sun-text border border-sun/20',
+    AWAITING_PROOF: 'bg-blue/10 text-blue-text border border-blue/20',
     SUCCEEDED: 'bg-green/10 text-green-text border border-green/20',
     FAILED: 'bg-red-50 text-red-700 border border-red-200',
     CANCELLED: 'bg-gray-100 text-gray-700 border border-gray-200',

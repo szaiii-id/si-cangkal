@@ -75,6 +75,18 @@ final class RefundPolicy
     }
 
     /**
+     * Unggah bukti transfer untuk refund manual.
+     *
+     * Hanya mitra pemilik, dan hanya saat refund menunggu bukti.
+     * Admin tidak mendapat aksi ini (monitoring read-only).
+     */
+    public function uploadProof(User $user, Refund $refund): bool
+    {
+        return $this->ownedByMitra($user, $refund)
+            && $refund->status === RefundStatus::AWAITING_PROOF;
+    }
+
+    /**
      * Cek kepemilikan refund oleh mitra.
      *
      * Memverifikasi dua sumber agar tidak bisa dibypass dengan data

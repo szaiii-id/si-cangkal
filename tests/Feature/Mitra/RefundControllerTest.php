@@ -159,7 +159,8 @@ describe('Contract — approve redirect', function () {
                     Mockery::on(fn ($r) => $r->id === $refund->id),
                     Mockery::on(fn ($u) => $u->id === $this->mitra->id),
                     'Catatan approval',
-                );
+                )
+                ->andReturn($refund);
         });
 
         $response = $this->actingAs($this->mitra)
@@ -262,8 +263,8 @@ describe('Concurrency — approve 2x', function () {
     it('approve 2x → mock service dipanggil 2x (idempoten di service)', function () {
         $refund = makeRefundForMitra($this->mitra, $this->client);
 
-        $this->mock(RefundApprovalService::class, function (MockInterface $m) {
-            $m->shouldReceive('approve')->twice();
+        $this->mock(RefundApprovalService::class, function (MockInterface $m) use ($refund) {
+            $m->shouldReceive('approve')->twice()->andReturn($refund);
         });
 
         $this->actingAs($this->mitra)
@@ -286,8 +287,8 @@ describe('Idempotency', function () {
     it('approve 2x pada refund sama → mock dipanggil 2x', function () {
         $refund = makeRefundForMitra($this->mitra, $this->client);
 
-        $this->mock(RefundApprovalService::class, function (MockInterface $m) {
-            $m->shouldReceive('approve')->twice();
+        $this->mock(RefundApprovalService::class, function (MockInterface $m) use ($refund) {
+            $m->shouldReceive('approve')->twice()->andReturn($refund);
         });
 
         $this->actingAs($this->mitra)->post("/mitra/refunds/{$refund->id}/approve", ['catatan' => 'Catatan']);
@@ -312,7 +313,8 @@ describe('Data Integrity — approve', function () {
                     Mockery::on(fn ($r) => $r->id === $refund->id),
                     Mockery::on(fn ($u) => $u->id === $this->mitra->id),
                     'Catatan approval',
-                );
+                )
+                ->andReturn($refund);
         });
 
         $this->actingAs($this->mitra)
@@ -331,7 +333,8 @@ describe('Data Integrity — approve', function () {
                     Mockery::on(fn ($r) => $r->id === $refund->id),
                     Mockery::on(fn ($u) => $u->id === $this->mitra->id),
                     null,
-                );
+                )
+                ->andReturn($refund);
         });
 
         $this->actingAs($this->mitra)

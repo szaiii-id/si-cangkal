@@ -89,7 +89,7 @@ function makeBookingForRefund(User $client, User $mitra, array $overrides = []):
 */
 
 describe('initiate — persistence', function () {
-    it('initiate → Refund SUCCEEDED tersimpan di DB', function () {
+    it('initiate → Refund AWAITING_PROOF tersimpan di DB', function () {
         $booking = makeBookingForRefund($this->client, $this->mitra);
 
         $refund = $this->service->initiate(
@@ -105,16 +105,16 @@ describe('initiate — persistence', function () {
             'booking_id' => $booking->id,
             'mitra_id' => $this->mitra->id,
             'amount' => 1_000_000,
-            'status' => RefundStatus::SUCCEEDED->value,
+            'status' => RefundStatus::AWAITING_PROOF->value,
             'reason' => RefundReason::CANCELLATION->value,
             'initiated_by_mitra' => $this->mitra->id,
-            'catatan' => 'Cuaca buruk',
         ]);
 
-        expect($refund->status)->toBe(RefundStatus::SUCCEEDED);
+        expect($refund->status)->toBe(RefundStatus::AWAITING_PROOF)
+            ->and($refund->catatan)->toContain('Cuaca buruk');
     });
 
-    it('initiate → Payment negatif tersimpan', function () {
+    it('initiate → belum ada Payment negatif sebelum bukti diunggah', function () {
         $booking = makeBookingForRefund($this->client, $this->mitra);
 
         $this->service->initiate(
@@ -125,15 +125,13 @@ describe('initiate — persistence', function () {
             $this->mitra,
         );
 
-        $this->assertDatabaseHas('payments', [
+        $this->assertDatabaseMissing('payments', [
             'booking_id' => $booking->id,
             'jumlah' => -1_000_000,
-            'metode' => PaymentMetode::TRANSFER_MANUAL->value,
-            'verified_by' => $this->mitra->id,
         ]);
     });
 
-    it('initiate → booking CANCELLED', function () {
+    it('initiate → booking tetap CONFIRMED', function () {
         $booking = makeBookingForRefund($this->client, $this->mitra);
 
         $this->service->initiate(
@@ -146,11 +144,11 @@ describe('initiate — persistence', function () {
 
         $this->assertDatabaseHas('bookings', [
             'id' => $booking->id,
-            'status' => BookingStatus::CANCELLED->value,
+            'status' => BookingStatus::CONFIRMED->value,
         ]);
     });
 
-    it('initiate → catatan booking di-append dengan [Refund]', function () {
+    it('initiate → catatan booking belum diubah', function () {
         $booking = makeBookingForRefund($this->client, $this->mitra, [
             'catatan' => 'Catatan lama',
         ]);
@@ -164,24 +162,13 @@ describe('initiate — persistence', function () {
         );
 
         $booking->refresh();
-        expect($booking->catatan)
-            ->toContain('Catatan lama')
-            ->toContain('[Refund]')
-            ->toContain('Alasan refund');
+        expect($booking->catatan)->toBe('Catatan lama');
     });
 
-    it('initiate → notifikasi ke client dikirim', function () {
+    it('initiate → notifikasi sukses belum dikirim ke client', function () {
         $booking = makeBookingForRefund($this->client, $this->mitra);
 
-        $this->notifier->shouldReceive('send')
-            ->once()
-            ->with(
-                user: Mockery::on(fn ($u) => $u->id === $this->client->id),
-                tipe: 'refund_succeeded',
-                judul: 'Refund Berhasil',
-                pesan: Mockery::type('string'),
-                data: Mockery::on(fn ($d) => isset($d['refund_id']) && isset($d['booking_id'])),
-            );
+        $this->notifier->shouldNotReceive('send');
 
         $this->service->initiate(
             $booking,
@@ -385,7 +372,7 @@ describe('initiate — refund aktif guard', function () {
             $this->mitra,
         );
 
-        expect($refund->status)->toBe(RefundStatus::SUCCEEDED);
+        expect($refund->status)->toBe(RefundStatus::AWAITING_PROOF);
     });
 });
 

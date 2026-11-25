@@ -16,7 +16,7 @@
     let {
         refunds,
         filters,
-        statusCounts = { PENDING: 0, SUCCEEDED: 0, FAILED: 0, CANCELLED: 0 },
+        statusCounts = { PENDING: 0, AWAITING_PROOF: 0, SUCCEEDED: 0, FAILED: 0, CANCELLED: 0 },
     }: AdminRefundIndexProps = $props();
 
     // svelte-ignore state_referenced_locally
@@ -60,7 +60,13 @@
     let hasActiveFilters = $derived(search !== '' || selectedStatus !== '');
     let totalAll = $derived(Object.values(statusCounts).reduce((sum, n) => sum + n, 0));
 
-    const refundStatusKeys: RefundStatus[] = ['PENDING', 'SUCCEEDED', 'FAILED', 'CANCELLED'];
+    const refundStatusKeys: RefundStatus[] = [
+        'PENDING',
+        'AWAITING_PROOF',
+        'SUCCEEDED',
+        'FAILED',
+        'CANCELLED',
+    ];
 
     let statusTabs: StatusTab[] = $derived([
         { value: '', label: 'Semua', count: totalAll },

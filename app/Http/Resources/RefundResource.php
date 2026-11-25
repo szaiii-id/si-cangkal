@@ -47,6 +47,10 @@ final class RefundResource extends JsonResource
                 : null,
             'refundFeeRupiah' => $this->refundFeeRupiah(),
             'catatan' => $this->catatan,
+            // Monitoring admin: hanya indikator, bukan aksi verifikasi.
+            'hasProof' => $this->proof_path !== null && $this->proof_path !== '',
+            'proof_uploaded_at' => $this->proof_uploaded_at?->toIso8601String(),
+            'proof_uploaded_by' => $this->proof_uploaded_by,
             'created_at' => $this->created_at->toIso8601String(),
             'mitra' => $this->whenLoaded('mitra', function (): ?array {
                 /** @var User|null $mitra */

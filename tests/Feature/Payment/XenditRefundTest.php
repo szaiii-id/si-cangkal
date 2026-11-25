@@ -100,14 +100,15 @@ describe('refund gateway Xendit', function () {
 
         $result = app(RefundApprovalService::class)->approve($this->refund, $this->mitra, 'Trip dibatalkan');
 
-        expect($result->status)->toBe(RefundStatus::SUCCEEDED)
+        expect($result->status)->toBe(RefundStatus::AWAITING_PROOF)
             ->and($result->gateway_refund_id)->toBeNull();
 
         Http::assertNothingSent();
 
+        // Bukti belum diunggah → booking belum dibatalkan.
         $this->assertDatabaseHas('bookings', [
             'id' => $this->booking->id,
-            'status' => BookingStatus::CANCELLED->value,
+            'status' => BookingStatus::CONFIRMED->value,
         ]);
     });
 

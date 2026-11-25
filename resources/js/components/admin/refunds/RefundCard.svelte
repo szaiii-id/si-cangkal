@@ -13,6 +13,7 @@
     let { refund }: { refund: RefundResource } = $props();
 
     let isPending = $derived(refund.status === 'PENDING');
+    let isAwaitingProof = $derived(refund.status === 'AWAITING_PROOF');
 </script>
 
 <article class="bg-white rounded-2xl border border-gray-200 shadow-sm hover:border-pink/30 hover:shadow-md transition-all p-5 flex flex-col">
@@ -76,8 +77,17 @@
             {/if}
         </div>
 
-        <p class="text-[10px] font-bold {isPending ? 'text-sun-text' : 'text-green-text'}">
-            {isPending ? 'Butuh Tindakan Mitra' : 'Selesai'}
-        </p>
+        <div class="text-right">
+            <p class="text-[10px] font-bold {isPending || isAwaitingProof ? 'text-sun-text' : 'text-green-text'}">
+                {isPending
+                    ? 'Butuh Tindakan Mitra'
+                    : isAwaitingProof
+                    ? 'Menunggu Bukti Mitra'
+                    : 'Selesai'}
+            </p>
+            {#if refund.hasProof}
+                <p class="text-[9px] text-gray-500 mt-0.5">Bukti transfer tersedia</p>
+            {/if}
+        </div>
     </div>
 </article>
