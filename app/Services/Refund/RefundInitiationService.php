@@ -110,6 +110,78 @@ final class RefundInitiationService
         return $refund;
     }
 
+    /**
+     * Menyelesaikan refund yang sudah PENDING setelah dana cair ke mitra.
+     *
+     * Dipakai bila pengajuan refund dibuat sebelum payout selesai. Gateway
+     * tidak bisa menarik dana dari rekening mitra, jadi refund diselesaikan
+     * lewat jalur manual dengan tetap memakai record refund yang ada.
+     */
+    public function completeManuallyAfterPayout(
+        Refund $refund,
+        User $mitra,
+        ?string $catatan,
+    ): Refund {
+        $refund = DB::transaction(function () use ($refund, $mitra, $catatan): Refund {
+            $locked = Refund::query()
+                ->whereKey($refund->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($locked->status !== RefundStatus::PENDING) {
+                throw ValidationException::withMessages([
+                    'refund' => ["Refund berstatus '{$locked->status->label()}' tidak bisa diproses."],
+                ]);
+            }
+
+            $booking = $locked->booking;
+
+            if ($booking === null) {
+                throw ValidationException::withMessages([
+                    'booking' => ['Booking terkait refund tidak ditemukan.'],
+                ]);
+            }
+
+            $amount = (float) $locked->amount;
+            $noteLine = '[Refund Manual] '.now()->format('Y-m-d H:i')
+                .($catatan !== null ? " - {$catatan}" : '');
+
+            $locked->update([
+                'status' => RefundStatus::SUCCEEDED->value,
+                'gateway_status' => null,
+                'catatan' => trim(($locked->catatan ?? '')."\n{$noteLine}"),
+            ]);
+
+            Payment::create([
+                'booking_id' => $booking->id,
+                'jumlah' => -$amount,
+                'metode' => PaymentMetode::TRANSFER_MANUAL,
+                'verified_by' => $mitra->id,
+                'verified_at' => now(),
+                'catatan' => "Refund manual oleh Mitra: {$mitra->name}. Dana sudah dicairkan.",
+            ]);
+
+            $booking->update([
+                'status' => BookingStatus::CANCELLED->value,
+            ]);
+
+            AuditLogger::log('refund.completed_manually_after_payout', [
+                'actor_id' => $mitra->id,
+                'actor_role' => 'mitra',
+                'refund_id' => $locked->id,
+                'booking_id' => $booking->id,
+                'booking_kode' => $booking->kode,
+                'amount' => $amount,
+            ]);
+
+            return $locked->load('booking.client');
+        });
+
+        $this->notifyRefundSucceededToClient($refund);
+
+        return $refund;
+    }
+
     // ==========================================
     // VALIDATION HELPERS
     // ==========================================
