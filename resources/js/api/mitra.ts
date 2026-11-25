@@ -116,6 +116,7 @@ export async function createPaymentLink(
     return (await response.json()) as {
         url: string;
         expires_at: string | null;
+        checkout_url: string;
     };
 }
 

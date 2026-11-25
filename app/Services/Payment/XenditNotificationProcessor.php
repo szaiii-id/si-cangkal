@@ -30,6 +30,7 @@ final class XenditNotificationProcessor
     public function __construct(
         private readonly BookingRepositoryInterface $bookingRepository,
         private readonly NotificationDispatcherInterface $notificationDispatcher,
+        private readonly BookingPaymentLinkService $paymentLink,
     ) {}
 
     public function process(XenditWebhookEvent $event): void
@@ -455,6 +456,10 @@ final class XenditNotificationProcessor
         if ($updated === null) {
             return;
         }
+
+        // Sesi sudah tidak bisa dipakai: cabut tautan WA agar client tidak
+        // membuka halaman dengan tombol bayar ke URL mati.
+        $this->paymentLink->revokeActive($updated->booking);
 
         $client = $updated->booking?->client;
 

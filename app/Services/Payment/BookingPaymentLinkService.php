@@ -10,6 +10,7 @@ use App\Models\BookingPaymentLink;
 use App\Models\Payment;
 use App\Services\Invoice\Contracts\InvoiceServiceInterface;
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -29,7 +30,7 @@ final class BookingPaymentLinkService
 
     public function forBooking(Booking $booking, XenditSessionResult $session): BookingPaymentLink
     {
-        $expiresAt = $this->expiresAtFromSession($session);
+        $expiresAt = $this->expiresAtFor($booking, $session);
 
         $hasPendingPayment = Payment::query()
             ->where('booking_id', $booking->id)
@@ -110,18 +111,18 @@ final class BookingPaymentLinkService
         }
     }
 
-    private function expiresAtFromSession(XenditSessionResult $session): ?Carbon
+    private function expiresAtFor(Booking $booking, XenditSessionResult $session): ?CarbonInterface
     {
         $raw = data_get($session->payload, 'expires_at');
 
-        if (! is_string($raw) || $raw === '') {
-            return null;
+        if (is_string($raw) && $raw !== '') {
+            try {
+                return Carbon::parse($raw);
+            } catch (Throwable) {
+                // Lanjut ke fallback dari booking.
+            }
         }
 
-        try {
-            return Carbon::parse($raw);
-        } catch (Throwable) {
-            return null;
-        }
+        return $booking->expired_at;
     }
 }

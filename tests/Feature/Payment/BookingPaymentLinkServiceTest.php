@@ -62,6 +62,22 @@ describe('BookingPaymentLinkService', function () {
             ->and(BookingPaymentLink::where('booking_id', $booking->id)->count())->toBe(1);
     });
 
+    it('memakai expired_at booking bila sesi tidak mengirim expires_at', function () {
+        $expiredAt = now()->addHours(2);
+        $booking = Booking::factory()->create([
+            'status' => BookingStatus::PENDING_PAYMENT,
+            'expired_at' => $expiredAt,
+        ]);
+        pendingPaymentFor($booking);
+
+        $link = app(BookingPaymentLinkService::class)->forBooking(
+            $booking,
+            new XenditSessionResult('ps-1', 'https://dev.xen.to/x', [], null),
+        );
+
+        expect($link->expires_at->toIso8601String())->toBe($expiredAt->toIso8601String());
+    });
+
     it('merotasi token saat sesi lama sudah expired', function () {
         $booking = Booking::factory()->create(['status' => BookingStatus::PENDING_PAYMENT]);
         pendingPaymentFor($booking, 'EXPIRED');

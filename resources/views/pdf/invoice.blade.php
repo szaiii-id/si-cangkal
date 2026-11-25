@@ -58,21 +58,8 @@
         <div class="right total">Total Rp {{ number_format((float) $booking->total_harga, 0, ',', '.') }}</div>
     </div>
 
-    @if($booking->participants->isNotEmpty())
-        <table>
-            <thead>
-                <tr><th>Peserta</th><th>Umur</th></tr>
-            </thead>
-            <tbody>
-                @foreach($booking->participants as $participant)
-                    <tr>
-                        <td>{{ $participant->nama }}</td>
-                        <td>{{ $participant->umur ?? '-' }}</td>
-                    </tr>
-                @endforeach
-            </tbody>
-        </table>
-    @endif
+    {{-- Daftar peserta dan nomor HP sengaja tidak ditampilkan: invoice --}}
+    {{-- ini dibagikan lewat tautan WhatsApp tanpa login. --}}
 
     <div class="box">
         <strong>Instruksi pembayaran</strong><br>

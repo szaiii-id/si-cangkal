@@ -19,6 +19,11 @@ function createInvoiceLink(array $overrides = []): array
         'total_harga' => 1_500_000,
     ]);
 
+    $booking->participants()->create([
+        'nama' => 'Peserta Rahasia',
+        'umur' => 30,
+    ]);
+
     Payment::create([
         'booking_id' => $booking->id,
         'jumlah' => 1_500_000,
@@ -49,7 +54,37 @@ describe('invoice PDF', function () {
             ->assertHeader('Content-Type', 'application/pdf')
             ->assertHeader('Content-Disposition', 'attachment; filename=Invoice-'.$booking->kode.'.pdf');
 
-        expect(str_starts_with($response->getContent(), '%PDF'))->toBeTrue();
+        expect(str_starts_with($response->getContent(), '%PDF'))->toBeTrue()
+            ->and(str_contains($response->getContent(), 'Peserta Rahasia'))->toBeFalse();
+    });
+
+    it('tidak merender daftar peserta pada invoice', function () {
+        [$booking] = createInvoiceLink();
+
+        $html = view('pdf.invoice', [
+            'booking' => $booking->loadMissing('participants'),
+            'packageName' => 'Paket Uji',
+            'mitraName' => 'Mitra Uji',
+            'clientName' => 'Klien Uji',
+            'clientEmail' => 'klien@example.com',
+        ])->render();
+
+        expect(str_contains($html, 'Peserta Rahasia'))->toBeFalse();
+    });
+
+    it('mengikuti total harga booking terbaru', function () {
+        [$booking] = createInvoiceLink();
+        $booking->update(['total_harga' => 2_000_000]);
+
+        $html = view('pdf.invoice', [
+            'booking' => $booking->fresh()->loadMissing('participants'),
+            'packageName' => 'Paket Uji',
+            'mitraName' => 'Mitra Uji',
+            'clientName' => 'Klien Uji',
+            'clientEmail' => 'klien@example.com',
+        ])->render();
+
+        expect(str_contains($html, '2.000.000'))->toBeTrue();
     });
 
     it('menolak token yang sudah dicabut', function () {

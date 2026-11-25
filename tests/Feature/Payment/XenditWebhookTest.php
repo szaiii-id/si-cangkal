@@ -6,6 +6,7 @@ use App\Enums\PaymentGateway;
 use App\Enums\PaymentMetode;
 use App\Jobs\ProcessXenditNotificationJob;
 use App\Models\Booking;
+use App\Models\BookingPaymentLink;
 use App\Models\Package;
 use App\Models\Payment;
 use App\Models\User;
@@ -13,6 +14,7 @@ use App\Models\WebhookEvent;
 use App\Services\Payment\XenditNotificationProcessor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
 
@@ -113,6 +115,25 @@ describe('POST /payments/xendit/webhook', function () {
         Bus::assertDispatched(ProcessXenditNotificationJob::class, 1);
     });
 
+    it('memproses dua webhook expiry dengan reference berbeda', function () {
+        $first = xenditPaymentWebhook($this->booking);
+        $first['event'] = 'payment_session.expired';
+        $first['data']['payment_id'] = null;
+        $first['data']['reference_id'] = $this->booking->kode.'-1';
+
+        $second = xenditPaymentWebhook($this->booking);
+        $second['event'] = 'payment_session.expired';
+        $second['data']['payment_id'] = null;
+        $second['data']['reference_id'] = $this->booking->kode.'-2';
+
+        $headers = ['X-Callback-Token' => 'callback-token-rahasia'];
+
+        $this->postJson('/payments/xendit/webhook', $first, $headers)->assertOk();
+        $this->postJson('/payments/xendit/webhook', $second, $headers)->assertOk();
+
+        Bus::assertDispatched(ProcessXenditNotificationJob::class, 2);
+    });
+
     it('menghapus penanda idempotensi bila pemrosesan gagal', function () {
         WebhookEvent::query()->create([
             'provider' => 'xendit',
@@ -197,6 +218,12 @@ describe('XenditNotificationProcessor', function () {
     });
 
     it('menandai payment kedaluwarsa tanpa mengubah status booking', function () {
+        $link = BookingPaymentLink::create([
+            'booking_id' => $this->booking->id,
+            'token' => (string) Str::uuid(),
+            'expires_at' => now()->addMinutes(30),
+        ]);
+
         $event = new XenditWebhookEvent(
             event: 'payment_session.expired',
             paymentId: null,
@@ -210,7 +237,8 @@ describe('XenditNotificationProcessor', function () {
         app(XenditNotificationProcessor::class)->process($event);
 
         expect($this->payment->fresh()->gateway_status)->toBe('EXPIRED')
-            ->and($this->booking->fresh()->status)->toBe(BookingStatus::PENDING_PAYMENT);
+            ->and($this->booking->fresh()->status)->toBe(BookingStatus::PENDING_PAYMENT)
+            ->and($link->fresh()->revoked_at)->not->toBeNull();
     });
 
     it('tidak memproses ulang payment yang sudah SUCCESS', function () {

@@ -34,9 +34,13 @@ final class PaymentWebhookController extends Controller
             return response()->json(['message' => 'Callback token tidak valid.'], 401);
         }
 
+        // Event expiry tidak selalu membawa payment_id/payout_id. Pakai
+        // reference_id bila ada; untuk payload tanpa ID, hash body membuat
+        // tiap event unik tetapi retry dengan body sama tetap terdedupe.
         $requestId = $notification->paymentId
             ?? $notification->payoutId
-            ?? $notification->event;
+            ?? $notification->referenceId
+            ?? 'event-'.hash('sha256', $request->getContent());
 
         if ($requestId === '' || ! $this->storeEvent($notification, $requestId)) {
             return response()->json(['status' => 'ok']);

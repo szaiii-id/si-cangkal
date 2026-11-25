@@ -112,7 +112,7 @@ test.describe('Pembayaran Xendit (Test Mode)', () => {
         await page.goto(`/mitra/bookings/${booking.booking_id}`);
 
         await expect(
-            page.getByRole('button', { name: 'Buat & Salin Link' }),
+            page.getByRole('button', { name: 'Salin Tautan Pembayaran' }),
         ).toBeVisible();
         await expect(
             page.getByText('Upload Bukti Transfer', { exact: false }).first(),

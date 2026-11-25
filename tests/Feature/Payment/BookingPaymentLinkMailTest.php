@@ -10,6 +10,7 @@ use App\Models\Payment;
 use App\Services\Payment\BookingPaymentLinkService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
+use RuntimeException;
 
 uses(RefreshDatabase::class);
 
@@ -71,6 +72,28 @@ describe('email otomatis link pembayaran', function () {
         $service->forBooking($booking, sessionForMail());
 
         Mail::assertQueued(BookingPaymentLinkMail::class, 1);
+    });
+
+    it('mengirim email baru saat token dirotasi', function () {
+        $booking = bookingForMail('manual');
+        $payment = $booking->payments()->latest()->firstOrFail();
+        $payment->update(['gateway_status' => 'EXPIRED']);
+
+        $service = app(BookingPaymentLinkService::class);
+        $service->forBooking($booking, sessionForMail());
+        $service->forBooking($booking, sessionForMail());
+
+        Mail::assertQueued(BookingPaymentLinkMail::class, 2);
+    });
+
+    it('tidak menggagalkan pembuatan link bila email gagal', function () {
+        Mail::shouldReceive('to')->andThrow(new RuntimeException('mail down'));
+
+        $booking = bookingForMail('manual');
+        $link = app(BookingPaymentLinkService::class)
+            ->forBooking($booking, sessionForMail());
+
+        expect($link->token)->not->toBeEmpty();
     });
 
     it('tidak mengirim email untuk booking aplikasi', function () {
