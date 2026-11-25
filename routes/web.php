@@ -58,6 +58,10 @@ Route::get('/bayar/{token}', [PublicPaymentLinkController::class, 'show'])
     ->middleware('throttle:30,1')
     ->name('payments.public');
 
+Route::get('/bayar/{token}/invoice', [PublicPaymentLinkController::class, 'invoice'])
+    ->middleware('throttle:30,1')
+    ->name('payments.public.invoice');
+
 Route::get('/e-tickets/{uuid}', [PublicETicketController::class, 'show'])
     ->whereUuid('uuid')
     ->middleware('throttle:e-ticket-verify')

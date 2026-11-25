@@ -18,6 +18,8 @@ use App\Repositories\Eloquent\TripRepository;
 use App\Repositories\Eloquent\UserRepository;
 use App\Services\ETicket\Contracts\ETicketServiceInterface;
 use App\Services\ETicket\ETicketService;
+use App\Services\Invoice\Contracts\InvoiceServiceInterface;
+use App\Services\Invoice\InvoiceService;
 use App\Services\Notification\Contracts\FirebaseNotificationServiceInterface;
 use App\Services\Notification\Contracts\NotificationDispatcherInterface;
 use App\Services\Notification\Contracts\NotificationServiceInterface;
@@ -90,6 +92,11 @@ final class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             ETicketServiceInterface::class,
             ETicketService::class,
+        );
+
+        $this->app->bind(
+            InvoiceServiceInterface::class,
+            InvoiceService::class,
         );
     }
 

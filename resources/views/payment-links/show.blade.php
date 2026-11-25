@@ -53,7 +53,7 @@
             @if($canPay && $checkoutUrl !== '')
                 <a class="btn btn-primary" href="{{ $checkoutUrl }}">Bayar dengan Xendit</a>
             @endif
-            <a class="btn btn-secondary" href="/bayar/{{ $token }}/invoice">Unduh Invoice PDF</a>
+            <a class="btn btn-secondary" href="{{ route('payments.public.invoice', ['token' => $token]) }}">Unduh Invoice PDF</a>
         </div>
 
         <p class="note">

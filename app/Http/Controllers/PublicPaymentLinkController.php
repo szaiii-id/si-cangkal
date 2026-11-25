@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\BookingStatus;
 use App\Enums\PaymentGateway;
 use App\Models\Payment;
+use App\Services\Invoice\Contracts\InvoiceServiceInterface;
 use App\Services\Payment\BookingPaymentLinkService;
 use App\Support\PiiMask;
 use Illuminate\Http\Response;
@@ -59,5 +60,21 @@ final class PublicPaymentLinkController extends Controller
             ->header('Referrer-Policy', 'no-referrer')
             ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
             ->header('Pragma', 'no-cache');
+    }
+
+    public function invoice(string $token, InvoiceServiceInterface $invoices): Response
+    {
+        $link = $this->paymentLink->findByToken($token);
+        $booking = $link?->booking;
+
+        abort_if($link === null || $booking === null, 404);
+
+        return response($invoices->pdfForBooking($booking), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename='.$invoices->fileName($booking),
+            'X-Robots-Tag' => 'noindex, nofollow, noarchive',
+            'Referrer-Policy' => 'no-referrer',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+        ]);
     }
 }
