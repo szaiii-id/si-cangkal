@@ -46,14 +46,14 @@
                 </div>
                 <h2 id="reset-password-modal-title" class="text-xl font-extrabold text-dark mb-2">Reset Password?</h2>
                 <p class="text-sm text-gray-500 mb-2">
-                    Yakin ingin mereset password user berikut?
+                    Tautan pengaturan password akan dikirim ke email user berikut. Password lama akan tetap berlaku sampai tautan digunakan.
                 </p>
                 <div class="bg-gray-50 rounded-2xl p-4 mb-6 text-left">
                     <p class="text-sm font-bold text-dark truncate">{userName}</p>
                     <p class="text-xs text-gray-500 truncate">{userEmail}</p>
                 </div>
                 <p class="text-xs text-gray-500 mb-6">
-                    Password baru akan <strong>ditampilkan sekali</strong> dan user harus menggantinya saat login.
+                    Tautan berlaku terbatas. Setelah user mengatur password sendiri, akun langsung bisa digunakan.
                 </p>
 
                 <div class="flex flex-col sm:flex-row gap-3">

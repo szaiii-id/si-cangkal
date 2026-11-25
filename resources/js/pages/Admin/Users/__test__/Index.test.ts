@@ -29,7 +29,7 @@ import { render, screen, fireEvent } from '@testing-library/svelte';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { tick } from 'svelte';
 import Index from '../Index.svelte';
-import type { Credentials, PaginationMeta, StatusTab } from '@/types';
+import type { PaginationMeta, StatusTab } from '@/types';
 
 // ============================================================
 // 1. HOISTED MOCK REGISTRY
@@ -42,7 +42,12 @@ const mockPage = vi.hoisted(() => ({
             user: { id: 1, name: 'Super Admin', role: 'admin' },
         },
         flash: {
-            credentials: null as Credentials | null,
+            credentials: null as {
+                name: string;
+                username: string;
+                email: string;
+                password: string;
+            } | null,
         },
     },
 }));
@@ -283,30 +288,6 @@ vi.mock('@/global/Pagination.svelte', () => ({
         el.setAttribute('data-testid', 'pagination');
         el.textContent = `Total ${props.meta.total} ${props.label}`;
         anchor.parentNode?.insertBefore(el, anchor);
-        return {};
-    },
-}));
-
-// ============================================================
-// 12. MOCK — CREDENTIALS MODAL (reactive via mockUpdaters)
-// ============================================================
-vi.mock('../CredentialsModal.svelte', () => ({
-    default: (
-        anchor: Node,
-        props: { open: boolean; credentials: Credentials | null },
-    ) => {
-        const el = document.createElement('div');
-        el.setAttribute('data-testid', 'credentials-modal');
-        anchor.parentNode?.insertBefore(el, anchor);
-
-        const update = () => {
-            el.innerHTML = '';
-            if (!props.open || !props.credentials) return;
-            el.textContent = `Kredensial: ${props.credentials.username} / ${props.credentials.password}`;
-        };
-
-        update();
-        mockUpdaters.add(update);
         return {};
     },
 }));
@@ -655,14 +636,14 @@ describe('Admin Users Index Page', () => {
     // 18.5 EFFECT — Flash credentials
     // ----------------------------------------------------------
     describe('Effect — Flash Credentials', () => {
-        it('membuka CredentialsModal otomatis saat flash.credentials tersedia', async () => {
+        it('tidak membuka modal kredensial (tidak ada password plaintext di flash)', async () => {
             mockPage.props.flash = {
                 credentials: {
                     name: 'Mitra Baru',
                     username: 'mitrabaru',
                     email: 'baru@test.com',
                     password: 'TempPassword123',
-                } as Credentials,
+                },
             };
 
             render(Index, {
@@ -671,9 +652,9 @@ describe('Admin Users Index Page', () => {
             });
             await syncUI();
 
-            expect(screen.getByTestId('credentials-modal')).toHaveTextContent(
-                'Kredensial: mitrabaru / TempPassword123',
-            );
+            expect(
+                screen.queryByTestId('credentials-modal'),
+            ).not.toBeInTheDocument();
         });
     });
 

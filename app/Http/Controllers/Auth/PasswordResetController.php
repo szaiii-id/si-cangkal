@@ -47,6 +47,8 @@ class PasswordResetController extends Controller
             function (User $user) use ($request): void {
                 $user->forceFill([
                     'password' => $request->password,
+                    // User baru saja memilih password sendiri lewat tautan.
+                    'must_change_password' => false,
                 ])->save();
             }
         );

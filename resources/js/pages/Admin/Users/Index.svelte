@@ -1,7 +1,6 @@
 <script lang="ts">
     import { onDestroy } from 'svelte';
     import DashboardLayout from '@/components/layout/DashboardLayout.svelte';
-    import CredentialsModal from './CredentialsModal.svelte';
     import ResetPasswordConfirmModal from './ResetPasswordConfirmModal.svelte';
     import ConfirmModal from '@/global/ConfirmModal.svelte';
     import EmptyState from '@/global/EmptyState.svelte';
@@ -12,7 +11,7 @@
     import UserTable from '@/components/admin/users/UserTable.svelte';
 
     import { inertia, page } from '@inertiajs/svelte';
-    import type { Credentials, PaginationMeta, StatusTab, User } from '@/types';
+    import type { PaginationMeta, StatusTab, User } from '@/types';
     import { adminMenu } from '@/utils/menus';
     import { getUsers, deleteUser, resetUserPassword } from '@/api/admin';
 
@@ -29,8 +28,6 @@
     } = $props();
 
     let authUserId = $derived(page.props.auth?.user?.id);
-    let showCredentialsModal = $state(false);
-    let credentials = $state<Credentials | null>(null);
     let showDeleteModal = $state(false);
     let userToDelete = $state<{ id: number; name: string } | null>(null);
     let deleteProcessing = $state(false);
@@ -41,14 +38,6 @@
     let search = $state(filters.search ?? '');
     let searchTimeout: ReturnType<typeof setTimeout> | undefined;
     let activeTab = $state<'all' | 'admin' | 'mitra'>('all');
-
-    $effect(() => {
-        const flash = page.props.flash as { credentials?: Credentials | null };
-        if (flash?.credentials) {
-            credentials = flash.credentials;
-            showCredentialsModal = true;
-        }
-    });
 
     onDestroy(() => {
         clearTimeout(searchTimeout);
@@ -160,6 +149,5 @@
     </div>
 </DashboardLayout>
 
-<CredentialsModal bind:open={showCredentialsModal} {credentials} />
 <ConfirmModal bind:open={showDeleteModal} variant="danger" title="Hapus User?" description={`Yakin ingin menghapus "${userToDelete?.name ?? ''}"?`} confirmLabel="Ya, Hapus" processing={deleteProcessing} onConfirm={handleDeleteUser} />
 <ResetPasswordConfirmModal bind:open={showResetModal} userName={userToReset?.name ?? ''} userEmail={userToReset?.email ?? ''} onConfirm={handleResetPassword} />

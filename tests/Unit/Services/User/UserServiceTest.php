@@ -9,6 +9,7 @@ use App\Services\User\UserService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\ValidationException;
 
 /*
@@ -33,6 +34,12 @@ beforeEach(function () {
         ->andReturnUsing(fn ($callback) => $callback());
 
     Log::shouldReceive('info')->byDefault()->andReturnNull();
+    Log::shouldReceive('warning')->byDefault()->andReturnNull();
+
+    // Unit test tidak memakai DB: broker reset di-mock.
+    Password::shouldReceive('sendResetLink')
+        ->byDefault()
+        ->andReturn(Password::RESET_LINK_SENT);
 });
 
 afterEach(function () {
@@ -109,7 +116,7 @@ describe('BVA — validateUnique username empty', function () {
 */
 
 describe('Equivalence — createAdmin', function () {
-    it('dengan password explicit → pakai password itu', function () {
+    it('password explicit diabaikan: password acak tidak pernah dikembalikan', function () {
         $this->userRepo->shouldReceive('emailExists')->once()->andReturn(false);
         $this->userRepo->shouldReceive('usernameExists')->once()->andReturn(false);
 
@@ -122,12 +129,15 @@ describe('Equivalence — createAdmin', function () {
                 $capturedPassword = $payload['password'];
 
                 return $payload['role'] === 'admin'
-                    && $payload['must_change_password'] === true;
+                    && $payload['must_change_password'] === true
+                    && is_string($payload['password'])
+                    && strlen($payload['password']) >= 32;
             }), true)
             ->andReturn($user);
 
         $this->profileRepo->shouldReceive('createForUser')->once();
         $this->notificationDispatcher->shouldReceive('send')->once();
+        Password::shouldReceive('sendResetLink')->once()->andReturn(Password::RESET_LINK_SENT);
         Log::shouldReceive('info')->once();
 
         $result = $this->service->createAdmin([
@@ -137,11 +147,11 @@ describe('Equivalence — createAdmin', function () {
             'password' => 'ExplicitPass123!',
         ]);
 
-        expect($capturedPassword)->toBe('ExplicitPass123!')
-            ->and($result['plain_password'])->toBe('ExplicitPass123!');
+        expect($capturedPassword)->not->toBe('ExplicitPass123!')
+            ->and($result)->not->toHaveKey('plain_password');
     });
 
-    it('tanpa password → auto-generate (panjang 12)', function () {
+    it('tanpa password → auto-generate dan kirim tautan set password', function () {
         $this->userRepo->shouldReceive('emailExists')->andReturn(false);
 
         $capturedPassword = null;
@@ -153,12 +163,13 @@ describe('Equivalence — createAdmin', function () {
                 $capturedPassword = $payload['password'];
 
                 return is_string($payload['password'])
-                    && strlen($payload['password']) >= 12;
+                    && strlen($payload['password']) >= 32;
             }), true)
             ->andReturn($user);
 
         $this->profileRepo->shouldReceive('createForUser')->once();
         $this->notificationDispatcher->shouldReceive('send')->once();
+        Password::shouldReceive('sendResetLink')->once()->andReturn(Password::RESET_LINK_SENT);
         Log::shouldReceive('info')->once();
 
         $result = $this->service->createAdmin([
@@ -166,7 +177,8 @@ describe('Equivalence — createAdmin', function () {
             'email' => 'admin@example.com',
         ]);
 
-        expect($result['plain_password'])->toBe($capturedPassword);
+        expect($result)->not->toHaveKey('plain_password')
+            ->and($capturedPassword)->toBeString();
     });
 });
 
@@ -339,7 +351,7 @@ describe('Happy Path — createAdmin', function () {
         ]);
 
         expect($result['user'])->toBe($user)
-            ->and($result['plain_password'])->toBeString();
+            ->and($result)->not->toHaveKey('plain_password');
     });
 });
 
@@ -392,29 +404,26 @@ describe('Happy Path — deleteUser', function () {
 });
 
 describe('Happy Path — resetPassword', function () {
-    it('generate password + set must_change_password = true', function () {
+    it('kirim tautan reset tanpa mengubah hash password', function () {
         $user = Mockery::mock(User::class)->makePartial();
-        $user->forceFill(['id' => 3, 'email' => 'reset@example.com']);
+        $user->forceFill(['id' => 3, 'email' => 'reset@example.com', 'password' => 'hash-lama']);
 
-        $capturedPassword = null;
         $user->shouldReceive('update')
             ->once()
-            ->with(Mockery::on(function ($payload) use (&$capturedPassword) {
-                $capturedPassword = $payload['password'];
-
-                return $payload['must_change_password'] === true
-                    && is_string($payload['password'])
-                    && strlen($payload['password']) >= 12;
-            }));
+            ->with(['must_change_password' => true]);
 
         $user->shouldReceive('refresh')->andReturnSelf();
 
-        Log::shouldReceive('info')->once();
+        Password::shouldReceive('sendResetLink')
+            ->once()
+            ->with(['email' => 'reset@example.com'])
+            ->andReturn(Password::RESET_LINK_SENT);
 
         $result = $this->service->resetPassword($user);
 
         expect($result['user'])->toBe($user)
-            ->and($result['plain_password'])->toBe($capturedPassword);
+            ->and($result)->not->toHaveKey('plain_password')
+            ->and($user->password)->toBe('hash-lama');
     });
 });
 

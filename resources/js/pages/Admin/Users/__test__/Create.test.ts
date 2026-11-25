@@ -233,8 +233,8 @@ describe('Admin Users — Create Page', () => {
             expect(screen.getByLabelText('Username')).toBeInTheDocument();
             expect(screen.getByLabelText('Email')).toBeInTheDocument();
 
-            // Form password (via mock UserPasswordForm)
-            expect(screen.getByLabelText('Password')).toBeInTheDocument();
+            // Password tidak lagi diinput admin; diatur lewat email.
+            expect(screen.queryByLabelText('Password')).not.toBeInTheDocument();
 
             // Submit button
             expect(
@@ -260,7 +260,6 @@ describe('Admin Users — Create Page', () => {
             await fillField('Nama', 'Budi Santoso');
             await fillField('Username', 'budisan');
             await fillField('Email', 'budi@test.com');
-            await fillField('Password', 'secret123');
 
             // Mock createAdmin — tidak panggil callback agar processing tetap true sementara
             vi.mocked(createAdmin).mockImplementation(() => {});
@@ -276,7 +275,6 @@ describe('Admin Users — Create Page', () => {
                     name: 'Budi Santoso',
                     username: 'budisan',
                     email: 'budi@test.com',
-                    password: 'secret123',
                 },
                 expect.any(Object),
             );
@@ -287,7 +285,6 @@ describe('Admin Users — Create Page', () => {
 
             await fillField('Nama', 'Budi');
             await fillField('Email', 'budi@test.com');
-            await fillField('Password', 'secret123');
 
             vi.mocked(createAdmin).mockImplementation(() => {});
 
@@ -301,7 +298,7 @@ describe('Admin Users — Create Page', () => {
             );
         });
 
-        it('mengirim password=null saat password kosong', async () => {
+        it('tidak mengirim field password sama sekali', async () => {
             render(Create);
 
             await fillField('Nama', 'Budi');
@@ -314,7 +311,12 @@ describe('Admin Users — Create Page', () => {
             );
 
             expect(createAdmin).toHaveBeenCalledWith(
-                expect.objectContaining({ password: null }),
+                {
+                    role: 'admin',
+                    name: 'Budi',
+                    username: null,
+                    email: 'budi@test.com',
+                },
                 expect.any(Object),
             );
         });
@@ -428,7 +430,7 @@ describe('Admin Users — Create Page', () => {
             await syncUI();
 
             expect(showToast).toHaveBeenCalledWith(
-                'Akun admin berhasil dibuat.',
+                'Akun dibuat. Tautan set password dikirim ke email.',
                 'success',
             );
         });

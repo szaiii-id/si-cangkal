@@ -4,9 +4,10 @@ use App\Models\Profile;
 use App\Models\User;
 use App\Services\Notification\Contracts\FirebaseNotificationServiceInterface;
 use App\Services\User\UserService;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 use Inertia\Testing\AssertableInertia as Assert;
 use Mockery\MockInterface;
 
@@ -126,7 +127,9 @@ describe('Contract — show', function () {
 });
 
 describe('Contract — store', function () {
-    it('POST /admin/users valid → redirect + flash credentials + status', function () {
+    it('POST /admin/users valid → redirect + status, tanpa password plaintext', function () {
+        Notification::fake();
+
         $response = $this->actingAs($this->admin)->post('/admin/users', [
             'role' => 'admin',
             'name' => 'Admin Baru',
@@ -135,14 +138,11 @@ describe('Contract — store', function () {
         ]);
 
         $response->assertRedirect(route('admin.users.index'))
-            ->assertSessionHas('credentials')
-            ->assertSessionHas('status', 'User admin berhasil dibuat.');
+            ->assertSessionMissing('credentials')
+            ->assertSessionHas('status');
 
-        $credentials = $response->getSession()->get('credentials');
-        expect($credentials)->toHaveKeys(['role', 'name', 'email', 'username', 'password'])
-            ->and($credentials['role'])->toBe('admin')
-            ->and($credentials['email'])->toBe('adminbaru@example.com')
-            ->and($credentials['password'])->toBeString();
+        $user = User::where('email', 'adminbaru@example.com')->firstOrFail();
+        Notification::assertSentTo($user, ResetPassword::class);
     });
 });
 
@@ -357,23 +357,20 @@ describe('Data Integrity — destroy', function () {
 });
 
 describe('Data Integrity — resetPassword', function () {
-    it('resetPassword → password berubah + flash credentials', function () {
+    it('resetPassword → kirim tautan, hash password tidak berubah', function () {
+        Notification::fake();
         $oldPassword = $this->mitra->password;
 
         $response = $this->actingAs($this->admin)
             ->post("/admin/users/{$this->mitra->id}/reset-password");
 
         $response->assertRedirect(route('admin.users.index'))
-            ->assertSessionHas('credentials')
-            ->assertSessionHas('status', 'Password berhasil direset.');
+            ->assertSessionMissing('credentials')
+            ->assertSessionHas('status');
 
-        $credentials = $response->getSession()->get('credentials');
-        expect($credentials['password'])->toBeString();
+        expect($this->mitra->fresh()->password)->toBe($oldPassword);
 
-        // Password di DB berubah (hash baru)
-        $this->mitra->refresh();
-        expect($this->mitra->password)->not->toBe($oldPassword)
-            ->and(Hash::check($credentials['password'], $this->mitra->password))->toBeTrue();
+        Notification::assertSentTo($this->mitra, ResetPassword::class);
     });
 });
 

@@ -68,20 +68,20 @@ Aplikasi tersedia di `http://localhost:8000`.
 
 Sumber kebenaran adalah `.env.example`. Variabel yang paling sering diubah:
 
-| Variabel               | Default                                       | Keterangan                                 |
-| ---------------------- | --------------------------------------------- | ------------------------------------------ |
-| `APP_NAME`             | `SI-CANGKAL`                                  | Nama aplikasi                              |
-| `APP_ENV`              | `local`                                       | `local` / `testing` / `production`         |
-| `APP_URL`              | `http://localhost:8000`                       | Harus `localhost` untuk E2E                |
-| `APP_TIMEZONE`         | `Asia/Makassar`                               | **Diabaikan**—zona aplikasi hardcode `UTC` |
-| `DB_*`                 | `127.0.0.1:5432`, `sicangkal_db`              | Database utama                             |
-| `E2E_DB_*`             | `sicangkal_db_testing`                        | Database khusus Playwright                 |
-| `BREVO_API_KEY`        | kosong                                        | Pengirim email transaksional               |
-| `FIREBASE_CREDENTIALS` | `storage/app/firebase/firebase-adminsdk.json` | Service account FCM (gitignored)           |
-| `VITE_FIREBASE_*`      | kosong                                        | Konfigurasi Firebase sisi client           |
-| `GOOGLE_CLIENT_*`      | kosong                                        | Login Google OAuth                         |
-| `AUTH_THROTTLE_*`      | lihat `.env.example`                          | Batas percobaan login/register/dll.        |
-| `XENDIT_*`             | lihat bagian Xendit Test Mode                 | Payment gateway Test Mode                  |
+| Variabel               | Default                                       | Keterangan                                                        |
+| ---------------------- | --------------------------------------------- | ----------------------------------------------------------------- |
+| `APP_NAME`             | `SI-CANGKAL`                                  | Nama aplikasi                                                     |
+| `APP_ENV`              | `local`                                       | `local` / `testing` / `production`                                |
+| `APP_URL`              | `http://localhost:8000`                       | Harus `localhost` untuk E2E                                       |
+| `APP_TIMEZONE`         | `Asia/Makassar`                               | **Diabaikan**—zona aplikasi hardcode `UTC`                        |
+| `DB_*`                 | `127.0.0.1:5432`, `sicangkal_db`              | Database utama                                                    |
+| `E2E_DB_*`             | `sicangkal_db_testing`                        | Database khusus Playwright                                        |
+| `BREVO_API_KEY`        | kosong                                        | Pengirim email transaksional; di produksi set `MAIL_MAILER=brevo` |
+| `FIREBASE_CREDENTIALS` | `storage/app/firebase/firebase-adminsdk.json` | Service account FCM (gitignored)                                  |
+| `VITE_FIREBASE_*`      | kosong                                        | Konfigurasi Firebase sisi client                                  |
+| `GOOGLE_CLIENT_*`      | kosong                                        | Login Google OAuth                                                |
+| `AUTH_THROTTLE_*`      | lihat `.env.example`                          | Batas percobaan login/register/dll.                               |
+| `XENDIT_*`             | lihat bagian Xendit Test Mode                 | Payment gateway Test Mode                                         |
 
 Zona waktu: DB menyimpan **UTC**. Untuk logika "hari ini"/"sekarang" pakai `App\Support\Timezone`, **jangan** `now()` langsung. Timezone user/trip berformat IANA; default `Asia/Makassar`.
 
@@ -232,4 +232,4 @@ php artisan view:cache
 php artisan migrate --force
 ```
 
-Pastikan `APP_DEBUG=false`, HTTPS dipaksakan otomatis di production, dan password admin seeder tercatat di kanal log `audit` (atau diatur lewat `ADMIN_PROD_PASSWORD`).
+Pastikan `APP_DEBUG=false`, HTTPS dipaksakan otomatis di production, dan `MAIL_MAILER=brevo` + `BREVO_API_KEY` terisi. **Password tidak pernah ditulis ke log**: admin mengatur password sendiri lewat tautan reset yang dikirim Brevo ( seeder produksi dapat memakai `ADMIN_PROD_PASSWORD`).

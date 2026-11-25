@@ -18,7 +18,7 @@ php artisan wayfinder:generate --with-form
 - Frontend tooling is **Vite+** (`vp`), not plain Vite. Use the `bun run` scripts.
 - PostgreSQL is mandatory: migrations use `jsonb`, and tests/E2E use `.env.testing`. Do not switch to SQLite.
 - `composer dev` runs `php artisan dev`: serve + queue:listen + pail + Vite. Keep a queue worker running when working on E-Ticket or notification flows.
-- `php artisan db:seed` only creates the production admin; its password is random and written to the `audit` log channel (set `ADMIN_PROD_PASSWORD` to control it).
+- `php artisan db:seed` only creates the production admin with a random internal password. No plaintext password is written to logs. Use `ADMIN_PROD_PASSWORD` or the reset-link flow (Brevo, `MAIL_MAILER=brevo` in production) to set it.
 
 ## Commands
 
