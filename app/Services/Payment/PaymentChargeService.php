@@ -8,6 +8,7 @@ use App\Enums\PaymentMetode;
 use App\Models\Booking;
 use App\Models\Payment;
 use App\Services\Payment\Contracts\XenditPaymentServiceInterface;
+use App\Support\PaymentReference;
 
 /**
  * Satu-satunya entry point pembuatan Payment Session Xendit.
@@ -54,7 +55,7 @@ final class PaymentChargeService
             'jumlah' => $booking->total_harga,
             'metode' => PaymentMetode::XENDIT,
             'gateway' => PaymentGateway::XENDIT,
-            'gateway_order_id' => $booking->kode,
+            'gateway_order_id' => PaymentReference::forAttempt($booking, $sequence),
             'gateway_request_id' => $result->sessionId,
             'gateway_status' => 'pending',
             'gateway_payload' => [

@@ -14,6 +14,7 @@ use App\Models\Payment;
 use App\Models\Refund;
 use App\Models\User;
 use App\Services\Payment\Contracts\XenditPaymentServiceInterface;
+use App\Support\PaymentReference;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -47,7 +48,7 @@ final class XenditGatewayService implements XenditPaymentServiceInterface
 
         $payload = $this->request()
             ->post($this->url('/sessions'), [
-                'reference_id' => $booking->kode,
+                'reference_id' => PaymentReference::forAttempt($booking, $sequence),
                 'session_type' => 'PAY',
                 'mode' => 'PAYMENT_LINK',
                 'amount' => (int) $booking->total_harga,

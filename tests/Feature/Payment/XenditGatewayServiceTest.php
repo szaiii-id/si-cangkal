@@ -69,7 +69,7 @@ describe('adapter Xendit', function () {
 
             $data = $request->data();
 
-            return $data['reference_id'] === $this->booking->kode
+            return $data['reference_id'] === $this->booking->kode.'-1'
                 && $data['session_type'] === 'PAY'
                 && $data['mode'] === 'PAYMENT_LINK'
                 && $data['country'] === 'ID'
@@ -81,6 +81,27 @@ describe('adapter Xendit', function () {
                 && ! $request->hasHeader('for-user-id')
                 && ! $request->hasHeader('with-split-rule')
                 && $request->hasHeader('Authorization', 'Basic '.base64_encode('xnd_development_test_key:'));
+        });
+    });
+
+    it('memakai reference_id unik per attempt pada session ke-2', function () {
+        Http::fake([
+            'https://api.xendit.co/sessions' => Http::response([
+                'payment_session_id' => 'ps-2222222222222222222222222',
+                'payment_link_url' => 'https://dev.xen.to/def456',
+                'status' => 'ACTIVE',
+                'amount' => 1_000_000,
+            ], 201),
+        ]);
+
+        app(XenditPaymentServiceInterface::class)->createSession($this->booking, 2);
+
+        Http::assertSent(function (Request $request): bool {
+            $data = $request->data();
+
+            return $data['reference_id'] === $this->booking->kode.'-2'
+                && $data['customer']['reference_id'] === 'client'.$this->client->id.'booking'.$this->booking->id.'seq2'
+                && $data['metadata']['sequence'] === '2';
         });
     });
 
