@@ -122,6 +122,11 @@
 
         .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 
+        .row a {
+            color: #1d4ed8;
+            text-decoration: none;
+        }
+
         .footer {
             padding: 14px 24px 20px;
             border-top: 1px solid var(--line);
@@ -170,6 +175,16 @@
             <div class="row">
                 <dt>Nama Client</dt>
                 <dd>{{ $namaClient }}</dd>
+            </div>
+            <div class="row">
+                <dt>Lokasi</dt>
+                <dd>
+                    <a
+                        href="https://www.google.com/maps/search/?api=1&query={{ rawurlencode($namaPaket) }}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >Buka di Maps</a>
+                </dd>
             </div>
         </dl>
 

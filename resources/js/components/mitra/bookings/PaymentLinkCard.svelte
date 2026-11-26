@@ -1,6 +1,7 @@
 <script lang="ts">
     import { createPaymentLink } from '@/api/mitra';
     import { showToast } from '@/utils/toast.svelte';
+    import { waMeUrl } from '@/utils/externalLinks';
 
     // ==========================================
     // PROPS
@@ -8,9 +9,11 @@
     let {
         bookingId,
         canCreate = true,
+        phone = null,
     }: {
         bookingId: number;
         canCreate?: boolean;
+        phone?: string | null;
     } = $props();
 
     // ==========================================
@@ -34,8 +37,19 @@
         try {
             const result = await createPaymentLink(bookingId);
             expiresAt = result.expires_at;
-            await navigator.clipboard.writeText(result.url);
-            showToast('Tautan tersalin. Kirim via WhatsApp ke client.', 'success');
+
+            const waLink = waMeUrl(
+                phone,
+                `Halo, berikut tautan pembayaran pesanan Anda:\n${result.url}\n\nBerlaku sampai ${result.expires_at ? formatExpires(result.expires_at) : '-'}.`,
+            );
+
+            if (waLink) {
+                window.open(waLink, '_blank', 'noopener,noreferrer');
+                showToast('Tautan pembayaran siap dikirim via WhatsApp.', 'success');
+            } else {
+                await navigator.clipboard.writeText(result.url);
+                showToast('Tautan tersalin. Kirim manual ke client.', 'success');
+            }
         } catch {
             showToast('Gagal membuat link pembayaran.', 'error');
         } finally {
@@ -63,7 +77,11 @@
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
             </svg>
-            {processing ? 'Membuat...' : 'Salin Tautan Pembayaran'}
+            {processing
+                ? 'Membuat...'
+                : phone
+                ? 'Kirim Tagihan via WhatsApp'
+                : 'Salin Tautan Pembayaran'}
         </button>
 
         {#if expiresAt}

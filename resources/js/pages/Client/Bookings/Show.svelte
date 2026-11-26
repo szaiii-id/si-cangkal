@@ -22,6 +22,8 @@
     } from '@/utils/bookingRules';
     import { formatBookingCountdown } from '@/utils/countdown';
     import { showToast } from '@/utils/toast.svelte';
+    import { googleMapsUrl, toWhatsAppNumber } from '@/utils/externalLinks';
+    import { buildIcs, downloadIcs } from '@/utils/calendar';
 
     // ==========================================
     // PROPS
@@ -175,22 +177,70 @@
     });
 
     // ==========================================
-    // WHATSAPP
+    // POLLING STATUS (webhook / verifikasi mitra)
     // ==========================================
 
-    function toWhatsAppNumber(phone: string | null): string | null {
-        if (!phone) return null;
-        let digits = phone.replace(/\D/g, '');
-        if (digits.startsWith('0')) digits = '62' + digits.slice(1);
-        else if (!digits.startsWith('62')) digits = '62' + digits;
-        return digits;
-    }
+    $effect(() => {
+        // Hanya baca status supaya effect tidak restart karena prop lain.
+        const status = booking.status;
+        const final = status === 'completed' || status === 'cancelled';
+
+        if (final) return;
+
+        let delay = 3_000;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+
+        const tick = () => {
+            if (document.visibilityState !== 'visible') {
+                timer = setTimeout(tick, delay);
+
+                return;
+            }
+
+            router.reload({
+                only: ['booking', 'eticket', 'refunds', 'canReview', 'review'],
+                onFinish: () => {
+                    delay = Math.min(delay * 2, 30_000);
+                    timer = setTimeout(tick, delay);
+                },
+            });
+        };
+
+        timer = setTimeout(tick, delay);
+
+        return () => clearTimeout(timer);
+    });
+
+    // ==========================================
+    // WHATSAPP & MAPS & KALENDER
+    // ==========================================
 
     let mitraWaNumber = $derived(
         toWhatsAppNumber(
             (booking.mitra as { telepon?: string | null } | null)?.telepon ?? null,
         ),
     );
+
+    let mapsUrl = $derived(
+        googleMapsUrl(`${booking.package.nama} ${booking.tanggal_keberangkatan}`),
+    );
+
+    function downloadCalendar(): void {
+        const start = new Date(`${booking.tanggal_keberangkatan}T00:00:00Z`);
+        const durasi = Math.max(1, booking.package.durasi_hari);
+        const end = new Date(start.getTime() + durasi * 86_400_000);
+
+        downloadIcs(
+            `booking-${booking.kode}.ics`,
+            buildIcs({
+                title: `Trip ${booking.package.nama}`,
+                start: start.toISOString(),
+                end: end.toISOString(),
+                location: booking.package.nama,
+                description: `Booking ${booking.kode} · ${booking.jumlah_peserta} peserta`,
+            }),
+        );
+    }
 </script>
 
 <svelte:head>
@@ -235,6 +285,28 @@
                 
                 <!-- E-TICKET -->
                 <ETicketDownloadButton {eticket} bookingStatus={booking.status} />
+
+                <!-- RUTE & KALENDER -->
+                <div class="bg-white rounded-[2rem] border border-gray-200 shadow-sm p-5">
+                    <h3 class="text-sm font-extrabold text-dark mb-3">Persiapan Perjalanan</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <a
+                            href={mapsUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue/10 text-blue-text font-bold text-xs hover:bg-blue/20 transition-colors"
+                        >
+                            Buka Rute di Google Maps
+                        </a>
+                        <button
+                            type="button"
+                            onclick={downloadCalendar}
+                            class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-green/10 text-green-text font-bold text-xs hover:bg-green/20 transition-colors"
+                        >
+                            Tambah ke Kalender (.ics)
+                        </button>
+                    </div>
+                </div>
 
                 <!-- PEMBAYARAN & UPLOAD -->
                 {#if isPendingPayment}

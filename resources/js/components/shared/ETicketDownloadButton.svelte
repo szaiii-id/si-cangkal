@@ -31,6 +31,41 @@
     function refreshEticket() {
         router.reload({ only: ['eticket'] });
     }
+
+    // Cek otomatis dengan backoff sampai job selesai (maksimal ~10x).
+    // Tombol manual tetap tersedia sebagai fallback.
+    let attempts = 0;
+
+    $effect(() => {
+        if (eticket || !shouldRequireEticket) return;
+
+        let delay = 3_000;
+        let pollTimer: ReturnType<typeof setTimeout> | undefined;
+
+        const tick = () => {
+            if (document.visibilityState !== 'visible') {
+                pollTimer = setTimeout(tick, delay);
+
+                return;
+            }
+
+            router.reload({
+                only: ['eticket'],
+                onFinish: () => {
+                    attempts += 1;
+
+                    if (attempts >= 10) return;
+
+                    delay = Math.min(delay * 1.5, 10_000);
+                    pollTimer = setTimeout(tick, delay);
+                },
+            });
+        };
+
+        pollTimer = setTimeout(tick, delay);
+
+        return () => clearTimeout(pollTimer);
+    });
 </script>
 
 {#if eticket}

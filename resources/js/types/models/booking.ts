@@ -55,6 +55,7 @@ export type BookingResource = {
         durasi_hari: number;
         durasi_malam: number;
         cover_image: string | null;
+        cover_image_url?: string | null;
     } | null;
     client?: UserWithUsername | null;
     mitra?: (UserMini & { bankAccounts: BankAccount[] }) | null;
