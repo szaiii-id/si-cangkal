@@ -46,6 +46,7 @@
     let needsMitraCancel = $derived(needsMitraCancelFn(booking.status));
     let hasProof = $derived(booking.has_payment_proof);
     let rejectReason = $derived(booking.payment_reject_reason ?? null);
+    let selectedMethod = $state<'online' | 'transfer' | null>(null);
     let latestRefund = $derived(refunds.length > 0 ? refunds[0] : null);
     let statusDescription = $derived(getBookingStatusDescription(booking.status));
 
@@ -313,8 +314,12 @@
                     <PaymentOptionsCard
                         bookingId={booking.id}
                         canUseGateway={isPendingPayment}
+                        hasProof={hasProof}
+                        rejectReason={rejectReason}
+                        bind:selectedMethod
                     />
 
+                    {#if selectedMethod === 'transfer'}
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
                         
                         <div class="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-blue-dark to-blue p-6 sm:p-8 text-white shadow-xl shadow-blue/20 flex flex-col justify-center">
@@ -397,6 +402,7 @@
                             {/if}
                         </div>
                     </div>
+                    {/if}
                 {/if}
 
                 <!-- REFUND STATUS -->

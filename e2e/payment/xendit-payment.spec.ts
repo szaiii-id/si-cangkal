@@ -44,7 +44,7 @@ test.describe('Pembayaran Xendit (Test Mode)', () => {
 
         await page.goto(`/client/bookings/${booking.booking_id}`);
 
-        await expect(page.getByText('Bayar dengan Xendit')).toBeVisible();
+        await expect(page.getByText('Bayar Online')).toBeVisible();
 
         await Promise.all([
             page.waitForURL(/dev\.xen\.to|checkout-staging\.xendit\.co/, {
