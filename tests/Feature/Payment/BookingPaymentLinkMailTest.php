@@ -9,6 +9,7 @@ use App\Models\Booking;
 use App\Models\Payment;
 use App\Services\Payment\BookingPaymentLinkService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Mail\SendQueuedMailable;
 use Illuminate\Support\Facades\Mail;
 use RuntimeException;
 
@@ -49,6 +50,25 @@ beforeEach(function () {
 });
 
 describe('email otomatis link pembayaran', function () {
+    it('mailable dapat diserialisasi ke payload queue database', function () {
+        $booking = bookingForMail('manual');
+
+        $mail = new BookingPaymentLinkMail(
+            url: 'https://example.test/pay',
+            booking: $booking,
+        );
+
+        // Queue database menulis json_encode(['job' => serialize($job)]).
+        // Byte PDF mentah di payload mailable membuat JSON gagal, sehingga
+        // email tidak pernah dikirim meski Mail::fake() melihatnya lolos.
+        $payload = json_encode(
+            ['job' => serialize(new SendQueuedMailable($mail))],
+            JSON_THROW_ON_ERROR,
+        );
+
+        expect($payload)->toBeString();
+    });
+
     it('mengirim email saat token baru dibuat untuk booking manual', function () {
         $booking = bookingForMail('manual');
 
