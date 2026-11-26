@@ -52,4 +52,31 @@ final class ReviewRepository implements ReviewRepositoryInterface
             'jumlah' => (int) $statistik->jumlah,
         ];
     }
+
+    /**
+     * @param  array<int, int>  $packageIds
+     * @return array<int, array{rata_rata: float, jumlah: int}>
+     */
+    public function statistikForPackages(array $packageIds): array
+    {
+        if ($packageIds === []) {
+            return [];
+        }
+
+        $baris = DB::table('reviews')
+            ->whereIn('package_id', $packageIds)
+            ->selectRaw('package_id, COALESCE(AVG(rating), 0) as rata_rata, COUNT(*) as jumlah')
+            ->groupBy('package_id')
+            ->get();
+
+        $statistik = [];
+        foreach ($baris as $row) {
+            $statistik[(int) $row->package_id] = [
+                'rata_rata' => (float) $row->rata_rata,
+                'jumlah' => (int) $row->jumlah,
+            ];
+        }
+
+        return $statistik;
+    }
 }

@@ -36,6 +36,9 @@ class CatalogController extends Controller
 
         return Inertia::render('Client/Catalog/Index', [
             'packages' => $packages,
+            'ratings' => $this->reviewRepository->statistikForPackages(
+                collect($packages->items())->pluck('id')->all(),
+            ),
             'filters' => $filters,
         ]);
     }

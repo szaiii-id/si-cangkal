@@ -35,4 +35,12 @@ interface ReviewRepositoryInterface
      * @return array{rata_rata: float, jumlah: int}
      */
     public function statistikForPackage(Package $package): array;
+
+    /**
+     * Agregat rating untuk banyak paket dalam satu query.
+     *
+     * @param  array<int, int>  $packageIds
+     * @return array<int, array{rata_rata: float, jumlah: int}>
+     */
+    public function statistikForPackages(array $packageIds): array;
 }

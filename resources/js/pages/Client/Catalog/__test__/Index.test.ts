@@ -158,9 +158,10 @@ const DEFAULT_FILTERS = {
 const renderPage = (
     packages = makePackages(SAMPLE_PACKAGES),
     filters: Record<string, unknown> = DEFAULT_FILTERS,
+    ratings: Record<string, { rata_rata: number; jumlah: number }> = {},
 ) =>
     render(Index, {
-        props: { packages, filters } as any,
+        props: { packages, filters, ratings } as any,
     });
 
 // ============================================================
@@ -538,5 +539,22 @@ describe('Client Catalog — Index Page', () => {
                 { preserveState: true, preserveScroll: true, replace: true },
             );
         });
+    });
+});
+
+describe('rating pada kartu katalog', () => {
+    it('menampilkan bintang hanya untuk paket yang punya ulasan', () => {
+        renderPage(makePackages(SAMPLE_PACKAGES), DEFAULT_FILTERS, {
+            '1': { rata_rata: 4.5, jumlah: 2 },
+        });
+
+        expect(
+            screen.getByLabelText('Rating paket Paket Bali'),
+        ).toBeInTheDocument();
+        expect(screen.getByText('4.5')).toBeInTheDocument();
+        expect(screen.getByText('(2 ulasan)')).toBeInTheDocument();
+        expect(
+            screen.queryByLabelText('Rating paket Paket Lombok'),
+        ).not.toBeInTheDocument();
     });
 });
