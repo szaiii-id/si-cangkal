@@ -76,7 +76,7 @@
     <!-- HERO IMAGE -->
     <div class="relative -mx-5 -mt-4 sm:-mx-8 sm:-mt-6 h-[40vh] sm:h-[50vh] bg-gray-200">
         {#if pkg.cover_image}
-            <img src={`/storage/${pkg.cover_image}`} alt={pkg.nama} class="w-full h-full object-cover" />
+            <img src={pkg.cover_image_url ?? `/storage/${pkg.cover_image}`} alt={pkg.nama} class="w-full h-full object-cover" />
         {:else}
             <img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80" alt="Fallback" class="w-full h-full object-cover opacity-80" />
         {/if}

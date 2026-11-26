@@ -106,7 +106,7 @@
                         <div class="relative w-full h-40 bg-gray-100 overflow-hidden shrink-0">
                             {#if pkg.cover_image}
                                 <img 
-                                    src={`/storage/${pkg.cover_image}`} 
+                                    src={pkg.cover_image_url ?? `/storage/${pkg.cover_image}`} 
                                     alt={pkg.nama} 
                                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                                 />

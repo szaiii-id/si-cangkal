@@ -18,7 +18,7 @@
         Package,
         | 'id' | 'kode' | 'nama' | 'slug' | 'deskripsi' | 'kategori'
         | 'durasi_hari' | 'durasi_malam' | 'harga_per_orang' | 'harga_per_rombongan'
-        | 'max_peserta' | 'timezone' | 'cover_image' | 'status' | 'created_at' | 'updated_at'
+        | 'max_peserta' | 'timezone' | 'cover_image' | 'cover_image_url' | 'status' | 'created_at' | 'updated_at'
     > & {
         days: PackageDay[];
         facilities: PackageFacility[];
@@ -104,7 +104,7 @@
         deskripsi={pkg.deskripsi}
         kategori={pkg.kategori}
         status={pkg.status}
-        coverImage={pkg.cover_image}
+        coverImage={pkg.cover_image_url ?? (pkg.cover_image ? `/storage/${pkg.cover_image}` : null)}
         durasiHari={pkg.durasi_hari}
         durasiMalam={pkg.durasi_malam}
     />

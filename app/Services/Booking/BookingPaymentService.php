@@ -22,7 +22,9 @@ use Throwable;
 
 class BookingPaymentService
 {
-    public const PROOF_DISK = 'local';
+    // Bukti transfer bersifat privat; diakses hanya lewat endpoint yang
+    // diautorisasi. File lama di disk `local` tetap dibaca sebagai fallback.
+    public const PROOF_DISK = 'r2_private';
 
     public const PROOF_DIRECTORY = 'payment_proofs';
 

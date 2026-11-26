@@ -53,6 +53,7 @@ beforeEach(function () {
     config(['inertia.testing.ensure_pages_exist' => false]);
 
     Storage::fake('public');
+    Storage::fake('r2_public');
 
     $this->mitra = User::factory()->mitra()->create([
         'must_change_password' => false,
@@ -366,7 +367,7 @@ describe('Data Integrity — store', function () {
         expect($package->cover_image)->toStartWith('packages/')
             ->and($package->cover_image)->toEndWith('.jpg');
 
-        Storage::disk('public')->assertExists($package->cover_image);
+        Storage::disk('r2_public')->assertExists($package->cover_image);
     });
 });
 

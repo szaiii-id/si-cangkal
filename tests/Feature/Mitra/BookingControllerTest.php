@@ -54,6 +54,7 @@ beforeEach(function () {
     config(['inertia.testing.ensure_pages_exist' => false]);
 
     Storage::fake('local');
+    Storage::fake('r2_private');
 
     $this->mitra = User::factory()->mitra()->create([
         'must_change_password' => false,
@@ -254,7 +255,7 @@ describe('Security — ownership (Policy)', function () {
         $booking = makeBookingForMitra($this->mitra2, $this->client, [
             'payment_proof_path' => 'payment_proofs/proof.jpg',
         ]);
-        Storage::disk('local')->put('payment_proofs/proof.jpg', 'content');
+        Storage::disk('r2_private')->put('payment_proofs/proof.jpg', 'content');
 
         $this->actingAs($this->mitra)
             ->get("/mitra/bookings/{$booking->id}/payment-proof")
@@ -425,7 +426,7 @@ describe('Data Integrity — downloadProof', function () {
             'kode' => 'BKG-TEST-001',
             'payment_proof_path' => 'payment_proofs/proof.jpg',
         ]);
-        Storage::disk('local')->put('payment_proofs/proof.jpg', 'file-content');
+        Storage::disk('r2_private')->put('payment_proofs/proof.jpg', 'file-content');
 
         $response = $this->actingAs($this->mitra)
             ->get("/mitra/bookings/{$booking->id}/payment-proof");

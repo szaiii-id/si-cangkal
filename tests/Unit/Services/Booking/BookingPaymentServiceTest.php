@@ -24,6 +24,7 @@ use Psr\Log\LoggerInterface;
 
 beforeEach(function () {
     Storage::fake('local');
+    Storage::fake('r2_private');
 
     $this->bookingRepo = Mockery::mock(BookingRepositoryInterface::class);
     $this->notifier = Mockery::mock(NotificationDispatcherInterface::class);
@@ -284,7 +285,7 @@ describe('Edge Cases — uploadProof storeProofFile fail', function () {
 
 describe('Edge Cases — uploadProof old proof deletion', function () {
     it('old proof ada di storage → dihapus', function () {
-        Storage::disk('local')->put('payment_proofs/old.jpg', 'content');
+        Storage::disk('r2_private')->put('payment_proofs/old.jpg', 'content');
 
         $client = makeUser(['id' => 10]);
         $mitra = makeUser(['id' => 99]);
@@ -309,7 +310,7 @@ describe('Edge Cases — uploadProof old proof deletion', function () {
 
         $this->service->uploadProof($booking, UploadedFile::fake()->image('new.jpg'));
 
-        Storage::disk('local')->assertMissing('payment_proofs/old.jpg');
+        Storage::disk('r2_private')->assertMissing('payment_proofs/old.jpg');
     });
 });
 

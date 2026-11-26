@@ -267,10 +267,12 @@ class BookingCancellationService
             return;
         }
 
-        $disk = Storage::disk(BookingPaymentService::PROOF_DISK);
+        foreach ([BookingPaymentService::PROOF_DISK, 'local'] as $diskName) {
+            $disk = Storage::disk($diskName);
 
-        if ($disk->exists($path)) {
-            $disk->delete($path);
+            if ($disk->exists($path)) {
+                $disk->delete($path);
+            }
         }
     }
 

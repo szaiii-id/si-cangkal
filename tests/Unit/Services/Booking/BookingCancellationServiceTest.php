@@ -22,6 +22,7 @@ use Psr\Log\LoggerInterface;
 
 beforeEach(function () {
     Storage::fake('local');
+    Storage::fake('r2_private');
 
     $this->bookingRepo = Mockery::mock(BookingRepositoryInterface::class);
     $this->notifier = Mockery::mock(NotificationDispatcherInterface::class);
@@ -349,12 +350,12 @@ describe('Helper — deletePaymentProof', function () {
     });
 
     it('file ada di storage → dihapus', function () {
-        Storage::disk('local')->put('payment_proofs/old.jpg', 'content');
-        Storage::disk('local')->assertExists('payment_proofs/old.jpg');
+        Storage::disk('r2_private')->put('payment_proofs/old.jpg', 'content');
+        Storage::disk('r2_private')->assertExists('payment_proofs/old.jpg');
 
         invokeDeletePaymentProof($this->service, 'payment_proofs/old.jpg');
 
-        Storage::disk('local')->assertMissing('payment_proofs/old.jpg');
+        Storage::disk('r2_private')->assertMissing('payment_proofs/old.jpg');
     });
 
     it('file tidak ada di storage → tidak error', function () {

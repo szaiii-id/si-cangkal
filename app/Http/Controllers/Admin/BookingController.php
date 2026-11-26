@@ -114,6 +114,10 @@ final class BookingController extends Controller
 
         $disk = Storage::disk(BookingPaymentService::PROOF_DISK);
 
+        if (! $disk->exists($path)) {
+            $disk = Storage::disk('local'); // fallback bukti lama
+        }
+
         abort_unless($disk->exists($path), 404);
 
         $filename = 'bukti-transfer-'.$booking->kode.'.'.pathinfo($path, PATHINFO_EXTENSION);

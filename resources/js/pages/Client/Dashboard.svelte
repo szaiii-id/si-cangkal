@@ -69,7 +69,7 @@
                     <a href={`/client/catalog/${pkg.slug}`} use:inertia class="group bg-white rounded-2xl border border-transparent shadow-md overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex flex-col">
                         <div class="relative aspect-[4/3] bg-gray-100 overflow-hidden">
                             {#if pkg.cover_image}
-                                <img src={`/storage/${pkg.cover_image}`} alt={pkg.nama} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                <img src={pkg.cover_image_url ?? `/storage/${pkg.cover_image}`} alt={pkg.nama} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                             {:else}
                                 <div class="w-full h-full flex items-center justify-center text-gray-600 font-bold bg-gray-50 text-xs">Tanpa Gambar</div>
                             {/if}
@@ -118,7 +118,7 @@
                     <a href={`/client/catalog/${pkg.slug}`} use:inertia class="group flex gap-4 bg-white rounded-2xl border border-transparent shadow-md p-3 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
                         <div class="w-24 h-24 sm:w-32 sm:h-32 rounded-xl overflow-hidden bg-gray-100 shrink-0">
                             {#if pkg.cover_image}
-                                <img src={`/storage/${pkg.cover_image}`} alt={pkg.nama} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                <img src={pkg.cover_image_url ?? `/storage/${pkg.cover_image}`} alt={pkg.nama} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                             {:else}
                                 <div class="w-full h-full flex items-center justify-center text-gray-600 text-xs">No Image</div>
                             {/if}

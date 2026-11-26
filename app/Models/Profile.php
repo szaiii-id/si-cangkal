@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\UploadStorage;
 use Database\Factories\ProfileFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,6 +12,9 @@ class Profile extends Model
 {
     /** @use HasFactory<ProfileFactory> */
     use HasFactory;
+
+    /** @var list<string> */
+    protected $appends = ['logo_url'];
 
     /**
      * Atribut yang dapat diisi secara massal (mass assignable).
@@ -52,5 +56,14 @@ class Profile extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function getLogoUrlAttribute(): ?string
+    {
+        if ($this->logo === null || $this->logo === '') {
+            return null;
+        }
+
+        return UploadStorage::url('r2_public', $this->logo);
     }
 }

@@ -9,11 +9,11 @@ use App\Models\PackageFacility;
 use App\Models\User;
 use App\Repositories\Contracts\PackageRepositoryInterface;
 use App\Support\AuditLogger;
+use App\Support\UploadStorage;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -88,7 +88,7 @@ final class PackageService
 
             $coverPath = null;
             if (isset($data['cover_image']) && $data['cover_image'] instanceof UploadedFile) {
-                $coverPath = $data['cover_image']->store('packages', 'public');
+                $coverPath = UploadStorage::put('r2_public', 'packages', $data['cover_image']);
             }
 
             $package = $this->packageRepository->create([
@@ -147,13 +147,13 @@ final class PackageService
             }
 
             if (isset($data['cover_image']) && $data['cover_image'] instanceof UploadedFile) {
-                if ($package->cover_image && Storage::disk('public')->exists($package->cover_image)) {
-                    Storage::disk('public')->delete($package->cover_image);
+                if ($package->cover_image !== null && $package->cover_image !== '') {
+                    UploadStorage::deleteAfterCommit('r2_public', $package->cover_image);
                 }
-                $updateData['cover_image'] = $data['cover_image']->store('packages', 'public');
+                $updateData['cover_image'] = UploadStorage::put('r2_public', 'packages', $data['cover_image']);
             } elseif (isset($data['remove_cover_image']) && $data['remove_cover_image'] == '1') {
-                if ($package->cover_image && Storage::disk('public')->exists($package->cover_image)) {
-                    Storage::disk('public')->delete($package->cover_image);
+                if ($package->cover_image !== null && $package->cover_image !== '') {
+                    UploadStorage::deleteAfterCommit('r2_public', $package->cover_image);
                 }
                 $updateData['cover_image'] = null;
             }
@@ -199,13 +199,13 @@ final class PackageService
             }
 
             if (isset($data['cover_image']) && $data['cover_image'] instanceof UploadedFile) {
-                if ($package->cover_image && Storage::disk('public')->exists($package->cover_image)) {
-                    Storage::disk('public')->delete($package->cover_image);
+                if ($package->cover_image !== null && $package->cover_image !== '') {
+                    UploadStorage::deleteAfterCommit('r2_public', $package->cover_image);
                 }
-                $updateData['cover_image'] = $data['cover_image']->store('packages', 'public');
+                $updateData['cover_image'] = UploadStorage::put('r2_public', 'packages', $data['cover_image']);
             } elseif (isset($data['remove_cover_image']) && $data['remove_cover_image'] == '1') {
-                if ($package->cover_image && Storage::disk('public')->exists($package->cover_image)) {
-                    Storage::disk('public')->delete($package->cover_image);
+                if ($package->cover_image !== null && $package->cover_image !== '') {
+                    UploadStorage::deleteAfterCommit('r2_public', $package->cover_image);
                 }
                 $updateData['cover_image'] = null;
             }

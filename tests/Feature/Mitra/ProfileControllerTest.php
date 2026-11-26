@@ -50,6 +50,7 @@ beforeEach(function () {
     config(['inertia.testing.ensure_pages_exist' => false]);
 
     Storage::fake('public');
+    Storage::fake('r2_public');
 
     $this->mitra = User::factory()->mitra()->create([
         'password' => Hash::make('OldPass123!'),
@@ -315,7 +316,7 @@ describe('Data Integrity — update profile', function () {
         expect($profile->logo)->toStartWith('logos/')
             ->and($profile->logo)->toEndWith('.png');
 
-        Storage::disk('public')->assertExists($profile->logo);
+        Storage::disk('r2_public')->assertExists($profile->logo);
     });
 
     it('partial update tidak mengubah field lain', function () {
@@ -507,7 +508,7 @@ describe('Edge Cases — update bank accounts BVA', function () {
 
 describe('Edge Cases — logo upload', function () {
     it('upload logo baru → logo lama dihapus', function () {
-        Storage::disk('public')->put('logos/old.png', 'old-content');
+        Storage::disk('r2_public')->put('logos/old.png', 'old-content');
 
         // Set logo lama di profile
         Profile::where('user_id', $this->mitra->id)->update(['logo' => 'logos/old.png']);
@@ -520,6 +521,6 @@ describe('Edge Cases — logo upload', function () {
             'logo' => $file,
         ]);
 
-        Storage::disk('public')->assertMissing('logos/old.png');
+        Storage::disk('r2_public')->assertMissing('logos/old.png');
     });
 });

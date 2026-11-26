@@ -47,6 +47,7 @@ uses(RefreshDatabase::class);
 
 beforeEach(function () {
     Storage::fake('local');
+    Storage::fake('r2_private');
 
     $this->notifier = Mockery::mock(NotificationDispatcherInterface::class);
     $this->notifier->shouldReceive('send')->byDefault()->andReturnNull();
@@ -277,7 +278,7 @@ describe('uploadProof — persistence', function () {
         $result = $this->service->uploadProof($booking, $file);
 
         expect($result->payment_proof_path)->toStartWith('payment_proofs/');
-        Storage::disk('local')->assertExists($result->payment_proof_path);
+        Storage::disk('r2_private')->assertExists($result->payment_proof_path);
 
         $this->assertDatabaseHas('bookings', [
             'id' => $booking->id,
@@ -327,11 +328,11 @@ describe('uploadProof — persistence', function () {
         $booking = makeBookingForPayment($this->client, $this->mitra, [
             'payment_proof_path' => 'payment_proofs/old.jpg',
         ]);
-        Storage::disk('local')->put('payment_proofs/old.jpg', 'old-content');
+        Storage::disk('r2_private')->put('payment_proofs/old.jpg', 'old-content');
 
         $this->service->uploadProof($booking, UploadedFile::fake()->image('new.jpg'));
 
-        Storage::disk('local')->assertMissing('payment_proofs/old.jpg');
+        Storage::disk('r2_private')->assertMissing('payment_proofs/old.jpg');
     });
 
     it('uploadProof → payment_reject_reason di-reset null', function () {
@@ -374,7 +375,7 @@ describe('Idempotency', function () {
 
         $this->service->uploadProof($booking, UploadedFile::fake()->image('proof2.jpg'));
 
-        $files = Storage::disk('local')->files('payment_proofs');
+        $files = Storage::disk('r2_private')->files('payment_proofs');
         expect($files)->toHaveCount(1);
     });
 });

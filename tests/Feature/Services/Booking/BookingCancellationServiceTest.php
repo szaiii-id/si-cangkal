@@ -45,6 +45,7 @@ uses(RefreshDatabase::class);
 
 beforeEach(function () {
     Storage::fake('local');
+    Storage::fake('r2_private');
 
     $this->notifier = Mockery::mock(NotificationDispatcherInterface::class);
     $this->notifier->shouldReceive('send')->byDefault()->andReturnNull();
@@ -172,7 +173,7 @@ describe('cancelByMitra — dengan refund', function () {
     });
 
     it('cancelByMitra → payment_proof dihapus', function () {
-        Storage::disk('local')->put('payment_proofs/old.jpg', 'content');
+        Storage::disk('r2_private')->put('payment_proofs/old.jpg', 'content');
 
         $booking = makeBookingForCancellation($this->client, $this->mitra, [
             'status' => BookingStatus::CONFIRMED,
@@ -181,7 +182,7 @@ describe('cancelByMitra — dengan refund', function () {
 
         $this->service->cancelByMitra($booking, $this->mitra, 'Cuaca buruk');
 
-        Storage::disk('local')->assertMissing('payment_proofs/old.jpg');
+        Storage::disk('r2_private')->assertMissing('payment_proofs/old.jpg');
     });
 
     it('cancelByMitra → notifikasi ke client dikirim', function () {

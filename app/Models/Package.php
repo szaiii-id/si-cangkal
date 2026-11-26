@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\PackageKategori;
 use App\Enums\PackageStatus;
 use App\Support\Timezone;
+use App\Support\UploadStorage;
 use Database\Factories\PackageFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -50,6 +51,9 @@ class Package extends Model
     use HasFactory;
 
     use SoftDeletes;
+
+    /** @var list<string> */
+    protected $appends = ['cover_image_url'];
 
     /** @var list<string> */
     protected $fillable = [
@@ -232,5 +236,18 @@ class Package extends Model
     public function timezoneOrDefault(): string
     {
         return $this->timezone ?: Timezone::DEFAULT;
+    }
+
+    /**
+     * URL cover dari disk publik R2. Untuk data lama yang masih di disk
+     * lokal, frontend punya fallback `/storage/{cover_image}`.
+     */
+    public function getCoverImageUrlAttribute(): ?string
+    {
+        if ($this->cover_image === null || $this->cover_image === '') {
+            return null;
+        }
+
+        return UploadStorage::url('r2_public', $this->cover_image);
     }
 }
