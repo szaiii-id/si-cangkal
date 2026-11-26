@@ -76,10 +76,11 @@ final class XenditNotificationProcessor
             return;
         }
 
+        // reference_id level atas unik per attempt (kode-seq). Jangan
+        // pakai latest(): sesi lama tidak boleh mengkredit sesi terbaru.
         $payment = Payment::query()
             ->where('gateway', PaymentGateway::XENDIT)
             ->where('gateway_order_id', $event->referenceId)
-            ->latest()
             ->first();
 
         if ($payment === null) {
@@ -418,7 +419,6 @@ final class XenditNotificationProcessor
             ->where('gateway', PaymentGateway::XENDIT)
             ->where('gateway_order_id', $event->referenceId)
             ->where('gateway_status', 'pending')
-            ->latest()
             ->first();
 
         if ($payment === null) {

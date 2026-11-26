@@ -3,6 +3,8 @@
 namespace App\Http\Requests\Admin;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Carbon;
+use Illuminate\Validation\Validator;
 
 /**
  * Validasi filter periode laporan (revenue, kinerja mitra).
@@ -40,6 +42,43 @@ final class ReportFilterRequest extends FormRequest
             'start_date.date_format' => 'Format tanggal mulai harus YYYY-MM-DD.',
             'end_date.date_format' => 'Format tanggal akhir harus YYYY-MM-DD.',
             'end_date.after_or_equal' => 'Tanggal akhir harus setelah atau sama dengan tanggal mulai.',
+        ];
+    }
+
+    /**
+     * Batasi rentang maksimal 12 bulan agar ekspor tidak memuat seluruh
+     * riwayat transaksi dan menghabiskan memori server.
+     *
+     * @return array<int, callable(Validator): void>
+     */
+    public function after(): array
+    {
+        return [
+            function (Validator $validator): void {
+                $startRaw = $this->input('start_date');
+                $endRaw = $this->input('end_date');
+
+                // after() tetap jalan walau rule date_format gagal — jangan
+                // parse string acak karena Carbon akan melempar exception.
+                if (! is_string($startRaw) || ! is_string($endRaw)) {
+                    return;
+                }
+
+                if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $startRaw) !== 1
+                    || preg_match('/^\d{4}-\d{2}-\d{2}$/', $endRaw) !== 1) {
+                    return;
+                }
+
+                $start = Carbon::createFromFormat('Y-m-d', $startRaw)->startOfDay();
+                $end = Carbon::createFromFormat('Y-m-d', $endRaw)->startOfDay();
+
+                if (abs($end->diffInDays($start)) > 365) {
+                    $validator->errors()->add(
+                        'end_date',
+                        'Rentang laporan maksimal 12 bulan.',
+                    );
+                }
+            },
         ];
     }
 

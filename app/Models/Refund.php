@@ -25,6 +25,9 @@ use Illuminate\Support\Carbon;
  * @property numeric-string|null $refund_fee_amount
  * @property int|null $initiated_by_mitra
  * @property string|null $catatan
+ * @property string|null $proof_path
+ * @property Carbon|null $proof_uploaded_at
+ * @property int|null $proof_uploaded_by
  * @property string|null $gateway_refund_id
  * @property string|null $gateway_status
  * @property Carbon $created_at
@@ -54,6 +57,9 @@ class Refund extends Model
         'refund_fee_amount',
         'initiated_by_mitra',
         'catatan',
+        'proof_path',
+        'proof_uploaded_at',
+        'proof_uploaded_by',
         'gateway_refund_id',
         'gateway_status',
     ];
@@ -68,6 +74,7 @@ class Refund extends Model
             'reason' => RefundReason::class,
             'status' => RefundStatus::class,
             'refund_fee_amount' => 'decimal:2',
+            'proof_uploaded_at' => 'datetime',
             'gateway_status' => 'string',
         ];
     }
@@ -143,6 +150,7 @@ class Refund extends Model
     {
         return $query->whereIn('status', [
             RefundStatus::PENDING->value,
+            RefundStatus::AWAITING_PROOF->value,
             RefundStatus::SUCCEEDED->value,
         ]);
     }

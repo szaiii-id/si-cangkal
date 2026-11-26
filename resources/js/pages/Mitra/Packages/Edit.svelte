@@ -46,7 +46,9 @@
 
     let coverFiles = $state<File[]>([]);
     // svelte-ignore state_referenced_locally
-    let existingCover = $state<string[]>(pkg.cover_image ? [`/storage/${pkg.cover_image}`] : []);
+    let existingCover = $state<string[]>(
+        pkg.cover_image ? [pkg.cover_image_url ?? `/storage/${pkg.cover_image}`] : [],
+    );
     // svelte-ignore state_referenced_locally
     let useRombongan = $state(pkg.harga_per_rombongan !== null && Number(pkg.harga_per_rombongan) > 0);
 

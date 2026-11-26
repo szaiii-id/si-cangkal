@@ -5,16 +5,21 @@ use App\Enums\BookingStatus;
 use App\Enums\PaymentGateway;
 use App\Enums\PaymentMetode;
 use App\Enums\RefundStatus;
+use App\Jobs\ReconcileXenditTransactionsJob;
 use App\Models\Booking;
 use App\Models\Package;
 use App\Models\Payment;
 use App\Models\Refund;
 use App\Models\User;
+use App\Services\Payment\Contracts\XenditPaymentServiceInterface;
 use App\Services\Payment\XenditNotificationProcessor;
 use App\Services\Refund\RefundApprovalService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Psr\Log\LoggerInterface;
+use RuntimeException;
 
 uses(RefreshDatabase::class);
 
@@ -95,15 +100,67 @@ describe('refund gateway Xendit', function () {
 
         $result = app(RefundApprovalService::class)->approve($this->refund, $this->mitra, 'Trip dibatalkan');
 
-        expect($result->status)->toBe(RefundStatus::SUCCEEDED)
+        expect($result->status)->toBe(RefundStatus::AWAITING_PROOF)
             ->and($result->gateway_refund_id)->toBeNull();
 
         Http::assertNothingSent();
 
+        // Bukti belum diunggah → booking belum dibatalkan.
         $this->assertDatabaseHas('bookings', [
             'id' => $this->booking->id,
-            'status' => BookingStatus::CANCELLED->value,
+            'status' => BookingStatus::CONFIRMED->value,
         ]);
+    });
+
+    it('menyimpan gateway_refund_id sebelum transaksi utama agar rekonsiliasi bisa memulihkan refund', function () {
+        Http::fake([
+            'https://api.xendit.co/v3/refunds' => Http::response([
+                'refund_id' => 'rfd-recover',
+                'status' => 'SUCCEEDED',
+            ]),
+            'https://api.xendit.co/v3/refunds/rfd-recover' => Http::response([
+                'refund_id' => 'rfd-recover',
+                'status' => 'SUCCEEDED',
+                'reference_id' => 'refund-'.$this->refund->id,
+            ]),
+        ]);
+
+        // Simulasikan transaksi utama gagal tepat setelah Xendit menerima refund.
+        $logger = Mockery::mock(LoggerInterface::class);
+        $thrown = false;
+        $logger->shouldReceive('info')->byDefault()->andReturnNull();
+        $logger->shouldReceive('info')
+            ->with('refund.approved', Mockery::any())
+            ->andReturnUsing(function () use (&$thrown) {
+                if (! $thrown) {
+                    $thrown = true;
+
+                    throw new RuntimeException('simulasi commit gagal');
+                }
+
+                return null;
+            });
+        Log::shouldReceive('channel')->with('audit')->andReturn($logger);
+
+        try {
+            app(RefundApprovalService::class)->approve($this->refund, $this->mitra, null);
+        } catch (RuntimeException) {
+            // Diharapkan: transaksi utama rollback.
+        }
+
+        expect($this->refund->fresh()->gateway_refund_id)->toBe('rfd-recover')
+            ->and(Payment::where('booking_id', $this->booking->id)->where('jumlah', '<', 0)->count())->toBe(0)
+            ->and($this->booking->fresh()->status)->toBe(BookingStatus::CONFIRMED);
+
+        // Rekonsiliasi harus menemukan refund yang "hilang" tadi.
+        (new ReconcileXenditTransactionsJob)->handle(
+            app(XenditPaymentServiceInterface::class),
+            app(XenditNotificationProcessor::class),
+        );
+
+        expect($this->refund->fresh()->status)->toBe(RefundStatus::SUCCEEDED)
+            ->and(Payment::where('booking_id', $this->booking->id)->where('jumlah', '<', 0)->count())->toBe(1)
+            ->and($this->booking->fresh()->status)->toBe(BookingStatus::CANCELLED);
     });
 
     it('menunggu webhook bila gateway mengembalikan PENDING', function () {
@@ -136,5 +193,29 @@ describe('refund gateway Xendit', function () {
         expect($refund->fresh()->status)->toBe(RefundStatus::SUCCEEDED)
             ->and($this->booking->fresh()->status)->toBe(BookingStatus::CANCELLED)
             ->and(Payment::where('booking_id', $this->booking->id)->where('jumlah', '<', 0)->count())->toBe(1);
+    });
+
+    it('refund.failed tidak menulis Payment negatif dan tidak membatalkan booking', function () {
+        $this->refund->update([
+            'gateway_status' => 'PENDING',
+            'gateway_refund_id' => 'rfd-gagal',
+        ]);
+
+        app(XenditNotificationProcessor::class)->process(new XenditWebhookEvent(
+            event: 'refund.failed',
+            paymentId: 'py-abc',
+            payoutId: null,
+            referenceId: 'refund-'.$this->refund->id,
+            amount: 500_000.0,
+            status: 'FAILED',
+            payload: ['data' => ['failure_code' => 'INSUFFICIENT_FUNDS']],
+        ));
+
+        $refund = $this->refund->fresh();
+
+        expect($refund->status)->toBe(RefundStatus::PENDING)
+            ->and($refund->gateway_status)->toBe('FAILED')
+            ->and(Payment::where('booking_id', $this->booking->id)->where('jumlah', '<', 0)->count())->toBe(0)
+            ->and($this->booking->fresh()->status)->toBe(BookingStatus::CONFIRMED);
     });
 });

@@ -10,6 +10,7 @@ use App\Services\Notification\Contracts\NotificationDispatcherInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -25,7 +26,7 @@ class UserService
      * Buat user baru dengan role admin.
      *
      * @param  array<string, mixed>  $data
-     * @return array{user: User, plain_password: string}
+     * @return array{user: User}
      *
      * @throws ValidationException
      */
@@ -33,7 +34,9 @@ class UserService
     {
         $this->validateUnique($data);
 
-        $plainPassword = $data['password'] ?? $this->generatePassword();
+        // Password awal acak dan tidak pernah dikembalikan ke admin.
+        // User akan mengatur password sendiri lewat tautan reset.
+        $plainPassword = $this->generatePassword(32);
 
         $user = DB::transaction(function () use ($data, $plainPassword) {
             $user = $this->userRepository->createUser([
@@ -61,18 +64,16 @@ class UserService
             return $user;
         });
 
-        //  Notifikasi ke user baru (di luar transaksi)
-        $this->notifyNewAccount($user, $plainPassword);
+        // Efek samping di luar transaksi.
+        $this->notifyNewAccount($user);
+        $this->sendPasswordResetLink($user);
 
         Log::info('User admin baru dibuat', [
             'user_id' => $user->id,
             'email' => $user->email,
         ]);
 
-        return [
-            'user' => $user,
-            'plain_password' => $plainPassword,
-        ];
+        return ['user' => $user];
     }
 
     /**
@@ -132,28 +133,23 @@ class UserService
     }
 
     /**
-     * Reset password user, return password baru (plain text).
+     * Kirim tautan reset password. Password tidak pernah dibuat/ditampilkan
+     * oleh admin — user menentukan password sendiri lewat tautan tersebut.
      *
-     * @return array{user: User, plain_password: string}
+     * @return array{user: User}
      */
     public function resetPassword(User $user): array
     {
-        $plainPassword = $this->generatePassword();
+        $user->update(['must_change_password' => true]);
 
-        $user->update([
-            'password' => $plainPassword,
-            'must_change_password' => true,
-        ]);
+        $this->sendPasswordResetLink($user);
 
-        Log::info('Password user direset oleh admin', [
+        Log::info('Tautan reset password dikirim oleh admin', [
             'user_id' => $user->id,
             'email' => $user->email,
         ]);
 
-        return [
-            'user' => $user->refresh(),
-            'plain_password' => $plainPassword,
-        ];
+        return ['user' => $user->refresh()];
     }
 
     /**
@@ -187,12 +183,11 @@ class UserService
     // ==========================================
 
     /**
-     * Notifikasi ke user baru bahwa akunnya sudah dibuat.
+     * Notifikasi in-app bahwa akunnya sudah dibuat.
      *
-     *   Password TIDAK dikirim via notifikasi (keamanan).
-     * Admin harus menyampaikan password via jalur aman (WhatsApp/SMS).
+     * Password TIDAK pernah dikirim lewat notifikasi maupun log.
      */
-    private function notifyNewAccount(User $user, string $plainPassword): void
+    private function notifyNewAccount(User $user): void
     {
         // Tentukan URL dashboard berdasarkan role
         $dashboardUrl = match ($user->role) {
@@ -210,6 +205,24 @@ class UserService
                 'url' => $dashboardUrl,
             ],
         );
+    }
+
+    /**
+     * Kirim tautan "set password" memakai broker bawaan Laravel.
+     *
+     * Kegagalan pengiriman tidak membatalkan pembuatan/reset akun,
+     * tetapi dicatat agar bisa ditindaklanjuti.
+     */
+    private function sendPasswordResetLink(User $user): void
+    {
+        $status = Password::sendResetLink(['email' => $user->email]);
+
+        if ($status !== Password::RESET_LINK_SENT) {
+            Log::warning('Gagal mengirim tautan set password', [
+                'user_id' => $user->id,
+                'status' => $status,
+            ]);
+        }
     }
 
     /**

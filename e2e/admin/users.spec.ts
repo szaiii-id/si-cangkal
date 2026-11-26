@@ -5,8 +5,6 @@ import { SEL } from '../fixtures/selectors';
 test.describe
     .serial('Admin — Manajemen User (CRUD, Reset Password & Proteksi Self-Delete)', () => {
     const baseRunId = Date.now();
-    const initialPassword = 'AdminPass123!@#';
-    let resetGeneratedPassword = '';
 
     const getUserData = (browserName: string) => {
         const tag = `${baseRunId}${browserName.slice(0, 3)}`;
@@ -63,7 +61,7 @@ test.describe
         ).toBeVisible();
     });
 
-    test('2. Membuat akun Admin baru menampilkan CredentialsModal dengan kredensial lengkap', async ({
+    test('2. Membuat akun Admin baru mengirim tautan set password (tanpa password plaintext)', async ({
         page,
         asAdmin,
         browserName,
@@ -75,11 +73,13 @@ test.describe
             waitUntil: 'domcontentloaded',
         });
         await expect(page.locator('#name')).toBeVisible();
+        await expect(page.getByPlaceholder('Minimal 8 karakter')).toHaveCount(
+            0,
+        );
 
         await page.locator('#name').fill(userData.name);
         await page.locator('#email').fill(userData.email);
         await page.locator('#username').fill(userData.username);
-        await page.getByPlaceholder('Minimal 8 karakter').fill(initialPassword);
 
         await Promise.all([
             page.waitForResponse(
@@ -90,16 +90,20 @@ test.describe
             page.getByRole('button', { name: /Buat Admin/i }).click(),
         ]);
 
-        // CredentialsModal harus otomatis terbuka dengan judul "Kredensial User"
-        const credDialog = page.getByRole('dialog', {
-            name: /Kredensial User/i,
-        });
-        await expect(credDialog).toBeVisible({ timeout: 10_000 });
-        await expect(credDialog.getByText(userData.email)).toBeVisible();
-        await expect(credDialog.getByText(initialPassword)).toBeVisible();
+        await expect(page).toHaveURL(/\/admin\/users$/);
+        await expect(
+            page.getByRole('dialog', { name: /Kredensial User/i }),
+        ).toHaveCount(0);
 
-        await credDialog.getByRole('button', { name: /^Tutup$/i }).click();
-        await expect(credDialog).toBeHidden();
+        await page
+            .getByPlaceholder(/Cari nama atau email/i)
+            .fill(userData.email);
+        await expect(
+            page
+                .locator('table tbody tr')
+                .filter({ hasText: userData.email })
+                .first(),
+        ).toBeVisible({ timeout: 10_000 });
     });
 
     test('3. Edit data akun admin baru & detail profil mitra (reveal rekening)', async ({
@@ -222,7 +226,7 @@ test.describe
         ).toBeVisible({ timeout: 10_000 });
     });
 
-    test('4. Reset password user menghasilkan password baru & memicu force change password saat login', async ({
+    test('4. Reset password mengirim tautan, user mengatur sendiri, lalu login tanpa force change', async ({
         page,
         asAdmin,
         browserName,
@@ -237,7 +241,6 @@ test.describe
                 .last(),
         ).toBeVisible();
 
-        // Tunggu hasil pencarian debounce selesai agar tidak menimpa flash.credentials saat reset
         await Promise.all([
             page.waitForResponse(
                 (res) =>
@@ -272,21 +275,20 @@ test.describe
                 .click(),
         ]);
 
-        // CredentialsModal muncul berisi password baru hasil reset
-        const credDialog = page.getByRole('dialog', {
-            name: /Kredensial User/i,
-        });
-        await expect(credDialog).toBeVisible({ timeout: 10_000 });
+        // Tidak ada lagi password plaintext di modal.
+        await expect(
+            page.getByRole('dialog', { name: /Kredensial User/i }),
+        ).toHaveCount(0);
 
-        const passwordText = await credDialog
-            .locator('p.font-mono')
-            .innerText();
-        resetGeneratedPassword = passwordText.trim();
-        expect(resetGeneratedPassword.length).toBeGreaterThanOrEqual(8);
+        // Endpoint testing-only memberi token reset (mensimulasikan email).
+        const tokenRes = await page.request.get(
+            `/_test/password-reset-token?email=${encodeURIComponent(userData.email)}`,
+        );
+        expect(tokenRes.ok()).toBeTruthy();
+        const { token } = await tokenRes.json();
+        expect(token).toBeTruthy();
 
-        await credDialog.getByRole('button', { name: /^Tutup$/i }).click();
-
-        // Verifikasi login menggunakan password hasil reset pada context bersih -> redirect /change-password
+        const newPassword = 'AdminResetPass123!';
         const verifyContext = await page.context().browser()!.newContext();
         const verifyPage = await verifyContext.newPage();
         await verifyPage.addLocatorHandler(
@@ -297,22 +299,12 @@ test.describe
             { noWaitAfter: true },
         );
 
-        await verifyPage.goto('/login', { waitUntil: 'domcontentloaded' });
-        await SEL.AUTH.login.email(verifyPage).fill(userData.email);
-        await SEL.AUTH.login.password(verifyPage).fill(resetGeneratedPassword);
-        await Promise.all([
-            verifyPage.waitForURL('/change-password', {
-                timeout: 20_000,
-                waitUntil: 'commit',
-            }),
-            SEL.AUTH.login.submit(verifyPage).click(),
-        ]);
-        await expect(verifyPage).toHaveURL('/change-password');
-
-        // Selesaikan force change password -> logout paksa ke /login -> login ulang masuk /admin/dashboard
-        const finalPassword = 'AdminFinalPass123!';
-        await verifyPage.fill('input#password', finalPassword);
-        await verifyPage.fill('input#password_confirmation', finalPassword);
+        await verifyPage.goto(
+            `/reset-password/${token}?email=${encodeURIComponent(userData.email)}`,
+            { waitUntil: 'domcontentloaded' },
+        );
+        await verifyPage.locator('#password').fill(newPassword);
+        await verifyPage.locator('#password_confirmation').fill(newPassword);
         await Promise.all([
             verifyPage.waitForURL('/login', {
                 timeout: 20_000,
@@ -323,8 +315,9 @@ test.describe
                 .click(),
         ]);
 
+        // Flag must_change_password sudah dihapus setelah reset via tautan.
         await SEL.AUTH.login.email(verifyPage).fill(userData.email);
-        await SEL.AUTH.login.password(verifyPage).fill(finalPassword);
+        await SEL.AUTH.login.password(verifyPage).fill(newPassword);
         await Promise.all([
             verifyPage.waitForURL('/admin/dashboard', {
                 timeout: 20_000,

@@ -30,6 +30,10 @@ beforeEach(function () {
         ->byDefault()
         ->andReturnUsing(fn ($callback) => $callback());
 
+    DB::shouldReceive('afterCommit')
+        ->byDefault()
+        ->andReturnUsing(fn (callable $callback) => $callback());
+
     // Mock AuditLogger → Log::channel('audit')
     $auditLoggerMock = Mockery::mock(LoggerInterface::class);
     $auditLoggerMock->shouldReceive('info')->byDefault()->andReturnNull();

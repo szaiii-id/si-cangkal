@@ -5,6 +5,7 @@ use App\Enums\RefundStatus;
 use App\Models\Booking;
 use App\Models\MitraBankAccount;
 use App\Models\Package;
+use App\Models\Payment;
 use App\Models\Refund;
 use App\Models\User;
 use App\Services\Refund\RefundApprovalService;
@@ -159,7 +160,8 @@ describe('Contract — approve redirect', function () {
                     Mockery::on(fn ($r) => $r->id === $refund->id),
                     Mockery::on(fn ($u) => $u->id === $this->mitra->id),
                     'Catatan approval',
-                );
+                )
+                ->andReturn($refund);
         });
 
         $response = $this->actingAs($this->mitra)
@@ -259,20 +261,22 @@ describe('Security — ownership (Policy)', function () {
 */
 
 describe('Concurrency — approve 2x', function () {
-    it('approve 2x → mock service dipanggil 2x (idempoten di service)', function () {
+    it('approve 2x via HTTP → hanya satu refund SUCCEEDED dan satu Payment negatif', function () {
         $refund = makeRefundForMitra($this->mitra, $this->client);
 
-        $this->mock(RefundApprovalService::class, function (MockInterface $m) {
-            $m->shouldReceive('approve')->twice();
-        });
-
         $this->actingAs($this->mitra)
             ->post("/mitra/refunds/{$refund->id}/approve", ['catatan' => 'Catatan'])
-            ->assertRedirect();
+            ->assertRedirect(route('mitra.refunds.index'))
+            ->assertSessionHas('status');
 
+        // Refund sudah final → FormRequest menolak approve kedua.
         $this->actingAs($this->mitra)
             ->post("/mitra/refunds/{$refund->id}/approve", ['catatan' => 'Catatan'])
-            ->assertRedirect();
+            ->assertRedirect()
+            ->assertSessionHasErrors('catatan');
+
+        expect($refund->fresh()->status)->toBe(RefundStatus::SUCCEEDED)
+            ->and(Payment::where('booking_id', $refund->booking_id)->where('jumlah', '<', 0)->count())->toBe(1);
     });
 });
 
@@ -283,15 +287,17 @@ describe('Concurrency — approve 2x', function () {
 */
 
 describe('Idempotency', function () {
-    it('approve 2x pada refund sama → mock dipanggil 2x', function () {
+    it('approve service 2x → yang kedua ditolak, Payment negatif tetap satu', function () {
         $refund = makeRefundForMitra($this->mitra, $this->client);
+        $service = app(RefundApprovalService::class);
 
-        $this->mock(RefundApprovalService::class, function (MockInterface $m) {
-            $m->shouldReceive('approve')->twice();
-        });
+        $service->approve($refund, $this->mitra, 'Catatan');
 
-        $this->actingAs($this->mitra)->post("/mitra/refunds/{$refund->id}/approve", ['catatan' => 'Catatan']);
-        $this->actingAs($this->mitra)->post("/mitra/refunds/{$refund->id}/approve", ['catatan' => 'Catatan']);
+        expect(fn () => $service->approve($refund->fresh(), $this->mitra, 'Catatan'))
+            ->toThrow(ValidationException::class);
+
+        expect($refund->fresh()->status)->toBe(RefundStatus::SUCCEEDED)
+            ->and(Payment::where('booking_id', $refund->booking_id)->where('jumlah', '<', 0)->count())->toBe(1);
     });
 });
 
@@ -312,7 +318,8 @@ describe('Data Integrity — approve', function () {
                     Mockery::on(fn ($r) => $r->id === $refund->id),
                     Mockery::on(fn ($u) => $u->id === $this->mitra->id),
                     'Catatan approval',
-                );
+                )
+                ->andReturn($refund);
         });
 
         $this->actingAs($this->mitra)
@@ -331,7 +338,8 @@ describe('Data Integrity — approve', function () {
                     Mockery::on(fn ($r) => $r->id === $refund->id),
                     Mockery::on(fn ($u) => $u->id === $this->mitra->id),
                     null,
-                );
+                )
+                ->andReturn($refund);
         });
 
         $this->actingAs($this->mitra)

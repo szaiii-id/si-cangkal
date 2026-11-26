@@ -11,16 +11,25 @@ use App\Models\User;
 use App\Repositories\Contracts\BookingRepositoryInterface;
 use App\Services\Notification\Contracts\NotificationDispatcherInterface;
 use App\Support\AuditLogger;
+use App\Support\UploadStorage;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use RuntimeException;
 use Throwable;
 
 class BookingPaymentService
 {
-    public const PROOF_DISK = 'local';
+    /**
+     * Disk bukti transfer. Bisa dioverride di testing lewat
+     * UPLOAD_PROOF_DISK agar E2E tidak memakai kredensial cloud.
+     */
+    public static function proofDisk(): string
+    {
+        return (string) config('upload.proof_disk');
+    }
 
     public const PROOF_DIRECTORY = 'payment_proofs';
 
@@ -190,34 +199,36 @@ class BookingPaymentService
             return;
         }
 
-        if (Storage::disk(self::PROOF_DISK)->exists($oldPath)) {
-            Storage::disk(self::PROOF_DISK)->delete($oldPath);
-        }
+        // File lama hanya dibuang setelah transaksi berhasil di-commit.
+        // Rollback tidak boleh meninggalkan DB pointing ke file yang hilang.
+        UploadStorage::deleteAfterCommit(self::proofDisk(), $oldPath);
     }
 
     private function storeProofFile(Booking $booking, UploadedFile $file): string
     {
         $extension = strtolower($file->guessExtension() ?: 'jpg');
+        // Suffix acak mencegah tabrakan nama saat upload ulang dalam detik
+        // yang sama — penting karena file lama dihapus setelah commit.
         $filename = sprintf(
-            '%s_%s.%s',
+            '%s_%s_%s.%s',
             $booking->kode,
             now()->format('YmdHis'),
+            Str::random(6),
             $extension,
         );
 
-        $path = Storage::disk(self::PROOF_DISK)->putFileAs(
-            self::PROOF_DIRECTORY,
-            $file,
-            $filename,
-        );
-
-        if ($path === false) {
+        try {
+            return UploadStorage::put(
+                self::proofDisk(),
+                self::PROOF_DIRECTORY,
+                $file,
+                $filename,
+            );
+        } catch (RuntimeException) {
             throw ValidationException::withMessages([
                 'payment_proof' => ['Gagal menyimpan bukti transfer. Coba lagi.'],
             ]);
         }
-
-        return $path;
     }
 
     private function notifyProofUploaded(Booking $booking, string $uploaderRole): void

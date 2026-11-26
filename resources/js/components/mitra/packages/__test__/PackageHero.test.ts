@@ -8,7 +8,7 @@ describe('PackageHero Component', () => {
         deskripsi: 'Liburan seru di Bali',
         kategori: 'wisata_alam',
         status: 'aktif',
-        coverImage: 'cover.jpg',
+        coverImage: 'https://r2.testing.local/packages/cover.jpg',
         durasiHari: 3,
         durasiMalam: 2,
     };
@@ -38,7 +38,10 @@ describe('PackageHero Component', () => {
 
             const img = screen.getByAltText('Sampul paket Paket Bali');
             expect(img).toBeInTheDocument();
-            expect(img).toHaveAttribute('src', '/storage/cover.jpg');
+            expect(img).toHaveAttribute(
+                'src',
+                'https://r2.testing.local/packages/cover.jpg',
+            );
         });
 
         it('TIDAK boleh merender gambar jika coverImage null', () => {

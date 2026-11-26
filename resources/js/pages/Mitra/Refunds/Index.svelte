@@ -7,7 +7,7 @@
     import ConfirmModal from '@/global/ConfirmModal.svelte';
     import RefundCard from '@/components/mitra/refunds/RefundCard.svelte';
 
-    import { getRefunds, approveRefund, rejectRefund } from '@/api/mitra';
+    import { getRefunds, approveRefund, rejectRefund, uploadRefundProof } from '@/api/mitra';
 
     import type { MitraRefundIndexProps } from '@/types/props';
     import type { RefundStatus } from '@/types/enum';
@@ -27,7 +27,7 @@
     let {
         refunds,
         filters = { search: '', status: '' },
-        statusCounts = { PENDING: 0, SUCCEEDED: 0, FAILED: 0, CANCELLED: 0 },
+        statusCounts = { PENDING: 0, AWAITING_PROOF: 0, SUCCEEDED: 0, FAILED: 0, CANCELLED: 0 },
     }: MitraRefundIndexProps = $props();
 
     // ==========================================
@@ -80,7 +80,13 @@
     // STATUS TABS
     // ==========================================
 
-    const refundStatusKeys: RefundStatus[] = ['PENDING', 'SUCCEEDED', 'FAILED', 'CANCELLED'];
+    const refundStatusKeys: RefundStatus[] = [
+        'PENDING',
+        'AWAITING_PROOF',
+        'SUCCEEDED',
+        'FAILED',
+        'CANCELLED',
+    ];
 
     let totalAll = $derived(Object.values(statusCounts).reduce((sum: number, n: number) => sum + n, 0));
 
@@ -182,6 +188,59 @@
             },
         });
     }
+
+    // ==========================================
+    // UPLOAD BUKTI REFUND
+    // ==========================================
+
+    let showProofModal = $state(false);
+    let refundToProof = $state<RefundItem | null>(null);
+    let proofFile = $state<File | null>(null);
+    let proofCatatan = $state('');
+    let proofProcessing = $state(false);
+
+    function openProof(r: RefundItem) {
+        if (r.status !== 'AWAITING_PROOF') return;
+        refundToProof = r;
+        proofFile = null;
+        proofCatatan = '';
+        showProofModal = true;
+    }
+
+    function confirmUploadProof() {
+        if (!refundToProof || !proofFile || proofProcessing) {
+            showToast('Pilih file bukti transfer terlebih dahulu.', 'warning');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('refund_proof', proofFile);
+        if (proofCatatan.trim() !== '') {
+            formData.append('catatan', proofCatatan.trim());
+        }
+
+        proofProcessing = true;
+
+        uploadRefundProof(refundToProof.id, formData, {
+            preserveScroll: true,
+            onSuccess: () => {
+                showToast('Bukti transfer tersimpan.', 'success');
+                showProofModal = false;
+                refundToProof = null;
+                proofFile = null;
+            },
+            onError: (err) => {
+                const message =
+                    (err as Record<string, string>).refund_proof ??
+                    (err as Record<string, string>).refund ??
+                    'Gagal menyimpan bukti transfer.';
+                showToast(message, 'error');
+            },
+            onFinish: () => {
+                proofProcessing = false;
+            },
+        });
+    }
 </script>
 
 <svelte:head>
@@ -223,6 +282,7 @@
                         {refund}
                         onApprove={openApprove}
                         onReject={openReject}
+                        onUploadProof={openProof}
                     />
                 {/each}
             </div>
@@ -278,3 +338,51 @@
     onConfirm={confirmReject}
     onCancel={() => (rejectError = '')}
 />
+
+<!-- MODAL: UPLOAD BUKTI TRANSFER REFUND -->
+<ConfirmModal
+    bind:open={showProofModal}
+    variant="success"
+    title="Unggah Bukti Transfer"
+    description={refundToProof
+        ? `Lampirkan bukti transfer untuk refund #${refundToProof.id}. Dana akan ditandai selesai setelah bukti tersimpan.`
+        : ''}
+    confirmLabel="Simpan Bukti"
+    processing={proofProcessing}
+    onConfirm={confirmUploadProof}
+>
+    {#snippet children()}
+        <div class="space-y-3">
+            <div>
+                <label for="refund-proof" class="block text-xs font-bold text-dark mb-1.5">
+                    Bukti Transfer <span class="text-red-600">*</span>
+                </label>
+                <input
+                    id="refund-proof"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    disabled={proofProcessing}
+                    onchange={(e) => {
+                        const input = e.currentTarget as HTMLInputElement;
+                        proofFile = input.files?.[0] ?? null;
+                    }}
+                    class="w-full text-xs text-gray-600 file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:bg-pink/10 file:text-pink-text file:font-bold"
+                />
+                <p class="text-[10px] text-gray-500 mt-1">JPG/PNG/WEBP, maksimal 5MB.</p>
+            </div>
+            <div>
+                <label for="proof-catatan" class="block text-xs font-bold text-dark mb-1.5">
+                    Catatan <span class="text-gray-400 font-normal">(opsional)</span>
+                </label>
+                <textarea
+                    id="proof-catatan"
+                    bind:value={proofCatatan}
+                    rows="2"
+                    placeholder="Contoh: Dana ditransfer via BCA ke rekening pelanggan."
+                    disabled={proofProcessing}
+                    class="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm font-medium focus:outline-none focus:border-pink focus:bg-white transition-all resize-none"
+                ></textarea>
+            </div>
+        </div>
+    {/snippet}
+</ConfirmModal>

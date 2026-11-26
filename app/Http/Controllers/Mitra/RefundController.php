@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers\Mitra;
 
+use App\Enums\RefundStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Mitra\ApproveRefundRequest;
 use App\Http\Requests\Mitra\ListRefundRequest;
 use App\Http\Requests\Mitra\RejectRefundRequest;
+use App\Http\Requests\Mitra\UploadRefundProofRequest;
 use App\Models\Refund;
 use App\Services\Refund\RefundApprovalService;
+use App\Services\Refund\RefundInitiationService;
 use App\Services\Refund\RefundQueryService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\ValidationException;
@@ -37,6 +40,7 @@ final class RefundController extends Controller
 {
     public function __construct(
         private readonly RefundApprovalService $refundApprovalService,
+        private readonly RefundInitiationService $refundInitiationService,
         private readonly RefundQueryService $refundQueryService,
     ) {}
 
@@ -82,20 +86,53 @@ final class RefundController extends Controller
         $this->authorize('approve', $refund);
 
         try {
-            $this->refundApprovalService->approve(
+            $result = $this->refundApprovalService->approve(
                 refund: $refund,
                 mitra: $request->user(),
                 catatan: $request->validated('catatan'),
             );
 
+            $message = $result->status === RefundStatus::AWAITING_PROOF
+                ? 'Refund menunggu bukti transfer dari Anda.'
+                : 'Refund berhasil diproses secara manual.';
+
             return redirect()
                 ->route('mitra.refunds.index')
-                ->with('status', 'Refund berhasil diproses secara manual.');
+                ->with('status', $message);
         } catch (ValidationException $e) {
             return back()->withErrors($e->errors())->withInput();
         } catch (Throwable $e) {
             return back()
                 ->with('error', 'Gagal memproses refund: '.$e->getMessage())
+                ->withInput();
+        }
+    }
+
+    /**
+     * Unggah bukti transfer untuk refund yang menunggu bukti.
+     *
+     * Ini satu-satunya jalan bagi refund manual menjadi SUCCEEDED.
+     */
+    public function uploadProof(UploadRefundProofRequest $request, Refund $refund): RedirectResponse
+    {
+        $this->authorize('uploadProof', $refund);
+
+        try {
+            $this->refundInitiationService->uploadProof(
+                refund: $refund,
+                mitra: $request->user(),
+                file: $request->proofFile(),
+                catatan: $request->validated('catatan'),
+            );
+
+            return redirect()
+                ->route('mitra.refunds.index')
+                ->with('status', 'Bukti transfer tersimpan. Dana refund ditandai selesai.');
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors())->withInput();
+        } catch (Throwable $e) {
+            return back()
+                ->with('error', 'Gagal menyimpan bukti transfer: '.$e->getMessage())
                 ->withInput();
         }
     }

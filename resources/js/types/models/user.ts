@@ -27,6 +27,7 @@ export type Profile = {
     kota: string | null;
     kode_pos: string | null;
     logo: string | null;
+    logo_url?: string | null;
     deskripsi: string | null;
     meta: Record<string, unknown> | null;
 };

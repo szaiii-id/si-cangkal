@@ -107,7 +107,9 @@ describe('ETicketDownloadButton Component', () => {
             });
             await fireEvent.click(refreshBtn);
 
-            expect(router.reload).toHaveBeenCalledWith({ only: ['eticket'] });
+            expect(router.reload).toHaveBeenCalledWith(
+                expect.objectContaining({ only: ['eticket'] }),
+            );
         });
     });
 

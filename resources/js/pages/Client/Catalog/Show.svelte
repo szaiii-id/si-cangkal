@@ -9,6 +9,7 @@
     import { formatDurasi } from '@/utils/duration';
     import { formatRataRata } from '@/utils/review';
     import { timezoneLabelLong } from '@/utils/timezone';
+    import { googleMapsUrl, waMeUrl } from '@/utils/externalLinks';
 
     // ==========================================
     // PROPS
@@ -49,14 +50,6 @@
         return time.slice(0, 5);
     }
 
-    function toWhatsAppNumber(phone: string | null): string | null {
-        if (!phone) return null;
-        let digits = phone.replace(/\D/g, '');
-        if (digits.startsWith('0')) digits = '62' + digits.slice(1);
-        if (!digits.startsWith('62')) digits = '62' + digits;
-        return digits;
-    }
-
     // ==========================================
     // MITRA INFO
     // ==========================================
@@ -64,7 +57,16 @@
     let mitraProfile = $derived(pkg.mitra?.profile ?? null);
     let mitraName = $derived(mitraProfile?.nama_penyedia_usaha ?? pkg.mitra?.name ?? null);
     let mitraInitial = $derived(mitraName?.charAt(0).toUpperCase() ?? '?');
-    let waNumber = $derived(toWhatsAppNumber(mitraProfile?.telepon ?? null));
+    let waLink = $derived(
+        waMeUrl(mitraProfile?.telepon ?? null, `Halo, saya tertarik dengan paket ${pkg.nama}.`),
+    );
+    let mapsUrl = $derived(
+        googleMapsUrl(
+            [pkg.nama, mitraProfile?.kota, mitraProfile?.provinsi]
+                .filter(Boolean)
+                .join(', '),
+        ),
+    );
 </script>
 
 <svelte:head>
@@ -76,7 +78,7 @@
     <!-- HERO IMAGE -->
     <div class="relative -mx-5 -mt-4 sm:-mx-8 sm:-mt-6 h-[40vh] sm:h-[50vh] bg-gray-200">
         {#if pkg.cover_image}
-            <img src={`/storage/${pkg.cover_image}`} alt={pkg.nama} class="w-full h-full object-cover" />
+            <img src={pkg.cover_image_url ?? `/storage/${pkg.cover_image}`} alt={pkg.nama} class="w-full h-full object-cover" />
         {:else}
             <img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80" alt="Fallback" class="w-full h-full object-cover opacity-80" />
         {/if}
@@ -292,10 +294,19 @@
                             </div>
                         </div>
                         
+                        <a
+                            href={mapsUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-5 py-2.5 rounded-xl bg-white/10 text-white font-bold text-xs hover:bg-white/20 transition-all shrink-0"
+                        >
+                            Lihat Lokasi di Maps
+                        </a>
+
                         <!-- Tombol WA di dalam Card Mitra -->
-                        {#if waNumber}
-                            <a 
-                                href={`https://wa.me/${waNumber}?text=${encodeURIComponent(`Halo, saya tertarik dengan paket ${pkg.nama}.`)}`}
+                        {#if waLink}
+                            <a
+                                href={waLink}
                                 target="_blank" 
                                 rel="noopener noreferrer" 
                                 class="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-5 py-2.5 rounded-xl bg-pink-dark text-white font-bold text-xs hover:bg-sun-dark transition-all shadow-md shrink-0"

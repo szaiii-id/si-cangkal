@@ -152,6 +152,12 @@ export const rejectRefund = (
     options?: MitraOptions,
 ) => router.post(`/mitra/refunds/${refundId}/reject`, data, options);
 
+export const uploadRefundProof = (
+    refundId: number,
+    data: RequestPayload,
+    options?: MitraOptions,
+) => router.post(`/mitra/refunds/${refundId}/proof`, data, options);
+
 // ==========================================
 // PROFILE & ONBOARDING
 // ==========================================

@@ -20,6 +20,7 @@ export type PackageEloquent = {
     max_peserta: number | null;
     timezone: string;
     cover_image: string | null;
+    cover_image_url?: string | null;
     status: PackageStatus;
     created_at: string;
     updated_at: string;
@@ -45,6 +46,7 @@ export type PackageResource = {
     isRombongan: boolean;
     timezone: string;
     cover_image: string | null;
+    cover_image_url?: string | null;
     status: PackageStatus;
     created_at: string;
     mitra?: UserWithEmail | null;

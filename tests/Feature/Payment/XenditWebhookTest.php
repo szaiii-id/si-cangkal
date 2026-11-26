@@ -15,6 +15,7 @@ use App\Services\Payment\XenditNotificationProcessor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Str;
+use RuntimeException;
 
 uses(RefreshDatabase::class);
 
@@ -80,7 +81,10 @@ describe('POST /payments/xendit/webhook', function () {
 
         $this->assertDatabaseHas('webhook_events', [
             'provider' => 'xendit',
-            'request_id' => 'py-123',
+            // sha256('xendit|payment.capture|SUCCEEDED|py-123')
+            'request_id' => '7fff20479a3f1fd6232a4a3f76e3c1921b4891d83684408b10b8c79f68f9f476',
+            'event' => 'payment.capture',
+            'status' => 'SUCCEEDED',
         ]);
 
         Bus::assertDispatched(ProcessXenditNotificationJob::class, 1);
@@ -134,10 +138,70 @@ describe('POST /payments/xendit/webhook', function () {
         Bus::assertDispatched(ProcessXenditNotificationJob::class, 2);
     });
 
-    it('menghapus penanda idempotensi bila pemrosesan gagal', function () {
+    it('tidak membuang event lain dengan payment_id yang sama', function () {
+        $headers = ['X-Callback-Token' => 'callback-token-rahasia'];
+
+        $sukses = xenditPaymentWebhook($this->booking);
+        $gagal = xenditPaymentWebhook($this->booking);
+        $gagal['event'] = 'payment.failure';
+        $gagal['data']['status'] = 'FAILED';
+
+        $this->postJson('/payments/xendit/webhook', $sukses, $headers)->assertOk();
+        $this->postJson('/payments/xendit/webhook', $gagal, $headers)->assertOk();
+
+        expect(WebhookEvent::where('provider', 'xendit')->count())->toBe(2);
+        Bus::assertDispatched(ProcessXenditNotificationJob::class, 2);
+    });
+
+    it('event refund sukses lalu gagal dengan payment_id sama tetap dua-duanya diproses', function () {
+        $headers = ['X-Callback-Token' => 'callback-token-rahasia'];
+
+        $sukses = [
+            'event' => 'refund.succeeded',
+            'data' => [
+                'payment_id' => 'py-refund-sama',
+                'reference_id' => 'refund-1',
+                'status' => 'SUCCEEDED',
+                'amount' => 500_000,
+            ],
+        ];
+
+        $gagal = $sukses;
+        $gagal['event'] = 'refund.failed';
+        $gagal['data']['status'] = 'FAILED';
+
+        $this->postJson('/payments/xendit/webhook', $sukses, $headers)->assertOk();
+        $this->postJson('/payments/xendit/webhook', $gagal, $headers)->assertOk();
+
+        expect(WebhookEvent::where('provider', 'xendit')->count())->toBe(2);
+
+        Bus::assertDispatched(ProcessXenditNotificationJob::class, 2);
+
+        $this->assertDatabaseHas('webhook_events', [
+            'event' => 'refund.failed',
+            'status' => 'FAILED',
+        ]);
+    });
+
+    it('menghapus penanda idempotensi bila dispatch queue gagal', function () {
+        Bus::shouldReceive('dispatch')
+            ->once()
+            ->andThrow(new RuntimeException('queue down'));
+
+        $this->postJson('/payments/xendit/webhook', xenditPaymentWebhook($this->booking), [
+            'X-Callback-Token' => 'callback-token-rahasia',
+        ])->assertStatus(500);
+
+        // Marker dibuang supaya retry dari Xendit tetap bisa diproses.
+        expect(WebhookEvent::where('provider', 'xendit')->count())->toBe(0);
+    });
+
+    it('menandai penanda gagal tanpa menghapusnya', function () {
         WebhookEvent::query()->create([
             'provider' => 'xendit',
             'request_id' => 'py-failed',
+            'event' => 'payment.capture',
+            'status' => 'SUCCEEDED',
             'payload' => [],
         ]);
 
@@ -156,10 +220,13 @@ describe('POST /payments/xendit/webhook', function () {
 
         $job->failed();
 
-        expect(WebhookEvent::query()
+        $failed = WebhookEvent::query()
             ->where('provider', 'xendit')
             ->where('request_id', 'py-failed')
-            ->count())->toBe(0);
+            ->firstOrFail();
+
+        expect($failed->failed_at)->not->toBeNull()
+            ->and($failed->attempts)->toBe(1);
     });
 });
 

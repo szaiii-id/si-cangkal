@@ -49,6 +49,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
@@ -355,6 +356,30 @@ Route::prefix('_test')
                         'hash' => sha1($user->getEmailForVerification()),
                     ],
                 ),
+            ]);
+        });
+
+        /**
+         * GET /_test/password-reset-token?email=...
+         *
+         * Testing-only: ambil token reset terbaru untuk user. Dipakai E2E
+         * untuk menguji alur "admin mengirim tautan set password" tanpa
+         * harus membaca email.
+         */
+        Route::get('/password-reset-token', function (Request $request): JsonResponse {
+            $validated = $request->validate([
+                'email' => ['required', 'string', 'email'],
+            ]);
+
+            $user = User::where('email', $validated['email'])->first();
+
+            if ($user === null) {
+                return response()->json(['ok' => false, 'error' => 'User tidak ditemukan.'], 404);
+            }
+
+            return response()->json([
+                'ok' => true,
+                'token' => Password::createToken($user),
             ]);
         });
 

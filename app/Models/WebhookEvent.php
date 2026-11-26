@@ -9,7 +9,11 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property string $provider
  * @property string $request_id
+ * @property string|null $event
+ * @property string|null $status
  * @property array<string, mixed> $payload
+ * @property int $attempts
+ * @property Carbon|null $failed_at
  * @property Carbon $created_at
  * @property Carbon $updated_at
  */
@@ -21,7 +25,11 @@ class WebhookEvent extends Model
     protected $fillable = [
         'provider',
         'request_id',
+        'event',
+        'status',
         'payload',
+        'attempts',
+        'failed_at',
     ];
 
     /**
@@ -31,6 +39,8 @@ class WebhookEvent extends Model
     {
         return [
             'payload' => 'array',
+            'attempts' => 'integer',
+            'failed_at' => 'datetime',
         ];
     }
 }

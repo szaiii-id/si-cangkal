@@ -5,11 +5,12 @@ namespace App\Services\User;
 use App\Models\Profile;
 use App\Models\User;
 use App\Repositories\Contracts\ProfileRepositoryInterface;
+use App\Support\UploadStorage;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use RuntimeException;
 
 class ProfileService
 {
@@ -166,8 +167,8 @@ class ProfileService
         $profile = $user->profile;
         $oldLogo = $profile?->logo;
 
-        if ($oldLogo && Storage::disk('public')->exists($oldLogo)) {
-            Storage::disk('public')->delete($oldLogo);
+        if ($oldLogo !== null && $oldLogo !== '') {
+            UploadStorage::deleteAfterCommit(config('upload.public_disk'), $oldLogo);
         }
 
         // === Generate nama file dari server (jangan trust client) ===
@@ -178,11 +179,9 @@ class ProfileService
             $extension
         );
 
-        //  FIX PHPStan: `storeAs()` bisa return `string|false`.
-        // Kita cast dan cek false → throw exception.
-        $path = $file->storeAs('logos', $filename, 'public');
-
-        if ($path === false) {
+        try {
+            $path = UploadStorage::put(config('upload.public_disk'), 'logos', $file, $filename);
+        } catch (RuntimeException) {
             Log::error('Logo mitra gagal disimpan', [
                 'user_id' => $user->id,
                 'filename' => $filename,

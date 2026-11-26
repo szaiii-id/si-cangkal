@@ -178,10 +178,9 @@ final class UserSeeder extends Seeder
             'user_id' => $user->id,
             'email' => $user->email,
             'role' => $user->role,
-            'plain_password' => $plainPassword,
         ]);
 
-        $this->command->info("  User {$email} dibuat (password di channel audit).");
+        $this->command->info("  User {$email} dibuat (atur password lewat tautan reset).");
 
         return $user;
     }

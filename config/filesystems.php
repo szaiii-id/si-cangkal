@@ -1,5 +1,10 @@
 <?php
 
+// R2 memakai endpoint regional turunan Account ID. Bisa dioverride lewat
+// R2_ENDPOINT bila diperlukan (mis. jurisdiction-specific endpoint).
+$r2Endpoint = env('R2_ENDPOINT')
+    ?: 'https://'.env('R2_ACCOUNT_ID').'.r2.cloudflarestorage.com';
+
 return [
 
     /*
@@ -43,6 +48,33 @@ return [
             'root' => storage_path('app/public'),
             'url' => rtrim((string) env('APP_URL', 'http://localhost'), '/').'/storage',
             'visibility' => 'public',
+            'throw' => false,
+            'report' => false,
+        ],
+
+        // Bukti transfer & bukti refund: SELALU privat, diakses via signed URL.
+        'r2_private' => [
+            'driver' => 's3',
+            'key' => env('R2_ACCESS_KEY_ID'),
+            'secret' => env('R2_SECRET_ACCESS_KEY'),
+            'region' => 'auto',
+            'bucket' => env('R2_PRIVATE_BUCKET'),
+            'endpoint' => $r2Endpoint,
+            'use_path_style_endpoint' => true,
+            'throw' => false,
+            'report' => false,
+        ],
+
+        // Cover paket & logo mitra: publik lewat custom domain / r2.dev.
+        'r2_public' => [
+            'driver' => 's3',
+            'key' => env('R2_ACCESS_KEY_ID'),
+            'secret' => env('R2_SECRET_ACCESS_KEY'),
+            'region' => 'auto',
+            'bucket' => env('R2_PUBLIC_BUCKET'),
+            'url' => env('R2_PUBLIC_URL'),
+            'endpoint' => $r2Endpoint,
+            'use_path_style_endpoint' => true,
             'throw' => false,
             'report' => false,
         ],

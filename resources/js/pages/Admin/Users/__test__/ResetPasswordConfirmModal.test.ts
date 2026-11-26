@@ -90,20 +90,19 @@ describe('ResetPasswordConfirmModal', () => {
         it('menampilkan pesan konfirmasi', () => {
             renderModal({});
             expect(
-                screen.getByText(/Yakin ingin mereset password user berikut/i),
+                screen.getByText(/Tautan pengaturan password akan dikirim/i),
             ).toBeInTheDocument();
         });
 
-        it('menampilkan info "Password baru akan ditampilkan sekali"', () => {
+        it('menampilkan info tautan berlaku terbatas', () => {
             renderModal({});
-            expect(screen.getByText(/Password baru akan/i)).toBeInTheDocument();
-            expect(screen.getByText(/ditampilkan sekali/i)).toBeInTheDocument();
+            expect(screen.getByText(/berlaku terbatas/i)).toBeInTheDocument();
         });
 
-        it('menampilkan info "user harus menggantinya saat login"', () => {
+        it('menampilkan info user mengatur password sendiri', () => {
             renderModal({});
             expect(
-                screen.getByText(/user harus menggantinya saat login/i),
+                screen.getByText(/mengatur password sendiri/i),
             ).toBeInTheDocument();
         });
 

@@ -1,5 +1,6 @@
 <?php
 
+use App\Data\Xendit\XenditPayoutResult;
 use App\Data\Xendit\XenditWebhookEvent;
 use App\Enums\BookingStatus;
 use App\Enums\PaymentGateway;
@@ -10,12 +11,16 @@ use App\Models\MitraBankAccount;
 use App\Models\Package;
 use App\Models\Payment;
 use App\Models\User;
+use App\Services\Payment\Contracts\XenditPaymentServiceInterface;
 use App\Services\Payment\XenditNotificationProcessor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Psr\Log\LoggerInterface;
+use RuntimeException;
 
 uses(RefreshDatabase::class);
 
@@ -98,6 +103,44 @@ describe('DisburseToMitraJob', function () {
         Bus::dispatchSync(new DisburseToMitraJob($this->booking->id));
 
         Http::assertNothingSent();
+    });
+
+    it('hanya memanggil gateway sekali bila job kedua masuk saat job pertama masih menunggu gateway', function () {
+        $gateway = Mockery::mock(XenditPaymentServiceInterface::class);
+        $calls = 0;
+
+        $gateway->shouldReceive('payout')
+            ->andReturnUsing(function () use (&$calls) {
+                $calls++;
+
+                // Simulasikan race: job kedua masuk sebelum job pertama
+                // sempat menyimpan payout_id.
+                if ($calls === 1) {
+                    Bus::dispatchSync(new DisburseToMitraJob($this->booking->id));
+                }
+
+                return new XenditPayoutResult('po-race', 'PENDING', []);
+            });
+
+        $this->app->instance(XenditPaymentServiceInterface::class, $gateway);
+
+        Bus::dispatchSync(new DisburseToMitraJob($this->booking->id));
+
+        expect($calls)->toBe(1)
+            ->and(data_get($this->payment->fresh()->gateway_payload, 'payout_id'))->toBe('po-race');
+    });
+
+    it('mencatat audit saat payout gagal permanen', function () {
+        $logger = Mockery::mock(LoggerInterface::class);
+        $logger->shouldReceive('info')
+            ->once()
+            ->with('payment.payout_failed', Mockery::type('array'));
+
+        Log::shouldReceive('error')->byDefault()->andReturnNull();
+        Log::shouldReceive('channel')->with('audit')->andReturn($logger);
+
+        (new DisburseToMitraJob($this->booking->id))
+            ->failed(new RuntimeException('saldo tidak cukup'));
     });
 
     it('melempar error ketika saldo tidak cukup agar job di-retry', function () {

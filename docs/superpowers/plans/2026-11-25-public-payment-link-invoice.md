@@ -1,5 +1,9 @@
 # Tautan Pembayaran Publik & Invoice Implementation Plan
 
+> **Status: ARSIP — as-built.** Fitur ini sudah diimplementasikan. Checklist di bawah
+> sengaja dibiarkan apa adanya sebagai catatan historis dan bukan TODO aktif.
+> Rencana otoritatif saat ini: `/home/z-code/.opencode/plan/2026-11-25-si-cangkal-upgrade.md`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Memberi booking manual satu tautan publik berkirim-WA yang bisa dibuka tanpa login, berisi tombol bayar Xendit dan invoice PDF yang bisa diunduh, dengan email otomatis sebagai pelengkap.

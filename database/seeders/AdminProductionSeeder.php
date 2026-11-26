@@ -33,12 +33,13 @@ final class AdminProductionSeeder extends Seeder
             ],
         );
 
+        // Password sengaja TIDAK ditulis ke log. Atur ADMIN_PROD_PASSWORD
+        // atau kirim tautan set password melalui panel admin.
         Log::channel('audit')->info('Admin production seeded', [
             'user_id' => $admin->id,
             'email' => $admin->email,
-            'plain_password' => $plainPassword,
         ]);
 
-        $this->command->info("Akun Admin Production siap: {$admin->email}");
+        $this->command->info("Akun Admin Production siap: {$admin->email}. Gunakan tautan reset password untuk mengatur kata sandi.");
     }
 }

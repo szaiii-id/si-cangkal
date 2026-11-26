@@ -8,6 +8,7 @@ namespace App\Enums;
 enum RefundStatus: string
 {
     case PENDING = 'PENDING';
+    case AWAITING_PROOF = 'AWAITING_PROOF';
     case SUCCEEDED = 'SUCCEEDED';
     case FAILED = 'FAILED';
     case CANCELLED = 'CANCELLED';
@@ -16,6 +17,7 @@ enum RefundStatus: string
     {
         return match ($this) {
             self::PENDING => 'Sedang Diproses',
+            self::AWAITING_PROOF => 'Menunggu Bukti Transfer',
             self::SUCCEEDED => 'Berhasil',
             self::FAILED => 'Gagal',
             self::CANCELLED => 'Dibatalkan',
@@ -26,6 +28,7 @@ enum RefundStatus: string
     {
         return match ($this) {
             self::PENDING => 'bg-sun/10 text-sun-dark border border-sun/20',
+            self::AWAITING_PROOF => 'bg-blue/10 text-blue-dark border border-blue/20',
             self::SUCCEEDED => 'bg-green/10 text-green-dark border border-green/20',
             self::FAILED => 'bg-red-50 text-red-700 border border-red-200',
             self::CANCELLED => 'bg-gray-100 text-gray-700 border border-gray-200',

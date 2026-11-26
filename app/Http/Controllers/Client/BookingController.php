@@ -226,7 +226,11 @@ final class BookingController extends Controller
 
         abort_if($path === '', 404);
 
-        $disk = Storage::disk(BookingPaymentService::PROOF_DISK);
+        $disk = Storage::disk(BookingPaymentService::proofDisk());
+
+        if (! $disk->exists($path)) {
+            $disk = Storage::disk('local'); // fallback bukti lama
+        }
 
         abort_unless($disk->exists($path), 404);
 

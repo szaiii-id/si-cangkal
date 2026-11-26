@@ -1,7 +1,9 @@
 # Migrasi Penuh DOKU → Xendit — Desain
 
 Tanggal: 2026-11-25
-Status: **draft, menunggu persetujuan**
+Status: **disetujui & diimplementasikan (arsip)** — opsi payout instan tetap
+tersedia lewat flag, tetapi kebijakan produksi tetap `hold → release saat trip selesai`.
+Lihat rencana otoritatif di `/home/z-code/.opencode/plan/2026-11-25-si-cangkal-upgrade.md`.
 
 ## Intent dan mengapa
 

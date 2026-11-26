@@ -68,20 +68,20 @@ Aplikasi tersedia di `http://localhost:8000`.
 
 Sumber kebenaran adalah `.env.example`. Variabel yang paling sering diubah:
 
-| Variabel               | Default                                       | Keterangan                                 |
-| ---------------------- | --------------------------------------------- | ------------------------------------------ |
-| `APP_NAME`             | `SI-CANGKAL`                                  | Nama aplikasi                              |
-| `APP_ENV`              | `local`                                       | `local` / `testing` / `production`         |
-| `APP_URL`              | `http://localhost:8000`                       | Harus `localhost` untuk E2E                |
-| `APP_TIMEZONE`         | `Asia/Makassar`                               | **Diabaikan**—zona aplikasi hardcode `UTC` |
-| `DB_*`                 | `127.0.0.1:5432`, `sicangkal_db`              | Database utama                             |
-| `E2E_DB_*`             | `sicangkal_db_testing`                        | Database khusus Playwright                 |
-| `BREVO_API_KEY`        | kosong                                        | Pengirim email transaksional               |
-| `FIREBASE_CREDENTIALS` | `storage/app/firebase/firebase-adminsdk.json` | Service account FCM (gitignored)           |
-| `VITE_FIREBASE_*`      | kosong                                        | Konfigurasi Firebase sisi client           |
-| `GOOGLE_CLIENT_*`      | kosong                                        | Login Google OAuth                         |
-| `AUTH_THROTTLE_*`      | lihat `.env.example`                          | Batas percobaan login/register/dll.        |
-| `XENDIT_*`             | lihat bagian Xendit Test Mode                 | Payment gateway Test Mode                  |
+| Variabel               | Default                                       | Keterangan                                                        |
+| ---------------------- | --------------------------------------------- | ----------------------------------------------------------------- |
+| `APP_NAME`             | `SI-CANGKAL`                                  | Nama aplikasi                                                     |
+| `APP_ENV`              | `local`                                       | `local` / `testing` / `production`                                |
+| `APP_URL`              | `http://localhost:8000`                       | Harus `localhost` untuk E2E                                       |
+| `APP_TIMEZONE`         | `Asia/Makassar`                               | **Diabaikan**—zona aplikasi hardcode `UTC`                        |
+| `DB_*`                 | `127.0.0.1:5432`, `sicangkal_db`              | Database utama                                                    |
+| `E2E_DB_*`             | `sicangkal_db_testing`                        | Database khusus Playwright                                        |
+| `BREVO_API_KEY`        | kosong                                        | Pengirim email transaksional; di produksi set `MAIL_MAILER=brevo` |
+| `FIREBASE_CREDENTIALS` | `storage/app/firebase/firebase-adminsdk.json` | Service account FCM (gitignored)                                  |
+| `VITE_FIREBASE_*`      | kosong                                        | Konfigurasi Firebase sisi client                                  |
+| `GOOGLE_CLIENT_*`      | kosong                                        | Login Google OAuth                                                |
+| `AUTH_THROTTLE_*`      | lihat `.env.example`                          | Batas percobaan login/register/dll.                               |
+| `XENDIT_*`             | lihat bagian Xendit Test Mode                 | Payment gateway Test Mode                                         |
 
 Zona waktu: DB menyimpan **UTC**. Untuk logika "hari ini"/"sekarang" pakai `App\Support\Timezone`, **jangan** `now()` langsung. Timezone user/trip berformat IANA; default `Asia/Makassar`.
 
@@ -163,8 +163,10 @@ Sebelum selesai mengerjakan fitur backend/frontend, jalankan: `bun run check`, `
 
 Perintah tersebut juga dijalankan GitHub Actions setiap push/PR ke `main`:
 
-- `.github/workflows/tests.yml` — Pint, PHPStan, `bun run check`, `bun run types:check`, Pest (dengan Postgres 16), Vitest, dan audit dependency
+- `.github/workflows/tests.yml` — Pint, PHPStan, `bun run check`, `bun run types:check`, Pest (dengan Postgres 16), Vitest, dan audit dependency. **Semua gate bersifat blocking.** `bun run audit:check` memakai allowlist advisori yang tercatat dan kedaluwarsa di `scripts/audit-check.ts`.
 - `.github/workflows/e2e.yml` — Playwright chromium/firefox/webkit + rate-limit, lengkap dengan upload report
+
+Versi Bun di CI dipaku (`1.4.2`, variabel `BUN_VERSION`) agar perubahan rilis Bun tidak memecah build tanpa perubahan kode.
 
 `.github/dependabot.yml` memantau pembaruan GitHub Actions, Composer, JavaScript/Bun, dan Docker setiap minggu.
 
@@ -230,4 +232,15 @@ php artisan view:cache
 php artisan migrate --force
 ```
 
-Pastikan `APP_DEBUG=false`, HTTPS dipaksakan otomatis di production, dan password admin seeder tercatat di kanal log `audit` (atau diatur lewat `ADMIN_PROD_PASSWORD`).
+Pastikan `APP_DEBUG=false`, HTTPS dipaksakan otomatis di production, dan `MAIL_MAILER=brevo` + `BREVO_API_KEY` terisi. **Password tidak pernah ditulis ke log**: admin mengatur password sendiri lewat tautan reset yang dikirim Brevo ( seeder produksi dapat memakai `ADMIN_PROD_PASSWORD`).
+
+### Proses background di VPS/cPanel
+
+- **Queue worker** wajib hidup terus (E-Ticket, notifikasi, payout). Pakai Supervisor, misalnya:
+  `php artisan queue:work --tries=3 --backoff=10,30,60 --stop-when-empty` dijalankan ulang oleh Supervisor.
+- **Scheduler** cukup satu cron entry:
+  `* * * * * cd /path/to/project && php artisan schedule:run >> /dev/null 2>&1`
+  Ini mencakup `bookings:expire`, `trips:activate`, `trips:complete` (01:00), dan rekonsiliasi Xendit tiap 5 menit.
+- **Health check** untuk UptimeRobot: `GET /health/ready` (200 bila DB sehat dan tidak ada job gagal dalam 1 jam terakhir; 503 bila tidak). Jangan memakai `/up` saja karena hanya mengecek framework.
+- **Alert job gagal**: isi `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` bila ingin notifikasi Telegram. Tanpa keduanya, kegagalan tetap tercatat di kanal `audit`.
+- **File upload** memakai dua bucket Cloudflare R2 (`R2_PRIVATE_BUCKET` untuk bukti, `R2_PUBLIC_BUCKET` untuk cover/logo). Untuk produksi, sebaiknya `R2_PUBLIC_URL` memakai custom domain Cloudflare, bukan URL `r2.dev`.

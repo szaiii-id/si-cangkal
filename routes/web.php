@@ -35,6 +35,8 @@ use App\Http\Controllers\Notification\NotificationController;
 use App\Http\Controllers\PaymentWebhookController;
 use App\Http\Controllers\PublicETicketController;
 use App\Http\Controllers\PublicPaymentLinkController;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -45,6 +47,35 @@ use Inertia\Inertia;
 */
 
 Route::get('/', fn () => Inertia::render('Welcome'))->name('home');
+
+Route::get('/health/ready', function () {
+    $db = 'ok';
+
+    try {
+        DB::select('select 1');
+    } catch (QueryException) {
+        $db = 'error';
+    }
+
+    $failedJobs = 0;
+
+    try {
+        $failedJobs = DB::table('failed_jobs')
+            ->where('failed_at', '>=', now()->subHour())
+            ->count();
+    } catch (QueryException) {
+        // Tabel failed_jobs belum ada saat migrasi awal — anggap 0.
+    }
+
+    $healthy = $db === 'ok' && $failedJobs === 0;
+
+    return response()->json([
+        'status' => $healthy ? 'ok' : 'degraded',
+        'db' => $db,
+        'failed_jobs' => $failedJobs,
+        'checked_at' => now()->toIso8601String(),
+    ], $healthy ? 200 : 503);
+})->middleware('throttle:60,1')->name('health.ready');
 
 Route::post('/contact', [ContactController::class, 'store'])
     ->middleware('throttle:contact')
@@ -198,8 +229,8 @@ Route::middleware('auth')->group(function () {
 
             Route::prefix('reports')->name('reports.')->group(function () {
                 Route::get('/', [ReportController::class, 'index'])->name('index');
-                Route::get('/export-pdf', [ReportController::class, 'exportPdf'])->name('export-pdf');
-                Route::get('/export-excel', [ReportController::class, 'exportExcel'])->name('export-excel');
+                Route::get('/export-pdf', [ReportController::class, 'exportPdf'])->middleware('throttle:60,1')->name('export-pdf');
+                Route::get('/export-excel', [ReportController::class, 'exportExcel'])->middleware('throttle:60,1')->name('export-excel');
 
                 Route::get('/mitra', [ReportController::class, 'mitraPerformance'])->name('mitra');
                 Route::get('/mitra/export-pdf', [ReportController::class, 'exportMitraPdf'])->name('mitra.export-pdf');
@@ -269,6 +300,7 @@ Route::middleware('auth')->group(function () {
                 Route::get('/refunds', [MitraRefundController::class, 'index'])->name('refunds.index');
                 Route::post('/refunds/{refund}/approve', [MitraRefundController::class, 'approve'])->name('refunds.approve');
                 Route::post('/refunds/{refund}/reject', [MitraRefundController::class, 'reject'])->name('refunds.reject');
+                Route::post('/refunds/{refund}/proof', [MitraRefundController::class, 'uploadProof'])->middleware('throttle:10,1')->name('refunds.proof');
             });
         });
 

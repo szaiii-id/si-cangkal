@@ -165,7 +165,7 @@
                     <a href={`/client/catalog/${pkg.slug}`} use:inertia class="relative aspect-[4/3] bg-gray-100 overflow-hidden p-1.5 block">
                         <div class="w-full h-full rounded-xl overflow-hidden relative">
                             {#if pkg.cover_image}
-                                <img src={`/storage/${pkg.cover_image}`} alt={pkg.nama} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                <img src={pkg.cover_image_url ?? `/storage/${pkg.cover_image}`} alt={pkg.nama} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                             {:else}
                                 <div class="w-full h-full flex items-center justify-center text-gray-600 font-bold bg-gray-50 text-xs">Tanpa Gambar</div>
                             {/if}

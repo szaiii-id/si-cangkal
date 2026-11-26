@@ -11,7 +11,7 @@
     type ProfileData = Pick<
         Profile,
         | 'id' | 'nama_penyedia_usaha' | 'nomor_identitas' | 'alamat'
-        | 'telepon' | 'provinsi' | 'kota' | 'kode_pos' | 'logo' | 'deskripsi'
+        | 'telepon' | 'provinsi' | 'kota' | 'kode_pos' | 'logo' | 'logo_url' | 'deskripsi'
     >;
 
     // ==========================================
@@ -42,7 +42,7 @@
     let logoFiles = $state<File[]>([]);
     // svelte-ignore state_referenced_locally
     let existingLogo = $state<string[]>(
-        profile?.logo ? [`/storage/${profile.logo}`] : [],
+        profile?.logo ? [profile.logo_url ?? `/storage/${profile.logo}`] : [],
     );
 
     let errors = $state<Record<string, string>>({});

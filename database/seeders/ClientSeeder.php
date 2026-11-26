@@ -98,10 +98,9 @@ final class ClientSeeder extends Seeder
             'actor_role' => 'system',
             'user_id' => $user->id,
             'email' => $user->email,
-            'plain_password' => $plainPassword,
         ]);
 
-        $this->command->info("  Client {$data['email']} dibuat (password di channel audit).");
+        $this->command->info("  Client {$data['email']} dibuat (atur password lewat tautan reset).");
 
         return $user;
     }

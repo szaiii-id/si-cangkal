@@ -36,6 +36,7 @@
         | 'harga_per_rombongan'
         | 'max_peserta'
         | 'cover_image'
+        | 'cover_image_url'
         | 'status'
         | 'created_at'
     >;
@@ -204,7 +205,7 @@
                         <div class="relative h-40 bg-linear-to-br from-pink-dark to-purple flex items-center justify-center text-white font-extrabold text-4xl overflow-hidden">
                             {#if pkg.cover_image}
                                 <img
-                                    src={`/storage/${pkg.cover_image}`}
+                                    src={pkg.cover_image_url ?? `/storage/${pkg.cover_image}`}
                                     alt={pkg.nama}
                                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                                 />

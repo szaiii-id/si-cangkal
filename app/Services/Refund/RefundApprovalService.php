@@ -2,6 +2,7 @@
 
 namespace App\Services\Refund;
 
+use App\Data\Xendit\XenditRefundResult;
 use App\Enums\BookingStatus;
 use App\Enums\PaymentGateway;
 use App\Enums\PaymentMetode;
@@ -57,6 +58,10 @@ class RefundApprovalService
         $gatewayResult = null;
 
         if ($gatewayPayment !== null) {
+            // Tandai niat sebelum HTTP call. Bila proses mati di tengah,
+            // refund tetap terlihat oleh rekonsiliasi.
+            $this->markRefundIntent($refund);
+
             // HTTP call dilakukan DI LUAR transaksi agar lock booking tidak
             // lama ditahan.
             try {
@@ -67,6 +72,11 @@ class RefundApprovalService
                     'error' => $e->getMessage(),
                 ]);
             }
+
+            // Simpan id refund dari Xendit SEBELUM transaksi utama. Kalau
+            // transaksi utama rollback, id tetap ada sehingga reconciliation
+            // bisa menyelesaikan refund yang sudah benar-benar diproses.
+            $this->persistGatewayResult($refund, $gatewayResult);
         }
 
         // Xendit mengembalikan PENDING bila refund masih diproses issuer;
@@ -164,6 +174,47 @@ class RefundApprovalService
         }
 
         return $refund;
+    }
+
+    /**
+     * Catat niat refund sebelum memanggil gateway.
+     *
+     * Hanya refund PENDING tanpa gateway_refund_id yang ditandai, supaya
+     * retry tidak mengubah status refund yang sudah diproses.
+     */
+    private function markRefundIntent(Refund $refund): void
+    {
+        Refund::query()
+            ->whereKey($refund->id)
+            ->where('status', RefundStatus::PENDING->value)
+            ->whereNull('gateway_refund_id')
+            ->update(['gateway_status' => 'INTENT']);
+    }
+
+    /**
+     * Simpan hasil gateway di luar transaksi utama.
+     *
+     * Status sengaja dibiarkan PENDING: transaksi utama/webhook yang akan
+     * menentukan SUCCESS/FAILED. Yang penting di sini adalah id refund
+     * tidak ikut ter-rollback bersama transaksi bisnis.
+     */
+    private function persistGatewayResult(Refund $refund, ?XenditRefundResult $result): void
+    {
+        $query = Refund::query()
+            ->whereKey($refund->id)
+            ->where('status', RefundStatus::PENDING->value)
+            ->whereNull('gateway_refund_id');
+
+        if ($result === null || $result->refundId === '') {
+            $query->update(['gateway_status' => 'FAILED']);
+
+            return;
+        }
+
+        $query->update([
+            'gateway_refund_id' => $result->refundId,
+            'gateway_status' => 'PENDING',
+        ]);
     }
 
     public function reject(Refund $refund, User $mitra, string $alasan): Refund

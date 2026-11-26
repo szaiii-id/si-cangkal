@@ -5,6 +5,7 @@ use App\Models\User;
 use App\Repositories\Contracts\ProfileRepositoryInterface;
 use App\Services\User\ProfileService;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -27,6 +28,10 @@ beforeEach(function () {
         ->byDefault()
         ->andReturnUsing(fn ($callback) => $callback());
 
+    DB::shouldReceive('afterCommit')
+        ->byDefault()
+        ->andReturnUsing(fn (callable $callback) => $callback());
+
     Log::shouldReceive('info')->byDefault()->andReturnNull();
     Log::shouldReceive('warning')->byDefault()->andReturnNull();
     Log::shouldReceive('error')->byDefault()->andReturnNull();
@@ -43,16 +48,14 @@ afterEach(function () {
 */
 
 describe('BVA — uploadLogo storage failure', function () {
-    it('storeAs return false → ValidationException', function () {
+    it('gagal menyimpan file → ValidationException', function () {
         $user = makeUserWithProfile(['id' => 1], makeProfile(['logo' => null]));
 
-        $file = Mockery::mock(UploadedFile::class);
-        $file->shouldReceive('getClientOriginalExtension')->andReturn('png');
-        $file->shouldReceive('getMimeType')->andReturn('image/png');
-        $file->shouldReceive('getClientOriginalName')->andReturn('logo.png');
-        $file->shouldReceive('storeAs')->andReturn(false);
+        $disk = Mockery::mock(FilesystemAdapter::class);
+        $disk->shouldReceive('putFileAs')->andReturn(false);
+        Storage::shouldReceive('disk')->with('public')->andReturn($disk);
 
-        expect(fn () => $this->service->uploadLogo($user, $file))
+        expect(fn () => $this->service->uploadLogo($user, UploadedFile::fake()->image('logo.png')))
             ->toThrow(ValidationException::class);
     });
 });

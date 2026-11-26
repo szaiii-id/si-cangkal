@@ -106,7 +106,7 @@ final class ReconcileXenditTransactionsJob implements ShouldQueue
     ): void {
         $refunds = Refund::query()
             ->where('status', RefundStatus::PENDING)
-            ->where('gateway_status', 'PENDING')
+            ->whereIn('gateway_status', ['INTENT', 'PENDING'])
             ->whereNotNull('gateway_refund_id')
             ->get();
 

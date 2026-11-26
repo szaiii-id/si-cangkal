@@ -32,7 +32,7 @@
     <div class="relative min-h-[200px] sm:min-h-[280px] flex flex-col justify-end p-4 sm:p-8 text-white">
         {#if coverImage}
             <img 
-                src={`/storage/${coverImage}`} 
+                src={coverImage} 
                 alt={`Sampul paket ${nama}`} 
                 class="absolute inset-0 w-full h-full object-cover" 
             />

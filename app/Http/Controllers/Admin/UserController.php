@@ -59,18 +59,11 @@ class UserController extends Controller
 
     public function store(CreateUserRequest $request): RedirectResponse
     {
-        $result = $this->userService->createAdmin($request->validated());
+        $this->userService->createAdmin($request->validated());
 
         return redirect()
             ->route('admin.users.index')
-            ->with('credentials', [
-                'role' => $result['user']->role,
-                'name' => $result['user']->name,
-                'email' => $result['user']->email,
-                'username' => $result['user']->username,
-                'password' => $result['plain_password'],
-            ])
-            ->with('status', 'User admin berhasil dibuat.');
+            ->with('status', 'User dibuat. Tautan pengaturan password telah dikirim ke emailnya.');
     }
 
     public function edit(User $user): InertiaResponse
@@ -130,17 +123,10 @@ class UserController extends Controller
     {
         abort_if($user->role === 'client', 404);
 
-        $result = $this->userService->resetPassword($user);
+        $this->userService->resetPassword($user);
 
         return redirect()
             ->route('admin.users.index')
-            ->with('credentials', [
-                'role' => $result['user']->role,
-                'name' => $result['user']->name,
-                'email' => $result['user']->email,
-                'username' => $result['user']->username,
-                'password' => $result['plain_password'],
-            ])
-            ->with('status', 'Password berhasil direset.');
+            ->with('status', 'Tautan reset password telah dikirim ke email user.');
     }
 }

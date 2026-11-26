@@ -30,8 +30,13 @@ concurrency:
   group: e2e-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  actions: read
+
 env:
   PHP_VERSION: '8.5'
+  BUN_VERSION: '1.4.2'
   DB_CONNECTION: 'pgsql'
   DB_HOST: '127.0.0.1'
   DB_PORT: '5432'
@@ -84,7 +89,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: ${{ env.BUN_VERSION }}
 
       - name: Cache Composer
         uses: actions/cache@v4
@@ -199,7 +204,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: ${{ env.BUN_VERSION }}
 
       - name: Cache Composer
         uses: actions/cache@v4

@@ -14,11 +14,11 @@ php artisan migrate
 php artisan wayfinder:generate --with-form
 ```
 
-- Use **Bun** (`bun.lock`; CI runs `bun install --frozen-lockfile`). `pnpm-workspace.yaml` is unused, and `composer setup` still calls npm — prefer the commands above.
+- Use **Bun** (`bun.lock`; CI runs `bun install --frozen-lockfile`). `pnpm-workspace.yaml` is unused and `composer setup` also uses Bun — prefer the explicit commands above.
 - Frontend tooling is **Vite+** (`vp`), not plain Vite. Use the `bun run` scripts.
 - PostgreSQL is mandatory: migrations use `jsonb`, and tests/E2E use `.env.testing`. Do not switch to SQLite.
 - `composer dev` runs `php artisan dev`: serve + queue:listen + pail + Vite. Keep a queue worker running when working on E-Ticket or notification flows.
-- `php artisan db:seed` only creates the production admin; its password is random and written to the `audit` log channel (set `ADMIN_PROD_PASSWORD` to control it).
+- `php artisan db:seed` only creates the production admin with a random internal password. No plaintext password is written to logs. Use `ADMIN_PROD_PASSWORD` or the reset-link flow (Brevo, `MAIL_MAILER=brevo` in production) to set it.
 
 ## Commands
 
@@ -46,11 +46,18 @@ php artisan wayfinder:generate --with-form
 
 - Request flow: `routes/web.php` -> controller (`app/Http/Controllers/<Role>`) -> FormRequest -> Policy -> Service (`app/Services/<Domain>`) -> repository (`app/Repositories/Contracts` + `Eloquent`) -> model. Bind new repository/service interfaces in `app/Providers/AppServiceProvider.php`.
 - Role guards are middleware aliases in `bootstrap/app.php`: `role:admin|mitra|client`, `password.changed`, `mitra.complete`. Post-login redirects are also defined there.
-- `EventServiceProvider` disables auto-discovery. `BookingConfirmed` explicitly maps to `CreateTripForBooking` (sync; creates `Trip`, then dispatches `GenerateETicketJob`) and `NotifyClientListener` (queued; currently a no-op). Keep that order.
+- `EventServiceProvider` disables auto-discovery. `BookingConfirmed` maps only to `CreateTripForBooking` (sync; creates `Trip`, then dispatches `GenerateETicketJob`). Notifications go through `NotificationDispatcher`, which writes in-app synchronously and queues `SendPushNotificationJob`. Queue drivers use `after_commit=true`.
 - Timezone: `config/app.php` hardcodes the app timezone to `UTC` (the `APP_TIMEZONE` env var is ignored). DB stores UTC; use `App\Support\Timezone` for all "today"/"now" business logic, never raw `now()`. User/trip/package timezones are IANA; `User::DEFAULT_TIMEZONE` is `Asia/Makassar`.
 - Status enums live in `app/Enums` (labels, badge classes, transition helpers). Frontend mirrors labels and types in `resources/js/utils/enums` and `resources/js/types`; update both when adding statuses.
 - Security helpers: use `App\Support\LikeEscaper` for user-supplied `LIKE` searches (Postgres needs an explicit `ESCAPE` clause), and `App\Support\AuditLogger` for security-relevant actions (writes to the `audit` log channel).
 - PDFs (E-Ticket, reports) are Blade views in `resources/views/pdf` and `resources/views/reports`, rendered by DomPDF. They are not Svelte pages.
+- QR E-Ticket points to the public Blade page `GET /e-tickets/{uuid}` (`e-tickets.verify`). It is intentionally non-Inertia, login-free, throttled, and shows masked/no PII data only.
+- Trip completion is manual: mitra posts `POST /mitra/trips/{trip}/complete`; `TripService` locks the row, syncs `TripDay` + `Booking` via `TripStatusSynchronizerInterface`, then notifies the client after commit. This is what unlocks client reviews.
+- Lock-bearing repository methods: `findByIdForUpdate` on Booking/Refund/Trip. Re-check status/payment INSIDE the transaction after locking; commit side effects (notifications, events) after the transaction.
+- Payment gateway is **Xendit Test Mode only**, behind `XenditPaymentServiceInterface`. Read credentials only in `config/payment.php`; no `env('XENDIT_*')` anywhere else. Checkout creates a Payment Session; the public webhook is verified with `x-callback-token`, deduplicated in `webhook_events` by `sha256(provider|event|status|id)`, and processed by `ProcessXenditNotificationJob`. Funds are held until trip completion, then `DisburseToMitraJob` pays out to the mitra's registered bank account.
+- Each checkout attempt has a unique `reference_id` = `booking.kode-seqN` (`App\Support\PaymentReference`), stored as `payments.gateway_order_id`. Never reuse a bare booking code — webhook matching depends on this value.
+- Manual refund requires transfer proof: `PENDING` → `AWAITING_PROOF` → mitra uploads proof → `SUCCEEDED` + negative `Payment` + client notification. **Admin is monitoring-only (read) for refunds**; do not add approve/reject/verify actions to admin. Legacy `doku_*` columns/migration names remain as schema history — do not use them for new integrations.
+- Revenue reports derive gross/refund/net from the `payments` ledger (fallback to bookings for legacy rows); report range is capped at 12 months.
 
 ## Frontend
 

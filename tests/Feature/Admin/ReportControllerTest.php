@@ -278,6 +278,15 @@ describe('Error Handling — validation', function () {
             ->get('/admin/reports?start_date=2026-02-01&end_date=2026-01-01')
             ->assertSessionHasErrors('end_date');
     });
+
+    it('rentang lebih dari 12 bulan → error', function () {
+        $start = now()->subYear()->subDay()->format('Y-m-d');
+        $end = now()->format('Y-m-d');
+
+        $this->actingAs($this->admin)
+            ->get("/admin/reports?start_date={$start}&end_date={$end}")
+            ->assertSessionHasErrors('end_date');
+    });
 });
 
 /*
