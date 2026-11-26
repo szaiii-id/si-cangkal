@@ -98,10 +98,18 @@ export class ClientBookingPage {
         await expect(this.page.getByRole('main').getByText(nama)).toBeVisible();
     }
 
+    async selectTransferMethod(): Promise<void> {
+        const button = SEL.CLIENT.booking.selectTransferButton(this.page);
+        if ((await button.count()) > 0) {
+            await button.click();
+        }
+    }
+
     async uploadPaymentProof(
         bookingId: number,
         file: { name: string; mimeType: string; buffer: Buffer },
     ): Promise<void> {
+        await this.selectTransferMethod();
         const input = SEL.CLIENT.booking.paymentProofInput(this.page);
         await input.setInputFiles(file);
 

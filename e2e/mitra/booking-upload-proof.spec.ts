@@ -97,15 +97,15 @@ test.describe('Mitra — Upload Bukti Transfer Pesanan Manual', () => {
             await page.goto(`/mitra/bookings/${booking.booking_id}`);
             await page.waitForLoadState('networkidle');
 
-            // Pastikan kartu Unggah Bukti Transfer muncul
+            // Pastikan kartu Kirim Bukti Transfer muncul
             await expect(
-                page.getByRole('heading', { name: 'Unggah Bukti Transfer' }),
+                page.getByRole('heading', { name: 'Kirim Bukti Transfer' }),
             ).toBeVisible();
 
             const fileInput = page.locator('input[type="file"]').first();
             const alertBox = page.getByRole('alert').first();
             const uploadBtn = page.getByRole('button', {
-                name: 'Unggah Bukti',
+                name: 'Kirim Bukti',
             });
 
             // 1. Uji file PDF (validasi client-side langsung menampilkan alert & tombol Unggah Bukti tidak muncul)

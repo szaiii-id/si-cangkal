@@ -138,6 +138,7 @@ test.describe('Client Booking — Upload Bukti Pembayaran', () => {
 
         const bookingPage = new ClientBookingPage(page);
         await bookingPage.gotoShow(booking.booking_id);
+        await bookingPage.selectTransferMethod();
 
         // Tombol submit disabled sebelum file dipilih
         await expect(SEL.CLIENT.booking.uploadProofButton(page)).toBeDisabled();
@@ -175,6 +176,7 @@ test.describe('Client Booking — Upload Bukti Pembayaran', () => {
 
         const bookingPage = new ClientBookingPage(page);
         await bookingPage.gotoShow(booking.booking_id);
+        await bookingPage.selectTransferMethod();
 
         await SEL.CLIENT.booking.paymentProofInput(page).setInputFiles({
             name: 'invoice.pdf',
@@ -206,6 +208,7 @@ test.describe('Client Booking — Upload Bukti Pembayaran', () => {
 
         const bookingPage = new ClientBookingPage(page);
         await bookingPage.gotoShow(booking.booking_id);
+        await bookingPage.selectTransferMethod();
 
         const oversizedBuffer = Buffer.alloc(5.5 * 1024 * 1024, 0xff);
         await SEL.CLIENT.booking.paymentProofInput(page).setInputFiles({
@@ -240,6 +243,7 @@ test.describe('Client Booking — Upload Bukti Pembayaran', () => {
 
         const bookingPage = new ClientBookingPage(page);
         await bookingPage.gotoShow(booking.booking_id);
+        await bookingPage.selectTransferMethod();
 
         await expect(SEL.CLIENT.booking.paymentProofInput(page)).toBeHidden();
     });

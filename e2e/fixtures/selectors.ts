@@ -240,7 +240,9 @@ export const CLIENT = {
 
         // Upload Bukti Pembayaran
         paymentProofInput: (page: Page): Locator =>
-            page.getByLabel('Pilih file bukti transfer'),
+            page.getByLabel('Pilih foto bukti transfer'),
+        selectTransferButton: (page: Page): Locator =>
+            page.getByRole('button', { name: /Pilih Transfer/i }),
         uploadProofButton: (page: Page): Locator =>
             page.getByRole('button', { name: /Kirim Bukti Transfer/i }),
         proofUploadedStatus: (page: Page): Locator =>
