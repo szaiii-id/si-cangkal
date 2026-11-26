@@ -168,7 +168,7 @@ class ProfileService
         $oldLogo = $profile?->logo;
 
         if ($oldLogo !== null && $oldLogo !== '') {
-            UploadStorage::deleteAfterCommit('r2_public', $oldLogo);
+            UploadStorage::deleteAfterCommit(config('upload.public_disk'), $oldLogo);
         }
 
         // === Generate nama file dari server (jangan trust client) ===
@@ -180,7 +180,7 @@ class ProfileService
         );
 
         try {
-            $path = UploadStorage::put('r2_public', 'logos', $file, $filename);
+            $path = UploadStorage::put(config('upload.public_disk'), 'logos', $file, $filename);
         } catch (RuntimeException) {
             Log::error('Logo mitra gagal disimpan', [
                 'user_id' => $user->id,

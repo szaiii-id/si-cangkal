@@ -22,9 +22,14 @@ use Throwable;
 
 class BookingPaymentService
 {
-    // Bukti transfer bersifat privat; diakses hanya lewat endpoint yang
-    // diautorisasi. File lama di disk `local` tetap dibaca sebagai fallback.
-    public const PROOF_DISK = 'r2_private';
+    /**
+     * Disk bukti transfer. Bisa dioverride di testing lewat
+     * UPLOAD_PROOF_DISK agar E2E tidak memakai kredensial cloud.
+     */
+    public static function proofDisk(): string
+    {
+        return (string) config('upload.proof_disk');
+    }
 
     public const PROOF_DIRECTORY = 'payment_proofs';
 
@@ -196,7 +201,7 @@ class BookingPaymentService
 
         // File lama hanya dibuang setelah transaksi berhasil di-commit.
         // Rollback tidak boleh meninggalkan DB pointing ke file yang hilang.
-        UploadStorage::deleteAfterCommit(self::PROOF_DISK, $oldPath);
+        UploadStorage::deleteAfterCommit(self::proofDisk(), $oldPath);
     }
 
     private function storeProofFile(Booking $booking, UploadedFile $file): string
@@ -214,7 +219,7 @@ class BookingPaymentService
 
         try {
             return UploadStorage::put(
-                self::PROOF_DISK,
+                self::proofDisk(),
                 self::PROOF_DIRECTORY,
                 $file,
                 $filename,

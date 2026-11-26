@@ -64,6 +64,6 @@ class Profile extends Model
             return null;
         }
 
-        return UploadStorage::url('r2_public', $this->logo);
+        return UploadStorage::url(config('upload.public_disk'), $this->logo);
     }
 }

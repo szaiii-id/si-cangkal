@@ -294,14 +294,14 @@
                             href={mapsUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue/10 text-blue-text font-bold text-xs hover:bg-blue/20 transition-colors"
+                            class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue/10 text-blue-text font-bold text-xs hover:text-blue-dark transition-colors"
                         >
                             Buka Rute di Google Maps
                         </a>
                         <button
                             type="button"
                             onclick={downloadCalendar}
-                            class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-green/10 text-green-text font-bold text-xs hover:bg-green/20 transition-colors"
+                            class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-green/10 text-green-text font-bold text-xs hover:text-green-dark transition-colors"
                         >
                             Tambah ke Kalender (.ics)
                         </button>

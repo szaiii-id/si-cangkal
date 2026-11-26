@@ -22,7 +22,6 @@ use Psr\Log\LoggerInterface;
 
 beforeEach(function () {
     Storage::fake('public');
-    Storage::fake('r2_public');
 
     $this->repo = Mockery::mock(PackageRepositoryInterface::class);
     $this->service = new PackageService($this->repo);
@@ -224,7 +223,7 @@ describe('Equivalence — update nama berubah vs sama', function () {
 
 describe('Edge Cases — update cover handling', function () {
     it('remove_cover_image = "1" + cover lama ada → hapus + set null', function () {
-        Storage::disk('r2_public')->put('packages/old.jpg', 'content');
+        Storage::disk('public')->put('packages/old.jpg', 'content');
         $package = makePackageMock(['cover_image' => 'packages/old.jpg', 'nama' => 'Sama']);
 
         $this->repo->shouldReceive('slugExists')->never();
@@ -235,11 +234,11 @@ describe('Edge Cases — update cover handling', function () {
 
         $this->service->update($package, validPackageData(['nama' => 'Sama', 'remove_cover_image' => '1']));
 
-        Storage::disk('r2_public')->assertMissing('packages/old.jpg');
+        Storage::disk('public')->assertMissing('packages/old.jpg');
     });
 
     it('remove_cover_image = 0 (int) → tidak hapus cover', function () {
-        Storage::disk('r2_public')->put('packages/old.jpg', 'content');
+        Storage::disk('public')->put('packages/old.jpg', 'content');
         $package = makePackageMock(['cover_image' => 'packages/old.jpg', 'nama' => 'Sama']);
 
         $this->repo->shouldReceive('slugExists')->never();
@@ -250,11 +249,11 @@ describe('Edge Cases — update cover handling', function () {
 
         $this->service->update($package, validPackageData(['nama' => 'Sama', 'remove_cover_image' => 0]));
 
-        Storage::disk('r2_public')->assertExists('packages/old.jpg');
+        Storage::disk('public')->assertExists('packages/old.jpg');
     });
 
     it('update cover baru → hapus cover lama + simpan baru', function () {
-        Storage::disk('r2_public')->put('packages/old.jpg', 'content');
+        Storage::disk('public')->put('packages/old.jpg', 'content');
         $package = makePackageMock(['cover_image' => 'packages/old.jpg', 'nama' => 'Sama']);
         $file = UploadedFile::fake()->image('new.jpg');
 
@@ -266,7 +265,7 @@ describe('Edge Cases — update cover handling', function () {
 
         $this->service->update($package, validPackageData(['nama' => 'Sama', 'cover_image' => $file]));
 
-        Storage::disk('r2_public')->assertMissing('packages/old.jpg');
+        Storage::disk('public')->assertMissing('packages/old.jpg');
     });
 });
 

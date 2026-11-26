@@ -12,6 +12,43 @@ async function dismissNotificationPrompt(page: Page): Promise<void> {
     );
 }
 
+/**
+ * Admin dibuat lewat undangan: password tidak pernah dikirim ke UI.
+ * Ambil token reset dari endpoint testing-only, lalu set password lewat
+ * halaman reset seperti yang dilakukan user sungguhan.
+ */
+async function setPasswordFromInvite(
+    page: Page,
+    email: string,
+    password: string,
+): Promise<void> {
+    const tokenRes = await page.request.get(
+        `/_test/password-reset-token?email=${encodeURIComponent(email)}`,
+    );
+    expect(tokenRes.ok()).toBeTruthy();
+
+    const { token } = await tokenRes.json();
+    expect(token).toBeTruthy();
+
+    const context = await page.context().browser()!.newContext();
+    const resetPage = await context.newPage();
+
+    await resetPage.goto(
+        `/reset-password/${token}?email=${encodeURIComponent(email)}`,
+        { waitUntil: 'domcontentloaded' },
+    );
+    await resetPage.locator('#password').fill(password);
+    await resetPage.locator('#password_confirmation').fill(password);
+    await Promise.all([
+        resetPage.waitForURL('/login', { timeout: 15_000 }),
+        resetPage
+            .getByRole('button', { name: /Simpan Password Baru/i })
+            .click(),
+    ]);
+
+    await context.close();
+}
+
 test.describe('Dashboard Notifications — Mitra & Admin (/notifications)', () => {
     test.describe('Mitra Notifications', () => {
         test('menampilkan empty state dan menyembunyikan tombol tandai semua dibaca saat kosong', async ({
@@ -193,7 +230,6 @@ test.describe('Dashboard Notifications — Mitra & Admin (/notifications)', () =
             const tag = `${Date.now()}${browserName.slice(0, 3)}`;
             const newAdminEmail = `admin-notif-${tag}@sicangkal.test`;
             const newAdminUsername = `admnotif${tag}`;
-            const initialPassword = 'AdminPass123!@#';
             const finalPassword = 'AdminFinalPass123!';
 
             // 1. Admin membuat akun admin baru via /admin/users/create -> memicu notifikasi account_created
@@ -204,9 +240,6 @@ test.describe('Dashboard Notifications — Mitra & Admin (/notifications)', () =
             await page.locator('#name').fill(`Admin Notif ${tag}`);
             await page.locator('#email').fill(newAdminEmail);
             await page.locator('#username').fill(newAdminUsername);
-            await page
-                .getByPlaceholder('Minimal 8 karakter')
-                .fill(initialPassword);
 
             await Promise.all([
                 page.waitForResponse(
@@ -217,24 +250,12 @@ test.describe('Dashboard Notifications — Mitra & Admin (/notifications)', () =
                 page.getByRole('button', { name: /Buat Admin/i }).click(),
             ]);
 
-            const credDialog = page.getByRole('dialog', {
-                name: /Kredensial User/i,
-            });
-            await expect(credDialog).toBeVisible({ timeout: 10_000 });
-            await credDialog.getByRole('button', { name: /^Tutup$/i }).click();
+            await expect(
+                page.getByRole('dialog', { name: /Kredensial User/i }),
+            ).toHaveCount(0);
 
-            // 2. Login sebagai admin baru & selesaikan wajib ganti password agar bisa masuk /admin/dashboard
-            await seed.login(page, newAdminEmail, initialPassword);
-            await page.goto('/change-password');
-            await page.fill('input#password', finalPassword);
-            await page.fill('input#password_confirmation', finalPassword);
-            await Promise.all([
-                page.waitForURL('/login', { timeout: 15_000 }),
-                page
-                    .getByRole('button', { name: /Simpan Password Baru/i })
-                    .click(),
-            ]);
-
+            // 2. Admin baru mengatur password lewat tautan undangan, lalu login.
+            await setPasswordFromInvite(page, newAdminEmail, finalPassword);
             await seed.login(page, newAdminEmail, finalPassword);
             await page.goto('/notifications');
 
@@ -296,9 +317,9 @@ test.describe('Dashboard Notifications — Mitra & Admin (/notifications)', () =
             const tag = `${Date.now()}${browserName.slice(0, 3)}`;
             const newAdminEmail = `admin-markall-${tag}@sicangkal.test`;
             const newAdminUsername = `admmark${tag}`;
-            const adminPassword = 'AdminPass123!@#';
+            const adminPassword = 'AdminMarkAll123!';
 
-            // 1. Buat admin baru lewat UI
+            // 1. Buat admin baru lewat UI (tanpa input password)
             await asAdmin();
             await page.goto('/admin/users/create');
             await page.waitForLoadState('networkidle');
@@ -306,9 +327,6 @@ test.describe('Dashboard Notifications — Mitra & Admin (/notifications)', () =
             await page.locator('#name').fill(`Admin MarkAll ${tag}`);
             await page.locator('#email').fill(newAdminEmail);
             await page.locator('#username').fill(newAdminUsername);
-            await page
-                .getByPlaceholder('Minimal 8 karakter')
-                .fill(adminPassword);
 
             await Promise.all([
                 page.waitForResponse(
@@ -319,11 +337,7 @@ test.describe('Dashboard Notifications — Mitra & Admin (/notifications)', () =
                 page.getByRole('button', { name: /Buat Admin/i }).click(),
             ]);
 
-            const credDialog = page.getByRole('dialog', {
-                name: /Kredensial User/i,
-            });
-            await expect(credDialog).toBeVisible({ timeout: 10_000 });
-            await credDialog.getByRole('button', { name: /^Tutup$/i }).click();
+            await setPasswordFromInvite(page, newAdminEmail, adminPassword);
 
             // 2. Login sebagai admin baru & klik "Tandai Semua Dibaca"
             await seed.login(page, newAdminEmail, adminPassword);

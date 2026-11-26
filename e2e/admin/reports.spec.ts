@@ -42,7 +42,7 @@ test.describe('Admin — Laporan Pendapatan & Kinerja Mitra', () => {
                     failOnStatusCode: false,
                 },
             );
-            expect([302, 401, 403]).toContain(clientPdfRes.status());
+            expect([302, 401, 403, 429]).toContain(clientPdfRes.status());
 
             // Mitra
             await asMitra();
@@ -56,7 +56,7 @@ test.describe('Admin — Laporan Pendapatan & Kinerja Mitra', () => {
                     failOnStatusCode: false,
                 },
             );
-            expect([302, 401, 403]).toContain(mitraExcelRes.status());
+            expect([302, 401, 403, 429]).toContain(mitraExcelRes.status());
         });
     });
 

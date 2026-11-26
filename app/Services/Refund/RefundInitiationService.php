@@ -197,14 +197,14 @@ final class RefundInitiationService
             }
 
             $path = UploadStorage::put(
-                BookingPaymentService::PROOF_DISK,
+                BookingPaymentService::proofDisk(),
                 'refund_proofs',
                 $file,
             );
 
             if ($locked->proof_path !== null && $locked->proof_path !== '') {
                 UploadStorage::deleteAfterCommit(
-                    BookingPaymentService::PROOF_DISK,
+                    BookingPaymentService::proofDisk(),
                     $locked->proof_path,
                 );
             }

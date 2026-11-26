@@ -298,7 +298,7 @@
                             href={mapsUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            class="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-5 py-2.5 rounded-xl bg-blue/10 text-blue-text font-bold text-xs hover:bg-blue/20 transition-all shrink-0"
+                            class="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-5 py-2.5 rounded-xl bg-white/10 text-white font-bold text-xs hover:bg-white/20 transition-all shrink-0"
                         >
                             Lihat Lokasi di Maps
                         </a>

@@ -20,7 +20,6 @@ use Illuminate\Validation\ValidationException;
 
 beforeEach(function () {
     Storage::fake('public');
-    Storage::fake('r2_public');
 
     $this->profileRepo = Mockery::mock(ProfileRepositoryInterface::class);
     $this->service = new ProfileService($this->profileRepo);
@@ -54,7 +53,7 @@ describe('BVA — uploadLogo storage failure', function () {
 
         $disk = Mockery::mock(FilesystemAdapter::class);
         $disk->shouldReceive('putFileAs')->andReturn(false);
-        Storage::shouldReceive('disk')->with('r2_public')->andReturn($disk);
+        Storage::shouldReceive('disk')->with('public')->andReturn($disk);
 
         expect(fn () => $this->service->uploadLogo($user, UploadedFile::fake()->image('logo.png')))
             ->toThrow(ValidationException::class);
@@ -138,7 +137,7 @@ describe('Equivalence — uploadLogo', function () {
 
         expect($path)->toStartWith('logos/')
             ->and($path)->toEndWith('.png');
-        Storage::disk('r2_public')->assertExists($path);
+        Storage::disk('public')->assertExists($path);
     });
 
     it('jpg valid → return path dengan .jpg', function () {
@@ -217,7 +216,7 @@ describe('Edge Cases — updateProfile logo handling', function () {
 
 describe('Edge Cases — uploadLogo delete old logo', function () {
     it('logo lama ada di storage → dihapus', function () {
-        Storage::disk('r2_public')->put('logos/old.png', 'old-content');
+        Storage::disk('public')->put('logos/old.png', 'old-content');
 
         $profile = makeProfile(['id' => 10, 'logo' => 'logos/old.png']);
         $user = makeUserWithProfile(['id' => 5], $profile);
@@ -226,7 +225,7 @@ describe('Edge Cases — uploadLogo delete old logo', function () {
 
         $this->service->uploadLogo($user, $file);
 
-        Storage::disk('r2_public')->assertMissing('logos/old.png');
+        Storage::disk('public')->assertMissing('logos/old.png');
     });
 
     it('logo lama tidak ada di storage → tidak error', function () {

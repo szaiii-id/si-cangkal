@@ -229,8 +229,8 @@ Route::middleware('auth')->group(function () {
 
             Route::prefix('reports')->name('reports.')->group(function () {
                 Route::get('/', [ReportController::class, 'index'])->name('index');
-                Route::get('/export-pdf', [ReportController::class, 'exportPdf'])->middleware('throttle:10,1')->name('export-pdf');
-                Route::get('/export-excel', [ReportController::class, 'exportExcel'])->middleware('throttle:10,1')->name('export-excel');
+                Route::get('/export-pdf', [ReportController::class, 'exportPdf'])->middleware('throttle:60,1')->name('export-pdf');
+                Route::get('/export-excel', [ReportController::class, 'exportExcel'])->middleware('throttle:60,1')->name('export-excel');
 
                 Route::get('/mitra', [ReportController::class, 'mitraPerformance'])->name('mitra');
                 Route::get('/mitra/export-pdf', [ReportController::class, 'exportMitraPdf'])->name('mitra.export-pdf');

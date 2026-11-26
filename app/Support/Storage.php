@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Storage as StorageFacade;
  *
  *     use App\Support\Storage;
  *
- *     $disk = Storage::disk(BookingPaymentService::PROOF_DISK);
+ *     $disk = Storage::disk(BookingPaymentService::proofDisk());
  *     return $disk->download($path, $filename);
  *
  * @see FilesystemAdapter

@@ -47,7 +47,6 @@ beforeEach(function () {
     }
 
     Storage::fake('local');
-    Storage::fake('r2_private');
 
     $this->admin = User::factory()->admin()->create([
         'must_change_password' => false,
@@ -213,7 +212,7 @@ describe('Security — downloadProof (private file)', function () {
         $booking = makeBookingForAdmin($this->mitra, $this->client, [
             'payment_proof_path' => 'payment_proofs/proof.jpg',
         ]);
-        Storage::disk('r2_private')->put('payment_proofs/proof.jpg', 'file-content');
+        Storage::disk('local')->put('payment_proofs/proof.jpg', 'file-content');
 
         $response = $this->actingAs($this->admin)
             ->get("/admin/bookings/{$booking->id}/payment-proof");
@@ -229,7 +228,7 @@ describe('Security — downloadProof (private file)', function () {
         $booking = makeBookingForAdmin($this->mitra, $this->client, [
             'payment_proof_path' => 'payment_proofs/proof.jpg',
         ]);
-        Storage::disk('r2_private')->put('payment_proofs/proof.jpg', 'file-content');
+        Storage::disk('local')->put('payment_proofs/proof.jpg', 'file-content');
 
         $this->actingAs($this->client)
             ->get("/admin/bookings/{$booking->id}/payment-proof")

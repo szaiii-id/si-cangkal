@@ -64,7 +64,6 @@ beforeEach(function () {
     config(['inertia.testing.ensure_pages_exist' => false]);
 
     Storage::fake('local');
-    Storage::fake('r2_private');
 
     $this->client = User::factory()->client()->create([
         'name' => 'Budi Client',
@@ -325,7 +324,7 @@ describe('Security — ownership (Policy)', function () {
         $booking = makeBookingForClient($this->client2, $this->mitra, [
             'payment_proof_path' => 'payment_proofs/proof.jpg',
         ]);
-        Storage::disk('r2_private')->put('payment_proofs/proof.jpg', 'content');
+        Storage::disk('local')->put('payment_proofs/proof.jpg', 'content');
 
         $this->actingAs($this->client)
             ->get("/client/bookings/{$booking->id}/payment-proof")
@@ -487,7 +486,7 @@ describe('Data Integrity — downloadProof', function () {
             'kode' => 'BKG-TEST-001',
             'payment_proof_path' => 'payment_proofs/proof.jpg',
         ]);
-        Storage::disk('r2_private')->put('payment_proofs/proof.jpg', 'file-content');
+        Storage::disk('local')->put('payment_proofs/proof.jpg', 'file-content');
 
         $response = $this->actingAs($this->client)
             ->get("/client/bookings/{$booking->id}/payment-proof");

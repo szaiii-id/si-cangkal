@@ -20,7 +20,6 @@ uses(RefreshDatabase::class);
 
 beforeEach(function () {
     Storage::fake('local');
-    Storage::fake('r2_private');
 
     $this->mitra = User::factory()->mitra()->create(['must_change_password' => false]);
     $this->client = User::factory()->client()->create(['must_change_password' => false]);

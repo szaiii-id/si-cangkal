@@ -248,6 +248,6 @@ class Package extends Model
             return null;
         }
 
-        return UploadStorage::url('r2_public', $this->cover_image);
+        return UploadStorage::url(config('upload.public_disk'), $this->cover_image);
     }
 }

@@ -39,7 +39,6 @@ uses(RefreshDatabase::class);
 
 beforeEach(function () {
     Storage::fake('public');
-    Storage::fake('r2_public');
 
     // Mock Log::channel('audit') — AuditLogger::writer()
     $auditLoggerMock = Mockery::mock(LoggerInterface::class);
@@ -96,7 +95,7 @@ describe('create — persistence', function () {
         expect($package->cover_image)->toStartWith('packages/')
             ->and($package->cover_image)->toEndWith('.jpg');
 
-        Storage::disk('r2_public')->assertExists($package->cover_image);
+        Storage::disk('public')->assertExists($package->cover_image);
     });
 
     it('create → validasi durasi_malam >= durasi_hari → ValidationException', function () {
