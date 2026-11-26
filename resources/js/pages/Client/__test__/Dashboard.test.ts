@@ -329,3 +329,31 @@ it('tidak menampilkan panah dekoratif pada tombol aksi', () => {
         container.querySelector('path[d="M14 5l7 7m0 0l-7 7m7-7H3"]'),
     ).toBeNull();
 });
+
+describe('ajakan melanjutkan pesanan', () => {
+    it('muncul hanya bila ada booking menunggu pembayaran', () => {
+        renderPage({
+            pesanan_tertunda: [
+                {
+                    id: 7,
+                    kode: 'BK-007',
+                    nama_paket: 'Paket Bali',
+                    total_harga: '500000',
+                },
+            ],
+        });
+
+        const link = screen.getByRole('link', {
+            name: /Lanjutkan pesanan Anda/i,
+        });
+        expect(link).toHaveAttribute('href', '/client/bookings/7');
+        expect(link).toHaveTextContent(/BK-007/);
+    });
+
+    it('tidak muncul bila tidak ada booking menunggu pembayaran', () => {
+        renderPage();
+        expect(
+            screen.queryByRole('link', { name: /Lanjutkan pesanan Anda/i }),
+        ).not.toBeInTheDocument();
+    });
+});
