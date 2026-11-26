@@ -34,7 +34,7 @@ describe('UploadProofForm Component', () => {
             });
 
             expect(
-                screen.getByText(/Bukti transfer sudah diunggah/i),
+                screen.getByText(/Bukti transfer sudah dikirim/i),
             ).toBeInTheDocument();
             expect(
                 screen.queryByRole('button', { name: /Kirim Bukti Transfer/i }),
@@ -60,7 +60,7 @@ describe('UploadProofForm Component', () => {
             });
 
             expect(
-                screen.getByLabelText(/Pilih file bukti transfer/i),
+                screen.getByLabelText(/Pilih foto bukti transfer/i),
             ).toBeInTheDocument();
             expect(
                 screen.getByRole('button', { name: /Kirim Bukti Transfer/i }),
@@ -86,7 +86,7 @@ describe('UploadProofForm Component', () => {
             });
 
             const fileInput = screen.getByLabelText(
-                /Pilih file bukti transfer/i,
+                /Pilih foto bukti transfer/i,
             );
 
             // Buat file palsu 6MB
@@ -123,7 +123,7 @@ describe('UploadProofForm Component', () => {
 
             const btn = screen.getByRole('button');
             expect(btn).toBeDisabled();
-            expect(screen.getByText(/Mengunggah/i)).toBeInTheDocument();
+            expect(screen.getByText(/Mengirim/i)).toBeInTheDocument();
         });
     });
 

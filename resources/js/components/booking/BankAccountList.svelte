@@ -73,7 +73,7 @@
                                     </span>
                                 {/if}
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-gray-200 text-gray-700">
-                                    {acc.tipe === 'ewallet' ? 'E-WALLET' : 'BANK'}
+                                    {acc.tipe === 'ewallet' ? 'Dompet Digital' : 'Bank'}
                                 </span>
                             </div>
                             <!-- PERBAIKAN: nomor_rekening -->

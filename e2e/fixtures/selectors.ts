@@ -244,7 +244,7 @@ export const CLIENT = {
         uploadProofButton: (page: Page): Locator =>
             page.getByRole('button', { name: /Kirim Bukti Transfer/i }),
         proofUploadedStatus: (page: Page): Locator =>
-            page.getByText(/Bukti transfer sudah diunggah/i),
+            page.getByText(/Bukti transfer sudah dikirim/i),
         proofErrorAlert: (page: Page): Locator =>
             page.getByRole('main').locator('[role="alert"]').first(),
 
@@ -272,9 +272,9 @@ export const CLIENT = {
 
         // E-Ticket
         downloadETicket: (page: Page): Locator =>
-            page.getByRole('link', { name: /Download E-Ticket/i }),
+            page.getByRole('link', { name: /Unduh Tiket/i }),
         eticketProcessing: (page: Page): Locator =>
-            page.getByText(/E-Ticket Sedang Diproses/i),
+            page.getByText(/Tiket Perjalanan Sedang Diproses/i),
     },
 
     // ==========================================

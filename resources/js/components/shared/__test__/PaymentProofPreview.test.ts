@@ -93,7 +93,7 @@ describe('PaymentProofPreview Component', () => {
             });
 
             expect(
-                screen.getByText('Client belum mengunggah bukti transfer.'),
+                screen.getByText('Client belum mengirim bukti transfer.'),
             ).toBeInTheDocument();
         });
 

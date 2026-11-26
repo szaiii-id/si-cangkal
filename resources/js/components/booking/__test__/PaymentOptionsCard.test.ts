@@ -125,3 +125,12 @@ describe('pilihan metode', () => {
         expect(screen.getByText(/Transfer Dipilih/i)).toBeInTheDocument();
     });
 });
+
+it('tidak memakai istilah teknis pada teks yang terlihat', () => {
+    render(PaymentOptionsCard, {
+        props: { bookingId: 42, canUseGateway: true },
+    });
+
+    const teks = document.body.textContent ?? '';
+    expect(teks).not.toMatch(/Xendit|QRIS|E-WALLET|E-Ticket|webhook|gateway/i);
+});

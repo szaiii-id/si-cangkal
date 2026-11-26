@@ -149,7 +149,7 @@
                 Pesanan Saya
             </h1>
             <p class="text-sm text-gray-500 mt-1">
-                Pantau status perjalanan dan unduh e-ticket Anda di sini.
+                Pantau status perjalanan dan unduh tiket perjalanan Anda di sini.
             </p>
         </div>
 

@@ -5,7 +5,7 @@
         hasProof,
         showLinkToNewTab = true,
         maxWidth = 'max-w-sm',
-        emptyMessage = 'Client belum mengunggah bukti transfer.',
+        emptyMessage = 'Client belum mengirim bukti transfer.',
     }: {
         bookingId: number;
         role: 'client' | 'mitra' | 'admin';

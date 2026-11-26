@@ -209,7 +209,7 @@
 
     function confirmUploadProof() {
         if (!refundToProof || !proofFile || proofProcessing) {
-            showToast('Pilih file bukti transfer terlebih dahulu.', 'warning');
+            showToast('Pilih foto bukti transfer terlebih dahulu.', 'warning');
             return;
         }
 

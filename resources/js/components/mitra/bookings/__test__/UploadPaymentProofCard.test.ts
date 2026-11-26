@@ -28,7 +28,7 @@ describe('UploadPaymentProofCard Component', () => {
             render(UploadPaymentProofCard, { props: { bookingId: 1 } });
 
             expect(
-                screen.getByText('Unggah Bukti Transfer'),
+                screen.getByText('Kirim Bukti Transfer'),
             ).toBeInTheDocument();
             expect(
                 screen.getByText('Klik untuk memilih file'),
@@ -94,7 +94,7 @@ describe('UploadPaymentProofCard Component', () => {
     // 3. UPLOAD
     // ==========================================
     describe('Upload', () => {
-        it('harus memanggil uploadPaymentProof saat tombol "Unggah Bukti" diklik', async () => {
+        it('harus memanggil uploadPaymentProof saat tombol "Kirim Bukti" diklik', async () => {
             render(UploadPaymentProofCard, { props: { bookingId: 1 } });
 
             const label = screen
@@ -111,8 +111,8 @@ describe('UploadPaymentProofCard Component', () => {
 
             await fireEvent.change(input, { target: { files: [file] } });
 
-            // Setelah file dipilih, tombol "Unggah Bukti" muncul
-            const uploadBtn = screen.getByText('Unggah Bukti');
+            // Setelah file dipilih, tombol "Kirim Bukti" muncul
+            const uploadBtn = screen.getByText('Kirim Bukti');
             await fireEvent.click(uploadBtn);
 
             expect(uploadPaymentProof).toHaveBeenCalledWith(

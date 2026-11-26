@@ -36,7 +36,7 @@ describe('VerifyPaymentCard Component', () => {
                 screen.getByText('Verifikasi Pembayaran'),
             ).toBeInTheDocument();
             expect(
-                screen.getByText(/Bukti transfer sudah diunggah/),
+                screen.getByText(/Bukti transfer sudah dikirim/),
             ).toBeInTheDocument();
         });
 
