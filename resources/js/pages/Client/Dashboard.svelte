@@ -58,7 +58,6 @@
         <a
             href={`/client/bookings/${pesanan.id}`}
             use:inertia
-            aria-label="Lanjutkan pesanan Anda"
             class="flex items-center gap-4 bg-white rounded-[2rem] border border-pink/20 shadow-sm p-5 sm:p-6 mb-8 hover:border-pink hover:shadow-md transition-[transform,box-shadow,border-color] "
         >
             <div class="w-11 h-11 rounded-2xl bg-pink/10 text-pink-text flex items-center justify-center shrink-0">
