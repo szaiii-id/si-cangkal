@@ -37,5 +37,5 @@ export function parseRetryAfter(
 
 /** Label tombol saat cooldown masih aktif. */
 export function formatCooldownLabel(seconds: number): string {
-    return `Tunggu ${Math.max(0, Math.floor(seconds))} detik...`;
+    return `Tunggu ${Math.max(0, Math.floor(seconds))} detik…`;
 }

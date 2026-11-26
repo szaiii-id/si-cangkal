@@ -150,7 +150,7 @@
         >
             {#if page.props.flash?.status}
                 <div
-                    class="mb-6 bg-green-50 border-l-4 border-green-500 p-4 rounded-r-2xl flex items-start gap-3"
+                    class="mb-6 bg-green-50 border border-green-500 p-4 rounded-r-2xl flex items-start gap-3"
                     role="status"
                     aria-live="polite"
                 >
@@ -174,7 +174,7 @@
 
             {#if page.props.flash?.error || errors.email}
                 <div
-                    class="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-2xl flex items-start gap-3"
+                    class="mb-6 bg-red-50 border border-red-500 p-4 rounded-r-2xl flex items-start gap-3"
                     role="alert"
                 >
                     <svg
@@ -206,7 +206,7 @@
                     type="button"
                     onclick={handleResend}
                     disabled={processing || countdown > 0}
-                    class="w-full flex justify-center items-center py-4 px-4 border border-transparent rounded-full shadow-lg text-base font-bold text-white bg-blue-dark hover:bg-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-dark transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="w-full flex justify-center items-center py-4 px-4 border border-transparent rounded-full shadow-lg text-base font-bold text-white bg-blue-dark hover:bg-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-dark transition-[transform,box-shadow,background-color,border-color,color,opacity] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {#if countdown > 0}
                         {formatCooldownLabel(countdown)}
@@ -231,7 +231,7 @@
                                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                             ></path>
                         </svg>
-                        Mengirim...
+                        Mengirim…
                     {:else}
                         Kirim Ulang Email Verifikasi
                     {/if}
@@ -241,9 +241,9 @@
                     type="button"
                     onclick={handleLogout}
                     disabled={loggingOut}
-                    class="w-full flex justify-center items-center py-3.5 px-4 border border-gray-300 rounded-full text-sm font-bold text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="w-full flex justify-center items-center py-3.5 px-4 border border-gray-300 rounded-full text-sm font-bold text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 transition-[transform,box-shadow,background-color,border-color,color,opacity] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    {loggingOut ? 'Keluar...' : 'Keluar (Logout)'}
+                    {loggingOut ? 'Keluar…' : 'Keluar (Logout)'}
                 </button>
             </div>
 

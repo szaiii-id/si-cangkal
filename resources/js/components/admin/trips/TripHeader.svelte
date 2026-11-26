@@ -117,7 +117,7 @@
                 href={`/admin/trips/${trip.id}/manifest`}
                 target="_blank"
                 rel="noopener noreferrer"
-                class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-pink-dark text-white font-bold text-sm hover:bg-sun-dark transition-all shadow-md"
+                class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-pink-dark text-white font-bold text-sm hover:bg-sun-dark transition-[transform,box-shadow,background-color,border-color,color,opacity] shadow-md"
             >
                 Cetak Daftar Peserta
             </a>
@@ -125,7 +125,7 @@
                 <a
                     href={`/admin/bookings/${trip.booking.id}`}
                     use:inertia
-                    class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-white border border-gray-200 text-dark font-bold text-sm hover:bg-gray-50 transition-all"
+                    class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-white border border-gray-200 text-dark font-bold text-sm hover:bg-gray-50 transition-[transform,box-shadow,background-color,border-color,color,opacity]"
                 >
                     Lihat Pesanan
                 </a>

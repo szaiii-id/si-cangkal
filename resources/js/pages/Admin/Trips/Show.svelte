@@ -83,7 +83,7 @@
                     <a
                         href={`/admin/bookings/${trip.booking.id}`}
                         use:inertia
-                        class="mt-4 w-full inline-flex items-center justify-center px-4 py-2 rounded-xl bg-gray-50 border border-gray-200 text-dark font-bold text-xs hover:bg-gray-100 transition-all"
+                        class="mt-4 w-full inline-flex items-center justify-center px-4 py-2 rounded-xl bg-gray-50 border border-gray-200 text-dark font-bold text-xs hover:bg-gray-100 transition-[transform,box-shadow,background-color,border-color,color,opacity]"
                     >
                         Lihat Detail Pesanan
                     </a>

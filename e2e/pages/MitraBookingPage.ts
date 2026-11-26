@@ -49,7 +49,7 @@ export class MitraBookingPage {
 
     get verifyButton(): Locator {
         // aria-label="Verifikasi dan terima pembayaran"
-        // Visible text: "Verifikasi & Terima" (atau "Memproses..." saat processing)
+        // Visible text: "Verifikasi & Terima" (atau "Memproses…" saat processing)
         return this.page.getByRole('button', {
             name: /Verifikasi & Terima|Verifikasi dan terima pembayaran/i,
         });

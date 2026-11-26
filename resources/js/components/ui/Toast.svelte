@@ -59,8 +59,7 @@
     class="flex items-start gap-3 p-4 rounded-2xl shadow-lg border backdrop-blur-sm
         {config.bg} {config.border} {config.text}
         animate-toast-in"
-    role="alert"
-    aria-live="polite"
+    role={toast.variant === 'error' ? 'alert' : 'status'}
 >
     <!-- Icon -->
     <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 {config.iconBg}">

@@ -82,7 +82,7 @@
             </div>
 
             <div class="flex-shrink-0 mt-4 sm:mt-0">
-                <a href={`/admin/users/${safeUser.id}/edit`} use:inertia class="inline-flex items-center justify-center px-6 py-2.5 rounded-full bg-dark text-white font-bold text-sm hover:bg-gray-800 transition-all shadow-md">
+                <a href={`/admin/users/${safeUser.id}/edit`} use:inertia class="inline-flex items-center justify-center px-6 py-2.5 rounded-full bg-dark text-white font-bold text-sm hover:bg-gray-800 transition-[transform,box-shadow,background-color,border-color,color,opacity] shadow-md">
                     Edit Profil
                 </a>
             </div>

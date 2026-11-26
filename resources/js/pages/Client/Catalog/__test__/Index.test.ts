@@ -195,7 +195,7 @@ describe('Client Catalog — Index Page', () => {
         it('menampilkan input search dengan placeholder', () => {
             renderPage();
             expect(
-                screen.getByPlaceholderText('Cari destinasi wisata...'),
+                screen.getByPlaceholderText('Cari destinasi wisata…'),
             ).toBeInTheDocument();
         });
 
@@ -419,9 +419,7 @@ describe('Client Catalog — Index Page', () => {
         it('tidak memanggil router.get sebelum 300ms', async () => {
             renderPage();
 
-            const input = screen.getByPlaceholderText(
-                'Cari destinasi wisata...',
-            );
+            const input = screen.getByPlaceholderText('Cari destinasi wisata…');
             await fireEvent.input(input, { target: { value: 'bali' } });
 
             expect(mockRouterGet).not.toHaveBeenCalled();
@@ -430,9 +428,7 @@ describe('Client Catalog — Index Page', () => {
         it('memanggil router.get setelah 300ms dengan payload benar', async () => {
             renderPage();
 
-            const input = screen.getByPlaceholderText(
-                'Cari destinasi wisata...',
-            );
+            const input = screen.getByPlaceholderText('Cari destinasi wisata…');
             await fireEvent.input(input, { target: { value: 'bali' } });
 
             await vi.advanceTimersByTimeAsync(300);

@@ -30,7 +30,7 @@
         <button 
             onclick={onEdit} 
             type="button" 
-            class="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white border border-gray-200 text-dark font-bold text-xs hover:bg-gray-50 transition-all shadow-sm"
+            class="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white border border-gray-200 text-dark font-bold text-xs hover:bg-gray-50 transition-[transform,box-shadow,background-color,border-color,color,opacity] shadow-sm"
             aria-label="Edit rekening pembayaran"
         >
             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
@@ -47,7 +47,7 @@
                 <button 
                     onclick={onAdd} 
                     type="button" 
-                    class="px-5 py-2.5 bg-pink-dark text-white text-sm font-bold rounded-full hover:bg-sun-dark transition-all shadow-md"
+                    class="px-5 py-2.5 bg-pink-dark text-white text-sm font-bold rounded-full hover:bg-sun-dark transition-[transform,box-shadow,background-color,border-color,color,opacity] shadow-md"
                     aria-label="Tambah rekening baru"
                 >
                     + Tambah Rekening

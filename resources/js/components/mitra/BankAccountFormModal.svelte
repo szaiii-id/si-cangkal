@@ -145,7 +145,7 @@
                                     class="{inputClass} cursor-pointer {errors[`accounts.${i}.nama_penyedia`] ? errorInputClass : ''}"
                                     aria-invalid={errors[`accounts.${i}.nama_penyedia`] ? 'true' : undefined}
                                 >
-                                    <option value="">Pilih...</option>
+                                    <option value="">Pilih…</option>
                                     {#if account.tipe === 'bank'}
                                         {#each BANK_OPTIONS as bank (bank)}
                                             <option value={bank}>{bank}</option>
@@ -199,7 +199,7 @@
                 <button 
                     type="button" 
                     onclick={addBankAccount} 
-                    class="w-full py-2.5 border-2 border-dashed border-gray-300 rounded-xl text-sm font-bold text-gray-500 hover:border-pink hover:text-pink transition-all"
+                    class="w-full py-2.5 border-2 border-dashed border-gray-300 rounded-xl text-sm font-bold text-gray-500 hover:border-pink hover:text-pink transition-[transform,box-shadow,background-color,border-color,color,opacity]"
                     aria-label="Tambah rekening lain"
                 >
                     + Tambah Rekening Lain
@@ -220,7 +220,7 @@
                     disabled={processing} 
                     class="px-6 py-2.5 bg-pink-dark text-white text-sm font-bold rounded-full hover:bg-sun-dark disabled:opacity-50"
                 >
-                    {processing ? 'Menyimpan...' : 'Simpan Rekening'}
+                    {processing ? 'Menyimpan…' : 'Simpan Rekening'}
                 </button>
             </div>
         </div>

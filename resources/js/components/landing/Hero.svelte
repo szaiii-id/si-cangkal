@@ -44,7 +44,7 @@
                         <a 
                             href={dashboardUrl} 
                             use:inertia 
-                            class="w-full sm:w-auto bg-green-dark text-white px-8 py-3.5 rounded-full font-bold text-base sm:text-lg hover:bg-green transition-all shadow-lg hover:shadow-green-dark/30 hover:-translate-y-0.5 text-center flex items-center justify-center gap-2"
+                            class="w-full sm:w-auto bg-green-dark text-white px-8 py-3.5 rounded-full font-bold text-base sm:text-lg hover:bg-green transition-[transform,box-shadow,background-color,border-color,color,opacity] shadow-lg hover:shadow-green-dark/30 hover:-translate-y-0.5 text-center flex items-center justify-center gap-2"
                             aria-label="Kembali ke Dashboard"
                         >
                             Kembali ke Dashboard
@@ -53,7 +53,7 @@
                         <a 
                             href="/register/mitra" 
                             use:inertia
-                            class="w-full sm:w-auto bg-pink-dark text-white px-8 py-3.5 rounded-full font-bold text-base sm:text-lg hover:bg-sun-dark transition-all shadow-lg hover:shadow-pink-dark/30 hover:-translate-y-0.5 text-center flex items-center justify-center gap-2"
+                            class="w-full sm:w-auto bg-pink-dark text-white px-8 py-3.5 rounded-full font-bold text-base sm:text-lg hover:bg-sun-dark transition-[transform,box-shadow,background-color,border-color,color,opacity] shadow-lg hover:shadow-pink-dark/30 hover:-translate-y-0.5 text-center flex items-center justify-center gap-2"
                         >
                             Gabung Mitra Travel
                         </a>
@@ -61,7 +61,7 @@
                         <a 
                             href="/login" 
                             use:inertia
-                            class="w-full sm:w-auto bg-white text-dark border-2 border-gray-200 px-8 py-3.5 rounded-full font-bold text-base sm:text-lg hover:border-dark transition-all text-center"
+                            class="w-full sm:w-auto bg-white text-dark border-2 border-gray-200 px-8 py-3.5 rounded-full font-bold text-base sm:text-lg hover:border-dark transition-[transform,box-shadow,background-color,border-color,color,opacity] text-center"
                         >
                             Masuk Sistem
                         </a>
@@ -90,27 +90,24 @@
             <div class="lg:col-span-5 order-2 relative mx-auto w-full max-w-md lg:max-w-full h-[400px] sm:h-[500px]">
                 <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70%] h-[70%] bg-gradient-to-tr from-blue/30 to-green/30 rounded-full blur-[80px] opacity-40"></div>
                 
-                <!-- PERBAIKAN: Tambahkan loading="lazy" untuk gambar yang tidak utama -->
-                <img 
+                <!-- PERBAIKAN: Tambahkan loading="eager" fetchpriority="high" untuk gambar yang tidak utama -->
+                <img width="1200" height="800" loading="eager" fetchpriority="high" 
                     src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=500&q=80" 
-                    alt="Destinasi Wisata Bahari" 
-                    loading="lazy"
-                    class="absolute top-2 right-0 w-[55%] aspect-[4/5] object-cover rounded-3xl border-4 sm:border-[6px] border-white shadow-xl z-10 transform rotate-6 hover:rotate-12 hover:scale-105 transition-all duration-500" 
+                    alt="Destinasi Wisata Bahari"
+                    class="absolute top-2 right-0 w-[55%] aspect-[4/5] object-cover rounded-3xl border-4 sm:border-[6px] border-white shadow-xl z-10 transform rotate-6 hover:rotate-12 hover:scale-105 transition-[transform,box-shadow,background-color,border-color,color,opacity] duration-500" 
                 />
 
                 <!-- Gambar utama: tetap eager load -->
-                <img 
+                <img width="1200" height="800" loading="eager" fetchpriority="high" 
                     src="https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=600&q=80" 
                     alt="Destinasi Wisata Utama" 
-                    fetchpriority="high" 
-                    class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60%] aspect-[4/5] object-cover rounded-3xl border-4 sm:border-[6px] border-white shadow-2xl z-20 transform hover:-translate-y-6 hover:scale-105 transition-all duration-500" 
+                    class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60%] aspect-[4/5] object-cover rounded-3xl border-4 sm:border-[6px] border-white shadow-2xl z-20 transform hover:-translate-y-6 hover:scale-105 transition-[transform,box-shadow,background-color,border-color,color,opacity] duration-500" 
                 />
 
-                <img 
+                <img width="1200" height="800" loading="eager" fetchpriority="high" 
                     src="https://images.unsplash.com/photo-1533692328991-08159ff19fca?auto=format&fit=crop&w=500&q=80" 
-                    alt="Budaya dan Pariwisata Banua" 
-                    loading="lazy"
-                    class="absolute bottom-2 left-0 w-[50%] aspect-square object-cover rounded-3xl border-4 sm:border-[6px] border-white shadow-xl z-30 transform -rotate-6 hover:-rotate-12 hover:scale-105 transition-all duration-500" 
+                    alt="Budaya dan Pariwisata Banua"
+                    class="absolute bottom-2 left-0 w-[50%] aspect-square object-cover rounded-3xl border-4 sm:border-[6px] border-white shadow-xl z-30 transform -rotate-6 hover:-rotate-12 hover:scale-105 transition-[transform,box-shadow,background-color,border-color,color,opacity] duration-500" 
                 />
             </div>
 

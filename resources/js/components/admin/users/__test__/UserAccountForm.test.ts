@@ -152,7 +152,7 @@ describe('UserAccountForm Component', () => {
     // 5. LOADING STATE
     // ==========================================
     describe('Loading State', () => {
-        it('harus menonaktifkan tombol dan menampilkan "Menyimpan..." saat processing=true', () => {
+        it('harus menonaktifkan tombol dan menampilkan "Menyimpan…" saat processing=true', () => {
             render(UserAccountForm, {
                 props: {
                     form: createMockForm(),
@@ -164,7 +164,7 @@ describe('UserAccountForm Component', () => {
 
             const btn = screen.getByRole('button');
             expect(btn).toBeDisabled();
-            expect(screen.getByText('Menyimpan...')).toBeInTheDocument();
+            expect(screen.getByText('Menyimpan…')).toBeInTheDocument();
         });
     });
 });

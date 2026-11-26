@@ -66,9 +66,9 @@
                     onclick={bayarSekarang}
                     disabled={processing}
                     aria-busy={processing}
-                    class="w-full inline-flex items-center justify-center px-4 py-3 rounded-xl bg-blue-dark text-white font-bold text-sm hover:bg-blue transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="w-full inline-flex items-center justify-center px-4 py-3 rounded-xl bg-blue-dark text-white font-bold text-sm hover:bg-blue transition-[transform,box-shadow,background-color,border-color,color,opacity] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    {processing ? 'Menyiapkan...' : 'Bayar Sekarang'}
+                    {processing ? 'Menyiapkan…' : 'Bayar Sekarang'}
                 </button>
             </div>
         {/if}
@@ -85,7 +85,7 @@
             </p>
             <a
                 href="#rekening-tujuan"
-                class="w-full inline-flex items-center justify-center px-4 py-3 rounded-xl bg-white border border-gray-200 text-dark font-bold text-sm hover:border-blue hover:text-blue-dark transition-all"
+                class="w-full inline-flex items-center justify-center px-4 py-3 rounded-xl bg-white border border-gray-200 text-dark font-bold text-sm hover:border-blue hover:text-blue-dark transition-[transform,box-shadow,background-color,border-color,color,opacity]"
             >
                 Lihat Rekening Mitra
             </a>

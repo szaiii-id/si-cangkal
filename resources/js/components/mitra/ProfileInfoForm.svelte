@@ -52,8 +52,8 @@
     // ==========================================
     // STYLING (DRY)
     // ==========================================
-    const inputClass = "w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-pink/20 focus:border-pink focus:bg-white transition-all";
-    const errorInputClass = "w-full px-4 py-2.5 border border-red-300 bg-red-50 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-100 focus:border-red-500 transition-all";
+    const inputClass = "w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-pink/20 focus:border-pink focus:bg-white transition-[transform,box-shadow,background-color,border-color,color,opacity]";
+    const errorInputClass = "w-full px-4 py-2.5 border border-red-300 bg-red-50 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-100 focus:border-red-500 transition-[transform,box-shadow,background-color,border-color,color,opacity]";
 
     // ==========================================
     // HANDLERS
@@ -96,7 +96,7 @@
 
 <form onsubmit={handleSubmit} class="space-y-6">
     {#if errorCount > 0}
-        <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-2xl flex items-start gap-3" role="alert">
+        <div class="bg-red-50 border border-red-500 p-4 rounded-r-2xl flex items-start gap-3" role="alert">
             <svg class="w-5 h-5 text-red-500 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
             </svg>
@@ -249,7 +249,7 @@
                         id="deskripsi" 
                         bind:value={form.deskripsi} 
                         rows="3" 
-                        placeholder="Ceritakan singkat tentang usaha Anda..." 
+                        placeholder="Ceritakan singkat tentang usaha Anda…" 
                         class="{errors.deskripsi ? errorInputClass : inputClass} resize-none"
                         aria-invalid={errors.deskripsi ? 'true' : undefined}
                     ></textarea>
@@ -265,14 +265,14 @@
             <button 
                 type="submit" 
                 disabled={processing} 
-                class="inline-flex items-center justify-center px-8 py-3 bg-pink-dark text-white text-sm font-bold rounded-full hover:bg-sun-dark disabled:opacity-50 transition-all shadow-md"
+                class="inline-flex items-center justify-center px-8 py-3 bg-pink-dark text-white text-sm font-bold rounded-full hover:bg-sun-dark disabled:opacity-50 transition-[transform,box-shadow,background-color,border-color,color,opacity] shadow-md"
             >
                 {#if processing}
                     <svg class="w-4 h-4 animate-spin mr-2" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                     </svg>
-                    Menyimpan...
+                    Menyimpan…
                 {:else}
                     <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />

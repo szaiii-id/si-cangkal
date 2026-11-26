@@ -293,7 +293,7 @@ describe('Register Page', () => {
             expect(submitBtn).toBeDisabled();
 
             await vi.advanceTimersByTimeAsync(1000);
-            expect(submitBtn).toHaveTextContent('Tunggu 2 detik...');
+            expect(submitBtn).toHaveTextContent('Tunggu 2 detik…');
 
             await vi.advanceTimersByTimeAsync(2000);
             expect(submitBtn).toHaveTextContent('Buat Akun');

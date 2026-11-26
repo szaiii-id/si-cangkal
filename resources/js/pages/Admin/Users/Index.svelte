@@ -125,7 +125,7 @@
                 />
             </div>
             <div class="flex-1 lg:max-w-md lg:ml-auto">
-                <SearchInput bind:value={search} oninput={handleSearch} onclear={clearSearch} placeholder="Cari nama atau email..." />
+                <SearchInput bind:value={search} oninput={handleSearch} onclear={clearSearch} placeholder="Cari nama atau email…" />
             </div>
         </div>
 

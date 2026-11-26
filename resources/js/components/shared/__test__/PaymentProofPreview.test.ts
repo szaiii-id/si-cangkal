@@ -87,7 +87,7 @@ describe('PaymentProofPreview Component', () => {
     // 2. KONDISI "TIDAK ADA BUKTI" (hasProof = false)
     // ==========================================
     describe('When Proof Does Not Exist', () => {
-        it('harus menampilkan pesan default "Client belum mengunggah..."', () => {
+        it('harus menampilkan pesan default "Client belum mengunggah…"', () => {
             render(PaymentProofPreview, {
                 props: { bookingId: 123, role: 'client', hasProof: false },
             });

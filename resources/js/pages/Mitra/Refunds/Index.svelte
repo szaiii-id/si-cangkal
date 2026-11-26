@@ -257,7 +257,7 @@
         <FilterBar
             bind:search
             onSearch={handleSearch}
-            searchPlaceholder="Cari kode pesanan atau nama pelanggan..."
+            searchPlaceholder="Cari kode pesanan atau nama pelanggan…"
             {statusTabs}
             bind:selectedStatus
             onStatusChange={changeStatus}
@@ -315,7 +315,7 @@
                 rows="2"
                 placeholder="Contoh: Dana sudah ditransfer ke rekening Anda."
                 disabled={approveProcessing}
-                class="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm font-medium focus:outline-none focus:border-pink focus:bg-white transition-all resize-none"
+                class="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm font-medium focus:outline-none focus:border-pink focus:bg-white transition-[transform,box-shadow,background-color,border-color,color,opacity] resize-none"
             ></textarea>
         </div>
     {/snippet}
@@ -330,7 +330,7 @@
     confirmLabel="Ya, Tolak"
     requiresReason
     reasonLabel="Alasan Penolakan"
-    reasonPlaceholder="Jelaskan alasan penolakan (min. 5 karakter)..."
+    reasonPlaceholder="Jelaskan alasan penolakan (min. 5 karakter)…"
     minReasonLength={5}
     bind:reasonValue={rejectAlasan}
     reasonError={rejectError}
@@ -380,7 +380,7 @@
                     rows="2"
                     placeholder="Contoh: Dana ditransfer via BCA ke rekening pelanggan."
                     disabled={proofProcessing}
-                    class="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm font-medium focus:outline-none focus:border-pink focus:bg-white transition-all resize-none"
+                    class="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm font-medium focus:outline-none focus:border-pink focus:bg-white transition-[transform,box-shadow,background-color,border-color,color,opacity] resize-none"
                 ></textarea>
             </div>
         </div>

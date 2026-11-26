@@ -87,7 +87,7 @@
             class="w-full py-3 bg-pink-dark text-white font-bold rounded-xl text-sm hover:bg-sun-dark transition-colors disabled:opacity-50"
         >
             {#if processing}
-                Menyimpan...
+                Menyimpan…
             {:else}
                 {isEdit ? 'Simpan Perubahan' : 'Tambah Pengguna'}
             {/if}

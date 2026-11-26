@@ -225,10 +225,10 @@ describe('Login Page', () => {
             render(Login);
 
             await vi.advanceTimersByTimeAsync(0);
-            expect(screen.getByText('Tunggu 5 detik...')).toBeInTheDocument();
+            expect(screen.getByText('Tunggu 5 detik…')).toBeInTheDocument();
 
             await vi.advanceTimersByTimeAsync(1000);
-            expect(screen.getByText('Tunggu 4 detik...')).toBeInTheDocument();
+            expect(screen.getByText('Tunggu 4 detik…')).toBeInTheDocument();
         });
 
         it('tombol harus disabled selama countdown', async () => {
@@ -241,7 +241,7 @@ describe('Login Page', () => {
 
             await vi.advanceTimersByTimeAsync(0);
             const submitBtn = screen.getByRole('button', {
-                name: /Tunggu 5 detik.../i,
+                name: /Tunggu 5 detik…/i,
             });
             expect(submitBtn).toBeDisabled();
         });
@@ -255,7 +255,7 @@ describe('Login Page', () => {
             render(Login);
 
             await vi.advanceTimersByTimeAsync(0);
-            expect(screen.getByText('Tunggu 2 detik...')).toBeInTheDocument();
+            expect(screen.getByText('Tunggu 2 detik…')).toBeInTheDocument();
 
             await vi.advanceTimersByTimeAsync(2000);
             await vi.advanceTimersByTimeAsync(0);
@@ -269,7 +269,7 @@ describe('Login Page', () => {
     // 6. LOADING STATE
     // ==========================================
     describe('Loading State', () => {
-        it('harus menampilkan "Memproses..." dan menonaktifkan tombol saat processing', async () => {
+        it('harus menampilkan "Memproses…" dan menonaktifkan tombol saat processing', async () => {
             (login as any).mockImplementation(() => {
                 // Tidak memanggil onFinish, biarkan processing = true
             });
@@ -280,7 +280,7 @@ describe('Login Page', () => {
             await fireEvent.submit(form!);
 
             await waitFor(() => {
-                expect(screen.getByText('Memproses...')).toBeInTheDocument();
+                expect(screen.getByText('Memproses…')).toBeInTheDocument();
                 expect(
                     screen.getByRole('button', { name: /Memproses/i }),
                 ).toBeDisabled();

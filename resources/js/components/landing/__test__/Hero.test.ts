@@ -128,18 +128,16 @@ describe('Hero Component', () => {
             expect(mainImage).toHaveAttribute('fetchpriority', 'high');
         });
 
-        it('gambar non-utama harus memiliki loading="lazy"', () => {
+        it('semua gambar hero dimuat eager dengan dimensi eksplisit', () => {
             render(Hero);
 
-            const lazyImages = screen
-                .getAllByRole('img')
-                .filter(
-                    (img) =>
-                        img.getAttribute('alt') !== 'Destinasi Wisata Utama',
-                );
+            const images = screen.getAllByRole('img');
 
-            lazyImages.forEach((img) => {
-                expect(img).toHaveAttribute('loading', 'lazy');
+            images.forEach((img) => {
+                expect(img).toHaveAttribute('loading', 'eager');
+                expect(img).toHaveAttribute('fetchpriority', 'high');
+                expect(img).toHaveAttribute('width');
+                expect(img).toHaveAttribute('height');
             });
         });
     });

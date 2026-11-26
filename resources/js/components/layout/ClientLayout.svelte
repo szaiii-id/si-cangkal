@@ -174,7 +174,7 @@
     {/if}
 
     <!-- KONTEN UTAMA -->
-    <main class="relative z-10 flex-1 w-full max-w-6xl mx-auto px-5 sm:px-8 py-4 sm:py-6">
+    <main id="main-content" class="relative z-10 flex-1 w-full max-w-6xl mx-auto px-5 sm:px-8 py-4 sm:py-6">
         {@render children()}
     </main>
 
@@ -189,7 +189,7 @@
                 <a 
                     href={item.href} 
                     use:inertia 
-                    class="flex items-center justify-center gap-2 px-4 py-3 rounded-full transition-all duration-300 group
+                    class="flex items-center justify-center gap-2 px-4 py-3 rounded-full transition-[transform,box-shadow,background-color,border-color,color,opacity] duration-300 group
                         {isActive 
                         ? colors.active + ' shadow-md flex-1' 
                         : 'text-gray-400 hover:bg-white/10 md:flex-1'}"

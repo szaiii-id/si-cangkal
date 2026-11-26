@@ -58,14 +58,14 @@
         <button
             type="button"
             onclick={openConfirm}
-            class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-green-dark text-white font-bold text-sm rounded-xl hover:bg-green transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-green-dark text-white font-bold text-sm rounded-xl hover:bg-green transition-[transform,box-shadow,background-color,border-color,color,opacity] disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={processing}
             aria-busy={processing}
         >
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
             </svg>
-            {processing ? 'Memproses...' : 'Selesaikan Perjalanan'}
+            {processing ? 'Memproses…' : 'Selesaikan Perjalanan'}
         </button>
     </div>
 {/if}

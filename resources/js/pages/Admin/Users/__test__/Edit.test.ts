@@ -400,7 +400,7 @@ describe('Admin Users — Edit Page', () => {
     // 12.4 INTERACTION — processing state
     // ----------------------------------------------------------
     describe('Interaction — Processing', () => {
-        it('menonaktifkan tombol & menampilkan "Menyimpan..." selama processing', async () => {
+        it('menonaktifkan tombol & menampilkan "Menyimpan…" selama processing', async () => {
             vi.mocked(updateUser).mockImplementation(() => {});
 
             render(Edit, { user: makeAdmin() });
@@ -517,7 +517,7 @@ describe('Admin Users — Edit Page', () => {
         it('semua field wajib memiliki label yang jelas', () => {
             render(Edit, { user: makeAdmin() });
 
-            // Field wajib pakai <label for="...">
+            // Field wajib pakai <label for="…">
             expect(screen.getByLabelText('Nama')).toBeInTheDocument();
             expect(screen.getByLabelText('Email')).toBeInTheDocument();
             expect(screen.getByLabelText('Username')).toBeInTheDocument();

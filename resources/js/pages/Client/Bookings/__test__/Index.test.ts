@@ -257,7 +257,7 @@ describe('Client Bookings — Index Page', () => {
             renderPage();
             expect(
                 screen.getByPlaceholderText(
-                    'Cari kode pesanan atau nama paket...',
+                    'Cari kode pesanan atau nama paket…',
                 ),
             ).toBeInTheDocument();
         });
@@ -354,7 +354,7 @@ describe('Client Bookings — Index Page', () => {
             renderPage();
 
             const input = screen.getByPlaceholderText(
-                'Cari kode pesanan atau nama paket...',
+                'Cari kode pesanan atau nama paket…',
             );
             await fireEvent.input(input, { target: { value: 'bali' } });
 
@@ -365,7 +365,7 @@ describe('Client Bookings — Index Page', () => {
             renderPage();
 
             const input = screen.getByPlaceholderText(
-                'Cari kode pesanan atau nama paket...',
+                'Cari kode pesanan atau nama paket…',
             );
             await fireEvent.input(input, { target: { value: 'bali' } });
 

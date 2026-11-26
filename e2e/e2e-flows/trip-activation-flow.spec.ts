@@ -68,7 +68,7 @@ test.describe('E2E Flow — Siklus Aktivasi & Penyelesaian Trip (Scheduler trips
         // 4. Verifikasi di sisi Mitra (/mitra/trips & /mitra/trips/{id}): status berubah menjadi Sedang Berjalan (active) + badge Hari ini
         await page.goto('/mitra/trips', { waitUntil: 'domcontentloaded' });
         const searchInput = page.getByPlaceholder(
-            'Cari kode trip atau nama paket...',
+            'Cari kode trip atau nama paket…',
         );
         await expect(searchInput).toBeVisible();
 

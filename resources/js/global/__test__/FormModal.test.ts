@@ -117,7 +117,7 @@ describe('FormModal Component', () => {
                 },
             });
 
-            const submitBtn = screen.getByText('Menyimpan...');
+            const submitBtn = screen.getByText('Menyimpan…');
             expect(submitBtn).toBeDisabled();
 
             const cancelBtn = screen.getByText('Batal');

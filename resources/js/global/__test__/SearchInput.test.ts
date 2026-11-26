@@ -13,10 +13,10 @@ describe('SearchInput Component', () => {
     describe('Rendering', () => {
         it('harus merender input dengan placeholder', () => {
             render(SearchInput, {
-                props: { placeholder: 'Cari paket wisata...' },
+                props: { placeholder: 'Cari paket wisata…' },
             });
             expect(
-                screen.getByPlaceholderText('Cari paket wisata...'),
+                screen.getByPlaceholderText('Cari paket wisata…'),
             ).toBeInTheDocument();
         });
 

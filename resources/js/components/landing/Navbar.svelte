@@ -76,7 +76,7 @@
 
 <!-- NAVBAR -->
 <header class="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-[94%] md:w-[92%] max-w-6xl">
-    <div class="relative bg-dark/95 backdrop-blur-xl border border-gray-700/50 shadow-2xl shadow-dark/20 rounded-full px-4 md:px-8 py-2 md:py-4 flex items-center justify-between transition-all duration-300">
+    <div class="relative bg-dark/95 backdrop-blur-xl border border-gray-700/50 shadow-2xl shadow-dark/20 rounded-full px-4 md:px-8 py-2 md:py-4 flex items-center justify-between transition-[transform,box-shadow,background-color,border-color,color,opacity] duration-300">
         
         <!-- KIRI -->
         <div class="flex-1 flex justify-start items-center">
@@ -126,16 +126,16 @@
                 <a 
                     href={dashboardUrl} 
                     use:inertia 
-                    class="inline-flex bg-green-dark text-white px-4 py-1.5 md:px-8 md:py-2.5 rounded-full text-sm md:text-base font-bold hover:bg-green transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                    class="inline-flex bg-green-dark text-white px-4 py-1.5 md:px-8 md:py-2.5 rounded-full text-sm md:text-base font-bold hover:bg-green transition-[transform,box-shadow,background-color,border-color,color,opacity] shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
                 >
                     Dashboard
                 </a>
             {:else}
-                <a href="/register" use:inertia class="hidden lg:inline-flex bg-pink-dark text-white px-6 py-2.5 rounded-full text-base font-bold hover:bg-sun-dark transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+                <a href="/register" use:inertia class="hidden lg:inline-flex bg-pink-dark text-white px-6 py-2.5 rounded-full text-base font-bold hover:bg-sun-dark transition-[transform,box-shadow,background-color,border-color,color,opacity] shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
                     Daftar
                 </a>
                 
-                <a href="/login" use:inertia class="inline-flex bg-pink-dark text-white px-4 py-1.5 md:px-8 md:py-2.5 rounded-full text-sm md:text-base font-bold hover:bg-sun-dark transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+                <a href="/login" use:inertia class="inline-flex bg-pink-dark text-white px-4 py-1.5 md:px-8 md:py-2.5 rounded-full text-sm md:text-base font-bold hover:bg-sun-dark transition-[transform,box-shadow,background-color,border-color,color,opacity] shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
                     Login
                 </a>
             {/if}
@@ -162,9 +162,9 @@
             
             <div class="pt-4 mt-2 border-t border-gray-700/50 flex flex-col gap-3">
                 {#if user}
-                    <a href={dashboardUrl} use:inertia onclick={closeMenu} class="block text-center w-full bg-green-dark text-white py-3.5 rounded-xl font-bold shadow-md hover:bg-green transition-all">Ke Dashboard</a>
+                    <a href={dashboardUrl} use:inertia onclick={closeMenu} class="block text-center w-full bg-green-dark text-white py-3.5 rounded-xl font-bold shadow-md hover:bg-green transition-[transform,box-shadow,background-color,border-color,color,opacity]">Ke Dashboard</a>
                 {:else}
-                    <a href="/register" use:inertia onclick={closeMenu} class="block text-center w-full bg-pink-dark text-white py-3.5 rounded-xl font-bold shadow-md hover:bg-sun-dark transition-all">Daftar Akun</a>
+                    <a href="/register" use:inertia onclick={closeMenu} class="block text-center w-full bg-pink-dark text-white py-3.5 rounded-xl font-bold shadow-md hover:bg-sun-dark transition-[transform,box-shadow,background-color,border-color,color,opacity]">Daftar Akun</a>
                 {/if}
             </div>
         </div>

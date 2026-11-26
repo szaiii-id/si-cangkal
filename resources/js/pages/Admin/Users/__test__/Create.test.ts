@@ -326,7 +326,7 @@ describe('Admin Users — Create Page', () => {
     // 12.3 INTERACTION — processing state
     // ----------------------------------------------------------
     describe('Interaction — Processing', () => {
-        it('menonaktifkan tombol & menampilkan "Menyimpan..." selama processing', async () => {
+        it('menonaktifkan tombol & menampilkan "Menyimpan…" selama processing', async () => {
             render(Create);
 
             // createAdmin tidak memanggil callback → processing tetap true

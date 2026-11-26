@@ -322,7 +322,7 @@ describe('Client Profile', () => {
             );
         });
 
-        it('menampilkan "Menyimpan..." selama processing', async () => {
+        it('menampilkan "Menyimpan…" selama processing', async () => {
             renderPage();
 
             const nameInput = screen.getByLabelText(

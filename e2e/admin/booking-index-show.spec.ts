@@ -108,7 +108,7 @@ test.describe('Admin — Monitoring Pesanan (Booking Index & Show)', () => {
             const table = page.getByRole('table', { name: 'Daftar Booking' });
 
             const searchInput = page.getByPlaceholder(
-                'Cari kode pesanan, nama pelanggan...',
+                'Cari kode pesanan, nama pelanggan…',
             );
             await searchInput.fill(booking.kode);
 

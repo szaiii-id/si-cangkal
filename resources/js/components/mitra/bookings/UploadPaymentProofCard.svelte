@@ -115,7 +115,7 @@
     <div class="p-5 space-y-4">
         {#if previewUrl}
             <div class="relative">
-                <img 
+                <img width="1200" height="800" loading="lazy" 
                     src={previewUrl} 
                     alt="Preview bukti transfer" 
                     class="w-full max-h-80 object-contain rounded-xl border border-gray-200 bg-gray-50" 
@@ -136,7 +136,7 @@
             </p>
         {:else}
             <label class="block cursor-pointer">
-                <div class="border-2 border-dashed border-gray-300 rounded-2xl p-8 text-center hover:border-blue-400 hover:bg-blue-50/30 transition-all">
+                <div class="border-2 border-dashed border-gray-300 rounded-2xl p-8 text-center hover:border-blue-400 hover:bg-blue-50/30 transition-[transform,box-shadow,background-color,border-color,color,opacity]">
                     <svg class="w-12 h-12 mx-auto text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                     </svg>
@@ -174,7 +174,7 @@
                     disabled={uploadProcessing} 
                     class="flex-1 py-2.5 bg-blue-600 text-white font-bold rounded-xl text-sm hover:bg-blue-700 disabled:opacity-50"
                 >
-                    {uploadProcessing ? 'Mengunggah...' : 'Unggah Bukti'}
+                    {uploadProcessing ? 'Mengunggah…' : 'Unggah Bukti'}
                 </button>
             </div>
         {/if}

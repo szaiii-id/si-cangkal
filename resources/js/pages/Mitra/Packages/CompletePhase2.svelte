@@ -169,7 +169,7 @@
                     {@const done = currentStep > step}
                     <div class="flex flex-col items-center gap-2">
                         <div class="relative">
-                            <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-[transform,box-shadow,background-color,border-color,color,opacity] duration-300
                                 {done ? 'bg-green-dark text-white' : active ? 'bg-pink-dark text-white shadow-lg shadow-pink/30' : 'bg-gray-100 text-gray-400'}">
                                 {step}
                             </div>
@@ -192,7 +192,7 @@
                 {/each}
             </div>
             <div class="absolute top-5 left-0 w-full h-0.5 bg-gray-200 -z-0"></div>
-            <div class="absolute top-5 left-0 h-0.5 bg-pink-dark transition-all duration-300 -z-0"
+            <div class="absolute top-5 left-0 h-0.5 bg-pink-dark transition-[transform,box-shadow,background-color,border-color,color,opacity] duration-300 -z-0"
                  style="width: {((currentStep - 1) / 2) * 100}%"></div>
         </div>
 
@@ -283,14 +283,14 @@
                     <button
                         type="button"
                         onclick={prevStep}
-                        class="px-6 py-3 rounded-full bg-white border border-gray-200 text-dark font-bold text-sm hover:bg-gray-50 transition-all"
+                        class="px-6 py-3 rounded-full bg-white border border-gray-200 text-dark font-bold text-sm hover:bg-gray-50 transition-[transform,box-shadow,background-color,border-color,color,opacity]"
                     >
                         Kembali
                     </button>
                 {:else}
                     <a
                         href="/mitra/packages"
-                        class="px-6 py-3 rounded-full bg-white border border-gray-200 text-dark font-bold text-sm hover:bg-gray-50 transition-all"
+                        class="px-6 py-3 rounded-full bg-white border border-gray-200 text-dark font-bold text-sm hover:bg-gray-50 transition-[transform,box-shadow,background-color,border-color,color,opacity]"
                     >
                         Batal
                     </a>
@@ -300,7 +300,7 @@
                     <button
                         type="button"
                         onclick={nextStep}
-                        class="inline-flex items-center gap-2 px-8 py-3 rounded-full bg-pink-dark text-white font-bold text-sm hover:bg-sun-dark shadow-md transition-all"
+                        class="inline-flex items-center gap-2 px-8 py-3 rounded-full bg-pink-dark text-white font-bold text-sm hover:bg-sun-dark shadow-md transition-[transform,box-shadow,background-color,border-color,color,opacity]"
                     >
                         Lanjut
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
@@ -312,10 +312,10 @@
                         type="button"
                         onclick={handleSaveAndPublish}
                         disabled={processing}
-                        class="inline-flex items-center gap-2 px-8 py-3 rounded-full bg-green-dark text-white font-bold text-sm hover:bg-green shadow-lg shadow-green/30 disabled:opacity-50 transition-all"
+                        class="inline-flex items-center gap-2 px-8 py-3 rounded-full bg-green-dark text-white font-bold text-sm hover:bg-green shadow-lg shadow-green/30 disabled:opacity-50 transition-[transform,box-shadow,background-color,border-color,color,opacity]"
                     >
                         {#if processing}
-                            Menyimpan...
+                            Menyimpan…
                         {:else}
                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />

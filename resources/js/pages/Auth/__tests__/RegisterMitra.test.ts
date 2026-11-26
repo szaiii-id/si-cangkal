@@ -188,7 +188,7 @@ describe('RegisterMitra Page', () => {
     // 4. LOADING STATE
     // ==========================================
     describe('Loading State', () => {
-        it('harus menampilkan "Memproses..." dan menonaktifkan tombol saat processing', async () => {
+        it('harus menampilkan "Memproses…" dan menonaktifkan tombol saat processing', async () => {
             vi.mocked(registerMitra).mockImplementation(() => {});
 
             render(RegisterMitra);
@@ -264,7 +264,7 @@ describe('RegisterMitra Page', () => {
             expect(submitBtn).toBeDisabled();
 
             await vi.advanceTimersByTimeAsync(1000);
-            expect(submitBtn).toHaveTextContent('Tunggu 2 detik...');
+            expect(submitBtn).toHaveTextContent('Tunggu 2 detik…');
 
             await vi.advanceTimersByTimeAsync(2000);
             expect(submitBtn).toHaveTextContent('Buat Akun Mitra');

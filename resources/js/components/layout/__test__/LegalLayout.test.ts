@@ -14,7 +14,7 @@ describe('LegalLayout Component', () => {
     // Helper untuk membuat snippet children
     const mockChildren = createRawSnippet(() => ({
         render: () =>
-            '<p data-testid="mock-content">Isi Kebijakan Privasi...</p>',
+            '<p data-testid="mock-content">Isi Kebijakan Privasi…</p>',
     }));
 
     const defaultProps = {

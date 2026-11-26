@@ -84,7 +84,7 @@
             
             <!-- Background Image -->
             <div class="h-48 sm:h-56 w-full relative bg-gray-200">
-                <img 
+                <img width="1200" height="800" loading="lazy" 
                     src="https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=2070&auto=format&fit=crop" 
                     alt="Cover" 
                     class="w-full h-full object-cover"
@@ -124,7 +124,7 @@
 
                     <!-- Kanan: Tombol Aksi (Scroll ke Form) -->
                     <div class="flex items-center gap-2 shrink-0 sm:mt-2">
-                        <a href="#form-edit" class="inline-flex items-center justify-center px-6 py-2.5 rounded-full bg-dark text-white text-sm font-bold hover:bg-dark/90 transition-all shadow-md">
+                        <a href="#form-edit" class="inline-flex items-center justify-center px-6 py-2.5 rounded-full bg-dark text-white text-sm font-bold hover:bg-dark/90 transition-[transform,box-shadow,background-color,border-color,color,opacity] shadow-md">
                             Edit Profil
                         </a>
                     </div>
@@ -155,7 +155,7 @@
                         bind:value={form.name}
                         required
                         placeholder="Nama lengkap"
-                        class="w-full px-4 py-3 border rounded-xl bg-gray-50 text-sm font-medium placeholder-gray-400 focus:outline-none transition-all
+                        class="w-full px-4 py-3 border rounded-xl bg-gray-50 text-sm font-medium placeholder-gray-400 focus:outline-none transition-[transform,box-shadow,background-color,border-color,color,opacity]
                             {errors.name 
                             ? 'border-red-300 bg-red-50 focus:ring-2 focus:ring-red-100 focus:border-red-500' 
                             : 'border-gray-200 focus:ring-2 focus:ring-blue/20 focus:border-blue focus:bg-white'}"
@@ -177,7 +177,7 @@
                             type="text"
                             bind:value={form.username}
                             placeholder="username unik"
-                            class="w-full pl-9 pr-4 py-3 border rounded-xl bg-gray-50 text-sm font-medium placeholder-gray-400 focus:outline-none transition-all
+                            class="w-full pl-9 pr-4 py-3 border rounded-xl bg-gray-50 text-sm font-medium placeholder-gray-400 focus:outline-none transition-[transform,box-shadow,background-color,border-color,color,opacity]
                                 {errors.username 
                                 ? 'border-red-300 bg-red-50 focus:ring-2 focus:ring-red-100 focus:border-red-500' 
                                 : 'border-gray-200 focus:ring-2 focus:ring-blue/20 focus:border-blue focus:bg-white'}"
@@ -214,17 +214,17 @@
                         type="button"
                         onclick={resetForm}
                         disabled={!hasChanges || processing}
-                        class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-white border border-gray-200 text-dark font-bold text-sm hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-white border border-gray-200 text-dark font-bold text-sm hover:bg-gray-50 transition-[transform,box-shadow,background-color,border-color,color,opacity] disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Reset
                     </button>
                     <button
                         type="submit"
                         disabled={processing || !hasChanges}
-                        class="inline-flex items-center justify-center gap-2 px-8 py-2.5 rounded-full bg-blue-dark text-white font-bold text-sm hover:bg-blue transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                        class="inline-flex items-center justify-center gap-2 px-8 py-2.5 rounded-full bg-blue-dark text-white font-bold text-sm hover:bg-blue transition-[transform,box-shadow,background-color,border-color,color,opacity] shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {#if processing}
-                            Menyimpan...
+                            Menyimpan…
                         {:else}
                             Simpan Perubahan
                         {/if}

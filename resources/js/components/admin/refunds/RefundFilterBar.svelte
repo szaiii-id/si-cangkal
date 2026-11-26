@@ -33,7 +33,7 @@
             <SearchInput 
                 bind:value={search} 
                 oninput={onSearch} 
-                placeholder="Cari kode pesanan atau nama pelanggan..." 
+                placeholder="Cari kode pesanan atau nama pelanggan…" 
             />
         </div>
     </div>

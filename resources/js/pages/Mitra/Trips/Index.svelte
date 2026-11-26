@@ -152,7 +152,7 @@
             <SearchInput
                 bind:value={search}
                 oninput={handleSearch}
-                placeholder="Cari kode trip atau nama paket..."
+                placeholder="Cari kode trip atau nama paket…"
             />
         </div>
 
@@ -175,7 +175,7 @@
                     <a
                         href={`/mitra/trips/${trip.id}`}
                         use:inertia
-                        class="group block bg-white border border-gray-200 rounded-2xl p-4 hover:border-pink/30 hover:shadow-md transition-all"
+                        class="group block bg-white border border-gray-200 rounded-2xl p-4 hover:border-pink/30 hover:shadow-md transition-[transform,box-shadow,background-color,border-color,color,opacity]"
                     >
                         <div class="flex flex-col sm:flex-row sm:items-center gap-4">
                             <div class="flex items-start gap-3 flex-1 min-w-0">
@@ -217,7 +217,7 @@
                             
                             <!-- Tombol Detail dengan Teks -->
                             <div class="shrink-0 self-end sm:self-center">
-                                <span class="inline-flex items-center gap-1 px-4 py-2 rounded-full bg-pink-dark text-white text-xs font-bold shadow-sm group-hover:bg-sun-dark transition-all whitespace-nowrap">
+                                <span class="inline-flex items-center gap-1 px-4 py-2 rounded-full bg-pink-dark text-white text-xs font-bold shadow-sm group-hover:bg-sun-dark transition-[transform,box-shadow,background-color,border-color,color,opacity] whitespace-nowrap">
                                     Detail
                                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />

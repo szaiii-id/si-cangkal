@@ -96,7 +96,7 @@
                     <a
                         href={link.url}
                         use:inertia
-                        class="min-w-[36px] text-center px-3.5 py-2.5 rounded-xl text-xs font-extrabold transition-all
+                        class="min-w-[36px] text-center px-3.5 py-2.5 rounded-xl text-xs font-extrabold transition-[transform,box-shadow,background-color,border-color,color,opacity]
                             {link.active
                             ? 'bg-pink-dark text-white shadow-md shadow-pink/30'
                             : 'text-gray-600 hover:bg-gray-100'}"

@@ -54,7 +54,7 @@
 
     <div class="max-w-3xl mx-auto">
         {#if errorCount > 0}
-            <div class="mb-4 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-2xl flex items-start gap-3">
+            <div class="mb-4 bg-red-50 border border-red-500 p-4 rounded-r-2xl flex items-start gap-3">
                 <p class="text-sm text-red-700 font-bold">Terdapat {errorCount} kesalahan pada form.</p>
             </div>
         {/if}
@@ -81,7 +81,7 @@
                 <div class="p-4 sm:p-5 bg-gray-50/50 flex flex-col-reverse sm:flex-row gap-2">
                     <a href="/admin/users" class="inline-flex items-center justify-center px-5 py-2.5 rounded-full bg-white border border-gray-200 text-dark font-bold text-sm hover:bg-gray-50">Batal</a>
                     <button type="submit" disabled={processing} class="flex-1 inline-flex items-center justify-center px-5 py-2.5 rounded-full bg-pink-dark text-white font-bold text-sm hover:bg-sun-dark shadow-md disabled:opacity-50">
-                        {#if processing} Menyimpan... {:else} Buat Admin {/if}
+                        {#if processing} Menyimpan… {:else} Buat Admin {/if}
                     </button>
                 </div>
             </form>

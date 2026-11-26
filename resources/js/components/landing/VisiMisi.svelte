@@ -51,7 +51,7 @@
             <div class="lg:col-span-5 bg-dark rounded-[2rem] p-6 sm:p-8 lg:p-10 flex flex-col justify-between shadow-2xl relative overflow-hidden border border-gray-800">
                 
                 <!-- Dekorasi -->
-                <div class="absolute -top-24 -right-24 w-64 h-64 bg-sun/20 rounded-full filter blur-[80px] pointer-events-none transition-all duration-1000 hover:bg-sun/30" aria-hidden="true"></div>
+                <div class="absolute -top-24 -right-24 w-64 h-64 bg-sun/20 rounded-full filter blur-[80px] pointer-events-none transition-[transform,box-shadow,background-color,border-color,color,opacity] duration-1000 hover:bg-sun/30" aria-hidden="true"></div>
                 <div class="absolute -bottom-24 -left-24 w-64 h-64 bg-green/10 rounded-full filter blur-[80px] pointer-events-none" aria-hidden="true"></div>
 
                 <div class="relative z-10">
@@ -85,7 +85,7 @@
             <!-- KOTAK MISI -->
             <div class="lg:col-span-7 flex flex-col justify-between space-y-4 sm:space-y-5 lg:space-y-0 gap-4 sm:gap-5">
                 {#each misiList as item, index}
-                    <div class="bg-white border border-gray-200 rounded-[1.5rem] p-5 sm:p-6 lg:p-7 flex items-start gap-4 sm:gap-5 transition-all duration-300 hover:shadow-xl hover:shadow-sun-900/5 hover:border-sun/30 hover:-translate-y-1 group relative overflow-hidden">
+                    <div class="bg-white border border-gray-200 rounded-[1.5rem] p-5 sm:p-6 lg:p-7 flex items-start gap-4 sm:gap-5 transition-[transform,box-shadow,background-color,border-color,color,opacity] duration-300 hover:shadow-xl hover:shadow-sun-900/5 hover:border-sun/30 hover:-translate-y-1 group relative overflow-hidden">
                         
                         <div class="absolute left-0 top-0 bottom-0 w-1 bg-sun-dark opacity-0 transition-opacity duration-300 group-hover:opacity-100" aria-hidden="true"></div>
 

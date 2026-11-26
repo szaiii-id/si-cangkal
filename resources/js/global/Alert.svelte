@@ -60,7 +60,7 @@
       4. Mengubah rounded-r-2xl menjadi rounded-2xl agar serbaguna.
     -->
     <div 
-        class="{c.bg} {c.border} border-l-4 p-4 rounded-2xl flex items-start gap-3 {className}"
+        class="{c.bg} {c.border} border p-4 rounded-2xl flex items-start gap-3 {className}"
         role="alert"
         aria-live="polite"
     >

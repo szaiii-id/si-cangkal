@@ -135,7 +135,7 @@ describe('VerifyPaymentCard Component', () => {
     // 3. LOADING STATE
     // ==========================================
     describe('Loading State', () => {
-        it('harus menonaktifkan tombol Verifikasi dan menampilkan "Memproses..." saat verifyProcessing=true', () => {
+        it('harus menonaktifkan tombol Verifikasi dan menampilkan "Memproses…" saat verifyProcessing=true', () => {
             render(VerifyPaymentCard, {
                 props: {
                     bookingId: 1,
@@ -152,7 +152,7 @@ describe('VerifyPaymentCard Component', () => {
                 name: /Sedang memverifikasi pembayaran/i,
             });
             expect(btn).toBeDisabled();
-            expect(screen.getByText('Memproses...')).toBeInTheDocument();
+            expect(screen.getByText('Memproses…')).toBeInTheDocument();
         });
     });
 

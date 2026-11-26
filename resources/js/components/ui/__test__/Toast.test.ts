@@ -25,10 +25,19 @@ describe('Toast Component', () => {
             expect(screen.getByText('Berhasil disimpan!')).toBeInTheDocument();
         });
 
-        it('harus memiliki role="alert" dan aria-live="polite" (a11y)', () => {
+        it('memakai role status untuk toast sukses (a11y)', () => {
             render(Toast, { props: { toast: createMockToast(), onDismiss: vi.fn() } });
-            const alert = screen.getByRole('alert');
-            expect(alert).toHaveAttribute('aria-live', 'polite');
+            expect(screen.getByRole('status')).toBeInTheDocument();
+        });
+
+        it('memakai role alert untuk toast error (a11y)', () => {
+            render(Toast, {
+                props: {
+                    toast: createMockToast({ variant: 'error' }),
+                    onDismiss: vi.fn(),
+                },
+            });
+            expect(screen.getByRole('alert')).toBeInTheDocument();
         });
 
         it('harus menerapkan class warna untuk variant "success" (hijau)', () => {

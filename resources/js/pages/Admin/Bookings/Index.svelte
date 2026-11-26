@@ -123,7 +123,7 @@
             <button 
                 type="button" 
                 onclick={toggleTodayFilter} 
-                class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all border shadow-sm outline-none focus:ring-2 focus:ring-pink/30
+                class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-[transform,box-shadow,background-color,border-color,color,opacity] border shadow-sm outline-none focus:ring-2 focus:ring-pink/30
                     {isToday 
                     ? 'bg-pink-dark text-white border-pink-dark' 
                     : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}"

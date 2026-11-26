@@ -148,7 +148,7 @@ test.describe('Admin — Monitoring Pengembalian Dana (Read-Only)', () => {
 
             // Uji Pencarian by kode pesanan
             const searchInput = page.getByPlaceholder(
-                'Cari kode pesanan atau nama pelanggan...',
+                'Cari kode pesanan atau nama pelanggan…',
             );
             await searchInput.fill(booking.kode);
             await expect(page).toHaveURL(new RegExp(`search=${booking.kode}`));

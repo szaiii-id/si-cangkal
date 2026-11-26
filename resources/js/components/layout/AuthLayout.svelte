@@ -24,7 +24,7 @@
     </div>
 
     <!-- Konten Utama -->
-    <div class="sm:mx-auto sm:w-full sm:max-w-2xl relative z-10">
+    <div id="main-content" class="sm:mx-auto sm:w-full sm:max-w-2xl relative z-10">
         {@render children()}
     </div>
 </div>

@@ -16,7 +16,7 @@
     let isAwaitingProof = $derived(refund.status === 'AWAITING_PROOF');
 </script>
 
-<article class="bg-white rounded-2xl border border-gray-200 shadow-sm hover:border-pink/30 hover:shadow-md transition-all p-5 flex flex-col">
+<article class="bg-white rounded-2xl border border-gray-200 shadow-sm hover:border-pink/30 hover:shadow-md transition-[transform,box-shadow,background-color,border-color,color,opacity] p-5 flex flex-col">
     <!-- Header -->
     <header class="flex items-start justify-between gap-2 mb-4">
         <div class="min-w-0">

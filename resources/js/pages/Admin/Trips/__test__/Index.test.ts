@@ -153,7 +153,7 @@ vi.mock('@/components/admin/trips/TripFilterBar.svelte', () => ({
             const searchInput = document.createElement('input');
             searchInput.type = 'search';
             searchInput.placeholder =
-                'Cari kode trip, paket, atau nama pelanggan...';
+                'Cari kode trip, paket, atau nama pelanggan…';
             searchInput.value = props.search ?? '';
             searchInput.oninput = (e) => {
                 props.search = (e.target as HTMLInputElement).value;

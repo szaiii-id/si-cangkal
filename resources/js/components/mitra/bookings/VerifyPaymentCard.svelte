@@ -46,7 +46,7 @@
                 aria-label={verifyProcessing ? 'Sedang memverifikasi pembayaran' : 'Verifikasi dan terima pembayaran'}
                 aria-busy={verifyProcessing}
             >
-                {verifyProcessing ? 'Memproses...' : 'Verifikasi & Terima'}
+                {verifyProcessing ? 'Memproses…' : 'Verifikasi & Terima'}
             </button>
             <button 
                 type="button" 

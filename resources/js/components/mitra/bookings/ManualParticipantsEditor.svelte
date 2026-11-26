@@ -22,7 +22,7 @@
     // ==========================================
     // STYLING (DRY)
     // ==========================================
-    const inputClass = "w-full px-4 py-2.5 border rounded-xl bg-white text-sm font-medium placeholder-gray-400 focus:outline-none transition-all";
+    const inputClass = "w-full px-4 py-2.5 border rounded-xl bg-white text-sm font-medium placeholder-gray-400 focus:outline-none transition-[transform,box-shadow,background-color,border-color,color,opacity]";
     const errorClass = "border-red-300 bg-red-50 focus:ring-2 focus:ring-red-100 focus:border-red-500";
     const normalClass = "border-gray-200 focus:ring-2 focus:ring-pink/20 focus:border-pink";
 </script>
@@ -105,7 +105,7 @@
                             type="text"
                             bind:value={participant.no_hp}
                             class="{inputClass} {getError(i, 'no_hp') ? errorClass : normalClass}"
-                            placeholder="0812..."
+                            placeholder="0812…"
                             aria-invalid={getError(i, 'no_hp') ? 'true' : undefined}
                             aria-describedby={getError(i, 'no_hp') ? `hp-error-${i}` : undefined}
                         />

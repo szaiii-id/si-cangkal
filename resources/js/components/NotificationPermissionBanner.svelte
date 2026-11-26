@@ -50,10 +50,21 @@
             onDismiss();
         }
     }
+
+    function handleKeydown(event: KeyboardEvent): void {
+        if (event.key === 'Escape') onDismiss();
+    }
 </script>
 
+<svelte:window onkeydown={handleKeydown} />
+
 <!-- Backdrop -->
-<div class="fixed inset-0 z-[99999] bg-black/60" role="presentation" onclick={onDismiss}></div>
+<button
+    type="button"
+    class="fixed inset-0 z-[99999] bg-black/60 cursor-default"
+    onclick={onDismiss}
+    aria-label="Tutup pengingat notifikasi"
+></button>
 
 <!-- Modal -->
 <div class="fixed inset-0 z-[100000] flex items-center justify-center p-4 pointer-events-none">
@@ -83,14 +94,14 @@
                 type="button" 
                 onclick={handleAllow} 
                 disabled={isRequesting} 
-                class="w-full bg-pink-dark text-white text-sm font-bold px-4 py-3 rounded-full hover:bg-sun-dark transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                class="w-full bg-pink-dark text-white text-sm font-bold px-4 py-3 rounded-full hover:bg-sun-dark transition-[transform,box-shadow,background-color,border-color,color,opacity] shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
                 {#if isRequesting}
                     <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                     </svg>
-                    Memproses...
+                    Memproses…
                 {:else}
                     Aktifkan Notifikasi
                 {/if}
@@ -100,7 +111,7 @@
                 type="button" 
                 onclick={onDismiss} 
                 disabled={isRequesting}
-                class="w-full text-gray-500 text-sm font-bold px-4 py-3 rounded-full hover:bg-gray-50 transition-all disabled:opacity-50"
+                class="w-full text-gray-500 text-sm font-bold px-4 py-3 rounded-full hover:bg-gray-50 transition-[transform,box-shadow,background-color,border-color,color,opacity] disabled:opacity-50"
             >
                 Nanti Saja
             </button>

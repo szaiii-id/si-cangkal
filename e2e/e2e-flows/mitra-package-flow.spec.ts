@@ -205,7 +205,7 @@ test.describe
                     res.request().method() === 'GET',
             ),
             page
-                .getByPlaceholder('Cari destinasi wisata...')
+                .getByPlaceholder('Cari destinasi wisata…')
                 .fill(state.packageName),
         ]);
 
@@ -300,7 +300,7 @@ test.describe
                     res.request().method() === 'GET',
             ),
             page
-                .getByPlaceholder('Cari destinasi wisata...')
+                .getByPlaceholder('Cari destinasi wisata…')
                 .fill(state.packageName),
         ]);
 
@@ -391,7 +391,7 @@ test.describe
                     res.request().method() === 'GET',
             ),
             page
-                .getByPlaceholder('Cari destinasi wisata...')
+                .getByPlaceholder('Cari destinasi wisata…')
                 .fill(state.updatedPackageName),
         ]);
 
