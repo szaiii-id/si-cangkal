@@ -1,5 +1,10 @@
 # Xendit Payment Gateway Migration Implementation Plan
 
+> **Status: ARSIP — as-built.** Migrasi DOKU → Xendit sudah selesai. Beberapa path/flag
+> di dokumen ini (mis. payout instan untuk demo) bersifat opsional dan tidak wajib
+> dipakai. Rencana otoritatif saat ini:
+> `/home/z-code/.opencode/plan/2026-11-25-si-cangkal-upgrade.md`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Mengganti DOKU secara penuh dengan Xendit Test Mode (Payment Session + webhook + refund + payout) tanpa KYC, XenPlatform, atau aktivasi channel, dengan mempertahankan perilaku bisnis `hold → release setelah trip selesai`.
