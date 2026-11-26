@@ -32,11 +32,14 @@ use App\Services\Payment\Contracts\XenditPaymentServiceInterface;
 use App\Services\Payment\Xendit\XenditGatewayService;
 use App\Services\Trip\Contracts\TripStatusSynchronizerInterface;
 use App\Services\Trip\TripStatusSynchronizer;
+use App\Support\FailureAlerter;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
@@ -108,6 +111,17 @@ final class AppServiceProvider extends ServiceProvider
 
         $this->configureDefaults();
         $this->configureRateLimiting();
+
+        Queue::failing(function (JobFailed $event): void {
+            app(FailureAlerter::class)->alert(
+                $event->exception,
+                get_class($event->job),
+                [
+                    'connection' => $event->connectionName,
+                    'queue' => $event->job->getQueue(),
+                ],
+            );
+        });
     }
 
     protected function configureDefaults(): void

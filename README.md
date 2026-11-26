@@ -233,3 +233,14 @@ php artisan migrate --force
 ```
 
 Pastikan `APP_DEBUG=false`, HTTPS dipaksakan otomatis di production, dan `MAIL_MAILER=brevo` + `BREVO_API_KEY` terisi. **Password tidak pernah ditulis ke log**: admin mengatur password sendiri lewat tautan reset yang dikirim Brevo ( seeder produksi dapat memakai `ADMIN_PROD_PASSWORD`).
+
+### Proses background di VPS/cPanel
+
+- **Queue worker** wajib hidup terus (E-Ticket, notifikasi, payout). Pakai Supervisor, misalnya:
+  `php artisan queue:work --tries=3 --backoff=10,30,60 --stop-when-empty` dijalankan ulang oleh Supervisor.
+- **Scheduler** cukup satu cron entry:
+  `* * * * * cd /path/to/project && php artisan schedule:run >> /dev/null 2>&1`
+  Ini mencakup `bookings:expire`, `trips:activate`, `trips:complete` (01:00), dan rekonsiliasi Xendit tiap 5 menit.
+- **Health check** untuk UptimeRobot: `GET /health/ready` (200 bila DB sehat dan tidak ada job gagal dalam 1 jam terakhir; 503 bila tidak). Jangan memakai `/up` saja karena hanya mengecek framework.
+- **Alert job gagal**: isi `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` bila ingin notifikasi Telegram. Tanpa keduanya, kegagalan tetap tercatat di kanal `audit`.
+- **File upload** memakai dua bucket Cloudflare R2 (`R2_PRIVATE_BUCKET` untuk bukti, `R2_PUBLIC_BUCKET` untuk cover/logo). Untuk produksi, sebaiknya `R2_PUBLIC_URL` memakai custom domain Cloudflare, bukan URL `r2.dev`.

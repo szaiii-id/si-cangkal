@@ -43,6 +43,18 @@ Schedule::command('trips:activate')
     ->runInBackground();
 
 // ==========================================
+// AUTO-COMPLETE TRIP
+// ==========================================
+// Trip ACTIVE yang sudah lewat tanggal selesai ditutup otomatis supaya
+// review client terbuka dan dana gateway bisa dilepas ke mitra.
+Schedule::command('trips:complete')
+    ->dailyAt('01:00')
+    ->name('trips:complete-daily')
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->runInBackground();
+
+// ==========================================
 // REKONSILIASI XENDIT
 // ==========================================
 // Webhook bisa terlambat/tidak sampai. Job ini mengecek status payout dan
