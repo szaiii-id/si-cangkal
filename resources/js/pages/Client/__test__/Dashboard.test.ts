@@ -322,3 +322,10 @@ describe('Client Dashboard (Beranda)', () => {
         });
     });
 });
+
+it('tidak menampilkan panah dekoratif pada tombol aksi', () => {
+    const { container } = renderPage();
+    expect(
+        container.querySelector('path[d="M14 5l7 7m0 0l-7 7m7-7H3"]'),
+    ).toBeNull();
+});

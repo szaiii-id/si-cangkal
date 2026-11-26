@@ -104,3 +104,12 @@ describe('StatGrid Component', () => {
         });
     });
 });
+
+it('tidak menampilkan panah dekoratif pada tautan detail', () => {
+    const { container } = render(StatGrid, {
+        props: { stats: createMockStats() },
+    });
+    expect(
+        container.querySelector('path[d="M14 5l7 7m0 0l-7 7m7-7H3"]'),
+    ).toBeNull();
+});

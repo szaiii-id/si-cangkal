@@ -29,7 +29,7 @@
             class="text-xs font-bold text-pink-text hover:underline"
             aria-label="Lihat semua pesanan"
         >
-            Lihat Semua &rarr;
+            Lihat Semua
         </a>
     </div>
     
