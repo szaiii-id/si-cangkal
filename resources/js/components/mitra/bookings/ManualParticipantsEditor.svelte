@@ -44,7 +44,7 @@
                         Data Peserta
                     </h3>
                     <span class="text-[10px] font-bold text-gray-400">
-                        Wajib untuk E-Ticket
+                        Wajib untuk tiket perjalanan
                     </span>
                 </div>
 

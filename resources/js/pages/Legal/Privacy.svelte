@@ -8,8 +8,8 @@
     <h2 class="text-lg font-bold text-dark mt-6 mb-2">1. Data yang Kami Kumpulkan</h2>
     <p>Kami mengumpulkan data yang diperlukan untuk memproses pemesanan, antara lain: Nama lengkap, alamat email, nomor telepon, username, data peserta perjalanan (nama, umur, catatan khusus/alergi), dan riwayat transaksi.</p>
 
-    <h2 class="text-lg font-bold text-dark mt-6 mb-2">2. Data Sensitif (File & E-Ticket)</h2>
-    <p>Bukti transfer dan E-Ticket disimpan di penyimpanan privat (private storage) yang aman. File ini hanya dapat diakses oleh Anda sebagai pemilik pesanan dan Mitra Travel terkait. Kami tidak menyimpan file ini di direktori publik yang dapat diindeks oleh mesin pencari.</p>
+    <h2 class="text-lg font-bold text-dark mt-6 mb-2">2. Data Sensitif (File & tiket perjalanan)</h2>
+    <p>Bukti transfer dan tiket perjalanan disimpan di penyimpanan privat (private storage) yang aman. File ini hanya dapat diakses oleh Anda sebagai pemilik pesanan dan Mitra Travel terkait. Kami tidak menyimpan file ini di direktori publik yang dapat diindeks oleh mesin pencari.</p>
 
     <h2 class="text-lg font-bold text-dark mt-6 mb-2">3. Penggunaan Notifikasi (FCM)</h2>
     <p>Kami menggunakan Firebase Cloud Messaging (FCM) untuk mengirimkan notifikasi status pesanan secara real-time. Token perangkat Anda hanya digunakan untuk keperluan ini dan tidak dibagikan ke pihak ketiga selain penyedia layanan Firebase (Google).</p>

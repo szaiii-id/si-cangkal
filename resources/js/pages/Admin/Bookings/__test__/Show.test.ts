@@ -549,7 +549,7 @@ describe('Admin Bookings — Show Page', () => {
                 expect.any(Object),
             );
             expect(showToast).toHaveBeenCalledWith(
-                'E-Ticket berhasil di-generate ulang.',
+                'Tiket berhasil dibuat ulang.',
                 'success',
             );
         });
@@ -628,7 +628,7 @@ describe('Admin Bookings — Show Page', () => {
             await syncUI();
 
             expect(showToast).toHaveBeenCalledWith(
-                'Gagal regenerate E-Ticket.',
+                'Gagal membuat ulang tiket.',
                 'error',
             );
         });

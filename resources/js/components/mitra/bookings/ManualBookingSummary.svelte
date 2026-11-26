@@ -52,7 +52,7 @@
     <!-- Info Pembayaran -->
     <div class="p-3 bg-blue/5 border border-blue/20 rounded-xl mt-3">
         <p class="text-[11px] text-blue-text leading-relaxed">
-            <strong>Informasi:</strong> Pembayaran dilakukan langsung ke rekening Anda. Setelah pesanan dibuat, unggah bukti transfer di halaman detail pesanan untuk menerbitkan E-Ticket.
+            <strong>Informasi:</strong> Pembayaran dilakukan langsung ke rekening Anda. Setelah pesanan dibuat, kirim bukti transfer di halaman detail pesanan untuk menerbitkan tiket perjalanan.
         </p>
     </div>
 </div>
