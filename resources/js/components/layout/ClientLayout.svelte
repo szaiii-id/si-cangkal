@@ -21,12 +21,12 @@
     let user = $derived(page.props.auth?.user);
     let unread = $derived(page.props.unread_notifications ?? 0);
 
-    // PERBAIKAN: Definisikan warna teks & ikon untuk mode non-aktif
+    // Warna navigasi mengikuti label menu asli dari @/utils/menus.
     const menuColors: Record<string, { active: string; inactive: string }> = {
-        'Beranda': { active: 'bg-dark text-white', inactive: 'text-blue-400' },
-        'Katalog': { active: 'bg-pink-dark text-white', inactive: 'text-pink-400' },
-        'Pesanan': { active: 'bg-green-dark text-white', inactive: 'text-green-400' },
-        'Profil': { active: 'bg-blue-dark text-white', inactive: 'text-purple-400' },
+        'Dashboard': { active: 'bg-pink-dark text-white', inactive: 'text-gray-600' },
+        'Katalog Paket': { active: 'bg-pink-dark text-white', inactive: 'text-gray-600' },
+        'Booking Saya': { active: 'bg-pink-dark text-white', inactive: 'text-gray-600' },
+        'Profile Saya': { active: 'bg-pink-dark text-white', inactive: 'text-gray-600' },
     };
 
     // ==========================================
@@ -178,13 +178,12 @@
         {@render children()}
     </main>
 
-    <!-- BOTTOM NAVIGATION (Diperbarui dengan Warna) -->
+    <!-- BOTTOM NAVIGATION -->
     <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[95%] sm:w-[90%] max-w-2xl">
-        <nav class="bg-dark/95 backdrop-blur-md rounded-full shadow-2xl p-2 flex items-center justify-between border border-gray-800">
+        <nav class="bg-white/95 backdrop-blur-md rounded-full shadow-xl p-2 flex items-center justify-between border border-pink/20">
             {#each clientMenu as item}
                 {@const isActive = page.url.startsWith(item.href)}
-                <!-- PERBAIKAN: Ambil active & inactive color -->
-                {@const colors = menuColors[item.label] || { active: 'bg-dark text-white', inactive: 'text-gray-400' }}
+                {@const colors = menuColors[item.label] || { active: 'bg-pink-dark text-white', inactive: 'text-gray-600' }}
                 
                 <a 
                     href={item.href} 
@@ -192,14 +191,13 @@
                     class="flex items-center justify-center gap-2 px-4 py-3 rounded-full transition-[transform,box-shadow,background-color,border-color,color,opacity] duration-300 group
                         {isActive 
                         ? colors.active + ' shadow-md flex-1' 
-                        : 'text-gray-400 hover:bg-white/10 md:flex-1'}"
+                        : 'text-gray-600 hover:bg-pink/10 hover:text-pink-text md:flex-1'}"
                     aria-label={item.label}
                     aria-current={isActive ? 'page' : undefined}
                 >
-                    <!-- PERBAIKAN: Terapkan warna pada ikon & teks saat tidak aktif -->
                     <svg 
                         class="w-5 h-5 shrink-0 transition-colors
-                            {isActive ? 'text-current' : colors.inactive + ' group-hover:text-white'}" 
+                            {isActive ? 'text-current' : colors.inactive + ' group-hover:text-pink-text'}" 
                         fill="none" 
                         viewBox="0 0 24 24" 
                         stroke="currentColor" 
@@ -211,7 +209,7 @@
                     
                     <span 
                         class="text-xs font-bold whitespace-nowrap transition-colors
-                            {isActive ? 'block text-current' : 'hidden md:block ' + colors.inactive + ' group-hover:text-white'}"
+                            {isActive ? 'block text-current' : 'hidden md:block ' + colors.inactive + ' group-hover:text-pink-text'}"
                     >
                         {item.label}
                     </span>
