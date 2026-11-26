@@ -127,8 +127,7 @@ vi.mock('@/components/admin/refunds/RefundFilterBar.svelte', () => ({
             // Search input
             const searchInput = document.createElement('input');
             searchInput.type = 'search';
-            searchInput.placeholder =
-                'Cari kode pesanan atau nama pelanggan...';
+            searchInput.placeholder = 'Cari kode pesanan atau nama pelanggan…';
             searchInput.value = props.search ?? '';
             searchInput.oninput = (e) => {
                 props.search = (e.target as HTMLInputElement).value;

@@ -90,7 +90,9 @@ describe('NotificationPermissionBanner', () => {
             const onDismiss = vi.fn();
             render(NotificationPermissionBanner, { props: { onDismiss } });
 
-            const backdrop = document.querySelector('[role="presentation"]');
+            const backdrop = document.querySelector(
+                'button[aria-label="Tutup pengingat notifikasi"]',
+            );
             await fireEvent.click(backdrop!);
             expect(onDismiss).toHaveBeenCalledTimes(1);
         });
@@ -196,7 +198,7 @@ describe('NotificationPermissionBanner', () => {
             );
 
             await waitFor(() => {
-                expect(screen.getByText('Memproses...')).toBeInTheDocument();
+                expect(screen.getByText('Memproses…')).toBeInTheDocument();
                 expect(
                     screen.getByRole('button', { name: /Nanti Saja/i }),
                 ).toBeDisabled();

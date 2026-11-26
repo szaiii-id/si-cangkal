@@ -46,7 +46,7 @@ describe('RefundFilterBar Component', () => {
             const searchInput = screen.getByTestId('search-input');
             expect(searchInput).toHaveAttribute(
                 'placeholder',
-                'Cari kode pesanan atau nama pelanggan...',
+                'Cari kode pesanan atau nama pelanggan…',
             );
         });
     });

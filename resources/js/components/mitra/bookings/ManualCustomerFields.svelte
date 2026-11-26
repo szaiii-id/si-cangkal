@@ -25,7 +25,7 @@
     // ==========================================
     // STYLING (DRY)
     // ==========================================
-    const inputClass = "w-full px-4 py-2.5 border rounded-xl bg-gray-50 text-sm font-medium placeholder-gray-400 focus:outline-none transition-all";
+    const inputClass = "w-full px-4 py-2.5 border rounded-xl bg-gray-50 text-sm font-medium placeholder-gray-400 focus:outline-none transition-[transform,box-shadow,background-color,border-color,color,opacity]";
     const errorClass = "border-red-300 bg-red-50 focus:ring-2 focus:ring-red-100 focus:border-red-500";
     const normalClass = "border-gray-200 focus:ring-2 focus:ring-pink/20 focus:border-pink focus:bg-white";
 </script>
@@ -84,7 +84,7 @@
                 type="text"
                 bind:value={form.no_hp_pelanggan}
                 class="{inputClass} {normalClass}"
-                placeholder="0812..."
+                placeholder="0812…"
             />
         </div>
     </div>

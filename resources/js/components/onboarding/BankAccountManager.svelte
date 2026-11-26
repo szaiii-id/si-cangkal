@@ -27,7 +27,7 @@
     ];
 
     // PERBAIKAN: Class input yang dapat digunakan berulang kali
-    const inputClass = "w-full px-3 py-2 border rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue transition-all font-medium";
+    const inputClass = "w-full px-3 py-2 border rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue transition-[transform,box-shadow,background-color,border-color,color,opacity] font-medium";
 
     function addAccount() {
         if (accounts.length < MAX_ACCOUNTS) {
@@ -108,7 +108,7 @@
 
     <div class="space-y-4">
         {#each accounts as account, i (account.id)}
-            <div class="p-4 border border-gray-200 rounded-xl bg-gray-50/50 relative transition-all hover:border-gray-300">
+            <div class="p-4 border border-gray-200 rounded-xl bg-gray-50/50 relative transition-[transform,box-shadow,background-color,border-color,color,opacity] hover:border-gray-300">
                 
                 <!-- Header Kartu Rekening -->
                 <div class="flex items-center justify-between mb-3">
@@ -157,7 +157,7 @@
                             bind:value={account.nama_penyedia}
                             class="{inputClass} cursor-pointer bg-white {errors[`accounts.${i}.nama_penyedia`] ? 'border-red-300 bg-red-50' : 'border-gray-200'}"
                         >
-                            <option value="">Pilih Penyedia...</option>
+                            <option value="">Pilih Penyedia…</option>
                             {#if account.tipe === 'bank'}
                                 {#each BANK_OPTIONS as bank (bank)}
                                     <option value={bank}>{bank}</option>
@@ -224,7 +224,7 @@
         <button
             type="button"
             onclick={addAccount}
-            class="mt-4 w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-sm font-bold text-gray-500 hover:border-blue hover:text-blue hover:bg-blue/5 transition-all flex items-center justify-center gap-2"
+            class="mt-4 w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-sm font-bold text-gray-500 hover:border-blue hover:text-blue hover:bg-blue/5 transition-[transform,box-shadow,background-color,border-color,color,opacity] flex items-center justify-center gap-2"
         >
             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />

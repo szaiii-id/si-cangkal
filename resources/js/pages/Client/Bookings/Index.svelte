@@ -165,7 +165,7 @@
                     <button
                         type="button"
                         onclick={() => changeStatus(tab.value)}
-                        class="px-4 py-2 rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all border
+                        class="px-4 py-2 rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-[transform,box-shadow,background-color,border-color,color,opacity] border
                             {selectedStatus === tab.value
                                 ? 'bg-dark text-white border-dark shadow-md'
                                 : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:text-dark'}"
@@ -191,8 +191,8 @@
                     bind:value={search}
                     oninput={(e) =>
                         handleSearch((e.target as HTMLInputElement).value)}
-                    placeholder="Cari kode pesanan atau nama paket..."
-                    class="w-full pl-11 pr-10 py-3 border border-gray-200 rounded-full bg-gray-50 text-sm font-medium placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue focus:bg-white transition-all"
+                    placeholder="Cari kode pesanan atau nama paket…"
+                    class="w-full pl-11 pr-10 py-3 border border-gray-200 rounded-full bg-gray-50 text-sm font-medium placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue focus:bg-white transition-[transform,box-shadow,background-color,border-color,color,opacity]"
                 />
                 <svg
                     class="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"
@@ -214,7 +214,7 @@
                             search = '';
                             handleSearch('');
                         }}
-                        class="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-gray-200 hover:bg-dark hover:text-white text-gray-500 flex items-center justify-center transition-all"
+                        class="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-gray-200 hover:bg-dark hover:text-white text-gray-500 flex items-center justify-center transition-[transform,box-shadow,background-color,border-color,color,opacity]"
                         aria-label="Hapus pencarian"
                     >
                         <svg
@@ -272,7 +272,7 @@
                     <button
                         type="button"
                         onclick={clearFilters}
-                        class="inline-flex items-center justify-center px-6 py-2.5 rounded-full bg-dark text-white font-bold text-sm hover:bg-dark/90 transition-all"
+                        class="inline-flex items-center justify-center px-6 py-2.5 rounded-full bg-dark text-white font-bold text-sm hover:bg-dark/90 transition-[transform,box-shadow,background-color,border-color,color,opacity]"
                     >
                         Hapus Filter
                     </button>
@@ -280,7 +280,7 @@
                     <a
                         href="/client/catalog"
                         use:inertia
-                        class="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-full bg-dark text-white font-bold text-sm hover:bg-dark/90 transition-all"
+                        class="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-full bg-dark text-white font-bold text-sm hover:bg-dark/90 transition-[transform,box-shadow,background-color,border-color,color,opacity]"
                     >
                         Cari Paket Wisata
                         <svg
@@ -310,7 +310,7 @@
                     <a
                         href={`/client/bookings/${booking.id}`}
                         use:inertia
-                        class="group block bg-white rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-lg hover:border-blue/30 transition-all overflow-hidden"
+                        class="group block bg-white rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-lg hover:border-blue/30 transition-[transform,box-shadow,background-color,border-color,color,opacity] overflow-hidden"
                     >
                         <div
                             class="p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-4"
@@ -426,7 +426,7 @@
                                     </p>
                                 </div>
                                 <div
-                                    class="w-9 h-9 rounded-full bg-blue/10 text-blue-text flex items-center justify-center group-hover:bg-blue-dark group-hover:text-white transition-all shrink-0"
+                                    class="w-9 h-9 rounded-full bg-blue/10 text-blue-text flex items-center justify-center group-hover:bg-blue-dark group-hover:text-white transition-[transform,box-shadow,background-color,border-color,color,opacity] shrink-0"
                                 >
                                     <svg
                                         class="w-4 h-4"

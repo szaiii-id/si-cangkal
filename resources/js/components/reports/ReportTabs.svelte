@@ -17,7 +17,7 @@
             href={tab.href} 
             use:inertia
             aria-current={active === tab.key ? 'page' : undefined}
-            class="flex-1 sm:flex-none text-center px-5 py-2.5 rounded-full font-bold text-sm transition-all
+            class="flex-1 sm:flex-none text-center px-5 py-2.5 rounded-full font-bold text-sm transition-[transform,box-shadow,background-color,border-color,color,opacity]
                 {active === tab.key 
                     ? 'bg-pink-dark text-white shadow-md' 
                     : 'bg-white border border-gray-200 text-dark hover:bg-gray-50 shadow-sm'}"

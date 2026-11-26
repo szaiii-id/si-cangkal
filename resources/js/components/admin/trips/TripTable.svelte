@@ -88,7 +88,7 @@
                 </div>
             </div>
 
-            <a href={`/admin/trips/${trip.id}`} use:inertia class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-xl text-xs font-bold text-blue bg-blue/5 hover:bg-blue/10 transition-all border border-blue/10">
+            <a href={`/admin/trips/${trip.id}`} use:inertia class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-xl text-xs font-bold text-blue bg-blue/5 hover:bg-blue/10 transition-[transform,box-shadow,background-color,border-color,color,opacity] border border-blue/10">
                 Lihat Detail Perjalanan
             </a>
         </div>
@@ -166,7 +166,7 @@
                     </td>
                     <td class="px-6 py-4">
                         <div class="flex items-center justify-end">
-                            <a href={`/admin/trips/${trip.id}`} use:inertia class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-blue bg-blue/5 hover:bg-blue/10 transition-all">
+                            <a href={`/admin/trips/${trip.id}`} use:inertia class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-blue bg-blue/5 hover:bg-blue/10 transition-[transform,box-shadow,background-color,border-color,color,opacity]">
                                 Detail
                             </a>
                         </div>

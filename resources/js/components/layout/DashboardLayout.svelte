@@ -131,7 +131,7 @@
                     use:inertia
                     class={[
                         'group flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm',
-                        'transition-all duration-200',
+                        'transition-[transform,box-shadow,background-color,border-color,color,opacity] duration-200',
                         isActive(item.href)
                             ? 'bg-pink-dark text-white shadow-lg shadow-pink/30'
                             : 'text-gray-600 hover:bg-gray-100 hover:text-dark',
@@ -206,7 +206,7 @@
                     <a
                         href="/notifications"
                         use:inertia
-                        class="relative inline-flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 transition-all"
+                        class="relative inline-flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 transition-[transform,box-shadow,background-color,border-color,color,opacity]"
                     >
                         <svg class="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -240,7 +240,7 @@
                         type="button"
                         onclick={handleLogout}
                         disabled={isLoggingOut}
-                        class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-pink-dark text-white font-bold text-sm hover:bg-sun-dark transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-pink-dark text-white font-bold text-sm hover:bg-sun-dark transition-[transform,box-shadow,background-color,border-color,color,opacity] shadow-md hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                         aria-label="Keluar dari akun"
                     >
                         {#if isLoggingOut}
@@ -248,7 +248,7 @@
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                             </svg>
-                            <span class="hidden sm:inline">Keluar...</span>
+                            <span class="hidden sm:inline">Keluar…</span>
                         {:else}
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -260,9 +260,9 @@
             </header>
 
             <!-- Konten Utama -->
-            <main class="flex-1 min-w-0">
+            <main id="main-content" class="flex-1 min-w-0">
                 {#if page.props.flash?.status}
-                    <div class="mb-5 bg-green/10 border-l-4 border-green p-4 rounded-r-2xl flex items-start gap-3" role="status" aria-live="polite">
+                    <div class="mb-5 bg-green/10 border border-green p-4 rounded-r-2xl flex items-start gap-3" role="status" aria-live="polite">
                         <svg class="w-5 h-5 text-green-text flex-shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
                         </svg>
@@ -271,7 +271,7 @@
                 {/if}
 
                 {#if page.props.flash?.error}
-                    <div class="mb-5 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-2xl flex items-start gap-3" role="alert" aria-live="assertive">
+                    <div class="mb-5 bg-red-50 border border-red-500 p-4 rounded-r-2xl flex items-start gap-3" role="alert" aria-live="assertive">
                         <svg class="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
                         </svg>

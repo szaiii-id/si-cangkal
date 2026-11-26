@@ -33,7 +33,7 @@
                 aria-pressed={active === tab.value}
                 aria-label={tab.count !== undefined ? `${tab.label}, ${tab.count} item` : tab.label}
                 onclick={() => handleClick(tab.value)}
-                class="flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all border
+                class="flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-[transform,box-shadow,background-color,border-color,color,opacity] border
                     {active === tab.value
                     ? 'bg-pink-dark text-white border-pink-dark shadow-sm'
                     : 'bg-white text-gray-600 border-gray-200'}"
@@ -59,7 +59,7 @@
                 aria-pressed={active === tab.value}
                 aria-label={tab.count !== undefined ? `${tab.label}, ${tab.count} item` : tab.label}
                 onclick={() => handleClick(tab.value)}
-                class="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-all whitespace-nowrap border
+                class="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-[transform,box-shadow,background-color,border-color,color,opacity] whitespace-nowrap border
                     {active === tab.value
                     ? 'bg-pink-dark text-white border-pink-dark shadow-sm'
                     : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}"

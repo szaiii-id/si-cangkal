@@ -156,7 +156,7 @@
             <a
                 href="/mitra/packages/create"
                 use:inertia
-                class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-pink-dark text-white font-bold text-sm hover:bg-sun-dark transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
+                class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-pink-dark text-white font-bold text-sm hover:bg-sun-dark transition-[transform,box-shadow,background-color,border-color,color,opacity] shadow-md hover:shadow-lg hover:-translate-y-0.5"
             >
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
@@ -170,7 +170,7 @@
         <FilterBar
             bind:search
             onSearch={handleSearch}
-            searchPlaceholder="Cari nama atau kode paket..."
+            searchPlaceholder="Cari nama atau kode paket…"
             {statusTabs}
             bind:selectedStatus
             onStatusChange={changeStatus}
@@ -200,11 +200,11 @@
                     <a
                         href={`/mitra/packages/${pkg.id}`}
                         use:inertia
-                        class="group bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-200 flex flex-col"
+                        class="group bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-[transform,box-shadow,background-color,border-color,color,opacity] duration-200 flex flex-col"
                     >
                         <div class="relative h-40 bg-linear-to-br from-pink-dark to-purple flex items-center justify-center text-white font-extrabold text-4xl overflow-hidden">
                             {#if pkg.cover_image}
-                                <img
+                                <img width="1200" height="800" loading="lazy"
                                     src={pkg.cover_image_url ?? `/storage/${pkg.cover_image}`}
                                     alt={pkg.nama}
                                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
@@ -260,7 +260,7 @@
                                         {pkg.harga_per_rombongan ? '/ grup (Flat)' : '/ orang'}
                                     </p>
                                 </div>
-                                <span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-pink-dark text-white text-xs font-bold shadow-sm group-hover:bg-sun-dark transition-all whitespace-nowrap flex-shrink-0">
+                                <span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-pink-dark text-white text-xs font-bold shadow-sm group-hover:bg-sun-dark transition-[transform,box-shadow,background-color,border-color,color,opacity] whitespace-nowrap flex-shrink-0">
                                     Detail
                                     <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />

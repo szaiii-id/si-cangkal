@@ -44,14 +44,13 @@
             href={proofUrl}
             target="_blank"
             rel="noopener noreferrer"
-            class="block w-full {maxWidth} rounded-2xl border border-gray-200 overflow-hidden hover:shadow-md hover:opacity-90 transition-all bg-gray-50"
+            class="block w-full {maxWidth} rounded-2xl border border-gray-200 overflow-hidden hover:shadow-md hover:opacity-90 transition-[transform,box-shadow,background-color,border-color,color,opacity] bg-gray-50"
             aria-label={`Lihat gambar bukti transfer booking ${bookingId}`}
         >
-            <img
+            <img width="1200" height="800" loading="lazy"
                 src={proofUrl}
                 alt={`Bukti Transfer untuk Booking #${bookingId}`}
                 class="w-full h-auto max-h-80 object-contain"
-                loading="lazy"
             />
         </a>
     </div>

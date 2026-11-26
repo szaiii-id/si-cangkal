@@ -38,7 +38,7 @@
             <a 
                 href={`/admin/bookings/${b.id}`} 
                 use:inertia 
-                class="block p-4 rounded-2xl bg-gray-50 border border-gray-200 shadow-sm hover:shadow-md hover:border-pink/30 hover:bg-white transition-all group"
+                class="block p-4 rounded-2xl bg-gray-50 border border-gray-200 shadow-sm hover:shadow-md hover:border-pink/30 hover:bg-white transition-[transform,box-shadow,background-color,border-color,color,opacity] group"
             >
                 <div class="flex items-start justify-between gap-2 mb-3">
                     <div class="min-w-0">

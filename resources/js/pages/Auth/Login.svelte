@@ -75,7 +75,7 @@
 
     <!-- Tombol Kembali -->
     <div class="absolute top-6 left-4 sm:left-8 z-20">
-        <a href="/" use:inertia aria-label="Kembali ke beranda" class="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all shadow-lg transform hover:-translate-y-0.5">
+        <a href="/" use:inertia aria-label="Kembali ke beranda" class="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold transition-[transform,box-shadow,background-color,border-color,color,opacity] shadow-lg transform hover:-translate-y-0.5">
             <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
@@ -99,7 +99,7 @@
 
             <!-- Flash Message Sukses -->
             {#if page.props.flash?.status}
-                <div class="mb-6 bg-green-50 border-l-4 border-green-500 p-4 rounded-r-2xl flex items-start gap-3" role="status" aria-live="polite">
+                <div class="mb-6 bg-green-50 border border-green-500 p-4 rounded-r-2xl flex items-start gap-3" role="status" aria-live="polite">
                     <svg class="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
                     </svg>
@@ -109,7 +109,7 @@
 
             <!-- Flash Message Error Global -->
             {#if page.props.flash?.error}
-                <div class="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-2xl flex items-start gap-3" role="alert" aria-live="assertive">
+                <div class="mb-6 bg-red-50 border border-red-500 p-4 rounded-r-2xl flex items-start gap-3" role="alert" aria-live="assertive">
                     <svg class="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
                     </svg>
@@ -128,7 +128,7 @@
                         required
                         autocomplete="username"
                         placeholder="budi@email.com atau budisantoso"
-                        class="appearance-none block w-full px-5 py-3.5 border rounded-2xl bg-gray-50 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue focus:bg-white transition-all text-sm font-medium
+                        class="appearance-none block w-full px-5 py-3.5 border rounded-2xl bg-gray-50 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue focus:bg-white transition-[transform,box-shadow,background-color,border-color,color,opacity] text-sm font-medium
                             {errors.identitas ? 'border-red-300 bg-red-50' : 'border-gray-200'}"
                         aria-invalid={errors.identitas ? 'true' : undefined}
                     >
@@ -148,7 +148,7 @@
                             required
                             autocomplete="current-password"
                             placeholder="Masukkan password Anda"
-                            class="appearance-none block w-full px-5 py-3.5 pr-12 border rounded-2xl bg-gray-50 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue focus:bg-white transition-all text-sm font-medium
+                            class="appearance-none block w-full px-5 py-3.5 pr-12 border rounded-2xl bg-gray-50 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue focus:bg-white transition-[transform,box-shadow,background-color,border-color,color,opacity] text-sm font-medium
                                 {errors.password ? 'border-red-300 bg-red-50' : 'border-gray-200'}"
                             aria-invalid={errors.password ? 'true' : undefined}
                         >
@@ -193,16 +193,16 @@
                     type="submit"
                     disabled={processing || countdown > 0}
                     aria-busy={processing}
-                    class="w-full flex justify-center items-center py-4 px-4 border border-transparent rounded-full shadow-lg text-base font-bold text-white bg-pink-dark hover:bg-sun-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-dark transition-all transform hover:-translate-y-1 mt-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                    class="w-full flex justify-center items-center py-4 px-4 border border-transparent rounded-full shadow-lg text-base font-bold text-white bg-pink-dark hover:bg-sun-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-dark transition-[transform,box-shadow,background-color,border-color,color,opacity] transform hover:-translate-y-1 mt-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                 >
                     {#if countdown > 0}
-                        Tunggu {countdown} detik...
+                        Tunggu {countdown} detik…
                     {:else if processing}
                         <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        Memproses...
+                        Memproses…
                     {:else}
                         Masuk ke Sistem
                     {/if}
@@ -228,7 +228,7 @@
 
                 <!-- Tombol Login with Google -->
                 <div class="mt-6">
-                    <a href="/auth/google" class="w-full flex justify-center items-center gap-3 py-3.5 px-4 border-2 border-gray-100 rounded-full shadow-sm bg-white text-sm font-extrabold text-dark hover:bg-gray-50 hover:border-blue/30 transition-all group">
+                    <a href="/auth/google" class="w-full flex justify-center items-center gap-3 py-3.5 px-4 border-2 border-gray-100 rounded-full shadow-sm bg-white text-sm font-extrabold text-dark hover:bg-gray-50 hover:border-blue/30 transition-[transform,box-shadow,background-color,border-color,color,opacity] group">
                         <svg class="w-5 h-5 group-hover:scale-110 transition-transform" viewBox="0 0 24 24" aria-hidden="true">
                             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
                             <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>

@@ -181,7 +181,7 @@
                     <button 
                         type="button" 
                         onclick={openCancelModal} 
-                        class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-red-50 text-red-700 font-bold text-sm hover:bg-red-100 transition-all"
+                        class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-red-50 text-red-700 font-bold text-sm hover:bg-red-100 transition-[transform,box-shadow,background-color,border-color,color,opacity]"
                     >
                         {booking.status === 'pending_payment' ? 'Batalkan Pesanan' : 'Batalkan & Refund'}
                     </button>
@@ -359,7 +359,7 @@
     confirmLabel="Ya, Tolak"
     requiresReason
     reasonLabel="Alasan Penolakan"
-    reasonPlaceholder="Contoh: Nominal tidak sesuai..."
+    reasonPlaceholder="Contoh: Nominal tidak sesuai…"
     bind:reasonValue={rejectReason}
     reasonError={rejectError}
     processing={rejectProcessing}
@@ -377,7 +377,7 @@
     confirmLabel="Ya, Batalkan"
     requiresReason
     reasonLabel="Alasan Pembatalan"
-    reasonPlaceholder="Jelaskan alasan pembatalan (min. 5 karakter)..."
+    reasonPlaceholder="Jelaskan alasan pembatalan (min. 5 karakter)…"
     bind:reasonValue={cancelAlasan}
     reasonError={cancelErrors.alasan ?? ''}
     processing={cancelProcessing}

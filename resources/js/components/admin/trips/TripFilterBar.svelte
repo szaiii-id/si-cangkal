@@ -49,7 +49,7 @@
             <SearchInput 
                 bind:value={search} 
                 oninput={onSearch} 
-                placeholder="Cari kode trip, paket, atau nama pelanggan..." 
+                placeholder="Cari kode trip, paket, atau nama pelanggan…" 
             />
         </div>
         
@@ -57,7 +57,7 @@
         <button 
             type="button" 
             onclick={() => (showAdvanced = !showAdvanced)} 
-            class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-bold text-sm transition-all shrink-0 border-none outline-none focus:ring-2 focus:ring-pink/30
+            class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-bold text-sm transition-[transform,box-shadow,background-color,border-color,color,opacity] shrink-0 border-none outline-none focus:ring-2 focus:ring-pink/30
                 {showAdvanced 
                 ? 'bg-pink-dark text-white shadow-md' 
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}"

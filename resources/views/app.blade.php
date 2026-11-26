@@ -19,6 +19,10 @@
         </x-inertia::head>
     </head>
     <body class="font-sans antialiased">
+        <a
+            href="#main-content"
+            class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100000] focus:rounded-full focus:bg-pink-dark focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-white"
+        >Lewati ke konten utama</a>
         <x-inertia::app />
     </body>
 </html>

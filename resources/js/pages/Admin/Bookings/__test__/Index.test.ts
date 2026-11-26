@@ -144,7 +144,7 @@ vi.mock('@/components/admin/bookings/BookingFilterBar.svelte', () => ({
             // Search input
             const searchInput = document.createElement('input');
             searchInput.type = 'search';
-            searchInput.placeholder = 'Cari kode pesanan, nama pelanggan...';
+            searchInput.placeholder = 'Cari kode pesanan, nama pelanggan…';
             searchInput.value = props.search ?? '';
             searchInput.oninput = (e) => {
                 props.search = (e.target as HTMLInputElement).value;

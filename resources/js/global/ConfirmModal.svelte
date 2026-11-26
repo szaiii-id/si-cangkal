@@ -214,7 +214,7 @@
                         required
                         placeholder={reasonPlaceholder}
                         disabled={processing}
-                        class="w-full px-4 py-2.5 border rounded-xl bg-gray-50 text-sm font-medium placeholder-gray-400 focus:outline-none transition-all resize-none
+                        class="w-full px-4 py-2.5 border rounded-xl bg-gray-50 text-sm font-medium placeholder-gray-400 focus:outline-none transition-[transform,box-shadow,background-color,border-color,color,opacity] resize-none
                             {reasonError
                             ? 'border-red-300 bg-red-50 focus:ring-2 focus:ring-red-100 focus:border-red-500'
                             : 'border-gray-200 focus:ring-2 focus:ring-pink/10 focus:border-pink focus:bg-white'}"
@@ -237,7 +237,7 @@
                     type="button"
                     onclick={close}
                     disabled={processing}
-                    class="flex-1 inline-flex items-center justify-center px-5 py-2.5 rounded-full bg-white border border-gray-200 text-dark font-bold text-sm hover:bg-gray-50 transition-all disabled:opacity-50"
+                    class="flex-1 inline-flex items-center justify-center px-5 py-2.5 rounded-full bg-white border border-gray-200 text-dark font-bold text-sm hover:bg-gray-50 transition-[transform,box-shadow,background-color,border-color,color,opacity] disabled:opacity-50"
                 >
                     {cancelLabel}
                 </button>
@@ -245,14 +245,14 @@
                     type="button"
                     onclick={confirm}
                     disabled={!canConfirm}
-                    class="flex-1 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full {confirmClass[variant]} font-bold text-sm transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="flex-1 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full {confirmClass[variant]} font-bold text-sm transition-[transform,box-shadow,background-color,border-color,color,opacity] shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {#if processing}
                         <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                         </svg>
-                        Memproses...
+                        Memproses…
                     {:else}
                         {confirmLabel}
                     {/if}

@@ -216,7 +216,7 @@
         <div class="flex items-center gap-2 sm:gap-3">
             <!-- Step 1 -->
             <div class="flex items-center gap-2 shrink-0">
-                <div class="w-8 h-8 rounded-full flex items-center justify-center font-extrabold text-sm transition-all {step === 1 ? 'bg-dark text-white shadow-md' : 'bg-green-dark text-white'}">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center font-extrabold text-sm transition-[transform,box-shadow,background-color,border-color,color,opacity] {step === 1 ? 'bg-dark text-white shadow-md' : 'bg-green-dark text-white'}">
                     {#if step > 1}
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
                     {:else}
@@ -230,7 +230,7 @@
 
             <!-- Step 2 -->
             <div class="flex items-center gap-2 shrink-0">
-                <div class="w-8 h-8 rounded-full flex items-center justify-center font-extrabold text-sm transition-all {step === 2 ? 'bg-dark text-white shadow-md' : 'bg-gray-200 text-gray-500'}">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center font-extrabold text-sm transition-[transform,box-shadow,background-color,border-color,color,opacity] {step === 2 ? 'bg-dark text-white shadow-md' : 'bg-gray-200 text-gray-500'}">
                     2
                 </div>
                 <span class="text-xs sm:text-sm font-bold transition-colors {step === 2 ? 'text-dark' : 'text-gray-400'}">Data Peserta</span>
@@ -240,7 +240,7 @@
 
     <!-- Error Alert -->
     {#if errorCount > 0}
-        <div class="max-w-2xl mx-auto mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-2xl flex items-start gap-3" role="alert">
+        <div class="max-w-2xl mx-auto mb-6 bg-red-50 border border-red-500 p-4 rounded-r-2xl flex items-start gap-3" role="alert">
             <svg class="w-5 h-5 text-red-500 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg>
             <div>
                 <p class="text-sm text-red-700 font-bold">Terdapat {errorCount} kesalahan pada form</p>
@@ -275,7 +275,7 @@
                                 bind:value={form.tanggal_keberangkatan}
                                 min={getMinDate()}
                                 required
-                                class="w-full bg-gray-50 border-0 border-b-2 px-4 py-3.5 text-sm font-bold text-dark focus:outline-none focus:ring-0 focus:bg-white transition-all rounded-t-xl
+                                class="w-full bg-gray-50 border-0 border-b-2 px-4 py-3.5 text-sm font-bold text-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink/20 focus:bg-white transition-[transform,box-shadow,background-color,border-color,color,opacity] rounded-t-xl
                                     {errors.tanggal_keberangkatan ? 'border-red-500' : 'border-gray-200 focus:border-blue-dark'}"
                             />
                             {#if errors.tanggal_keberangkatan}
@@ -295,7 +295,7 @@
                                 min={1}
                                 max={pkg.max_peserta ?? undefined}
                                 required
-                                class="w-full bg-gray-50 border-0 border-b-2 px-4 py-3.5 text-sm font-bold text-dark focus:outline-none focus:ring-0 focus:bg-white transition-all rounded-t-xl
+                                class="w-full bg-gray-50 border-0 border-b-2 px-4 py-3.5 text-sm font-bold text-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink/20 focus:bg-white transition-[transform,box-shadow,background-color,border-color,color,opacity] rounded-t-xl
                                     {errors.jumlah_peserta ? 'border-red-500' : 'border-gray-200 focus:border-blue-dark'}"
                             />
                             {#if errors.jumlah_peserta}
@@ -312,15 +312,15 @@
                                 id="catatan"
                                 bind:value={form.catatan}
                                 rows="2"
-                                placeholder="Alergi, permintaan khusus, dll..."
-                                class="w-full bg-gray-50 border-0 border-b-2 border-gray-200 px-4 py-3.5 text-sm font-medium text-dark placeholder-gray-400 focus:outline-none focus:ring-0 focus:bg-white focus:border-blue-dark transition-all resize-none rounded-t-xl"
+                                placeholder="Alergi, permintaan khusus, dll…"
+                                class="w-full bg-gray-50 border-0 border-b-2 border-gray-200 px-4 py-3.5 text-sm font-medium text-dark placeholder-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink/20 focus:bg-white focus:border-blue-dark transition-[transform,box-shadow,background-color,border-color,color,opacity] resize-none rounded-t-xl"
                             ></textarea>
                         </div>
                     </div>
 
                     <div class="mt-10 flex flex-col-reverse sm:flex-row gap-3">
-                        <a href={`/client/catalog/${pkg.slug}`} use:inertia class="inline-flex items-center justify-center px-6 py-3.5 rounded-full bg-gray-50 text-dark font-bold text-sm hover:bg-gray-100 transition-all">Batal</a>
-                        <button type="submit" class="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full bg-dark text-white font-bold text-sm hover:bg-dark/90 transition-all shadow-lg">
+                        <a href={`/client/catalog/${pkg.slug}`} use:inertia class="inline-flex items-center justify-center px-6 py-3.5 rounded-full bg-gray-50 text-dark font-bold text-sm hover:bg-gray-100 transition-[transform,box-shadow,background-color,border-color,color,opacity]">Batal</a>
+                        <button type="submit" class="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full bg-dark text-white font-bold text-sm hover:bg-dark/90 transition-[transform,box-shadow,background-color,border-color,color,opacity] shadow-lg">
                             Lanjut Isi Peserta
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
                         </button>
@@ -388,7 +388,7 @@
                                             bind:value={participant.nama}
                                             required
                                             placeholder="Sesuai KTP"
-                                            class="w-full bg-gray-50 border-0 border-b-2 px-4 py-3.5 text-sm font-bold text-dark placeholder-gray-400 focus:outline-none focus:ring-0 focus:bg-white transition-all rounded-t-xl
+                                            class="w-full bg-gray-50 border-0 border-b-2 px-4 py-3.5 text-sm font-bold text-dark placeholder-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink/20 focus:bg-white transition-[transform,box-shadow,background-color,border-color,color,opacity] rounded-t-xl
                                                 {errors[`participants.${index}.nama`] ? 'border-red-500' : 'border-gray-200 focus:border-blue-dark'}"
                                         />
                                         {#if errors[`participants.${index}.nama`]}
@@ -400,19 +400,19 @@
                                         <!-- Umur -->
                                         <div>
                                             <label for={`umur_${index}`} class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-widest mb-1.5 ml-1">Umur</label>
-                                            <input id={`umur_${index}`} type="number" bind:value={participant.umur} min="1" max="120" placeholder="30" class="w-full bg-gray-50 border-0 border-b-2 border-gray-200 px-4 py-3.5 text-sm font-medium text-dark placeholder-gray-400 focus:outline-none focus:ring-0 focus:bg-white focus:border-blue-dark transition-all rounded-t-xl" />
+                                            <input id={`umur_${index}`} type="number" bind:value={participant.umur} min="1" max="120" placeholder="30" class="w-full bg-gray-50 border-0 border-b-2 border-gray-200 px-4 py-3.5 text-sm font-medium text-dark placeholder-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink/20 focus:bg-white focus:border-blue-dark transition-[transform,box-shadow,background-color,border-color,color,opacity] rounded-t-xl" />
                                         </div>
                                         <!-- No HP -->
                                         <div>
                                             <label for={`no_hp_${index}`} class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-widest mb-1.5 ml-1">No. HP</label>
-                                            <input id={`no_hp_${index}`} type="text" bind:value={participant.no_hp} placeholder="0812..." class="w-full bg-gray-50 border-0 border-b-2 border-gray-200 px-4 py-3.5 text-sm font-medium text-dark placeholder-gray-400 focus:outline-none focus:ring-0 focus:bg-white focus:border-blue-dark transition-all rounded-t-xl" />
+                                            <input id={`no_hp_${index}`} type="text" bind:value={participant.no_hp} placeholder="0812…" class="w-full bg-gray-50 border-0 border-b-2 border-gray-200 px-4 py-3.5 text-sm font-medium text-dark placeholder-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink/20 focus:bg-white focus:border-blue-dark transition-[transform,box-shadow,background-color,border-color,color,opacity] rounded-t-xl" />
                                         </div>
                                     </div>
 
                                     <!-- Catatan -->
                                     <div>
                                         <label for={`catatan_peserta_${index}`} class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-widest mb-1.5 ml-1">Catatan</label>
-                                        <input id={`catatan_peserta_${index}`} type="text" bind:value={participant.catatan} placeholder="Alergi, dll." class="w-full bg-gray-50 border-0 border-b-2 border-gray-200 px-4 py-3.5 text-sm font-medium text-dark placeholder-gray-400 focus:outline-none focus:ring-0 focus:bg-white focus:border-blue-dark transition-all rounded-t-xl" />
+                                        <input id={`catatan_peserta_${index}`} type="text" bind:value={participant.catatan} placeholder="Alergi, dll." class="w-full bg-gray-50 border-0 border-b-2 border-gray-200 px-4 py-3.5 text-sm font-medium text-dark placeholder-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink/20 focus:bg-white focus:border-blue-dark transition-[transform,box-shadow,background-color,border-color,color,opacity] rounded-t-xl" />
                                     </div>
                                 </div>
                             </div>
@@ -432,13 +432,13 @@
 
                     <!-- Actions -->
                     <div class="mt-6 flex flex-col-reverse sm:flex-row gap-3">
-                        <button type="button" onclick={backToStep1} class="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full bg-gray-50 text-dark font-bold text-sm hover:bg-gray-100 transition-all">
+                        <button type="button" onclick={backToStep1} class="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full bg-gray-50 text-dark font-bold text-sm hover:bg-gray-100 transition-[transform,box-shadow,background-color,border-color,color,opacity]">
                             Kembali
                         </button>
-                        <button type="submit" disabled={processing} class="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full bg-dark text-white font-bold text-sm hover:bg-dark/90 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                        <button type="submit" disabled={processing} class="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full bg-dark text-white font-bold text-sm hover:bg-dark/90 transition-[transform,box-shadow,background-color,border-color,color,opacity] shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
                             {#if processing}
                                 <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
-                                Memproses...
+                                Memproses…
                             {:else}
                                 Konfirmasi Pesanan
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>

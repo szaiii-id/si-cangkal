@@ -125,7 +125,7 @@ describe('ReportFilter Component', () => {
                 name: /Terapkan filter tanggal/i,
             });
             expect(btn).toBeDisabled();
-            expect(screen.getByText(/Memproses.../i)).toBeInTheDocument();
+            expect(screen.getByText(/Memproses…/i)).toBeInTheDocument();
         });
     });
 

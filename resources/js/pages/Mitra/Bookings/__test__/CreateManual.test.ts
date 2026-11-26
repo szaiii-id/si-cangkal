@@ -261,7 +261,7 @@ describe('Mitra Bookings — Create Manual Page', () => {
 
             await Promise.resolve();
             expect(
-                screen.getByRole('button', { name: /Menyimpan.../i }),
+                screen.getByRole('button', { name: /Menyimpan…/i }),
             ).toBeDisabled();
         });
 

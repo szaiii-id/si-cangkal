@@ -165,7 +165,7 @@ test.describe('Mitra — Jadwal Perjalanan (Trip Index & Show)', () => {
 
             // Cari berdasarkan kode trip pertama
             const searchInput = page.getByPlaceholder(
-                'Cari kode trip atau nama paket...',
+                'Cari kode trip atau nama paket…',
             );
             await searchInput.fill(first.trip.kode);
             await expect(page).toHaveURL(
@@ -236,7 +236,7 @@ test.describe('Mitra — Jadwal Perjalanan (Trip Index & Show)', () => {
 
             // Filter berdasarkan kode trip agar pasti tampil di halaman 1 meski data akumulatif banyak
             await page
-                .getByPlaceholder('Cari kode trip atau nama paket...')
+                .getByPlaceholder('Cari kode trip atau nama paket…')
                 .fill(trip.kode);
             await expect(page).toHaveURL(new RegExp(`search=${trip.kode}`));
             await page.waitForLoadState('networkidle');

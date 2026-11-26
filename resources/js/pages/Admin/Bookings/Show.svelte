@@ -126,7 +126,7 @@
 
             {#if canRegenerateETicket}
                 <div class="lg:w-48 flex-shrink-0">
-                    <button type="button" onclick={openRegenerateModal} class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-purple/10 text-purple-text font-bold text-sm hover:bg-purple/20 transition-all">
+                    <button type="button" onclick={openRegenerateModal} class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-purple/10 text-purple-text font-bold text-sm hover:bg-purple/20 transition-[transform,box-shadow,background-color,border-color,color,opacity]">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>

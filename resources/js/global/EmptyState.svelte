@@ -27,7 +27,7 @@
     } = $props();
 
     // PERBAIKAN: DRY - Simpan class tombol dalam satu variabel
-    const buttonClasses = 'mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-pink-dark text-white font-bold text-sm hover:bg-sun-dark transition-all shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-dark';
+    const buttonClasses = 'mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-pink-dark text-white font-bold text-sm hover:bg-sun-dark transition-[transform,box-shadow,background-color,border-color,color,opacity] shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-dark';
 </script>
 
 <div class="p-16 text-center">

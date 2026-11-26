@@ -40,12 +40,12 @@ describe('Verifikasi Email — pure logic', () => {
 
     describe('formatCooldownLabel()', () => {
         it('menampilkan label hitung mundur', () => {
-            expect(formatCooldownLabel(60)).toBe('Tunggu 60 detik...');
-            expect(formatCooldownLabel(1)).toBe('Tunggu 1 detik...');
+            expect(formatCooldownLabel(60)).toBe('Tunggu 60 detik…');
+            expect(formatCooldownLabel(1)).toBe('Tunggu 1 detik…');
         });
 
         it('tidak menampilkan angka negatif', () => {
-            expect(formatCooldownLabel(-3)).toBe('Tunggu 0 detik...');
+            expect(formatCooldownLabel(-3)).toBe('Tunggu 0 detik…');
         });
     });
 });

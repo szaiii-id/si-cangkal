@@ -27,7 +27,7 @@
             <a 
                 href={`/admin/users/${mitra.id}`} 
                 use:inertia 
-                class="block border border-gray-200 rounded-2xl p-4 hover:border-pink/40 hover:shadow-md transition-all group"
+                class="block border border-gray-200 rounded-2xl p-4 hover:border-pink/40 hover:shadow-md transition-[transform,box-shadow,background-color,border-color,color,opacity] group"
                 aria-label={`Lihat detail mitra ${mitra.name}`}
             >
                 <div class="flex items-start gap-3 flex-wrap">

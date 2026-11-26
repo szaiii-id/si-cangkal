@@ -183,13 +183,13 @@
                             <button
                                 type="submit"
                                 disabled={processing}
-                                class="w-full inline-flex items-center justify-center px-6 py-3 rounded-full bg-pink-dark text-white font-bold text-sm hover:bg-sun-dark disabled:opacity-50 transition-all shadow-md"
+                                class="w-full inline-flex items-center justify-center px-6 py-3 rounded-full bg-pink-dark text-white font-bold text-sm hover:bg-sun-dark disabled:opacity-50 transition-[transform,box-shadow,background-color,border-color,color,opacity] shadow-md"
                             >
-                                {processing ? 'Menyimpan...' : 'Buat Pesanan Manual'}
+                                {processing ? 'Menyimpan…' : 'Buat Pesanan Manual'}
                             </button>
                             <a
                                 href={`/mitra/packages/${pkg.id}`}
-                                class="w-full inline-flex items-center justify-center px-6 py-3 rounded-full border border-gray-300 bg-white text-dark font-bold text-sm hover:bg-gray-50 transition-all"
+                                class="w-full inline-flex items-center justify-center px-6 py-3 rounded-full border border-gray-300 bg-white text-dark font-bold text-sm hover:bg-gray-50 transition-[transform,box-shadow,background-color,border-color,color,opacity]"
                             >
                                 Batal
                             </a>

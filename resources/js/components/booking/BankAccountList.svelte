@@ -88,7 +88,7 @@
                         <button
                             type="button"
                             onclick={() => onCopy(acc.nomor_rekening)}
-                            class="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white border border-gray-300 hover:bg-pink/10 hover:border-pink text-dark font-bold text-xs transition-all"
+                            class="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white border border-gray-300 hover:bg-pink/10 hover:border-pink text-dark font-bold text-xs transition-[transform,box-shadow,background-color,border-color,color,opacity]"
                             aria-label={`Copy nomor rekening ${acc.nama_penyedia}`}
                         >
                             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">

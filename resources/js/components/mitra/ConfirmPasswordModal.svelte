@@ -57,7 +57,7 @@
                     bind:value={password}
                     onkeydown={(e) => e.key === 'Enter' && submit()}
                     placeholder="Masukkan password Anda"
-                    class="w-full pl-10 pr-10 py-3 border rounded-xl text-sm font-medium focus:outline-none transition-all
+                    class="w-full pl-10 pr-10 py-3 border rounded-xl text-sm font-medium focus:outline-none transition-[transform,box-shadow,background-color,border-color,color,opacity]
                         {error
                         ? 'border-red-300 bg-red-50 focus:border-red-500 focus:ring-2 focus:ring-red-100'
                         : 'border-gray-200 focus:border-pink focus:ring-2 focus:ring-pink/10 bg-gray-50 focus:bg-white'}"

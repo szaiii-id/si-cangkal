@@ -552,7 +552,7 @@ describe('Admin Users Index Page', () => {
             });
 
             const searchInput = screen.getByPlaceholderText(
-                'Cari nama atau email...',
+                'Cari nama atau email…',
             );
             await fireEvent.input(searchInput, { target: { value: 'mitra' } });
 

@@ -77,7 +77,7 @@
                 <button
                     type="button"
                     onclick={markAllRead}
-                    class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-dark text-white font-bold text-sm hover:bg-dark/90 transition-all shadow-md shrink-0 w-full sm:w-auto"
+                    class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-dark text-white font-bold text-sm hover:bg-dark/90 transition-[transform,box-shadow,background-color,border-color,color,opacity] shadow-md shrink-0 w-full sm:w-auto"
                 >
                     <svg
                         class="w-4 h-4"

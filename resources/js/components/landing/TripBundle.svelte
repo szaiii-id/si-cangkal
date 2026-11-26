@@ -122,7 +122,7 @@
                 </div>
 
                 <div class="mt-7">
-                    <a href="/login" class="inline-flex items-center rounded-full bg-dark px-6 py-3.5 text-xs font-bold text-white shadow-lg shadow-dark/10 transition-all duration-300 hover:-translate-y-0.5 hover:bg-blue-dark hover:shadow-blue-dark/30">
+                    <a href="/login" class="inline-flex items-center rounded-full bg-dark px-6 py-3.5 text-xs font-bold text-white shadow-lg shadow-dark/10 transition-[transform,box-shadow,background-color,border-color,color,opacity] duration-300 hover:-translate-y-0.5 hover:bg-blue-dark hover:shadow-blue-dark/30">
                         Lihat Detail Kemitraan
                     </a>
                 </div>
@@ -145,7 +145,7 @@
                             type="button"
                             aria-pressed={pos === "center"}
                             onclick={() => selectBundle(bundle.id)}
-                            class={`absolute transition-all duration-1000 ease-[cubic-bezier(0.22,1,0.36,1)] focus:outline-none focus:ring-4 focus:ring-blue/50 focus:ring-offset-2 rounded-[2rem]
+                            class={`absolute transition-[transform,box-shadow,background-color,border-color,color,opacity] duration-1000 ease-[cubic-bezier(0.22,1,0.36,1)] focus:outline-none focus:ring-4 focus:ring-blue/50 focus:ring-offset-2 rounded-[2rem]
                                 ${
                                     pos === "left" ? "left-0 top-[80px] z-10 sm:top-[100px]" :
                                     pos === "center" ? "left-1/2 z-20 -translate-x-1/2 top-0" :
@@ -154,7 +154,7 @@
                             `}
                         >
                             <div class={`
-                                relative overflow-hidden border-4 border-white bg-gray-100 transition-all duration-1000 ease-[cubic-bezier(0.22,1,0.36,1)]
+                                relative overflow-hidden border-4 border-white bg-gray-100 transition-[transform,box-shadow,background-color,border-color,color,opacity] duration-1000 ease-[cubic-bezier(0.22,1,0.36,1)]
                                 ${
                                     pos === "center"
                                         ? "h-[320px] w-52 rounded-[2rem] scale-100 opacity-100 shadow-2xl sm:h-[410px] sm:w-64 lg:h-[430px] lg:w-72"
@@ -163,10 +163,9 @@
                                             : "h-44 w-32 rounded-[1.5rem] scale-90 opacity-60 shadow-xl sm:h-64 sm:w-44"
                                 }
                             `}>
-                                <img
+                                <img width="1200" height="800" loading="lazy"
                                     src={bundle.image}
-                                    alt={bundle.title} 
-                                    loading="lazy"
+                                    alt={bundle.title}
                                     class="h-full w-full object-cover transition-transform duration-1000 ease-out hover:scale-110"
                                 />
                                 <div class="absolute inset-0 bg-gradient-to-t from-dark/90 via-dark/30 to-transparent"></div>
@@ -198,9 +197,9 @@
                             aria-label={`Lihat detail ${bundle.title}`}
                             onclick={() => selectBundle(bundle.id)}
                             aria-pressed={activeId === bundle.id}
-                            class="overflow-hidden rounded-xl border-2 transition-all duration-500 focus:outline-none focus:ring-2 focus:ring-blue/50 focus:ring-offset-1 {activeId === bundle.id ? 'h-16 w-12 border-blue opacity-100 shadow-md' : 'h-12 w-9 border-white opacity-60 shadow-sm'}"
+                            class="overflow-hidden rounded-xl border-2 transition-[transform,box-shadow,background-color,border-color,color,opacity] duration-500 focus:outline-none focus:ring-2 focus:ring-blue/50 focus:ring-offset-1 {activeId === bundle.id ? 'h-16 w-12 border-blue opacity-100 shadow-md' : 'h-12 w-9 border-white opacity-60 shadow-sm'}"
                         >
-                            <img src={bundle.image} alt="" loading="lazy" class="h-full w-full object-cover" />
+                            <img width="1200" height="800" loading="lazy" src={bundle.image} alt="" class="h-full w-full object-cover" />
                         </button>
                     {/each}
                 </div>
@@ -211,7 +210,7 @@
              ACTIVE PACKAGE DETAIL BOX
         =================================================== -->
         {#key activeId}
-            <div class="mx-auto mt-10 max-w-3xl rounded-2xl border border-gray-200 bg-white/50 px-6 py-8 text-center shadow-sm backdrop-blur-sm transition-all duration-700 lg:mt-8">
+            <div class="mx-auto mt-10 max-w-3xl rounded-2xl border border-gray-200 bg-white/50 px-6 py-8 text-center shadow-sm backdrop-blur-sm transition-[transform,box-shadow,background-color,border-color,color,opacity] duration-700 lg:mt-8">
                 <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-text">
                     {activeBundle.location}
                 </p>

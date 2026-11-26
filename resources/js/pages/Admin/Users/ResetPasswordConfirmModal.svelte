@@ -60,7 +60,7 @@
                     <button
                         type="button"
                         onclick={close}
-                        class="flex-1 px-6 py-3 rounded-full bg-gray-100 text-dark font-bold text-sm hover:bg-gray-200 transition-all"
+                        class="flex-1 px-6 py-3 rounded-full bg-gray-100 text-dark font-bold text-sm hover:bg-gray-200 transition-[transform,box-shadow,background-color,border-color,color,opacity]"
                     >
                         Batal
                     </button>
@@ -68,7 +68,7 @@
                     <button
                         type="button"
                         onclick={confirm}
-                        class="flex-1 px-6 py-3 rounded-full bg-sun-dark text-white font-bold text-sm hover:bg-sun transition-all shadow-md"
+                        class="flex-1 px-6 py-3 rounded-full bg-sun-dark text-white font-bold text-sm hover:bg-sun transition-[transform,box-shadow,background-color,border-color,color,opacity] shadow-md"
                     >
                         Ya, Reset Password
                     </button>

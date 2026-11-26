@@ -188,21 +188,21 @@
             <button 
                 type="button"
                 onclick={() => activeTab = 'info'}
-                class="flex-1 min-w-[120px] py-2.5 px-4 text-center text-sm font-bold rounded-xl transition-all {activeTab === 'info' ? 'bg-pink-dark text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}"
+                class="flex-1 min-w-[120px] py-2.5 px-4 text-center text-sm font-bold rounded-xl transition-[transform,box-shadow,background-color,border-color,color,opacity] {activeTab === 'info' ? 'bg-pink-dark text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}"
             >
                 1. Info & Harga
             </button>
             <button 
                 type="button"
                 onclick={() => activeTab = 'itinerary'}
-                class="flex-1 min-w-[120px] py-2.5 px-4 text-center text-sm font-bold rounded-xl transition-all {activeTab === 'itinerary' ? 'bg-pink-dark text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}"
+                class="flex-1 min-w-[120px] py-2.5 px-4 text-center text-sm font-bold rounded-xl transition-[transform,box-shadow,background-color,border-color,color,opacity] {activeTab === 'itinerary' ? 'bg-pink-dark text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}"
             >
                 2. Rencana Kegiatan
             </button>
             <button 
                 type="button"
                 onclick={() => activeTab = 'facilities'}
-                class="flex-1 min-w-[120px] py-2.5 px-4 text-center text-sm font-bold rounded-xl transition-all {activeTab === 'facilities' ? 'bg-pink-dark text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}"
+                class="flex-1 min-w-[120px] py-2.5 px-4 text-center text-sm font-bold rounded-xl transition-[transform,box-shadow,background-color,border-color,color,opacity] {activeTab === 'facilities' ? 'bg-pink-dark text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}"
             >
                 3. Fasilitas & Foto
             </button>
@@ -321,7 +321,7 @@
             <div class="w-full sm:w-auto">
                 <a 
                     href="/mitra/packages" 
-                    class="w-full sm:w-auto px-6 py-3 rounded-full bg-white border border-gray-200 text-dark font-bold text-sm hover:bg-gray-50 transition-all text-center block"
+                    class="w-full sm:w-auto px-6 py-3 rounded-full bg-white border border-gray-200 text-dark font-bold text-sm hover:bg-gray-50 transition-[transform,box-shadow,background-color,border-color,color,opacity] text-center block"
                 >
                     Batal
                 </a>
@@ -332,10 +332,10 @@
                     type="button" 
                     onclick={handleSave} 
                     disabled={processing} 
-                    class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3 rounded-full bg-green-dark text-white font-bold text-sm hover:bg-green shadow-lg disabled:opacity-50 transition-all cursor-pointer"
+                    class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3 rounded-full bg-green-dark text-white font-bold text-sm hover:bg-green shadow-lg disabled:opacity-50 transition-[transform,box-shadow,background-color,border-color,color,opacity] cursor-pointer"
                 >
                     {#if processing}
-                        Menyimpan...
+                        Menyimpan…
                     {:else}
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
                         Simpan Perubahan

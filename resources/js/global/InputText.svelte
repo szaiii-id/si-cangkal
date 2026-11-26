@@ -48,7 +48,7 @@
     let inputClasses = $derived(
         [
             'appearance-none block w-full px-5 py-3.5 border rounded-2xl',
-            'placeholder-gray-400 focus:outline-none focus:ring-2 transition-all sm:text-sm font-medium',
+            'placeholder-gray-400 focus:outline-none focus:ring-2 transition-[transform,box-shadow,background-color,border-color,color,opacity] sm:text-sm font-medium',
             error
                 ? 'border-red-300 bg-red-50 focus:ring-red-200 focus:border-red-500'
                 : 'border-gray-200 bg-gray-50 focus:ring-blue/20 focus:border-blue focus:bg-white',

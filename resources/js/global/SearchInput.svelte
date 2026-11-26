@@ -83,7 +83,7 @@
         oninput={handleInput}
         onfocus={() => (isFocused = true)}
         onblur={() => (isFocused = false)}
-        class="w-full pl-11 pr-10 py-3 border rounded-2xl bg-gray-50 text-sm font-medium placeholder-gray-400 focus:outline-none transition-all
+        class="w-full pl-11 pr-10 py-3 border rounded-2xl bg-gray-50 text-sm font-medium placeholder-gray-400 focus:outline-none transition-[transform,box-shadow,background-color,border-color,color,opacity]
             {isFocused
             ? 'border-pink bg-white ring-4 ring-pink/10 shadow-sm'
             : 'border-gray-200 hover:border-gray-300'}"
@@ -93,7 +93,7 @@
         <button
             type="button"
             onclick={handleClear}
-            class="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-gray-200 hover:bg-pink-dark hover:text-white text-gray-500 flex items-center justify-center transition-all"
+            class="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-gray-200 hover:bg-pink-dark hover:text-white text-gray-500 flex items-center justify-center transition-[transform,box-shadow,background-color,border-color,color,opacity]"
             aria-label="Hapus pencarian"
         >
             <svg

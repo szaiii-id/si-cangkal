@@ -165,7 +165,7 @@ describe('ForgotPassword Page', () => {
     // 5. LOADING STATE
     // ==========================================
     describe('Loading State', () => {
-        it('harus menampilkan "Mengirim Tautan..." saat processing', async () => {
+        it('harus menampilkan "Mengirim Tautan…" saat processing', async () => {
             vi.mocked(forgotPassword).mockImplementation(() => {});
 
             render(ForgotPassword);
@@ -200,7 +200,7 @@ describe('ForgotPassword Page', () => {
             expect(submitBtn).toBeDisabled();
 
             await vi.advanceTimersByTimeAsync(1000);
-            expect(submitBtn).toHaveTextContent('Tunggu 2 detik...');
+            expect(submitBtn).toHaveTextContent('Tunggu 2 detik…');
 
             await vi.advanceTimersByTimeAsync(2000);
             expect(submitBtn).toHaveTextContent('Kirim Tautan Pemulihan');

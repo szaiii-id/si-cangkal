@@ -129,7 +129,7 @@
             onfocus={handleFocus}
             onblur={handleBlur}
             class={[
-                'w-full pl-12 pr-4 py-2.5 border rounded-xl bg-gray-50 text-sm font-medium placeholder-gray-400 focus:outline-none transition-all',
+                'w-full pl-12 pr-4 py-2.5 border rounded-xl bg-gray-50 text-sm font-medium placeholder-gray-400 focus:outline-none transition-[transform,box-shadow,background-color,border-color,color,opacity]',
                 errorClass,
                 disabled ? 'opacity-60 cursor-not-allowed' : '',
             ]

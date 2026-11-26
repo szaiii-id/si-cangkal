@@ -5,7 +5,7 @@
      * @example
      *   <PageHeader title="Paket Wisata" description="Kelola paket wisata">
      *       {#snippet actions()}
-     *           <a href="/admin/packages/create" use:inertia class="...">Tambah</a>
+     *           <a href="/admin/packages/create" use:inertia class="…">Tambah</a>
      *       {/snippet}
      *   </PageHeader>
      */

@@ -36,7 +36,7 @@
     ];
 
     // PERBAIKAN: Class input yang dapat digunakan berulang kali
-    const inputClass = "w-full px-4 py-2.5 border rounded-xl bg-gray-50 text-sm focus:outline-none transition-all";
+    const inputClass = "w-full px-4 py-2.5 border rounded-xl bg-gray-50 text-sm focus:outline-none transition-[transform,box-shadow,background-color,border-color,color,opacity]";
     const errorClass = "border-red-300 bg-red-50 focus:border-red-500 focus:ring-2 focus:ring-red-100";
     const normalClass = "border-gray-200 focus:border-pink focus:ring-2 focus:ring-pink/10";
 </script>

@@ -149,7 +149,7 @@
         >
             {#each existingUrls as url, i (url)}
                 <div class="relative rounded-2xl overflow-hidden border border-gray-200 aspect-square group bg-gray-100">
-                    <img
+                    <img width="1200" height="800" loading="lazy"
                         src={url}
                         alt={`Gambar ${i + 1}`}
                         class="w-full h-full object-cover"
@@ -159,7 +159,7 @@
                         <button
                             type="button"
                             onclick={() => removeExisting(i)}
-                            class="absolute top-2 right-2 z-20 w-7 h-7 rounded-full bg-red-600 text-white flex items-center justify-center shadow-md hover:bg-red-700 transition-all"
+                            class="absolute top-2 right-2 z-20 w-7 h-7 rounded-full bg-red-600 text-white flex items-center justify-center shadow-md hover:bg-red-700 transition-[transform,box-shadow,background-color,border-color,color,opacity]"
                             aria-label="Hapus gambar"
                             data-testid="logo-remove-button"
                         >
@@ -174,7 +174,7 @@
             {#each files as file, i (file.name + i)}
                 <div class="relative rounded-2xl overflow-hidden border border-gray-200 aspect-square group bg-gray-100">
                     {#if previews[i]}
-                        <img
+                        <img width="1200" height="800" loading="lazy"
                             src={previews[i]}
                             alt={`Preview ${i + 1}`}
                             class="w-full h-full object-cover"
@@ -182,14 +182,14 @@
                         />
                     {:else}
                         <div class="w-full h-full flex items-center justify-center animate-pulse" data-testid="logo-preview-loading">
-                            <span class="text-xs text-gray-400">Memuat...</span>
+                            <span class="text-xs text-gray-400">Memuat…</span>
                         </div>
                     {/if}
                     {#if !disabled}
                         <button
                             type="button"
                             onclick={() => removeFile(i)}
-                            class="absolute top-2 right-2 z-20 w-7 h-7 rounded-full bg-red-600 text-white flex items-center justify-center shadow-md hover:bg-red-700 transition-all"
+                            class="absolute top-2 right-2 z-20 w-7 h-7 rounded-full bg-red-600 text-white flex items-center justify-center shadow-md hover:bg-red-700 transition-[transform,box-shadow,background-color,border-color,color,opacity]"
                             aria-label="Hapus gambar"
                             data-testid="logo-remove-button"
                         >
@@ -212,7 +212,7 @@
                 type="button"
                 onclick={openPicker}
                 data-testid="logo-upload-button"
-                class="flex flex-col items-center justify-center w-full px-4 py-8 border-2 border-dashed border-gray-300 rounded-2xl cursor-pointer hover:border-pink hover:bg-pink/5 transition-all bg-gray-50/30"
+                class="flex flex-col items-center justify-center w-full px-4 py-8 border-2 border-dashed border-gray-300 rounded-2xl cursor-pointer hover:border-pink hover:bg-pink/5 transition-[transform,box-shadow,background-color,border-color,color,opacity] bg-gray-50/30"
             >
                 <svg class="w-8 h-8 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />

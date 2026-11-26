@@ -82,7 +82,7 @@
                     bind:value={search} 
                     oninput={handleSearch} 
                     onclear={clearSearch} 
-                    placeholder="Cari nama paket wisata..." 
+                    placeholder="Cari nama paket wisata…" 
                 />
             </div>
         </div>
@@ -101,11 +101,11 @@
                     <a 
                         href={`/admin/trips?package_id=${pkg.id}`} 
                         use:inertia 
-                        class="group flex flex-col bg-white border border-gray-200 rounded-2xl hover:border-pink/40 hover:shadow-lg transition-all relative overflow-hidden"
+                        class="group flex flex-col bg-white border border-gray-200 rounded-2xl hover:border-pink/40 hover:shadow-lg transition-[transform,box-shadow,background-color,border-color,color,opacity] relative overflow-hidden"
                     >
                         <div class="relative w-full h-40 bg-gray-100 overflow-hidden shrink-0">
                             {#if pkg.cover_image}
-                                <img 
+                                <img width="1200" height="800" loading="lazy" 
                                     src={pkg.cover_image_url ?? `/storage/${pkg.cover_image}`} 
                                     alt={pkg.nama} 
                                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 

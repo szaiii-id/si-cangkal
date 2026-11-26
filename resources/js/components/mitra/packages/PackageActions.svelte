@@ -25,7 +25,7 @@
     // ==========================================
     // STYLING (DRY)
     // ==========================================
-    const baseButtonClass = "inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full font-bold text-sm transition-all";
+    const baseButtonClass = "inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full font-bold text-sm transition-[transform,box-shadow,background-color,border-color,color,opacity]";
 </script>
 
 <div class="bg-white rounded-3xl border border-gray-200 shadow-sm p-4 mb-6 flex flex-col sm:flex-row flex-wrap gap-2">

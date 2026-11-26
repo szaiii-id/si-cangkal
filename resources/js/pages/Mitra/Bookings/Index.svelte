@@ -166,7 +166,7 @@
         <FilterBar
             bind:search
             onSearch={handleSearch}
-            searchPlaceholder="Cari kode pesanan atau nama pelanggan..."
+            searchPlaceholder="Cari kode pesanan atau nama pelanggan…"
             {statusTabs}
             bind:selectedStatus
             onStatusChange={changeStatus}
@@ -192,7 +192,7 @@
                     <a
                         href={`/mitra/bookings/${booking.id}`}
                         use:inertia
-                        class="group block bg-white border border-gray-200 rounded-2xl p-4 hover:border-pink/30 hover:shadow-md transition-all"
+                        class="group block bg-white border border-gray-200 rounded-2xl p-4 hover:border-pink/30 hover:shadow-md transition-[transform,box-shadow,background-color,border-color,color,opacity]"
                     >
                         <div class="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
                             

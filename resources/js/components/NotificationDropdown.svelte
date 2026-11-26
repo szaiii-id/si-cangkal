@@ -16,7 +16,7 @@
 <a 
     href="/notifications" 
     use:inertia 
-    class="relative inline-flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 transition-all" 
+    class="relative inline-flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 transition-[transform,box-shadow,background-color,border-color,color,opacity]" 
     aria-label={ariaLabel}
 >
     <svg 

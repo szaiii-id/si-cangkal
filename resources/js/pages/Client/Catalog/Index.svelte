@@ -107,7 +107,7 @@
                     type="text" 
                     bind:value={search} 
                     oninput={(e) => handleSearch((e.target as HTMLInputElement).value)}
-                    placeholder="Cari destinasi wisata..." 
+                    placeholder="Cari destinasi wisata…" 
                     class="w-full bg-white border border-gray-200 rounded-full py-3.5 pl-12 pr-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-dark/20 shadow-sm"
                 />
             </div>
@@ -137,7 +137,7 @@
             {#each kategoriOptions as opt}
                 <button 
                     onclick={() => handleKategoriChange(opt.value)}
-                    class="px-5 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border
+                    class="px-5 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-[transform,box-shadow,background-color,border-color,color,opacity] border
                         {selectedKategori === opt.value 
                         ? 'bg-dark text-white border-dark shadow-md' 
                         : 'bg-white text-gray-600 border-gray-200 hover:border-dark hover:text-dark'}"
@@ -159,13 +159,13 @@
     {:else}
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5 mb-8">
             {#each packages.data as pkg (pkg.id)}
-                <div class="group bg-white rounded-2xl overflow-hidden shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col">
+                <div class="group bg-white rounded-2xl overflow-hidden shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-[transform,box-shadow,background-color,border-color,color,opacity] duration-300 flex flex-col">
                     
                     <!-- Gambar Cover -->
                     <a href={`/client/catalog/${pkg.slug}`} use:inertia class="relative aspect-[4/3] bg-gray-100 overflow-hidden p-1.5 block">
                         <div class="w-full h-full rounded-xl overflow-hidden relative">
                             {#if pkg.cover_image}
-                                <img src={pkg.cover_image_url ?? `/storage/${pkg.cover_image}`} alt={pkg.nama} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                <img width="1200" height="800" loading="lazy" src={pkg.cover_image_url ?? `/storage/${pkg.cover_image}`} alt={pkg.nama} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                             {:else}
                                 <div class="w-full h-full flex items-center justify-center text-gray-600 font-bold bg-gray-50 text-xs">Tanpa Gambar</div>
                             {/if}

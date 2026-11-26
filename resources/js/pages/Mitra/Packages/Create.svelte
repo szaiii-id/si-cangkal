@@ -126,7 +126,7 @@
                     <div class="flex flex-col items-center gap-2">
                         <!-- Lingkaran Angka + Centang Kecil -->
                         <div class="relative">
-                            <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-[transform,box-shadow,background-color,border-color,color,opacity] duration-300
                                 {done ? 'bg-green-dark text-white' : active ? 'bg-pink-dark text-white shadow-lg shadow-pink/30' : 'bg-gray-100 text-gray-400'}">
                                 {step}
                             </div>
@@ -152,7 +152,7 @@
             <!-- Garis Background -->
             <div class="absolute top-5 left-0 w-full h-0.5 bg-gray-200 -z-0"></div>
             <!-- Garis Progress -->
-            <div class="absolute top-5 left-0 h-0.5 bg-pink-dark transition-all duration-300 -z-0" 
+            <div class="absolute top-5 left-0 h-0.5 bg-pink-dark transition-[transform,box-shadow,background-color,border-color,color,opacity] duration-300 -z-0" 
                  style="width: {((currentStep - 1) / 2) * 100}%"></div>
         </div>
 
@@ -169,7 +169,7 @@
                         <InputText id="nama" label="Nama Paket" bind:value={form.nama} error={errors.nama} placeholder="Contoh: Wisata Pasar Terapung 2D1N" required />
                         <div>
                             <label for="deskripsi" class="block text-xs font-bold text-dark mb-1.5">Deskripsi</label>
-                            <textarea id="deskripsi" bind:value={form.deskripsi} rows="3" placeholder="Ceritakan daya tarik paket ini..." class="w-full px-4 py-2.5 border rounded-xl bg-gray-50 text-sm focus:ring-2 focus:ring-pink/20 focus:border-pink focus:bg-white transition-all resize-none"></textarea>
+                            <textarea id="deskripsi" bind:value={form.deskripsi} rows="3" placeholder="Ceritakan daya tarik paket ini…" class="w-full px-4 py-2.5 border rounded-xl bg-gray-50 text-sm focus:ring-2 focus:ring-pink/20 focus:border-pink focus:bg-white transition-[transform,box-shadow,background-color,border-color,color,opacity] resize-none"></textarea>
                         </div>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
@@ -275,24 +275,24 @@
             <!-- NAVIGATION ACTIONS -->
             <div class="flex items-center justify-between pt-2">
                 {#if currentStep > 1}
-                    <button type="button" onclick={prevStep} class="px-6 py-3 rounded-full bg-white border border-gray-200 text-dark font-bold text-sm hover:bg-gray-50 transition-all">
+                    <button type="button" onclick={prevStep} class="px-6 py-3 rounded-full bg-white border border-gray-200 text-dark font-bold text-sm hover:bg-gray-50 transition-[transform,box-shadow,background-color,border-color,color,opacity]">
                         Kembali
                     </button>
                 {:else}
-                    <a href="/mitra/packages" class="px-6 py-3 rounded-full bg-white border border-gray-200 text-dark font-bold text-sm hover:bg-gray-50 transition-all">
+                    <a href="/mitra/packages" class="px-6 py-3 rounded-full bg-white border border-gray-200 text-dark font-bold text-sm hover:bg-gray-50 transition-[transform,box-shadow,background-color,border-color,color,opacity]">
                         Batal
                     </a>
                 {/if}
 
                 {#if currentStep < 3}
-                    <button type="button" onclick={nextStep} disabled={currentStep === 1 && !isStep1Valid || currentStep === 2 && !isStep2Valid} class="inline-flex items-center gap-2 px-8 py-3 rounded-full bg-pink-dark text-white font-bold text-sm hover:bg-sun-dark shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                    <button type="button" onclick={nextStep} disabled={currentStep === 1 && !isStep1Valid || currentStep === 2 && !isStep2Valid} class="inline-flex items-center gap-2 px-8 py-3 rounded-full bg-pink-dark text-white font-bold text-sm hover:bg-sun-dark shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-[transform,box-shadow,background-color,border-color,color,opacity]">
                         Lanjut
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
                     </button>
                 {:else}
-                    <button type="submit" disabled={processing} class="inline-flex items-center gap-2 px-8 py-3 rounded-full bg-green-dark text-white font-bold text-sm hover:bg-green shadow-md disabled:opacity-50 transition-all">
+                    <button type="submit" disabled={processing} class="inline-flex items-center gap-2 px-8 py-3 rounded-full bg-green-dark text-white font-bold text-sm hover:bg-green shadow-md disabled:opacity-50 transition-[transform,box-shadow,background-color,border-color,color,opacity]">
                         {#if processing}
-                            Menyimpan...
+                            Menyimpan…
                         {:else}
                             Simpan & Lanjut Isi Kegiatan
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>

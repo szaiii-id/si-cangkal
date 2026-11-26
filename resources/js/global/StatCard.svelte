@@ -29,7 +29,7 @@
     
     // PERBAIKAN: Hapus variabel 'tag' karena sudah tidak digunakan.
     let baseClasses = $derived(
-        'bg-white rounded-2xl border shadow-sm p-4 ' + c.border + (href ? ' group block hover:shadow-md hover:-translate-y-0.5 transition-all' : '')
+        'bg-white rounded-2xl border shadow-sm p-4 ' + c.border + (href ? ' group block hover:shadow-md hover:-translate-y-0.5 transition-[transform,box-shadow,background-color,border-color,color,opacity]' : '')
     );
 </script>
 

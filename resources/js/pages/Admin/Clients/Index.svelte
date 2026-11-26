@@ -76,7 +76,7 @@
             </div>
 
             <div class="flex-1 lg:max-w-md lg:ml-auto">
-                <SearchInput bind:value={search} oninput={handleSearch} onclear={clearSearch} placeholder="Cari nama, email, atau username..." />
+                <SearchInput bind:value={search} oninput={handleSearch} onclear={clearSearch} placeholder="Cari nama, email, atau username…" />
             </div>
         </div>
 

@@ -139,13 +139,13 @@
             class="w-full py-3 bg-dark text-white font-bold rounded-xl text-sm hover:bg-dark/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
         >
             {#if countdown > 0}
-                Tunggu {countdown} detik...
+                Tunggu {countdown} detik…
             {:else if formUpload.processing}
                 <svg class="animate-spin inline w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                 </svg>
-                Mengunggah...
+                Mengunggah…
             {:else}
                 Kirim Bukti Transfer
             {/if}

@@ -102,7 +102,7 @@ test.describe('Admin — Daftar Client (Read-Only)', () => {
             await page.waitForLoadState('networkidle');
 
             const searchInput = page.getByPlaceholder(
-                'Cari nama, email, atau username...',
+                'Cari nama, email, atau username…',
             );
             await expect(searchInput).toBeVisible();
 

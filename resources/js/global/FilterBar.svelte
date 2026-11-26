@@ -79,7 +79,7 @@
     );
 
     // PERBAIKAN: DRY untuk class tombol utama
-    const primaryBtnClass = 'inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-pink-dark text-white font-bold text-sm hover:bg-sun-dark transition-all shadow-md whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-dark disabled:opacity-50 disabled:cursor-not-allowed';
+    const primaryBtnClass = 'inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-pink-dark text-white font-bold text-sm hover:bg-sun-dark transition-[transform,box-shadow,background-color,border-color,color,opacity] shadow-md whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-dark disabled:opacity-50 disabled:cursor-not-allowed';
 
     // ==========================================
     // HANDLERS
@@ -128,7 +128,7 @@
                     <select
                         bind:value={selectedKategori}
                         onchange={handleKategoriChange}
-                        class="w-full px-4 py-3 border border-gray-200 rounded-2xl bg-gray-50 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-pink/10 focus:border-pink focus:bg-white transition-all cursor-pointer"
+                        class="w-full px-4 py-3 border border-gray-200 rounded-2xl bg-gray-50 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-pink/10 focus:border-pink focus:bg-white transition-[transform,box-shadow,background-color,border-color,color,opacity] cursor-pointer"
                         aria-label={kategoriPlaceholder}
                     >
                         {#each kategoriOptions as opt (opt.value)}
@@ -142,7 +142,7 @@
                 <button
                     type="button"
                     onclick={() => (showAdvanced = !showAdvanced)}
-                    class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gray-50 border border-gray-200 text-dark font-bold text-sm hover:bg-gray-100 transition-all whitespace-nowrap"
+                    class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gray-50 border border-gray-200 text-dark font-bold text-sm hover:bg-gray-100 transition-[transform,box-shadow,background-color,border-color,color,opacity] whitespace-nowrap"
                     aria-expanded={showAdvanced}
                     aria-controls="date-range-panel"
                 >
@@ -169,7 +169,7 @@
                     id="filter-date-from"
                     type="date"
                     bind:value={dateFrom}
-                    class="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-pink/10 focus:border-pink transition-all"
+                    class="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-pink/10 focus:border-pink transition-[transform,box-shadow,background-color,border-color,color,opacity]"
                     aria-invalid={isDateRangeInvalid ? 'true' : undefined}
                 />
             </div>
@@ -182,7 +182,7 @@
                     id="filter-date-to"
                     type="date"
                     bind:value={dateTo}
-                    class="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-pink/10 focus:border-pink transition-all"
+                    class="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-pink/10 focus:border-pink transition-[transform,box-shadow,background-color,border-color,color,opacity]"
                     aria-invalid={isDateRangeInvalid ? 'true' : undefined}
                 />
             </div>
@@ -200,7 +200,7 @@
                     <button
                         type="button"
                         onclick={resetDate}
-                        class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white border border-gray-200 text-dark font-bold text-sm hover:bg-gray-50 transition-all whitespace-nowrap"
+                        class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white border border-gray-200 text-dark font-bold text-sm hover:bg-gray-50 transition-[transform,box-shadow,background-color,border-color,color,opacity] whitespace-nowrap"
                     >
                         Reset
                     </button>

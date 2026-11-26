@@ -146,14 +146,14 @@
                         <div class="flex items-center justify-end gap-2 flex-wrap">
                             {#each getActions(user) as action}
                                 {#if action.href}
-                                    <a href={action.href} use:inertia class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all {action.class}">
+                                    <a href={action.href} use:inertia class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-[transform,box-shadow,background-color,border-color,color,opacity] {action.class}">
                                         {action.label}
                                     </a>
                                 {:else}
                                     <button 
                                         type="button" 
                                         onclick={() => action.type === 'reset' ? onReset({ id: user.id, name: user.name, email: user.email }) : onDelete({ id: user.id, name: user.name })} 
-                                        class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all {action.class}"
+                                        class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-[transform,box-shadow,background-color,border-color,color,opacity] {action.class}"
                                     >
                                         {action.label}
                                     </button>
