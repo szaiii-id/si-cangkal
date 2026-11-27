@@ -98,6 +98,17 @@ describe('ClientLayout Component', () => {
             expect(screen.getByLabelText('Profile Saya')).toBeInTheDocument();
         });
 
+        it('menyembunyikan navigasi bawah saat hideBottomNav = true', () => {
+            render(ClientLayout, {
+                props: { children: mockChildren, hideBottomNav: true },
+            });
+
+            expect(
+                screen.queryByLabelText('Dashboard'),
+            ).not.toBeInTheDocument();
+            expect(screen.getByTestId('mock-children')).toBeInTheDocument();
+        });
+
         it('menyembunyikan header saat hideNavbar = true', () => {
             render(ClientLayout, {
                 props: { children: mockChildren, hideNavbar: true },
