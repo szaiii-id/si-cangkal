@@ -61,7 +61,7 @@
 
     function uploadProof() {
         if (!selectedFile) {
-            uploadError = 'Pilih file bukti transfer terlebih dahulu.';
+            uploadError = 'Pilih foto bukti transfer terlebih dahulu.';
             return;
         }
 
@@ -106,7 +106,7 @@
                 </svg>
             </div>
             <div class="flex-1">
-                <h2 class="text-base font-extrabold text-dark">Unggah Bukti Transfer</h2>
+                <h2 class="text-base font-extrabold text-dark">Kirim Bukti Transfer</h2>
                 <p class="text-xs text-blue-700 mt-0.5">Unggah bukti pembayaran dari pelanggan (transfer/tunai) untuk melanjutkan verifikasi.</p>
             </div>
         </div>
@@ -174,7 +174,7 @@
                     disabled={uploadProcessing} 
                     class="flex-1 py-2.5 bg-blue-600 text-white font-bold rounded-xl text-sm hover:bg-blue-700 disabled:opacity-50"
                 >
-                    {uploadProcessing ? 'Mengunggah…' : 'Unggah Bukti'}
+                    {uploadProcessing ? 'Mengirim…' : 'Kirim Bukti'}
                 </button>
             </div>
         {/if}

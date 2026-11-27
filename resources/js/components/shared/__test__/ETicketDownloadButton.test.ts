@@ -50,7 +50,7 @@ describe('ETicketDownloadButton Component', () => {
             expect(screen.getByText('E-Ticket Wisata')).toBeInTheDocument();
             expect(screen.getByText(/Diterbitkan/i)).toBeInTheDocument();
             expect(
-                screen.getByRole('link', { name: /Download E-Ticket/i }),
+                screen.getByRole('link', { name: /Unduh Tiket/i }),
             ).toBeInTheDocument();
         });
 
@@ -64,7 +64,7 @@ describe('ETicketDownloadButton Component', () => {
             });
 
             const link = screen.getByRole('link', {
-                name: /Download E-Ticket/i,
+                name: /Unduh Tiket/i,
             });
             expect(link).toHaveAttribute('href', '/eticket/download/abc.pdf');
             expect(link).toHaveAttribute('target', '_blank');
@@ -93,7 +93,7 @@ describe('ETicketDownloadButton Component', () => {
                 screen.getByText(/E-Ticket Wisata Sedang Diproses/i),
             ).toBeInTheDocument();
             expect(
-                screen.getByRole('button', { name: /Refresh halaman/i }),
+                screen.getByRole('button', { name: /Muat ulang tiket/i }),
             ).toBeInTheDocument();
         });
 
@@ -103,7 +103,7 @@ describe('ETicketDownloadButton Component', () => {
             });
 
             const refreshBtn = screen.getByRole('button', {
-                name: /Refresh halaman/i,
+                name: /Muat ulang tiket/i,
             });
             await fireEvent.click(refreshBtn);
 

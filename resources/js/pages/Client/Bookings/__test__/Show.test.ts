@@ -262,14 +262,44 @@ describe('Client Bookings — Show Page', () => {
     });
 
     describe('Rendering — Pending Payment State', () => {
-        it('menampilkan UploadProofForm dan rekening jika status pending_payment', () => {
+        it('TIDAK menampilkan rekening dan form bukti sebelum transfer dipilih', async () => {
             renderPage();
+            await syncUI();
+
+            expect(
+                screen.queryByTestId('upload-proof'),
+            ).not.toBeInTheDocument();
+            expect(
+                screen.queryByText('Rekening Tujuan Transfer'),
+            ).not.toBeInTheDocument();
+        });
+
+        it('menampilkan rekening dan form bukti setelah transfer dipilih', async () => {
+            renderPage();
+            await syncUI();
+
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Pilih Transfer/i }),
+            );
+
             expect(screen.getByTestId('upload-proof')).toBeInTheDocument();
             expect(
                 screen.getByText('Rekening Tujuan Transfer'),
             ).toBeInTheDocument();
             expect(screen.getByText('BCA')).toBeInTheDocument();
             expect(screen.getByText('123456789')).toBeInTheDocument();
+        });
+
+        it('menampilkan rekening dan form bukti bila bukti sudah ada', async () => {
+            renderPage({
+                booking: makeBooking({ has_payment_proof: true }),
+            });
+            await syncUI();
+
+            expect(screen.getByTestId('upload-proof')).toBeInTheDocument();
+            expect(
+                screen.getByText('Rekening Tujuan Transfer'),
+            ).toBeInTheDocument();
         });
 
         it('TIDAK menampilkan UploadProofForm jika status confirmed', () => {
@@ -354,6 +384,10 @@ describe('Client Bookings — Show Page', () => {
             });
 
             renderPage();
+            await syncUI();
+            await fireEvent.click(
+                screen.getByRole('button', { name: /Pilih Transfer/i }),
+            );
 
             const copyBtn = screen.getByRole('button', {
                 name: /Salin Rekening/i,

@@ -151,7 +151,7 @@
                                     </p>
                                 </div>
                                 <span class="text-xs font-bold text-blue bg-blue/5 px-2.5 py-1.5 rounded-lg group-hover:bg-blue/10 transition-colors">
-                                    Jadwal &rarr;
+                                    Jadwal
                                 </span>
                             </div>
                         </div>

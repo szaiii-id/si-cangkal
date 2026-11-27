@@ -7,9 +7,16 @@
     let {
         paket_baru = [],
         paket_laris = [],
+        pesanan_tertunda = [],
     }: {
         paket_baru?: any[];
         paket_laris?: any[];
+        pesanan_tertunda?: Array<{
+            id: number;
+            kode: string;
+            nama_paket: string;
+            total_harga: string;
+        }>;
     } = $props();
 
     let user = $derived(page.props.auth?.user);
@@ -42,10 +49,32 @@
             </p>
             <a href="/client/catalog" use:inertia class="inline-flex items-center gap-2 bg-pink-dark text-white px-6 py-3 rounded-full text-sm font-bold hover:bg-sun-dark transition-[transform,box-shadow,background-color,border-color,color,opacity] shadow-lg">
                 Jelajahi Katalog
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
-            </a>
+                </a>
         </div>
     </div>
+
+    {#if pesanan_tertunda.length > 0}
+        {@const pesanan = pesanan_tertunda[0]}
+        <a
+            href={`/client/bookings/${pesanan.id}`}
+            use:inertia
+            class="flex items-center gap-4 bg-white rounded-[2rem] border border-pink/20 shadow-sm p-5 sm:p-6 mb-8 hover:border-pink hover:shadow-md transition-[transform,box-shadow,border-color] "
+        >
+            <div class="w-11 h-11 rounded-2xl bg-pink/10 text-pink-text flex items-center justify-center shrink-0">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
+                </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+                <p class="text-[10px] font-extrabold uppercase tracking-widest text-pink-text mb-0.5">Pesanan Anda</p>
+                <p class="text-sm font-extrabold text-dark">Lanjutkan pesanan Anda</p>
+                <p class="text-xs text-gray-600 truncate">{pesanan.nama_paket} · {pesanan.kode}</p>
+            </div>
+            <span class="hidden sm:inline-flex px-4 py-2 rounded-full bg-pink-dark text-white text-xs font-bold shrink-0">
+                Lanjutkan
+            </span>
+        </a>
+    {/if}
 
     <!-- SECTION PAKET TERBARU (Dark + Glow Hijau) -->
     {#if paket_baru.length > 0}

@@ -345,7 +345,7 @@
     bind:open={showVerifyModal}
     variant="success"
     title="Verifikasi Pembayaran?"
-    description="Pastikan dana sudah masuk ke rekening Anda. Setelah diverifikasi, Trip dan E-Ticket akan dibuat otomatis."
+    description="Pastikan dana sudah masuk ke rekening Anda. Setelah diverifikasi, Trip dan tiket perjalanan akan dibuat otomatis."
     confirmLabel="Ya, Verifikasi"
     processing={verifyProcessing}
     onConfirm={confirmVerify}

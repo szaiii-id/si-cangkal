@@ -130,10 +130,7 @@
                         class="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-sun-dark text-white text-xs font-bold hover:bg-sun transition-[transform,box-shadow,background-color,border-color,color,opacity]"
                     >
                         Lanjutkan Lengkapi
-                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                        </svg>
-                    </a>
+                        </a>
                 </div>
             </div>
         </div>

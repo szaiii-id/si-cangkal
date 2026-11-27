@@ -415,3 +415,36 @@ describe('Client Catalog — Show Page', () => {
         });
     });
 });
+
+describe('logo penyelenggara', () => {
+    it('menampilkan logo mitra bila tersedia', () => {
+        const pkg = makePackage({
+            mitra: {
+                id: 1,
+                name: 'PT Mitra Jaya',
+                profile: {
+                    nama_penyedia_usaha: 'Mitra Jaya Travel',
+                    telepon: '081234567890',
+                    kota: 'Denpasar',
+                    provinsi: 'Bali',
+                    logo_url: 'https://cdn.test/logo.png',
+                },
+            },
+        });
+
+        renderPage(pkg);
+
+        expect(
+            screen.getByRole('img', { name: /logo mitra/i }),
+        ).toHaveAttribute('src', 'https://cdn.test/logo.png');
+    });
+
+    it('memakai inisial bila logo tidak tersedia', () => {
+        renderPage();
+
+        expect(
+            screen.queryByRole('img', { name: /logo mitra/i }),
+        ).not.toBeInTheDocument();
+        expect(screen.getByText('M')).toBeInTheDocument();
+    });
+});

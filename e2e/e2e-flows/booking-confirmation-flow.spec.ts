@@ -202,6 +202,7 @@ test.describe.serial('E2E Flow — Booking Confirmation', () => {
 
         const bookingPage = new ClientBookingPage(page);
         await bookingPage.gotoShow(bookingId);
+        await bookingPage.selectTransferMethod();
 
         // --- Assert awal: submit disabled sebelum file dipilih ---
         await expect(

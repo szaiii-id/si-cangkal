@@ -57,6 +57,7 @@
     let mitraProfile = $derived(pkg.mitra?.profile ?? null);
     let mitraName = $derived(mitraProfile?.nama_penyedia_usaha ?? pkg.mitra?.name ?? null);
     let mitraInitial = $derived(mitraName?.charAt(0).toUpperCase() ?? '?');
+    let logoGagal = $state(false);
     let waLink = $derived(
         waMeUrl(mitraProfile?.telepon ?? null, `Halo, saya tertarik dengan paket ${pkg.nama}.`),
     );
@@ -283,9 +284,20 @@
                     <h3 class="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest mb-3 relative z-10">Diselenggarakan oleh</h3>
                     <div class="flex flex-col sm:flex-row sm:items-center gap-4 relative z-10">
                         <div class="flex items-center gap-4 flex-1 min-w-0">
-                            <div class="w-12 h-12 rounded-full bg-pink-dark text-white flex items-center justify-center font-extrabold text-lg shadow-md shrink-0">
-                                {mitraInitial}
-                            </div>
+                            {#if mitraProfile?.logo_url && !logoGagal}
+                                <img
+                                    src={mitraProfile.logo_url}
+                                    alt="Logo mitra"
+                                    width="48"
+                                    height="48"
+                                    onerror={() => (logoGagal = true)}
+                                    class="w-12 h-12 rounded-full object-cover bg-white shadow-md shrink-0"
+                                />
+                            {:else}
+                                <div class="w-12 h-12 rounded-full bg-pink-dark text-white flex items-center justify-center font-extrabold text-lg shadow-md shrink-0">
+                                    {mitraInitial}
+                                </div>
+                            {/if}
                             <div class="flex-1 min-w-0">
                                 <p class="text-sm font-extrabold truncate">{mitraName}</p>
                                 {#if mitraProfile?.kota || mitraProfile?.provinsi}
@@ -339,8 +351,7 @@
                     class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-full bg-pink-dark text-white font-extrabold text-sm hover:bg-sun-dark transition-[transform,box-shadow,background-color,border-color,color,opacity] shadow-lg hover:shadow-pink-dark/30"
                 >
                     Booking Sekarang
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
-                </a>
+                    </a>
             </div>
         </div>
 

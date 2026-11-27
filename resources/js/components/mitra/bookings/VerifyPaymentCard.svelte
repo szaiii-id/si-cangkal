@@ -26,7 +26,7 @@
 <div class="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
     <div class="p-5 border-b border-gray-100 bg-green-50/50">
         <h2 class="text-base font-extrabold text-dark">Verifikasi Pembayaran</h2>
-        <p class="text-xs text-gray-500 mt-1">Bukti transfer sudah diunggah. Silakan verifikasi jika dana sudah diterima.</p>
+        <p class="text-xs text-gray-500 mt-1">Bukti transfer sudah dikirim. Silakan verifikasi jika dana sudah diterima.</p>
     </div>
     <div class="p-5 space-y-4">
         <PaymentProofPreview 

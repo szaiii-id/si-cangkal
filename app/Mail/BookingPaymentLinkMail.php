@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\Models\Booking;
+use App\Services\Invoice\Contracts\InvoiceServiceInterface;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -19,7 +20,6 @@ final class BookingPaymentLinkMail extends Mailable implements ShouldQueue
     public function __construct(
         public readonly string $url,
         public readonly Booking $booking,
-        public readonly string $invoicePdf,
     ) {}
 
     public function envelope(): Envelope
@@ -37,13 +37,20 @@ final class BookingPaymentLinkMail extends Mailable implements ShouldQueue
     }
 
     /**
+     * PDF dibuat saat email dikirim, bukan disimpan di payload job.
+     *
+     * Mailable ini ber-ShouldQueue: menyimpan byte PDF mentah di properti
+     * membuat json_encode gagal (UTF-8 tidak valid) ketika job ditulis ke
+     * queue database, sehingga email tidak pernah terkirim.
+     *
      * @return array<int, Attachment>
      */
     public function attachments(): array
     {
         return [
             Attachment::fromData(
-                fn (): string => $this->invoicePdf,
+                fn (): string => app(InvoiceServiceInterface::class)
+                    ->pdfForBooking($this->booking),
                 'Invoice-'.$this->booking->kode.'.pdf',
             )->withMime('application/pdf'),
         ];

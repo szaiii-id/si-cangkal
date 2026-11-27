@@ -25,22 +25,22 @@ vi.mock('@/api/auth', () => ({
 vi.mock('@/utils/menus', () => ({
     clientMenu: [
         {
-            label: 'Beranda',
+            label: 'Dashboard',
             href: '/client/dashboard',
             icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
         },
         {
-            label: 'Katalog',
+            label: 'Katalog Paket',
             href: '/client/catalog',
             icon: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z',
         },
         {
-            label: 'Pesanan',
+            label: 'Booking Saya',
             href: '/client/bookings',
             icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2',
         },
         {
-            label: 'Profil',
+            label: 'Profile Saya',
             href: '/client/profile',
             icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
         },
@@ -92,10 +92,10 @@ describe('ClientLayout Component', () => {
         it('harus merender menu navigasi bawah', () => {
             render(ClientLayout, { props: { children: mockChildren } });
 
-            expect(screen.getByLabelText('Beranda')).toBeInTheDocument();
-            expect(screen.getByLabelText('Katalog')).toBeInTheDocument();
-            expect(screen.getByLabelText('Pesanan')).toBeInTheDocument();
-            expect(screen.getByLabelText('Profil')).toBeInTheDocument();
+            expect(screen.getByLabelText('Dashboard')).toBeInTheDocument();
+            expect(screen.getByLabelText('Katalog Paket')).toBeInTheDocument();
+            expect(screen.getByLabelText('Booking Saya')).toBeInTheDocument();
+            expect(screen.getByLabelText('Profile Saya')).toBeInTheDocument();
         });
 
         it('menyembunyikan header saat hideNavbar = true', () => {
@@ -115,15 +115,26 @@ describe('ClientLayout Component', () => {
         it('harus memberikan aria-current="page" pada menu aktif', () => {
             render(ClientLayout, { props: { children: mockChildren } });
 
-            const activeLink = screen.getByLabelText('Beranda');
+            const activeLink = screen.getByLabelText('Dashboard');
             expect(activeLink).toHaveAttribute('aria-current', 'page');
         });
 
         it('TIDAK memberikan aria-current pada menu non-aktif', () => {
             render(ClientLayout, { props: { children: mockChildren } });
 
-            const inactiveLink = screen.getByLabelText('Katalog');
+            const inactiveLink = screen.getByLabelText('Katalog Paket');
             expect(inactiveLink).not.toHaveAttribute('aria-current');
+        });
+
+        it('memakai warna brand pada item aktif dan warna netral pada item nonaktif', () => {
+            render(ClientLayout, { props: { children: mockChildren } });
+
+            expect(screen.getByLabelText('Dashboard').className).toContain(
+                'bg-pink-dark',
+            );
+            expect(screen.getByLabelText('Katalog Paket').className).toContain(
+                'text-gray-600',
+            );
         });
     });
 

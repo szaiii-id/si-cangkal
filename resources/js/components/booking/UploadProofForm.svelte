@@ -9,7 +9,7 @@
     let {
         hasProof,
         uploadUrl,
-        proofUploadedMessage = 'Bukti transfer sudah diunggah. Menunggu verifikasi Mitra.',
+        proofUploadedMessage = 'Bukti transfer sudah dikirim. Menunggu verifikasi mitra.',
     }: {
         hasProof: boolean;
         uploadUrl: string;
@@ -71,7 +71,7 @@
 
     function submitProof() {
         if (!formUpload.payment_proof) {
-            localError = 'Pilih file bukti transfer terlebih dahulu.';
+            localError = 'Pilih foto bukti transfer terlebih dahulu.';
             return;
         }
 
@@ -122,7 +122,7 @@
             onchange={handleFileChange}
             accept="image/jpeg,image/jpg,image/png,image/webp"
             class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-blue/10 file:text-blue-text hover:file:bg-blue/20 disabled:opacity-50"
-            aria-label="Pilih file bukti transfer"
+            aria-label="Pilih foto bukti transfer"
             disabled={formUpload.processing || countdown > 0}
         />
 
@@ -145,14 +145,14 @@
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                 </svg>
-                Mengunggah…
+                Mengirim…
             {:else}
                 Kirim Bukti Transfer
             {/if}
         </button>
 
         <p class="text-[11px] text-gray-500">
-            Format: JPG, PNG, atau WEBP. Maks 5MB.
+            Foto dari galeri Anda, maksimal 5MB.
         </p>
     </div>
 {/if}

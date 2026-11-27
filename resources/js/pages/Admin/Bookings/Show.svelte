@@ -43,14 +43,14 @@
         regenerateETicket(booking.id, {
             preserveScroll: true,
             onSuccess: () => {
-                showToast('E-Ticket berhasil di-generate ulang.', 'success');
+                showToast('Tiket berhasil dibuat ulang.', 'success');
                 showRegenerateModal = false;
             },
             onError: (err) => {
                 const message =
                     (err as Record<string, string>).error ??
                     (err as Record<string, string>).booking ??
-                    'Gagal regenerate E-Ticket.';
+                    'Gagal membuat ulang tiket.';
                 showToast(message, 'error');
                 regenerateProcessing = false;
             },
@@ -302,7 +302,7 @@
     bind:open={showRegenerateModal}
     variant="info"
     title="Regenerate E-Ticket?"
-    description="Job pembuatan E-Ticket akan dijalankan ulang. Gunakan ini jika E-Ticket belum muncul meskipun status sudah dikonfirmasi. Pastikan queue worker sedang berjalan."
+    description="Proses pembuatan tiket akan dijalankan ulang. Gunakan ini jika tiket belum muncul meskipun status sudah dikonfirmasi. Pastikan layanan antrean sedang berjalan."
     confirmLabel="Ya, Regenerate"
     processing={regenerateProcessing}
     onConfirm={handleRegenerateETicket}

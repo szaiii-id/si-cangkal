@@ -8,7 +8,6 @@ use App\Mail\BookingPaymentLinkMail;
 use App\Models\Booking;
 use App\Models\BookingPaymentLink;
 use App\Models\Payment;
-use App\Services\Invoice\Contracts\InvoiceServiceInterface;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Log;
@@ -24,10 +23,6 @@ use Throwable;
  */
 final class BookingPaymentLinkService
 {
-    public function __construct(
-        private readonly InvoiceServiceInterface $invoice,
-    ) {}
-
     public function forBooking(Booking $booking, XenditSessionResult $session): BookingPaymentLink
     {
         $expiresAt = $this->expiresAtFor($booking, $session);
@@ -100,7 +95,6 @@ final class BookingPaymentLinkService
             Mail::to($email)->queue(new BookingPaymentLinkMail(
                 url: route('payments.public', ['token' => $link->token]),
                 booking: $booking,
-                invoicePdf: $this->invoice->pdfForBooking($booking),
             ));
         } catch (Throwable $e) {
             Log::warning('BookingPaymentLinkService: gagal mengantrekan email', [

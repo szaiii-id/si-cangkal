@@ -411,3 +411,29 @@ describe('Review — katalog', function () {
             );
     });
 });
+
+describe('statistik rating pada katalog', function () {
+    it('mengirim rata-rata dan jumlah ulasan per paket', function () {
+        $paketA = makePackageForCatalog($this->mitra);
+        $paketB = makePackageForCatalog($this->mitra);
+
+        $bookingA = Booking::factory()
+            ->forPackage($paketA)
+            ->forClient($this->client)
+            ->confirmed()
+            ->create();
+
+        Review::factory()->forBooking($bookingA)->rating(4)->create();
+        Review::factory()->forPackage($paketA)->forClient($this->client)->rating(5)->create();
+
+        $this->actingAs($this->client)
+            ->get(route('client.catalog.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('ratings')
+                ->where('ratings.'.$paketA->id.'.jumlah', 2)
+                ->where('ratings.'.$paketA->id.'.rata_rata', 4.5)
+                ->missing('ratings.'.$paketB->id)
+            );
+    });
+});

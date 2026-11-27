@@ -198,7 +198,7 @@ describe('Client Bookings — Index Page', () => {
             ).toBeInTheDocument();
             expect(
                 screen.getByText(
-                    'Pantau status perjalanan dan unduh e-ticket Anda di sini.',
+                    'Pantau status perjalanan dan unduh tiket perjalanan Anda di sini.',
                 ),
             ).toBeInTheDocument();
         });

@@ -143,6 +143,7 @@ export type ClientCatalogIndexProps = {
             }
         >;
     };
+    ratings: Record<string, ReviewStats>;
     filters: CommonListFilters & {
         kategori: string | null;
     };

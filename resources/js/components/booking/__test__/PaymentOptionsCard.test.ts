@@ -18,16 +18,24 @@ describe('PaymentOptionsCard', () => {
         vi.clearAllMocks();
     });
 
-    it('menampilkan opsi gateway dan transfer manual', () => {
+    it('menampilkan opsi online lebih menonjol dan transfer sebagai opsi kedua', () => {
         render(PaymentOptionsCard, {
             props: { bookingId: 42, canUseGateway: true },
         });
 
-        expect(screen.getByText(/Bayar dengan Xendit/i)).toBeInTheDocument();
+        expect(screen.getByText(/Bayar Online/i)).toBeInTheDocument();
         expect(
             screen.getByRole('button', { name: /Bayar Sekarang/i }),
         ).toBeInTheDocument();
-        expect(screen.getByText(/Transfer Manual/i)).toBeInTheDocument();
+        expect(
+            screen.getByRole('heading', {
+                name: /Transfer ke Rekening Mitra/i,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: /Pilih Transfer/i }),
+        ).toBeInTheDocument();
+        expect(screen.queryByText(/Xendit/i)).not.toBeInTheDocument();
     });
 
     it('menyembunyikan tombol gateway bila booking tidak pending', () => {
@@ -38,7 +46,11 @@ describe('PaymentOptionsCard', () => {
         expect(
             screen.queryByRole('button', { name: /Bayar Sekarang/i }),
         ).not.toBeInTheDocument();
-        expect(screen.getByText(/Transfer Manual/i)).toBeInTheDocument();
+        expect(
+            screen.getByRole('heading', {
+                name: /Transfer ke Rekening Mitra/i,
+            }),
+        ).toBeInTheDocument();
     });
 
     it('memanggil createXenditCharge saat tombol ditekan', async () => {
@@ -87,4 +99,38 @@ describe('PaymentOptionsCard', () => {
             'error',
         );
     });
+});
+
+describe('pilihan metode', () => {
+    it('menandai transfer sebagai dipilih setelah tombol ditekan', async () => {
+        render(PaymentOptionsCard, {
+            props: { bookingId: 42, canUseGateway: true },
+        });
+
+        await fireEvent.click(
+            screen.getByRole('button', { name: /Pilih Transfer/i }),
+        );
+
+        expect(
+            screen.queryByRole('button', { name: /Pilih Transfer/i }),
+        ).not.toBeInTheDocument();
+        expect(screen.getByText(/Transfer Dipilih/i)).toBeInTheDocument();
+    });
+
+    it('otomatis memilih transfer bila bukti sudah ada', () => {
+        render(PaymentOptionsCard, {
+            props: { bookingId: 42, canUseGateway: true, hasProof: true },
+        });
+
+        expect(screen.getByText(/Transfer Dipilih/i)).toBeInTheDocument();
+    });
+});
+
+it('tidak memakai istilah teknis pada teks yang terlihat', () => {
+    render(PaymentOptionsCard, {
+        props: { bookingId: 42, canUseGateway: true },
+    });
+
+    const teks = document.body.textContent ?? '';
+    expect(teks).not.toMatch(/Xendit|QRIS|E-WALLET|E-Ticket|webhook|gateway/i);
 });

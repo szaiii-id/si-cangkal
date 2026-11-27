@@ -82,7 +82,7 @@
                 class="text-[10px] sm:text-[11px] font-bold {card.linkClass} hover:underline mt-1 sm:mt-2 inline-block"
                 aria-label={`Lihat detail ${card.label}`}
             >
-                Detail &rarr;
+                Detail
             </a>
         </div>
     {/each}
