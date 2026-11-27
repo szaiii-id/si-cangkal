@@ -139,7 +139,9 @@ describe('TripTable Component', () => {
             });
 
             // Durasi dari 20 Okt ke 22 Okt = 3D2N
-            expect(screen.getAllByText(/3D2N/).length).toBeGreaterThan(0);
+            expect(
+                screen.getAllByText(/3 Hari 2 Malam/).length,
+            ).toBeGreaterThan(0);
         });
     });
 

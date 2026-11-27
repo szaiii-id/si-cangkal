@@ -29,7 +29,7 @@ vi.mock('@/utils/formatCurrency', () => ({
 }));
 
 vi.mock('@/utils/duration', () => ({
-    formatDurasi: vi.fn((h: number, m: number) => `${h}H ${m}M`),
+    formatDurasiLong: vi.fn((h: number, m: number) => `${h} Hari ${m} Malam`),
 }));
 
 vi.mock('@/utils/timezone', () => ({

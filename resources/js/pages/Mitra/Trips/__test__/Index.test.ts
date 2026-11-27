@@ -33,7 +33,7 @@ vi.mock('@/utils/formatDate', () => ({
 }));
 
 vi.mock('@/utils/duration', () => ({
-    formatDurasiFromRange: vi.fn(() => '3H 2M'),
+    formatDurasiLongFromRange: vi.fn(() => '3 Hari 2 Malam'),
 }));
 
 vi.mock('@/utils/timezone', () => ({

@@ -16,7 +16,7 @@
         tripStatusShort,
     } from '@/utils/enums';
     import { formatDate } from '@/utils/formatDate';
-    import { formatDurasiFromRange } from '@/utils/duration';
+    import { formatDurasiLongFromRange } from '@/utils/duration';
     import {
         isDateInRange,
         todayInTimezone,
@@ -209,7 +209,7 @@
                                             </svg>
                                             {formatDate(trip.tanggal_mulai)}
                                         </span>
-                                        <span>{formatDurasiFromRange(trip.tanggal_mulai, trip.tanggal_selesai)}</span>
+                                        <span>{formatDurasiLongFromRange(trip.tanggal_mulai, trip.tanggal_selesai)}</span>
                                         <span>{trip.jumlah_peserta} peserta</span>
                                     </div>
                                 </div>

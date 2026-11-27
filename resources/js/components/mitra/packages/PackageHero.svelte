@@ -4,7 +4,7 @@
         packageStatusBadge,
         packageStatusLabel,
     } from '@/utils/enums/index';
-    import { formatDurasi } from '@/utils/duration';
+    import { formatDurasiLong } from '@/utils/duration';
 
     // ==========================================
     // PROPS
@@ -57,7 +57,7 @@
                     <svg class="w-2.5 h-2.5 sm:w-3 sm:h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    <span>{formatDurasi(durasiHari, durasiMalam)}</span>
+                    <span>{formatDurasiLong(durasiHari, durasiMalam)}</span>
                 </span>
             </div>
 

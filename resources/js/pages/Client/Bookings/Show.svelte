@@ -14,7 +14,7 @@
     import type { ClientBookingShowProps } from '@/types/props';
     import { formatCurrency } from '@/utils/formatCurrency';
     import { formatDate } from '@/utils/formatDate';
-    import { formatDurasi } from '@/utils/duration';
+    import { formatDurasiLong } from '@/utils/duration';
     import {
         canClientCancelBooking,
         needsMitraCancel as needsMitraCancelFn,
@@ -443,7 +443,7 @@
                                     </div>
                                     <div class="flex justify-between border-b border-gray-50 pb-2">
                                         <span class="text-gray-500">Durasi</span>
-                                        <span class="font-bold text-dark">{formatDurasi(booking.package.durasi_hari, booking.package.durasi_malam)}</span>
+                                        <span class="font-bold text-dark">{formatDurasiLong(booking.package.durasi_hari, booking.package.durasi_malam)}</span>
                                     </div>
                                     <div class="flex justify-between">
                                         <span class="text-gray-500">Peserta</span>

@@ -8,7 +8,7 @@
  *
  * Fokus pengujian:
  *   1. Isolation & Mocking  → Inertia, API getPackages, menu,
- *                             formatCurrency, formatDurasi,
+ *                             formatCurrency, formatDurasiLong,
  *                             & child components di-mock.
  *   2. Props & Rendering    → grid card per package, cover image /
  *                             placeholder, kode, durasi, mitra, harga.
@@ -57,8 +57,8 @@ vi.mock('@/utils/formatCurrency', () => ({
 }));
 
 vi.mock('@/utils/duration', () => ({
-    formatDurasi: vi.fn(
-        (hari: number, malam: number) => `${hari}H / ${malam}M`,
+    formatDurasiLong: vi.fn(
+        (hari: number, malam: number) => `${hari} Hari ${malam} Malam`,
     ),
 }));
 
@@ -183,7 +183,7 @@ vi.mock('@/global/Pagination.svelte', () => ({
 // ============================================================
 import { getPackages } from '@/api/admin';
 import { formatCurrency } from '@/utils/formatCurrency';
-import { formatDurasi } from '@/utils/duration';
+import { formatDurasiLong } from '@/utils/duration';
 
 // ============================================================
 // 13. FIXTURES
@@ -392,14 +392,14 @@ describe('Admin Trips — Overview Page', () => {
     // 14.3 RENDERING — Harga & Durasi
     // ----------------------------------------------------------
     describe('Rendering — Harga & Durasi', () => {
-        it('memanggil formatDurasi dengan durasi_hari & durasi_malam', () => {
+        it('memanggil formatDurasiLong dengan durasi_hari & durasi_malam', () => {
             renderPage(
                 makePagination([
                     makePackage({ durasi_hari: 4, durasi_malam: 3 }),
                 ]),
             );
 
-            expect(formatDurasi).toHaveBeenCalledWith(4, 3);
+            expect(formatDurasiLong).toHaveBeenCalledWith(4, 3);
         });
 
         it('menampilkan label "Harga per Orang" saat harga_per_rombongan null', () => {

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
     formatDurasi,
     formatDurasiLong,
+    formatDurasiLongFromRange,
     hitungDurasiHari,
     hitungDurasiMalam,
     formatDurasiFromRange,
@@ -144,5 +145,17 @@ describe('formatDurasiFromRange', () => {
         expect(formatDurasiFromRange(mulai, selesai)).toBe(
             formatDurasi(hari, malam),
         );
+    });
+});
+
+describe('formatDurasiLongFromRange', () => {
+    it('menghasilkan bahasa Indonesia penuh dari range', () => {
+        expect(formatDurasiLongFromRange('2026-10-17', '2026-10-17')).toBe(
+            '1 Hari',
+        );
+        expect(formatDurasiLongFromRange('2026-10-17', '2026-10-19')).toBe(
+            '3 Hari 2 Malam',
+        );
+        expect(formatDurasiLongFromRange(null, null)).toBe('-');
     });
 });

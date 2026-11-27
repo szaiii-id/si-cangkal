@@ -73,7 +73,7 @@ describe('PackageHero Component', () => {
 
         it('harus merender durasi', () => {
             render(PackageHero, { props: defaultProps });
-            expect(screen.getByText('3D2N')).toBeInTheDocument();
+            expect(screen.getByText('3 Hari 2 Malam')).toBeInTheDocument();
         });
     });
 

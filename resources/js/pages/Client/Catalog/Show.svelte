@@ -6,7 +6,7 @@
     import { packageKategoriLabel } from '@/utils/enums';
     import { formatCurrency } from '@/utils/formatCurrency';
     import { formatDateTime } from '@/utils/formatDate';
-    import { formatDurasi } from '@/utils/duration';
+    import { formatDurasiLong } from '@/utils/duration';
     import { formatRataRata } from '@/utils/review';
     import { timezoneLabelLong } from '@/utils/timezone';
     import { googleMapsUrl, waMeUrl } from '@/utils/externalLinks';
@@ -113,7 +113,7 @@
         <div class="flex flex-wrap items-center gap-2 mb-6 text-xs text-gray-600 font-medium">
             <span class="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-lg border border-gray-100 shadow-sm">
                 <svg class="w-4 h-4 text-dark" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                {formatDurasi(pkg.durasi_hari, pkg.durasi_malam)}
+                {formatDurasiLong(pkg.durasi_hari, pkg.durasi_malam)}
             </span>
             {#if pkg.max_peserta}
                 <span class="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-lg border border-gray-100 shadow-sm">

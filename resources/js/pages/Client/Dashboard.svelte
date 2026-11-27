@@ -164,7 +164,7 @@
                                 {pkg.mitra ? pkg.mitra.name : 'Mitra Travel'}
                             </p>
                             <div class="flex items-center justify-between mt-auto">
-                                <p class="text-xs text-gray-500">{formatDurasi(pkg.durasi_hari, pkg.durasi_malam)}</p>
+                                <p class="text-xs text-gray-500" aria-label="{pkg.durasi_hari} Hari {pkg.durasi_malam} Malam">{formatDurasi(pkg.durasi_hari, pkg.durasi_malam)}</p>
                                 <p class="text-sm font-extrabold text-dark">
                                     {formatCurrency(getHarga(pkg))}
                                 </p>

@@ -9,7 +9,7 @@
     import { archivePackage, restorePackage, deletePackage } from '@/api/mitra';
     import type { Package, PackageDay, PackageFacility } from '@/types';
     import { formatCurrency } from '@/utils/formatCurrency';
-    import { formatDurasi } from '@/utils/duration';
+    import { formatDurasiLong } from '@/utils/duration';
     import { timezoneLabelLong } from '@/utils/timezone';
     import { packageStatusBadge, packageStatusLabel } from '@/utils/enums';
     import { mitraMenu } from '@/utils/menus';
@@ -215,7 +215,7 @@
                         </div>
                         <div class="flex justify-between gap-3">
                             <dt class="text-gray-500">Durasi</dt>
-                            <dd class="font-bold text-dark text-right">{formatDurasi(pkg.durasi_hari, pkg.durasi_malam)}</dd>
+                            <dd class="font-bold text-dark text-right">{formatDurasiLong(pkg.durasi_hari, pkg.durasi_malam)}</dd>
                         </div>
                         <div class="flex justify-between gap-3">
                             <dt class="text-gray-500">Status</dt>

@@ -20,7 +20,7 @@
     } from '@/utils/bookingRules';
     import { formatCurrency } from '@/utils/formatCurrency';
     import { formatDate } from '@/utils/formatDate';
-    import { formatDurasi } from '@/utils/duration';
+    import { formatDurasiLong } from '@/utils/duration';
     import { showToast } from '@/utils/toast.svelte';
     import { adminMenu } from '@/utils/menus';
 
@@ -232,7 +232,7 @@
                         <dl class="mt-4 space-y-2 text-xs">
                             <div class="flex justify-between gap-3">
                                 <dt class="text-gray-500">Durasi</dt>
-                                <dd class="font-bold text-dark text-right">{formatDurasi(booking.package.durasi_hari, booking.package.durasi_malam)}</dd>
+                                <dd class="font-bold text-dark text-right">{formatDurasiLong(booking.package.durasi_hari, booking.package.durasi_malam)}</dd>
                             </div>
                             <div class="flex justify-between gap-3">
                                 <dt class="text-gray-500">Harga/orang</dt>
