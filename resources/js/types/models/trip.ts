@@ -6,9 +6,9 @@ import type { BookingEloquent } from './booking';
 export type TripEloquent = {
     id: number;
     kode: string;
-    booking_id: number;
+    booking_id: string;
     package_id: number;
-    mitra_id: number;
+    mitra_id: string;
     snapshot_package: Record<string, unknown>;
     tanggal_mulai: string;
     tanggal_selesai: string;
@@ -26,9 +26,9 @@ export type TripEloquent = {
 export type TripResource = {
     id: number;
     kode: string;
-    booking_id: number;
+    booking_id: string;
     package_id: number;
-    mitra_id: number | null;
+    mitra_id: string | null;
     tanggal_mulai: string;
     tanggal_selesai: string;
     jumlah_peserta: number;

@@ -82,7 +82,7 @@ import { timezoneLabelLong } from '@/utils/timezone';
 const makePackage = (overrides: Record<string, unknown> = {}) =>
     ({
         id: 1,
-        mitra_id: 1,
+        mitra_id: '1',
         kode: 'PKT-001',
         nama: 'Paket Bali',
         slug: 'paket-bali',
@@ -301,7 +301,7 @@ describe('Client Catalog — Show Page', () => {
         it('fallback ke nama mitra saat profile null', () => {
             renderPage(
                 makePackage({
-                    mitra: { id: 1, name: 'Mitra Name Only', profile: null },
+                    mitra: { id: '1', name: 'Mitra Name Only', profile: null },
                 }),
             );
             expect(screen.getByText('Mitra Name Only')).toBeInTheDocument();

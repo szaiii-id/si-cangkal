@@ -208,7 +208,7 @@ async function syncUI(): Promise<void> {
 // ============================================================
 const makeMitras = (count = 1) =>
     Array.from({ length: count }, (_, i) => ({
-        id: i + 1,
+        id: String(i + 1),
         name: `Mitra ${i + 1}`,
         email: `mitra${i + 1}@test.com`,
         total_trip: 5 + i,

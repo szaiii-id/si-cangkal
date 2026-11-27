@@ -17,7 +17,7 @@ import Dashboard from '../Dashboard.svelte';
 const mockPage = vi.hoisted(() => ({
     props: {
         auth: {
-            user: { id: 1, name: 'Super Admin', role: 'admin' },
+            user: { id: '1', name: 'Super Admin', role: 'admin' },
         },
     },
 }));
@@ -148,7 +148,7 @@ describe('Admin Dashboard', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mockPage.props.auth = {
-            user: { id: 1, name: 'Super Admin', role: 'admin' },
+            user: { id: '1', name: 'Super Admin', role: 'admin' },
         };
     });
 
@@ -346,7 +346,7 @@ describe('Admin Dashboard', () => {
 
         it('handle user tanpa nama (fallback ke Admin)', () => {
             mockPage.props.auth = {
-                user: { id: 1, name: '', role: 'admin' },
+                user: { id: '1', name: '', role: 'admin' },
             } as any;
             renderPage();
 

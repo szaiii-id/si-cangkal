@@ -39,7 +39,7 @@ const mockUpdaters = vi.hoisted(() => new Set<() => void>());
 const mockPage = vi.hoisted(() => ({
     props: {
         auth: {
-            user: { id: 1, name: 'Super Admin', role: 'admin' },
+            user: { id: '1', name: 'Super Admin', role: 'admin' },
         },
         flash: {
             credentials: null as {
@@ -411,7 +411,7 @@ const sampleUsers = {
     links: [],
     data: [
         {
-            id: 1,
+            id: '1',
             name: 'Super Admin',
             username: 'superadmin',
             email: 'admin@test.com',
@@ -419,7 +419,7 @@ const sampleUsers = {
             created_at: '2026-01-01T00:00:00Z',
         },
         {
-            id: 2,
+            id: '2',
             name: 'Mitra Satu',
             username: 'mitrasatu',
             email: 'mitra1@test.com',
@@ -427,7 +427,7 @@ const sampleUsers = {
             created_at: '2026-01-02T00:00:00Z',
         },
         {
-            id: 3,
+            id: '3',
             name: 'Mitra Dua',
             username: 'mitradua',
             email: 'mitra2@test.com',
@@ -445,7 +445,7 @@ describe('Admin Users Index Page', () => {
         vi.clearAllMocks();
         mockUpdaters.clear();
         mockPage.props.auth = {
-            user: { id: 1, name: 'Super Admin', role: 'admin' },
+            user: { id: '1', name: 'Super Admin', role: 'admin' },
         };
         mockPage.props.flash = { credentials: null };
         vi.useFakeTimers();
@@ -692,7 +692,7 @@ describe('Admin Users Index Page', () => {
             );
             await syncUI();
 
-            expect(deleteUser).toHaveBeenCalledWith(2, expect.any(Object));
+            expect(deleteUser).toHaveBeenCalledWith('2', expect.any(Object));
 
             // 3. ✅ Query ULANG tombol setelah re-render → assert disabled
             expect(
@@ -733,7 +733,7 @@ describe('Admin Users Index Page', () => {
                 screen.getByRole('button', { name: 'Konfirmasi Reset' }),
             );
 
-            expect(resetUserPassword).toHaveBeenCalledWith(2, {
+            expect(resetUserPassword).toHaveBeenCalledWith('2', {
                 preserveScroll: true,
                 onFinish: expect.any(Function),
             });

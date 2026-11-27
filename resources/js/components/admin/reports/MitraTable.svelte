@@ -5,7 +5,7 @@
     // TYPES
     // ==========================================
     type MitraReport = {
-        id: number;
+        id: string;
         name: string;
         email: string;
         total_trip: number;

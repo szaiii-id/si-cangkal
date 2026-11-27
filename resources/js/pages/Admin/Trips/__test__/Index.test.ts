@@ -300,9 +300,9 @@ import { getTrips } from '@/api/admin';
 const makeTrip = (overrides: Record<string, unknown> = {}) =>
     ({
         id: 1,
-        booking_id: 10,
+        booking_id: '10',
         package_id: 1,
-        mitra_id: 200,
+        mitra_id: '200',
         kode: 'TRIP-001',
         status: 'scheduled',
         tanggal_mulai: '2026-02-01',

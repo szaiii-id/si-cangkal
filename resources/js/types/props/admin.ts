@@ -48,7 +48,7 @@ export type AdminDashboardProps = {
         total_revenue: number;
     };
     recent_bookings: Array<{
-        id: number;
+        id: string;
         kode: string;
         client: string;
         mitra: string;
@@ -229,7 +229,7 @@ export type AdminReportMitraProps = {
         total_mitra: number;
         total_trip_completed: number;
         mitras: Array<{
-            id: number;
+            id: string;
             name: string;
             email: string;
             total_trip: number;

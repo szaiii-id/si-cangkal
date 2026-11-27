@@ -55,7 +55,7 @@ describe('Mitra API Wrapper', () => {
             });
             vi.stubGlobal('fetch', fetchMock);
 
-            const result = await createPaymentLink(7);
+            const result = await createPaymentLink('7');
 
             expect(fetchMock).toHaveBeenCalledWith(
                 '/mitra/bookings/7/payment-link',
@@ -77,7 +77,7 @@ describe('Mitra API Wrapper', () => {
                 vi.fn().mockResolvedValue({ ok: false, status: 403 }),
             );
 
-            await expect(createPaymentLink(7)).rejects.toThrow(
+            await expect(createPaymentLink('7')).rejects.toThrow(
                 'Gagal membuat link pembayaran.',
             );
 
@@ -204,7 +204,7 @@ describe('Mitra API Wrapper', () => {
         });
 
         it('verifyPayment() memanggil POST /mitra/bookings/{id}/verify', () => {
-            verifyPayment(1);
+            verifyPayment('1');
             expect(router.post).toHaveBeenCalledWith(
                 '/mitra/bookings/1/verify',
                 {},
@@ -214,7 +214,7 @@ describe('Mitra API Wrapper', () => {
 
         it('rejectPayment() memanggil POST /mitra/bookings/{id}/reject', () => {
             const data = { reason: 'Bukti tidak valid' };
-            rejectPayment(1, data);
+            rejectPayment('1', data);
             expect(router.post).toHaveBeenCalledWith(
                 '/mitra/bookings/1/reject',
                 data,
@@ -224,7 +224,7 @@ describe('Mitra API Wrapper', () => {
 
         it('cancelBooking() memanggil POST /mitra/bookings/{id}/cancel', () => {
             const data = { reason: 'Batal' };
-            cancelBooking(1, data);
+            cancelBooking('1', data);
             expect(router.post).toHaveBeenCalledWith(
                 '/mitra/bookings/1/cancel',
                 data,
@@ -234,7 +234,7 @@ describe('Mitra API Wrapper', () => {
 
         it('uploadPaymentProof() memanggil POST /mitra/bookings/{id}/upload-proof', () => {
             const data = { file: 'proof.jpg' };
-            uploadPaymentProof(1, data);
+            uploadPaymentProof('1', data);
             expect(router.post).toHaveBeenCalledWith(
                 '/mitra/bookings/1/upload-proof',
                 data,

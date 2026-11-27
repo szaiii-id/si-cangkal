@@ -65,7 +65,7 @@ import { showToast } from '@/utils/toast.svelte';
 // 6. FIXTURES
 // ============================================================
 const makeUser = (overrides: Record<string, unknown> = {}) => ({
-    id: 1,
+    id: '1',
     name: 'Budi Santoso',
     username: 'budisan',
     email: 'budi@test.com',

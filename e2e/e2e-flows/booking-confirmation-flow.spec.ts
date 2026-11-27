@@ -115,8 +115,8 @@ async function extractBookingKode(page: Page): Promise<string> {
 
 test.describe.serial('E2E Flow — Booking Confirmation', () => {
     // State antar step (hanya diisi oleh step yang relevan)
-    let packageId: number;
-    let bookingId: number;
+    let packageId: string;
+    let bookingId: string;
     let _bookingKode: string;
 
     // ==========================================

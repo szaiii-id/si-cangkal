@@ -19,9 +19,9 @@
         onReset
     }: {
         users: Array<UserItem & { role: 'admin' | 'mitra' | 'client' }>;
-        authUserId: number | undefined;
-        onDelete: (user: { id: number; name: string }) => void;
-        onReset: (user: { id: number; name: string; email: string }) => void;
+        authUserId: string | undefined;
+        onDelete: (user: { id: string; name: string }) => void;
+        onReset: (user: { id: string; name: string; email: string }) => void;
     } = $props();
 
     // ==========================================

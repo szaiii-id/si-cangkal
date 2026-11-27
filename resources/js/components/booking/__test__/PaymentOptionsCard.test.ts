@@ -20,7 +20,7 @@ describe('PaymentOptionsCard', () => {
 
     it('menampilkan opsi online lebih menonjol dan transfer sebagai opsi kedua', () => {
         render(PaymentOptionsCard, {
-            props: { bookingId: 42, canUseGateway: true },
+            props: { bookingId: '42', canUseGateway: true },
         });
 
         expect(screen.getByText(/Bayar Online/i)).toBeInTheDocument();
@@ -40,7 +40,7 @@ describe('PaymentOptionsCard', () => {
 
     it('menyembunyikan tombol gateway bila booking tidak pending', () => {
         render(PaymentOptionsCard, {
-            props: { bookingId: 42, canUseGateway: false },
+            props: { bookingId: '42', canUseGateway: false },
         });
 
         expect(
@@ -55,7 +55,7 @@ describe('PaymentOptionsCard', () => {
 
     it('memanggil createXenditCharge saat tombol ditekan', async () => {
         render(PaymentOptionsCard, {
-            props: { bookingId: 42, canUseGateway: true },
+            props: { bookingId: '42', canUseGateway: true },
         });
 
         await fireEvent.click(
@@ -63,12 +63,15 @@ describe('PaymentOptionsCard', () => {
         );
 
         expect(createXenditCharge).toHaveBeenCalledTimes(1);
-        expect(createXenditCharge).toHaveBeenCalledWith(42, expect.any(Object));
+        expect(createXenditCharge).toHaveBeenCalledWith(
+            '42',
+            expect.any(Object),
+        );
     });
 
     it('menandai tombol sebagai processing saat request berjalan', async () => {
         render(PaymentOptionsCard, {
-            props: { bookingId: 42, canUseGateway: true },
+            props: { bookingId: '42', canUseGateway: true },
         });
 
         const button = screen.getByRole('button', { name: /Bayar Sekarang/i });
@@ -87,7 +90,7 @@ describe('PaymentOptionsCard', () => {
         });
 
         render(PaymentOptionsCard, {
-            props: { bookingId: 42, canUseGateway: true },
+            props: { bookingId: '42', canUseGateway: true },
         });
 
         await fireEvent.click(
@@ -104,7 +107,7 @@ describe('PaymentOptionsCard', () => {
 describe('pilihan metode', () => {
     it('menandai transfer sebagai dipilih setelah tombol ditekan', async () => {
         render(PaymentOptionsCard, {
-            props: { bookingId: 42, canUseGateway: true },
+            props: { bookingId: '42', canUseGateway: true },
         });
 
         await fireEvent.click(
@@ -119,7 +122,7 @@ describe('pilihan metode', () => {
 
     it('otomatis memilih transfer bila bukti sudah ada', () => {
         render(PaymentOptionsCard, {
-            props: { bookingId: 42, canUseGateway: true, hasProof: true },
+            props: { bookingId: '42', canUseGateway: true, hasProof: true },
         });
 
         expect(screen.getByText(/Transfer Dipilih/i)).toBeInTheDocument();
@@ -128,7 +131,7 @@ describe('pilihan metode', () => {
 
 it('tidak memakai istilah teknis pada teks yang terlihat', () => {
     render(PaymentOptionsCard, {
-        props: { bookingId: 42, canUseGateway: true },
+        props: { bookingId: '42', canUseGateway: true },
     });
 
     const teks = document.body.textContent ?? '';

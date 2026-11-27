@@ -70,17 +70,17 @@ export const getBookings = (
     options?: MitraOptions,
 ) => router.get('/mitra/bookings', params, options);
 
-export const verifyPayment = (bookingId: number, options?: MitraOptions) =>
+export const verifyPayment = (bookingId: string, options?: MitraOptions) =>
     router.post(`/mitra/bookings/${bookingId}/verify`, {}, options);
 
 export const rejectPayment = (
-    bookingId: number,
+    bookingId: string,
     data: RequestPayload,
     options?: MitraOptions,
 ) => router.post(`/mitra/bookings/${bookingId}/reject`, data, options);
 
 export const cancelBooking = (
-    bookingId: number,
+    bookingId: string,
     data: RequestPayload,
     options?: MitraOptions,
 ) => router.post(`/mitra/bookings/${bookingId}/cancel`, data, options);
@@ -98,7 +98,7 @@ function csrfToken(): string {
 }
 
 export async function createPaymentLink(
-    bookingId: number,
+    bookingId: string,
 ): Promise<{ url: string; expires_at: string | null; checkout_url: string }> {
     const response = await fetch(`/mitra/bookings/${bookingId}/payment-link`, {
         method: 'POST',
@@ -121,7 +121,7 @@ export async function createPaymentLink(
 }
 
 export const uploadPaymentProof = (
-    bookingId: number,
+    bookingId: string,
     data: RequestPayload,
     options?: MitraOptions,
 ) => router.post(`/mitra/bookings/${bookingId}/upload-proof`, data, options);

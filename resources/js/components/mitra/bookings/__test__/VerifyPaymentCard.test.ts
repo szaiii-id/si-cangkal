@@ -22,7 +22,7 @@ describe('VerifyPaymentCard Component', () => {
         it('harus merender judul dan deskripsi', () => {
             render(VerifyPaymentCard, {
                 props: {
-                    bookingId: 1,
+                    bookingId: '1',
                     hasProof: true,
                     onVerify: vi.fn(),
                     onReject: vi.fn(),
@@ -43,7 +43,7 @@ describe('VerifyPaymentCard Component', () => {
         it('harus merender PaymentProofPreview (mock)', () => {
             render(VerifyPaymentCard, {
                 props: {
-                    bookingId: 1,
+                    bookingId: '1',
                     hasProof: true,
                     onVerify: vi.fn(),
                     onReject: vi.fn(),
@@ -61,7 +61,7 @@ describe('VerifyPaymentCard Component', () => {
         it('harus merender tombol Verifikasi dan Tolak', () => {
             render(VerifyPaymentCard, {
                 props: {
-                    bookingId: 1,
+                    bookingId: '1',
                     hasProof: true,
                     onVerify: vi.fn(),
                     onReject: vi.fn(),
@@ -90,7 +90,7 @@ describe('VerifyPaymentCard Component', () => {
             const onVerify = vi.fn();
             render(VerifyPaymentCard, {
                 props: {
-                    bookingId: 1,
+                    bookingId: '1',
                     hasProof: true,
                     onVerify,
                     onReject: vi.fn(),
@@ -112,7 +112,7 @@ describe('VerifyPaymentCard Component', () => {
             const onReject = vi.fn();
             render(VerifyPaymentCard, {
                 props: {
-                    bookingId: 1,
+                    bookingId: '1',
                     hasProof: true,
                     onVerify: vi.fn(),
                     onReject,
@@ -138,7 +138,7 @@ describe('VerifyPaymentCard Component', () => {
         it('harus menonaktifkan tombol Verifikasi dan menampilkan "Memproses…" saat verifyProcessing=true', () => {
             render(VerifyPaymentCard, {
                 props: {
-                    bookingId: 1,
+                    bookingId: '1',
                     hasProof: true,
                     onVerify: vi.fn(),
                     onReject: vi.fn(),
@@ -163,7 +163,7 @@ describe('VerifyPaymentCard Component', () => {
         it('harus menonaktifkan tombol Verifikasi jika canVerify=false', () => {
             render(VerifyPaymentCard, {
                 props: {
-                    bookingId: 1,
+                    bookingId: '1',
                     hasProof: true,
                     onVerify: vi.fn(),
                     onReject: vi.fn(),
@@ -182,7 +182,7 @@ describe('VerifyPaymentCard Component', () => {
         it('harus menonaktifkan tombol Tolak jika canReject=false', () => {
             render(VerifyPaymentCard, {
                 props: {
-                    bookingId: 1,
+                    bookingId: '1',
                     hasProof: true,
                     onVerify: vi.fn(),
                     onReject: vi.fn(),

@@ -455,7 +455,7 @@ export const seed = {
      */
     async createPaymentLink(
         page: Page,
-        bookingId: number,
+        bookingId: string,
     ): Promise<CreatePaymentLinkResponse> {
         return apiPost<CreatePaymentLinkResponse>(
             page,

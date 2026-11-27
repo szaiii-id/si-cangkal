@@ -211,7 +211,7 @@ async function fillField(label: string, value: string): Promise<void> {
 // 11. FIXTURES
 // ============================================================
 const makeAdmin = () => ({
-    id: 1,
+    id: '1',
     name: 'Super Admin',
     username: 'superadmin',
     email: 'admin@test.com',
@@ -220,7 +220,7 @@ const makeAdmin = () => ({
 });
 
 const makeMitra = () => ({
-    id: 2,
+    id: '2',
     name: 'Mitra Satu',
     username: 'mitrasatu',
     email: 'mitra1@test.com',
@@ -360,7 +360,7 @@ describe('Admin Users — Edit Page', () => {
 
             expect(updateUser).toHaveBeenCalledTimes(1);
             expect(updateUser).toHaveBeenCalledWith(
-                1,
+                '1',
                 expect.objectContaining({
                     name: 'Super Admin Baru',
                     username: 'superadmin',
@@ -382,7 +382,7 @@ describe('Admin Users — Edit Page', () => {
             );
 
             expect(updateUser).toHaveBeenCalledWith(
-                2,
+                '2',
                 expect.objectContaining({
                     name: 'Mitra Satu',
                     profile: expect.objectContaining({

@@ -300,8 +300,8 @@ const makeBooking = (overrides: Record<string, unknown> = {}) =>
     ({
         id: 1,
         package_id: 1,
-        user_id: 100,
-        mitra_id: 200,
+        user_id: '100',
+        mitra_id: '200',
         kode: 'BK-001',
         status: 'pending_payment',
         tanggal_keberangkatan: '2026-02-01',

@@ -11,7 +11,7 @@
         rejectReason = null,
         selectedMethod = $bindable<Metode>(null),
     }: {
-        bookingId: number;
+        bookingId: string;
         canUseGateway?: boolean;
         hasProof?: boolean;
         rejectReason?: string | null;

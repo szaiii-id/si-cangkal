@@ -23,7 +23,7 @@ describe('PaymentLinkCard', () => {
 
     it('hanya muncul untuk booking pending', () => {
         render(PaymentLinkCard, {
-            props: { bookingId: 7, canCreate: true },
+            props: { bookingId: '7', canCreate: true },
         });
 
         expect(
@@ -33,7 +33,7 @@ describe('PaymentLinkCard', () => {
 
     it('tidak merender tombol bila booking bukan pending', () => {
         render(PaymentLinkCard, {
-            props: { bookingId: 7, canCreate: false },
+            props: { bookingId: '7', canCreate: false },
         });
 
         expect(
@@ -49,14 +49,14 @@ describe('PaymentLinkCard', () => {
         });
 
         render(PaymentLinkCard, {
-            props: { bookingId: 7, canCreate: true },
+            props: { bookingId: '7', canCreate: true },
         });
 
         await fireEvent.click(
             screen.getByRole('button', { name: /Salin Tautan Pembayaran/i }),
         );
 
-        expect(createPaymentLink).toHaveBeenCalledWith(7);
+        expect(createPaymentLink).toHaveBeenCalledWith('7');
         await waitFor(() => {
             expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
                 '/bayar/token123',
@@ -74,7 +74,7 @@ describe('PaymentLinkCard', () => {
         );
 
         render(PaymentLinkCard, {
-            props: { bookingId: 7, canCreate: true },
+            props: { bookingId: '7', canCreate: true },
         });
 
         const button = screen.getByRole('button', {
@@ -92,7 +92,7 @@ describe('PaymentLinkCard', () => {
         vi.mocked(createPaymentLink).mockRejectedValue(new Error('Gagal'));
 
         render(PaymentLinkCard, {
-            props: { bookingId: 7, canCreate: true },
+            props: { bookingId: '7', canCreate: true },
         });
 
         await fireEvent.click(

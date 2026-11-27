@@ -7,7 +7,7 @@ import type { UserMini, UserWithEmail } from './user';
 
 export type PackageEloquent = {
     id: number;
-    mitra_id: number;
+    mitra_id: string;
     kode: string;
     nama: string;
     slug: string;
@@ -32,7 +32,7 @@ export type PackageEloquent = {
 
 export type PackageResource = {
     id: number;
-    mitra_id: number;
+    mitra_id: string;
     kode: string;
     nama: string;
     slug: string;

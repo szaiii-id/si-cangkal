@@ -139,9 +139,9 @@ vi.mock('@/global/Pagination.svelte', () => ({
 // ============================================================
 const makeTrip = (overrides: Record<string, unknown> = {}) => ({
     id: 1,
-    booking_id: 10,
+    booking_id: '10',
     package_id: 1,
-    mitra_id: 1,
+    mitra_id: '1',
     kode: 'TRIP-01',
     status: 'active' as const,
     tanggal_mulai: '2026-01-01',

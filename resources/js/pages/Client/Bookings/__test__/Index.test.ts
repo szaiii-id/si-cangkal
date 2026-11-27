@@ -133,7 +133,7 @@ const makeBooking = (overrides = {}) => ({
         kode: 'PKT-001',
         timezone: 'Asia/Jakarta',
     },
-    client: { id: 1, name: 'Budi', email: 'budi@test.com' },
+    client: { id: '1', name: 'Budi', email: 'budi@test.com' },
     ...overrides,
 });
 

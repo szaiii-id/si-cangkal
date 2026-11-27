@@ -53,7 +53,7 @@ export type MitraDashboardProps = {
         total_revenue: number;
     };
     recent_bookings: Array<{
-        id: number;
+        id: string;
         kode: string;
         client: string;
         paket: string;
@@ -168,7 +168,7 @@ export type MitraPackageIndexProps = {
         >;
     };
     filters: CommonListFilters & {
-        mitra_id: number;
+        mitra_id: string;
     };
     statusCounts: Record<string, number>;
 };

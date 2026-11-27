@@ -10,15 +10,15 @@ import type { BookingEloquent } from './booking';
  */
 export type RefundEloquent = {
     id: number;
-    booking_id: number;
-    mitra_id: number;
+    booking_id: string;
+    mitra_id: string;
     amount: string;
     currency: string;
     reason: RefundReason;
     status: RefundStatus;
     failure_code: string | null;
     refund_fee_amount: string | null;
-    initiated_by_mitra: number | null;
+    initiated_by_mitra: string | null;
     catatan: string | null;
     proof_path?: string | null;
     proof_uploaded_at?: string | null;
@@ -38,8 +38,8 @@ export type RefundEloquent = {
  */
 export type RefundResource = {
     id: number;
-    booking_id: number;
-    mitra_id: number | null;
+    booking_id: string;
+    mitra_id: string | null;
     amount: string;
     amountRupiah: string;
     currency: string;

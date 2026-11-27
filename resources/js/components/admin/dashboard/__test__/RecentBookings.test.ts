@@ -13,7 +13,7 @@ vi.mock('@inertiajs/svelte', () => ({
 // MOCK DATA
 // ==========================================
 const createMockBooking = (overrides: Record<string, unknown> = {}) => ({
-    id: 1,
+    id: '1',
     paket: 'Paket Bali',
     client: 'Budi',
     status: 'confirmed',

@@ -11,22 +11,22 @@ type AdminOptions = Parameters<typeof router.post>[2];
 export const getUsers = (params: RequestPayload, options?: AdminOptions) =>
     router.get('/admin/users', params, options);
 
-export const getUserDetail = (id: number, options?: AdminOptions) =>
+export const getUserDetail = (id: string, options?: AdminOptions) =>
     router.get(`/admin/users/${id}`, {}, options);
 
 export const createAdmin = (data: RequestPayload, options?: AdminOptions) =>
     router.post('/admin/users', data, options);
 
 export const updateUser = (
-    id: number,
+    id: string,
     data: RequestPayload,
     options?: AdminOptions,
 ) => router.put(`/admin/users/${id}`, data, options);
 
-export const deleteUser = (id: number, options?: AdminOptions) =>
+export const deleteUser = (id: string, options?: AdminOptions) =>
     router.delete(`/admin/users/${id}`, options);
 
-export const resetUserPassword = (id: number, options?: AdminOptions) =>
+export const resetUserPassword = (id: string, options?: AdminOptions) =>
     router.post(`/admin/users/${id}/reset-password`, {}, options);
 
 // ==========================================
@@ -41,7 +41,7 @@ export const getClients = (params: RequestPayload, options?: AdminOptions) =>
 export const getBookings = (params: RequestPayload, options?: AdminOptions) =>
     router.get('/admin/bookings', params, options);
 
-export const regenerateETicket = (bookingId: number, options?: AdminOptions) =>
+export const regenerateETicket = (bookingId: string, options?: AdminOptions) =>
     router.post(`/admin/bookings/${bookingId}/regenerate-eticket`, {}, options);
 
 // ==========================================

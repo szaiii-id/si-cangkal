@@ -230,8 +230,8 @@ import { getRefunds } from '@/api/admin';
 // ============================================================
 const makeRefund = (overrides = {}) => ({
     id: 1,
-    booking_id: 10,
-    mitra_id: 100,
+    booking_id: '10',
+    mitra_id: '100',
     amount: '500000',
     amountRupiah: 'Rp 500.000',
     currency: 'IDR',
@@ -251,8 +251,12 @@ const makeRefund = (overrides = {}) => ({
         total_harga: '1500000',
         status: 'confirmed',
     },
-    mitra: { id: 100, name: 'PT Mitra Jaya', email: 'mitra@test.com' },
-    mitraInitiator: { id: 100, name: 'PT Mitra Jaya', email: 'mitra@test.com' },
+    mitra: { id: '100', name: 'PT Mitra Jaya', email: 'mitra@test.com' },
+    mitraInitiator: {
+        id: '100',
+        name: 'PT Mitra Jaya',
+        email: 'mitra@test.com',
+    },
     ...overrides,
 });
 

@@ -109,7 +109,7 @@ const makePackage = (overrides = {}) => ({
     durasi_malam: 2,
     harga_per_orang: '750000',
     harga_per_rombongan: null as string | null,
-    mitra: { id: 1, name: 'PT Mitra Jaya' },
+    mitra: { id: '1', name: 'PT Mitra Jaya' },
     ...overrides,
 });
 
@@ -133,7 +133,7 @@ const SAMPLE_PACKAGES = [
         kategori: 'wisata_alam',
         harga_per_orang: '750000',
         harga_per_rombongan: null,
-        mitra: { id: 1, name: 'PT Mitra Jaya' },
+        mitra: { id: '1', name: 'PT Mitra Jaya' },
     }),
     makePackage({
         id: 2,

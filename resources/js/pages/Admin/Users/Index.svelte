@@ -29,10 +29,10 @@
 
     let authUserId = $derived(page.props.auth?.user?.id);
     let showDeleteModal = $state(false);
-    let userToDelete = $state<{ id: number; name: string } | null>(null);
+    let userToDelete = $state<{ id: string; name: string } | null>(null);
     let deleteProcessing = $state(false);
     let showResetModal = $state(false);
-    let userToReset = $state<{ id: number; name: string; email: string } | null>(null);
+    let userToReset = $state<{ id: string; name: string; email: string } | null>(null);
 
     // svelte-ignore state_referenced_locally
     let search = $state(filters.search ?? '');

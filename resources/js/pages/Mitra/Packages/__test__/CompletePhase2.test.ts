@@ -85,7 +85,7 @@ async function syncUI() {
 const makePackage = (overrides: Record<string, unknown> = {}) =>
     ({
         id: 1,
-        mitra_id: 1,
+        mitra_id: '1',
         nama: 'Paket Bali',
         kode: 'PKT-001',
         slug: 'paket-bali',

@@ -203,8 +203,8 @@ const makePackage = (overrides = {}) => ({
     timezone: 'Asia/Jakarta',
     cover_image: 'packages/bali.jpg',
     status: 'aktif',
-    mitra_id: 100,
-    mitra: { id: 100, name: 'PT Mitra Jaya' },
+    mitra_id: '100',
+    mitra: { id: '100', name: 'PT Mitra Jaya' },
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
     deleted_at: null,
@@ -224,8 +224,8 @@ const makePagination = (data: any[], overrides = {}) => ({
 });
 
 const SAMPLE_PACKAGES = [
-    makePackage({ id: 1, kode: 'PKT-001', nama: 'Paket Bali' }),
-    makePackage({ id: 2, kode: 'PKT-002', nama: 'Paket Lombok' }),
+    makePackage({ id: '1', kode: 'PKT-001', nama: 'Paket Bali' }),
+    makePackage({ id: '2', kode: 'PKT-002', nama: 'Paket Lombok' }),
     makePackage({
         id: 3,
         kode: 'PKT-003',

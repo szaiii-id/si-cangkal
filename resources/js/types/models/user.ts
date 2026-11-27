@@ -1,7 +1,7 @@
 export type UserRole = 'admin' | 'mitra' | 'client';
 
 export type User = {
-    id: number;
+    id: string;
     name: string;
     username: string | null;
     email: string;
@@ -17,7 +17,7 @@ export type User = {
 
 export type Profile = {
     id: number;
-    user_id: number;
+    user_id: string;
     tipe: string;
     nama_penyedia_usaha: string | null;
     nomor_identitas: string | null;
@@ -33,7 +33,7 @@ export type Profile = {
 };
 
 export type UserMini = {
-    id: number;
+    id: string;
     name: string;
     email: string;
     username: string | null;

@@ -13,7 +13,7 @@ vi.mock('@inertiajs/svelte', () => ({
 // MOCK DATA
 // ==========================================
 const createMockUser = (overrides = {}) => ({
-    id: 1,
+    id: '1',
     name: 'Budi Santoso',
     username: 'budi',
     email: 'budi@test.com',
@@ -36,7 +36,7 @@ describe('UserTable Component', () => {
             render(UserTable, {
                 props: {
                     users: [createMockUser()],
-                    authUserId: 99,
+                    authUserId: '99',
                     onDelete: vi.fn(),
                     onReset: vi.fn(),
                 },
@@ -55,7 +55,7 @@ describe('UserTable Component', () => {
             render(UserTable, {
                 props: {
                     users: [createMockUser({ role: 'mitra' })],
-                    authUserId: 99,
+                    authUserId: '99',
                     onDelete: vi.fn(),
                     onReset: vi.fn(),
                 },
@@ -72,8 +72,8 @@ describe('UserTable Component', () => {
         it('harus menampilkan tombol Edit & Reset untuk role admin', () => {
             render(UserTable, {
                 props: {
-                    users: [createMockUser({ id: 1, role: 'admin' })],
-                    authUserId: 99,
+                    users: [createMockUser({ id: '1', role: 'admin' })],
+                    authUserId: '99',
                     onDelete: vi.fn(),
                     onReset: vi.fn(),
                 },
@@ -86,8 +86,8 @@ describe('UserTable Component', () => {
         it('harus menampilkan tombol Detail untuk role mitra', () => {
             render(UserTable, {
                 props: {
-                    users: [createMockUser({ id: 2, role: 'mitra' })],
-                    authUserId: 99,
+                    users: [createMockUser({ id: '2', role: 'mitra' })],
+                    authUserId: '99',
                     onDelete: vi.fn(),
                     onReset: vi.fn(),
                 },
@@ -99,8 +99,8 @@ describe('UserTable Component', () => {
         it('TIDAK menampilkan tombol Edit/Reset untuk role client', () => {
             render(UserTable, {
                 props: {
-                    users: [createMockUser({ id: 3, role: 'client' })],
-                    authUserId: 99,
+                    users: [createMockUser({ id: '3', role: 'client' })],
+                    authUserId: '99',
                     onDelete: vi.fn(),
                     onReset: vi.fn(),
                 },
@@ -113,8 +113,8 @@ describe('UserTable Component', () => {
         it('TIDAK menampilkan tombol Hapus jika user adalah diri sendiri (authUserId)', () => {
             render(UserTable, {
                 props: {
-                    users: [createMockUser({ id: 99 })],
-                    authUserId: 99,
+                    users: [createMockUser({ id: '99' })],
+                    authUserId: '99',
                     onDelete: vi.fn(),
                     onReset: vi.fn(),
                 },
@@ -126,8 +126,8 @@ describe('UserTable Component', () => {
         it('menampilkan tombol Hapus jika user bukan diri sendiri', () => {
             render(UserTable, {
                 props: {
-                    users: [createMockUser({ id: 1 })],
-                    authUserId: 99,
+                    users: [createMockUser({ id: '1' })],
+                    authUserId: '99',
                     onDelete: vi.fn(),
                     onReset: vi.fn(),
                 },
@@ -145,8 +145,8 @@ describe('UserTable Component', () => {
             const onDelete = vi.fn();
             render(UserTable, {
                 props: {
-                    users: [createMockUser({ id: 1, name: 'Budi' })],
-                    authUserId: 99,
+                    users: [createMockUser({ id: '1', name: 'Budi' })],
+                    authUserId: '99',
                     onDelete,
                     onReset: vi.fn(),
                 },
@@ -156,7 +156,7 @@ describe('UserTable Component', () => {
             const deleteBtns = screen.getAllByText('Hapus');
             await fireEvent.click(deleteBtns[0]);
 
-            expect(onDelete).toHaveBeenCalledWith({ id: 1, name: 'Budi' });
+            expect(onDelete).toHaveBeenCalledWith({ id: '1', name: 'Budi' });
         });
 
         it('harus memanggil onReset saat tombol Reset diklik', async () => {
@@ -165,12 +165,12 @@ describe('UserTable Component', () => {
                 props: {
                     users: [
                         createMockUser({
-                            id: 1,
+                            id: '1',
                             name: 'Budi',
                             email: 'budi@test.com',
                         }),
                     ],
-                    authUserId: 99,
+                    authUserId: '99',
                     onDelete: vi.fn(),
                     onReset,
                 },
@@ -180,7 +180,7 @@ describe('UserTable Component', () => {
             await fireEvent.click(resetBtns[0]);
 
             expect(onReset).toHaveBeenCalledWith({
-                id: 1,
+                id: '1',
                 name: 'Budi',
                 email: 'budi@test.com',
             });
@@ -195,7 +195,7 @@ describe('UserTable Component', () => {
             render(UserTable, {
                 props: {
                     users: [createMockUser()],
-                    authUserId: 99,
+                    authUserId: '99',
                     onDelete: vi.fn(),
                     onReset: vi.fn(),
                 },
