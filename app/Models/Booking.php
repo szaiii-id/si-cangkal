@@ -8,6 +8,7 @@ use Carbon\CarbonImmutable;
 use Database\Factories\BookingFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -18,11 +19,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 /**
  * Model Booking — pesanan client untuk sebuah paket wisata.
  *
- * @property int $id
+ * @property string $id
  * @property string $kode
  * @property int $package_id
- * @property int $user_id
- * @property int|null $mitra_id
+ * @property string $user_id
+ * @property string|null $mitra_id
  * @property CarbonImmutable|null $tanggal_keberangkatan
  * @property int $jumlah_peserta
  * @property string $total_harga
@@ -50,8 +51,12 @@ class Booking extends Model
 {
     /** @use HasFactory<BookingFactory> */
     use HasFactory;
-
+    use HasUuids;
     use SoftDeletes;
+
+    protected $keyType = 'string';
+
+    public $incrementing = false;
 
     /**
      * @var array<string, mixed>

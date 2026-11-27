@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
 
             // Relasi Mitra
-            $table->foreignId('mitra_id')
+            $table->foreignUuid('mitra_id')
                 ->constrained('users')
                 ->restrictOnDelete();
 
@@ -33,6 +33,8 @@ return new class extends Migration
 
             $table->string('timezone', 50)->default('Asia/Makassar');
             $table->string('cover_image')->nullable();
+            $table->decimal('latitude', 10, 7)->nullable();
+            $table->decimal('longitude', 11, 7)->nullable();
             $table->string('status', 20)->default('draft');
 
             $table->timestamps();

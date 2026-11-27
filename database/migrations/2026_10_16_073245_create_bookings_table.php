@@ -9,14 +9,14 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('bookings', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->string('kode', 50)->unique();
 
             $table->foreignId('package_id')->constrained('packages')->restrictOnDelete();
-            $table->foreignId('user_id')->constrained('users')->restrictOnDelete();
+            $table->foreignUuid('user_id')->constrained('users')->restrictOnDelete();
 
             // Relasi Mitra (Denormalisasi)
-            $table->foreignId('mitra_id')->constrained('users')->restrictOnDelete();
+            $table->foreignUuid('mitra_id')->constrained('users')->restrictOnDelete();
 
             $table->date('tanggal_keberangkatan');
             $table->unsignedSmallInteger('jumlah_peserta');

@@ -10,7 +10,7 @@ use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
- * @property int $user_id
+ * @property string $user_id
  * @property string $tipe
  * @property string $nama_penyedia
  * @property string $nomor_rekening

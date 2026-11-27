@@ -33,12 +33,12 @@ final class BookingConfirmed
 
     /**
      * @param  Booking  $booking  Booking yang baru diverifikasi.
-     * @param  int  $verifiedByMitraId  ID mitra yang memverifikasi pembayaran.
+     * @param  string  $verifiedByMitraId  ID mitra yang memverifikasi pembayaran.
      *                                  Dipakai listener queue agar tidak
      *                                  bergantung pada sesi auth.
      */
     public function __construct(
         public readonly Booking $booking,
-        public readonly int $verifiedByMitraId,
+        public readonly string $verifiedByMitraId,
     ) {}
 }

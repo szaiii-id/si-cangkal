@@ -71,7 +71,7 @@ describe('handle', function () {
         });
 
         (new SendPushNotificationJob(
-            userId: 999_999,
+            userId: '00000000-0000-4000-8000-000000000000',
             tipe: 'info',
             judul: 'Info',
             pesan: 'Pesan',

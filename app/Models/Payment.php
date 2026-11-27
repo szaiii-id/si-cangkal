@@ -15,11 +15,11 @@ use Illuminate\Support\Carbon;
  * Model Payment — rekam jejak pembayaran manual.
  *
  * @property int $id
- * @property int $booking_id
+ * @property string $booking_id
  * @property numeric-string $jumlah
  * @property PaymentMetode $metode
  * @property string|null $channel_code
- * @property int|null $verified_by
+ * @property string|null $verified_by
  * @property Carbon|null $verified_at
  * @property string|null $catatan
  * @property PaymentGateway $gateway

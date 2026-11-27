@@ -11,10 +11,10 @@ return new class extends Migration
         Schema::create('refunds', function (Blueprint $table) {
             $table->id();
 
-            $table->foreignId('booking_id')->constrained('bookings')->cascadeOnDelete();
+            $table->foreignUuid('booking_id')->constrained('bookings')->cascadeOnDelete();
 
             // Relasi Mitra (Denormalisasi)
-            $table->foreignId('mitra_id')->nullable()->after('booking_id')->constrained('users')->restrictOnDelete();
+            $table->foreignUuid('mitra_id')->nullable()->after('booking_id')->constrained('users')->restrictOnDelete();
 
             $table->decimal('amount', 12, 2);
             $table->string('currency', 10)->default('IDR');
@@ -25,7 +25,7 @@ return new class extends Migration
             $table->decimal('refund_fee_amount', 12, 2)->nullable();
 
             // Diganti dari initiated_by
-            $table->foreignId('initiated_by_mitra')
+            $table->foreignUuid('initiated_by_mitra')
                 ->nullable()
                 ->after('refund_fee_amount')
                 ->constrained('users')

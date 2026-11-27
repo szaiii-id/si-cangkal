@@ -40,7 +40,7 @@ final class DisburseToMitraJob implements ShouldBeUnique, ShouldQueue
     public int $timeout = 120;
 
     public function __construct(
-        public readonly int $bookingId,
+        public readonly string $bookingId,
     ) {}
 
     /**

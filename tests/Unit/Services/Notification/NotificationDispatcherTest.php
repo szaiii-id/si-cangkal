@@ -102,7 +102,7 @@ describe('send — in-app only (tanpa fcm_token)', function () {
 
 describe('send — in-app + push job', function () {
     it('user dengan fcm_token → job dikirim dengan data string + tipe', function () {
-        $user = makeUser(['id' => 10, 'role' => 'client', 'fcm_token' => 'device-token-abc']);
+        $user = makeUser(['id' => '00000000-0000-4000-8000-000000000010', 'role' => 'client', 'fcm_token' => 'device-token-abc']);
 
         $this->notificationService->shouldReceive('create')->once();
 
@@ -111,17 +111,17 @@ describe('send — in-app + push job', function () {
             tipe: 'booking_created',
             judul: 'Pesanan Baru',
             pesan: 'Pesan',
-            data: ['booking_id' => 1, 'refund_id' => 5],
+            data: ['booking_id' => '00000000-0000-4000-8000-000000000101', 'refund_id' => 5],
         );
 
         Queue::assertPushed(SendPushNotificationJob::class, function (SendPushNotificationJob $job): bool {
-            return $job->userId === 10
+            return $job->userId === '00000000-0000-4000-8000-000000000010'
                 && $job->tipe === 'booking_created'
                 && $job->judul === 'Pesanan Baru'
                 && $job->pesan === 'Pesan'
-                && $job->data['booking_id'] === '1'
+                && $job->data['booking_id'] === '00000000-0000-4000-8000-000000000101'
                 && $job->data['refund_id'] === '5'
-                && $job->data['url'] === '/client/bookings/1'
+                && $job->data['url'] === '/client/bookings/00000000-0000-4000-8000-000000000101'
                 && is_string($job->data['booking_id'])
                 && is_string($job->data['refund_id']);
         });

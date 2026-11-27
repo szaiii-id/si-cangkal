@@ -19,7 +19,7 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property string $uuid
  * @property int $trip_id
- * @property int $booking_id
+ * @property string $booking_id
  * @property string $qr_code
  * @property string $pdf_path
  * @property Carbon|null $generated_at

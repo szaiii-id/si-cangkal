@@ -20,7 +20,7 @@ use Illuminate\Support\Carbon;
  * Model Package — paket wisata template.
  *
  * @property int $id
- * @property int $mitra_id
+ * @property string $mitra_id
  * @property string $kode
  * @property string $nama
  * @property string $slug

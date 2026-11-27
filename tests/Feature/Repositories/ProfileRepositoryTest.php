@@ -110,11 +110,11 @@ describe('Contract — findByUserId', function () {
     });
 
     it('mengembalikan null jika user_id tidak ada di database', function () {
-        expect($this->repo->findByUserId(999_999))->toBeNull();
+        expect($this->repo->findByUserId('00000000-0000-4000-8000-000000000000'))->toBeNull();
     });
 
     it('mengembalikan null untuk user_id = 0', function () {
-        expect($this->repo->findByUserId(0))->toBeNull();
+        expect($this->repo->findByUserId('00000000-0000-4000-8000-000000000000'))->toBeNull();
     });
 });
 
@@ -398,7 +398,7 @@ describe('Error Handling — constraint violations', function () {
     it('createForUser untuk user_id yang tidak ada di DB → QueryException (FK)', function () {
         // Buat user "palsu" tanpa menyimpannya ke DB
         $ghostUser = new User;
-        $ghostUser->forceFill(['id' => 999_999, 'role' => 'mitra']);
+        $ghostUser->forceFill(['id' => '00000000-0000-4000-8000-000000000000', 'role' => 'mitra']);
 
         expect(fn () => $this->repo->createForUser($ghostUser, []))
             ->toThrow(QueryException::class);
@@ -533,10 +533,10 @@ describe('Edge Cases — updateProfile', function () {
 
 describe('Edge Cases — findByUserId', function () {
     it('user_id negatif → null (tidak crash)', function () {
-        expect($this->repo->findByUserId(-1))->toBeNull();
+        expect($this->repo->findByUserId('00000000-0000-4000-8000-000000000000'))->toBeNull();
     });
 
     it('user_id integer besar yang tidak ada → null', function () {
-        expect($this->repo->findByUserId(PHP_INT_MAX))->toBeNull();
+        expect($this->repo->findByUserId('00000000-0000-4000-8000-000000000000'))->toBeNull();
     });
 });

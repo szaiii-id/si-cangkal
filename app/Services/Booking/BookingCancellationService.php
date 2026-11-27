@@ -191,7 +191,7 @@ class BookingCancellationService
     private function cancel(
         Booking $booking,
         string $reason,
-        ?int $actorId,
+        ?string $actorId,
         string $actorRole,
     ): Booking {
         return DB::transaction(function () use ($booking, $reason, $actorId, $actorRole): Booking {
@@ -220,7 +220,7 @@ class BookingCancellationService
     private function cancelIfUnpaid(
         Booking $booking,
         string $reason,
-        ?int $actorId,
+        ?string $actorId,
         string $actorRole,
     ): ?Booking {
         return DB::transaction(function () use ($booking, $reason, $actorId, $actorRole): ?Booking {
@@ -237,7 +237,7 @@ class BookingCancellationService
     private function applyCancellation(
         Booking $booking,
         string $reason,
-        ?int $actorId,
+        ?string $actorId,
         string $actorRole,
     ): Booking {
         $oldProofPath = $booking->payment_proof_path;

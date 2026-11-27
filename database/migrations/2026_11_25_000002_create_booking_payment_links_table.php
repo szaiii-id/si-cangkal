@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('booking_payment_links', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('booking_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('booking_id')->constrained()->cascadeOnDelete();
             $table->string('token')->unique();
             $table->timestamp('expires_at')->nullable();
             $table->timestamp('revoked_at')->nullable();

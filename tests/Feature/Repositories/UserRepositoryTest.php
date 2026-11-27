@@ -54,7 +54,7 @@ describe('Contract — findBy* methods', function () {
     });
 
     it('findById mengembalikan null jika tidak ada', function () {
-        expect($this->repo->findById(999_999))->toBeNull();
+        expect($this->repo->findById('00000000-0000-4000-8000-000000000000'))->toBeNull();
     });
 
     it('findByEmail mengembalikan User jika email cocok', function () {

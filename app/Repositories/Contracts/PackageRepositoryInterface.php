@@ -13,7 +13,7 @@ interface PackageRepositoryInterface
      *     search?: string|null,
      *     status?: string|null,
      *     kategori?: string|null,
-     *     mitra_id?: int|null,
+     *     mitra_id?: string|null,
      *     per_page?: int,
      *     sort?: string,
      *     direction?: string

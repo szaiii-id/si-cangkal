@@ -42,7 +42,7 @@ class ProfileRepository implements ProfileRepositoryInterface
     /**
      * {@inheritDoc}
      */
-    public function findByUserId(int $userId): ?Profile
+    public function findByUserId(string $userId): ?Profile
     {
         return Profile::where('user_id', $userId)->first();
     }

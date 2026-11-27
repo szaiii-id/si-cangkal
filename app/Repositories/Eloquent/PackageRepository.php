@@ -70,7 +70,7 @@ final class PackageRepository implements PackageRepositoryInterface
             })
             ->when($status, fn (Builder $q, string $s) => $q->where('status', $s))
             ->when($kategori, fn (Builder $q, string $k) => $q->where('kategori', $k))
-            ->when($mitraId, fn (Builder $q, int $id) => $q->where('mitra_id', $id))
+            ->when($mitraId, fn (Builder $q, string $id) => $q->where('mitra_id', $id))
             ->orderBy($sort, $direction)
             ->paginate($perPage)
             ->withQueryString();

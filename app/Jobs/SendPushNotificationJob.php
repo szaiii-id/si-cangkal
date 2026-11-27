@@ -42,7 +42,7 @@ final class SendPushNotificationJob implements ShouldQueue
      * @param  array<string, string>  $data  Data FCM (semua value string).
      */
     public function __construct(
-        public readonly int $userId,
+        public readonly string $userId,
         public readonly string $tipe,
         public readonly string $judul,
         public readonly string $pesan,

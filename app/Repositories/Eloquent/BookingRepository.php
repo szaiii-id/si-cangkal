@@ -98,8 +98,8 @@ final class BookingRepository implements BookingRepositoryInterface
             })
             ->when($status, fn (Builder $q, string $s) => $q->where('status', $s))
             ->when($packageId, fn (Builder $q, int $id) => $q->where('package_id', $id))
-            ->when($userId, fn (Builder $q, int $id) => $q->where('user_id', $id))
-            ->when($mitraId, fn (Builder $q, int $id) => $q->where('mitra_id', $id))
+            ->when($userId, fn (Builder $q, string $id) => $q->where('user_id', $id))
+            ->when($mitraId, fn (Builder $q, string $id) => $q->where('mitra_id', $id))
             ->when($tanggalDari, fn (Builder $q, string $tgl) => $q->where('tanggal_keberangkatan', '>=', $tgl))
             ->when($tanggalSampai, fn (Builder $q, string $tgl) => $q->where('tanggal_keberangkatan', '<=', $tgl))
             ->when($isToday, function (Builder $q) {
@@ -123,7 +123,7 @@ final class BookingRepository implements BookingRepositoryInterface
     /**
      * {@inheritDoc}
      */
-    public function findById(int $id): ?Booking
+    public function findById(string $id): ?Booking
     {
         return Booking::with([
             'package:id,nama,kode,timezone,harga_per_orang,harga_per_rombongan,durasi_hari,durasi_malam',
@@ -137,7 +137,7 @@ final class BookingRepository implements BookingRepositoryInterface
     /**
      * {@inheritDoc}
      */
-    public function findByIdForUpdate(int $id): ?Booking
+    public function findByIdForUpdate(string $id): ?Booking
     {
         return Booking::query()
             ->whereKey($id)
@@ -188,7 +188,7 @@ final class BookingRepository implements BookingRepositoryInterface
     /**
      * {@inheritDoc}
      */
-    public function kodeExists(string $kode, ?int $exceptId = null): bool
+    public function kodeExists(string $kode, ?string $exceptId = null): bool
     {
         return Booking::withTrashed()
             ->where('kode', $kode)

@@ -13,9 +13,9 @@ use Illuminate\Support\Carbon;
  * Review — ulasan client untuk sebuah booking/paket.
  *
  * @property int $id
- * @property int $booking_id
+ * @property string $booking_id
  * @property int $package_id
- * @property int $user_id
+ * @property string $user_id
  * @property int $rating
  * @property string $komentar
  * @property Carbon $created_at

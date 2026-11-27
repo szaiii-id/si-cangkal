@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
 
-            $table->foreignId('booking_id')
+            $table->foreignUuid('booking_id')
                 ->constrained('bookings')
                 ->cascadeOnDelete();
 
@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('metode', 30)->default('transfer_manual'); // Ganti default ke manual
             $table->string('channel_code', 50)->nullable(); // Digabung dari file tambahan
 
-            $table->foreignId('verified_by')
+            $table->foreignUuid('verified_by')
                 ->nullable()
                 ->constrained('users')
                 ->nullOnDelete();

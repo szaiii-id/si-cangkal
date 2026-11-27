@@ -21,9 +21,9 @@ use Illuminate\Support\Carbon;
  *
  * @property int $id
  * @property string $kode
- * @property int $booking_id
+ * @property string $booking_id
  * @property int $package_id
- * @property int $mitra_id
+ * @property string $mitra_id
  * @property array<string, mixed>|null $snapshot_package
  * @property Carbon $tanggal_mulai
  * @property Carbon $tanggal_selesai
@@ -182,7 +182,7 @@ class Trip extends Model
 
     public function hasMitra(): bool
     {
-        return $this->mitra_id > 0;
+        return filled($this->mitra_id);
     }
 
     public function durasiHari(): int

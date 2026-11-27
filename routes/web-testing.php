@@ -709,10 +709,10 @@ Route::prefix('_test')
             BookingPaymentLinkService $links,
         ): JsonResponse {
             $validated = $request->validate([
-                'booking_id' => ['required', 'integer', 'exists:bookings,id'],
+                'booking_id' => ['required', 'string', 'exists:bookings,id'],
             ]);
 
-            $booking = Booking::findOrFail((int) $validated['booking_id']);
+            $booking = Booking::findOrFail((string) $validated['booking_id']);
 
             $payment = Payment::firstOrCreate(
                 [

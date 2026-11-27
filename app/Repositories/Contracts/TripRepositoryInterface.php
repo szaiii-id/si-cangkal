@@ -16,7 +16,7 @@ interface TripRepositoryInterface
      *     search?: string|null,
      *     status?: string|null,
      *     package_id?: int|null,
-     *     mitra_id?: int|null,
+     *     mitra_id?: string|null,
      *     tanggal_dari?: string|null,
      *     tanggal_sampai?: string|null,
      *     per_page?: int,
@@ -56,7 +56,7 @@ interface TripRepositoryInterface
     /**
      * Cari trip berdasarkan booking_id (1 booking = 1 trip).
      */
-    public function findByBookingId(int $bookingId): ?Trip;
+    public function findByBookingId(string $bookingId): ?Trip;
 
     /**
      * Buat trip baru.

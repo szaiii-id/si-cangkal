@@ -60,7 +60,7 @@ class TripService
         return $trip;
     }
 
-    public function findByBookingId(int $bookingId): ?Trip
+    public function findByBookingId(string $bookingId): ?Trip
     {
         return $this->tripRepository->findByBookingId($bookingId);
     }
