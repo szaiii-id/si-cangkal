@@ -195,10 +195,10 @@
 
                         {#if ratings[String(pkg.id)] && ratings[String(pkg.id)].jumlah > 0}
                             {@const statistik = ratings[String(pkg.id)]}
-                            <div class="flex items-center gap-1.5 mb-2" aria-label={`Rating paket ${pkg.nama}`}>
-                                <StarRating value={Math.round(statistik.rata_rata)} readonly size="sm" />
-                                <span class="text-[10px] font-extrabold text-dark">{formatRataRata(statistik.rata_rata)}</span>
-                                <span class="text-[10px] text-gray-500">({statistik.jumlah} ulasan)</span>
+                            <div class="flex items-center gap-1 mb-2 overflow-hidden" aria-label={`Rating paket ${pkg.nama}`}>
+                                <StarRating value={Math.round(statistik.rata_rata)} readonly size="xs" />
+                                <span class="text-[10px] font-extrabold text-dark whitespace-nowrap">{formatRataRata(statistik.rata_rata)}</span>
+                                <span class="text-[10px] text-gray-500 whitespace-nowrap shrink-0">({statistik.jumlah} ulasan)</span>
                             </div>
                         {/if}
                         

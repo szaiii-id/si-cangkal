@@ -248,7 +248,7 @@
     <title>Booking {booking.kode} | SI-CANGKAL</title>
 </svelte:head>
 
-<ClientLayout title="Detail Pesanan">
+<ClientLayout title="Detail Pesanan" hideBottomNav={isPendingPayment}>
     <div class="max-w-6xl mx-auto pb-12">
         
         <!-- Tombol Kembali -->

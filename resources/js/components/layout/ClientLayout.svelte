@@ -11,11 +11,13 @@
     let {
         children,
         title = 'Beranda',
-        hideNavbar = false
+        hideNavbar = false,
+        hideBottomNav = false
     }: {
         children: Snippet;
         title?: string;
         hideNavbar?: boolean;
+        hideBottomNav?: boolean;
     } = $props();
 
     let user = $derived(page.props.auth?.user);
@@ -179,6 +181,7 @@
     </main>
 
     <!-- BOTTOM NAVIGATION -->
+    {#if !hideBottomNav}
     <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[95%] sm:w-[90%] max-w-2xl">
         <nav class="bg-white/95 backdrop-blur-md rounded-full shadow-xl p-2 flex items-center justify-between border border-pink/20">
             {#each clientMenu as item}
@@ -217,6 +220,7 @@
             {/each}
         </nav>
     </div>
+    {/if}
 
 </div>
 

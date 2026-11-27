@@ -15,7 +15,7 @@
         value?: number;
         readonly?: boolean;
         onChange?: (rating: number) => void;
-        size?: 'sm' | 'lg';
+        size?: 'xs' | 'sm' | 'lg';
     };
 
     let {
@@ -33,7 +33,9 @@
     const bintang = [1, 2, 3, 4, 5];
 
     let teksLabel = $derived(ratingLabel(value));
-    let kelasBintang = $derived(size === 'lg' ? 'text-3xl' : 'text-base');
+    let kelasBintang = $derived(
+        size === 'lg' ? 'text-3xl' : size === 'sm' ? 'text-base' : 'text-xs',
+    );
 </script>
 
 <div>
