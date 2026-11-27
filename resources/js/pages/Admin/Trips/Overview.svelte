@@ -8,7 +8,7 @@
     import type { PaginationMeta, Package } from '@/types';
     import { adminMenu } from '@/utils/menus';
     import { formatCurrency } from '@/utils/formatCurrency';
-    import { formatDurasi } from '@/utils/duration';
+    import { formatDurasiLong } from '@/utils/duration';
     import { getPackages } from '@/api/admin';
 
     const defaultPackages = {
@@ -133,7 +133,7 @@
                             <div class="space-y-1.5 mb-4 flex-1">
                                 <div class="flex items-center gap-1.5 text-xs text-gray-500">
                                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                    {formatDurasi(pkg.durasi_hari, pkg.durasi_malam)}
+                                    {formatDurasiLong(pkg.durasi_hari, pkg.durasi_malam)}
                                 </div>
                                 <div class="flex items-center gap-1.5 text-xs text-gray-500">
                                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>

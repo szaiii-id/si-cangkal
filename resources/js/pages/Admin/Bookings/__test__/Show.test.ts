@@ -6,7 +6,7 @@
  * Fokus pengujian:
  *   1. Isolation & Mocking  → Inertia, API regenerateETicket, toast,
  *                             menu, utils (enums, bookingRules,
- *                             formatCurrency, formatDate, formatDurasi),
+ *                             formatCurrency, formatDate, formatDurasiLong),
  *                             & child components (BackButton,
  *                             ParticipantList, PaymentHistory,
  *                             PaymentProofPreview, ConfirmModal) di-mock.
@@ -113,8 +113,8 @@ vi.mock('@/utils/formatDate', () => ({
 }));
 
 vi.mock('@/utils/duration', () => ({
-    formatDurasi: vi.fn(
-        (hari: number, malam: number) => `${hari}H / ${malam}M`,
+    formatDurasiLong: vi.fn(
+        (hari: number, malam: number) => `${hari} Hari ${malam} Malam`,
     ),
 }));
 
@@ -238,7 +238,7 @@ import { regenerateETicket } from '@/api/admin';
 import { showToast } from '@/utils/toast.svelte';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { formatDate } from '@/utils/formatDate';
-import { formatDurasi } from '@/utils/duration';
+import { formatDurasiLong } from '@/utils/duration';
 
 // ============================================================
 // 16. HELPERS
@@ -438,7 +438,7 @@ describe('Admin Bookings — Show Page', () => {
 
             expect(screen.getByText('Info Paket')).toBeInTheDocument();
             expect(screen.getByText('PKT-BALI-001')).toBeInTheDocument();
-            expect(formatDurasi).toHaveBeenCalledWith(3, 2);
+            expect(formatDurasiLong).toHaveBeenCalledWith(3, 2);
             expect(formatCurrency).toHaveBeenCalledWith(750000);
         });
 

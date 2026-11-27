@@ -19,7 +19,7 @@
         packageStatusShort,
     } from '@/utils/enums';
     import { formatCurrency } from '@/utils/formatCurrency';
-    import { formatDurasi } from '@/utils/duration';
+    import { formatDurasiLong } from '@/utils/duration';
     import { mitraMenu } from '@/utils/menus';
 
     type PackageItem = Pick<
@@ -232,7 +232,7 @@
                             <div class="flex items-center justify-between gap-2 mb-1">
                                 <p class="text-[10px] font-mono text-gray-500">{pkg.kode}</p>
                                 <span class="text-[10px] font-bold text-gray-500">
-                                    {formatDurasi(pkg.durasi_hari, pkg.durasi_malam)}
+                                    {formatDurasiLong(pkg.durasi_hari, pkg.durasi_malam)}
                                 </span>
                             </div>
 

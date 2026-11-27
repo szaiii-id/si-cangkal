@@ -96,6 +96,23 @@ export function formatDurasiFromRange(
     );
 }
 
+/**
+ * Format durasi panjang dari range DATE.
+ *
+ * @example
+ *   formatDurasiLongFromRange('2026-10-17', '2026-10-19')
+ *     // "3 Hari 2 Malam"
+ */
+export function formatDurasiLongFromRange(
+    mulai: string | null | undefined,
+    selesai: string | null | undefined,
+): string {
+    return formatDurasiLong(
+        hitungDurasiHari(mulai, selesai),
+        hitungDurasiMalam(mulai, selesai),
+    );
+}
+
 // ==========================================
 // INTERNAL
 // ==========================================

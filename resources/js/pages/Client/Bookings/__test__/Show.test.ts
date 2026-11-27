@@ -52,7 +52,9 @@ vi.mock('@/utils/formatCurrency', () => ({
 vi.mock('@/utils/formatDate', () => ({
     formatDate: vi.fn((v) => `Date: ${v}`),
 }));
-vi.mock('@/utils/duration', () => ({ formatDurasi: vi.fn(() => '3H 2M') }));
+vi.mock('@/utils/duration', () => ({
+    formatDurasiLong: vi.fn(() => '3 Hari 2 Malam'),
+}));
 vi.mock('@/utils/toast.svelte', () => ({ showToast: vi.fn() }));
 vi.mock('@/utils/enums', () => ({
     paymentMetodeLabel: vi.fn((m) => m),

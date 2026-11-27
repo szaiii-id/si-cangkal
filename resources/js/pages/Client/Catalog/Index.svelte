@@ -215,7 +215,10 @@
                                     {/if}
                                 </div>
                                 <!-- Durasi Badge -->
-                                <span class="text-[9px] sm:text-[10px] font-bold text-gray-600 bg-gray-100 px-1.5 py-1 rounded-md mb-0.5 shrink-0">
+                                <span
+                                    class="text-[9px] sm:text-[10px] font-bold text-gray-600 bg-gray-100 px-1.5 py-1 rounded-md mb-0.5 shrink-0"
+                                    aria-label="{pkg.durasi_hari} Hari {pkg.durasi_malam} Malam"
+                                >
                                     {formatDurasi(pkg.durasi_hari, pkg.durasi_malam)}
                                 </span>
                             </div>

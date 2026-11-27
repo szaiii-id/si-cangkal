@@ -50,8 +50,8 @@ vi.mock('@/utils/formatCurrency', () => ({
 }));
 
 vi.mock('@/utils/duration', () => ({
-    formatDurasi: vi.fn(
-        (hari: number, malam: number) => `${hari}H / ${malam}M`,
+    formatDurasiLong: vi.fn(
+        (hari: number, malam: number) => `${hari} Hari ${malam} Malam`,
     ),
 }));
 
@@ -73,7 +73,7 @@ vi.mock('@/components/layout/ClientLayout.svelte', () => ({
 // 5. STATIC IMPORT
 // ============================================================
 import { formatCurrency } from '@/utils/formatCurrency';
-import { formatDurasi } from '@/utils/duration';
+import { formatDurasiLong } from '@/utils/duration';
 import { timezoneLabelLong } from '@/utils/timezone';
 
 // ============================================================
@@ -187,9 +187,9 @@ describe('Client Catalog — Show Page', () => {
     // 7.2 RENDERING — Info Singkat
     // ----------------------------------------------------------
     describe('Rendering — Info Singkat', () => {
-        it('memanggil formatDurasi dengan durasi_hari & durasi_malam', () => {
+        it('memanggil formatDurasiLong dengan durasi_hari & durasi_malam', () => {
             renderPage();
-            expect(formatDurasi).toHaveBeenCalledWith(3, 2);
+            expect(formatDurasiLong).toHaveBeenCalledWith(3, 2);
         });
 
         it('menampilkan max peserta', () => {

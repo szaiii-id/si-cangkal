@@ -2,7 +2,7 @@
     import { inertia } from '@inertiajs/svelte';
     import { tripStatusBadge, tripStatusLabel } from '@/utils/enums';
     import { formatDate } from '@/utils/formatDate';
-    import { formatDurasiFromRange } from '@/utils/duration';
+    import { formatDurasiLongFromRange } from '@/utils/duration';
     import { isDateInRange, todayInTimezone } from '@/utils/timezone';
     import type { PaginationMeta } from '@/types';
 
@@ -119,7 +119,7 @@
                             <div class="min-w-0">
                                 <p class="text-xs font-mono text-gray-500 mb-0.5">{trip.kode}</p>
                                 <p class="font-bold text-dark truncate">{trip.package?.nama ?? 'Paket dihapus'}</p>
-                                <p class="text-[11px] text-gray-500 mt-0.5">{trip.jumlah_peserta} peserta · {formatDurasiFromRange(trip.tanggal_mulai, trip.tanggal_selesai)}</p>
+                                <p class="text-[11px] text-gray-500 mt-0.5">{trip.jumlah_peserta} peserta · {formatDurasiLongFromRange(trip.tanggal_mulai, trip.tanggal_selesai)}</p>
                                 {#if isTodayAndActive(trip)}
                                     <span class="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple/10 text-purple-text border border-purple/20">
                                         <span class="w-1.5 h-1.5 rounded-full bg-purple animate-pulse" aria-hidden="true"></span>
