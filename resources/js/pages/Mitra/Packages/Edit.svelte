@@ -42,6 +42,10 @@
         max_peserta: pkg.max_peserta ?? 0,
         // svelte-ignore state_referenced_locally
         timezone: pkg.timezone,
+        // svelte-ignore state_referenced_locally
+        latitude: pkg.latitude ?? '',
+        // svelte-ignore state_referenced_locally
+        longitude: pkg.longitude ?? '',
     });
 
     let coverFiles = $state<File[]>([]);
@@ -120,6 +124,8 @@
         formData.append('durasi_malam', String(form.durasi_malam));
         formData.append('harga_per_orang', String(form.harga_per_orang));
         formData.append('timezone', form.timezone);
+        formData.append('latitude', form.latitude);
+        formData.append('longitude', form.longitude);
 
         if (useRombongan) {
             formData.append('harga_per_rombongan', String(form.harga_per_rombongan));
@@ -241,6 +247,14 @@
                                         <option value="Asia/Makassar">WITA (UTC+8)</option>
                                         <option value="Asia/Jayapura">WIT (UTC+9)</option>
                                     </select>
+                                </div>
+                                <div>
+                                    <label for="latitude" class="block text-xs font-bold text-dark mb-1.5">Latitude (opsional)</label>
+                                    <input id="latitude" type="number" step="any" min="-90" max="90" bind:value={form.latitude} placeholder="-8.6500000" class="w-full px-4 py-2.5 border rounded-xl bg-gray-50 text-sm" />
+                                </div>
+                                <div>
+                                    <label for="longitude" class="block text-xs font-bold text-dark mb-1.5">Longitude (opsional)</label>
+                                    <input id="longitude" type="number" step="any" min="-180" max="180" bind:value={form.longitude} placeholder="115.2200000" class="w-full px-4 py-2.5 border rounded-xl bg-gray-50 text-sm" />
                                 </div>
                             </div>
                         </div>

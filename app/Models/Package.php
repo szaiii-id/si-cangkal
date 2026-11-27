@@ -86,6 +86,8 @@ class Package extends Model
             'harga_per_orang' => 'decimal:2',
             'harga_per_rombongan' => 'decimal:2',
             'max_peserta' => 'integer',
+            'latitude' => 'decimal:7',
+            'longitude' => 'decimal:7',
             'deleted_at' => 'datetime',
         ];
     }

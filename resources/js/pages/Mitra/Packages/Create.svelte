@@ -20,6 +20,8 @@
         harga_per_rombongan: 0,
         max_peserta: 0,
         timezone: 'Asia/Makassar',
+        latitude: '',
+        longitude: '',
     });
 
     let coverFiles = $state<File[]>([]);
@@ -81,6 +83,8 @@
         }
 
         formData.append('timezone', form.timezone);
+        formData.append('latitude', form.latitude);
+        formData.append('longitude', form.longitude);
         if (coverFiles.length > 0) {
             formData.append('cover_image', coverFiles[0]);
         }
@@ -183,6 +187,14 @@
                                 <select id="timezone" bind:value={form.timezone} class="w-full px-4 py-2.5 border rounded-xl bg-gray-50 text-sm focus:ring-2 focus:ring-pink/20 focus:border-pink focus:bg-white">
                                     {#each timezoneOptions as opt}<option value={opt.value}>{opt.label}</option>{/each}
                                 </select>
+                            </div>
+                            <div>
+                                <label for="latitude" class="block text-xs font-bold text-dark mb-1.5">Latitude (opsional)</label>
+                                <input id="latitude" type="number" step="any" min="-90" max="90" bind:value={form.latitude} placeholder="-8.6500000" class="w-full px-4 py-2.5 border rounded-xl bg-gray-50 text-sm focus:ring-2 focus:ring-pink/20 focus:border-pink focus:bg-white" />
+                            </div>
+                            <div>
+                                <label for="longitude" class="block text-xs font-bold text-dark mb-1.5">Longitude (opsional)</label>
+                                <input id="longitude" type="number" step="any" min="-180" max="180" bind:value={form.longitude} placeholder="115.2200000" class="w-full px-4 py-2.5 border rounded-xl bg-gray-50 text-sm focus:ring-2 focus:ring-pink/20 focus:border-pink focus:bg-white" />
                             </div>
                         </div>
                     </div>

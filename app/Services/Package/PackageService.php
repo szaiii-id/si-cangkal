@@ -104,6 +104,8 @@ final class PackageService
                 'harga_per_rombongan' => $data['harga_per_rombongan'] ?? null,
                 'max_peserta' => $data['max_peserta'] ?? null,
                 'timezone' => $data['timezone'],
+                'latitude' => $data['latitude'] ?? null,
+                'longitude' => $data['longitude'] ?? null,
                 'cover_image' => $coverPath,
                 'status' => PackageStatus::DRAFT->value,
             ]);
@@ -140,6 +142,8 @@ final class PackageService
                 'harga_per_rombongan' => $data['harga_per_rombongan'] ?? null,
                 'max_peserta' => $data['max_peserta'] ?? null,
                 'timezone' => $data['timezone'],
+                'latitude' => $data['latitude'] ?? null,
+                'longitude' => $data['longitude'] ?? null,
             ];
 
             if ($package->nama !== $data['nama']) {

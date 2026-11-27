@@ -493,6 +493,8 @@ Route::prefix('_test')
                 'harga_per_rombongan' => ['nullable', 'numeric', 'min:0'],
                 'max_peserta' => ['nullable', 'integer', 'min:1', 'max:1000'],
                 'timezone' => ['nullable', 'string', 'max:50'],
+                'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+                'longitude' => ['nullable', 'numeric', 'between:-180,180'],
                 'days' => ['nullable', 'array'],
                 'days.*.judul' => ['required_with:days', 'string', 'max:255'],
                 'days.*.deskripsi' => ['nullable', 'string', 'max:5000'],
@@ -540,6 +542,8 @@ Route::prefix('_test')
                     'harga_per_rombongan' => $validated['harga_per_rombongan'] ?? null,
                     'max_peserta' => $validated['max_peserta'] ?? null,
                     'timezone' => $validated['timezone'] ?? User::DEFAULT_TIMEZONE,
+                    'latitude' => $validated['latitude'] ?? null,
+                    'longitude' => $validated['longitude'] ?? null,
                     'status' => $validated['status'] ?? PackageStatus::DRAFT->value,
                 ]);
 

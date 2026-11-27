@@ -66,6 +66,7 @@
             [pkg.nama, mitraProfile?.kota, mitraProfile?.provinsi]
                 .filter(Boolean)
                 .join(', '),
+            { latitude: pkg.latitude, longitude: pkg.longitude },
         ),
     );
 </script>

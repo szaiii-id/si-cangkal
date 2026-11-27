@@ -148,6 +148,8 @@ class TripService
             'durasi_hari' => $package->durasi_hari,
             'durasi_malam' => $package->durasi_malam,
             'timezone' => $package->timezone,
+            'latitude' => $package->latitude !== null ? (string) $package->latitude : null,
+            'longitude' => $package->longitude !== null ? (string) $package->longitude : null,
             'days' => $package->days->map(fn (PackageDay $day): array => [
                 'hari_ke' => $day->hari_ke,
                 'judul' => $day->judul,

@@ -50,6 +50,8 @@ export type BookingResource = {
         kode: string;
         slug: string;
         timezone: string;
+        latitude: string | null;
+        longitude: string | null;
         harga_per_orang: string;
         harga_per_rombongan: string | null;
         durasi_hari: number;

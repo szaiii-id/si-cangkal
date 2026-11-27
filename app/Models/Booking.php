@@ -51,6 +51,7 @@ class Booking extends Model
 {
     /** @use HasFactory<BookingFactory> */
     use HasFactory;
+
     use HasUuids;
     use SoftDeletes;
 
