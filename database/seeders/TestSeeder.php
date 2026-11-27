@@ -264,8 +264,6 @@ class TestSeeder extends Seeder
                 'tanggal_selesai' => now()->addDays(15)->format('Y-m-d'),
                 'status' => TripStatus::SCHEDULED,
                 'timezone' => 'Asia/Makassar',
-                'latitude' => '-8.6500000',
-                'longitude' => '115.2200000',
             ]);
 
         TripDay::factory()->create([
@@ -311,8 +309,6 @@ class TestSeeder extends Seeder
                 'tanggal_selesai' => now()->subDays(5)->format('Y-m-d'),
                 'status' => TripStatus::COMPLETED,
                 'timezone' => 'Asia/Makassar',
-                'latitude' => '-8.6500000',
-                'longitude' => '115.2200000',
             ]);
 
         // Review contoh — lewat ReviewSeeder agar aturannya identik
