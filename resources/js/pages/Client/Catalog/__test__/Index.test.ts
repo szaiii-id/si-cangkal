@@ -558,3 +558,13 @@ describe('rating pada kartu katalog', () => {
         ).not.toBeInTheDocument();
     });
 });
+
+it('label jumlah ulasan tidak boleh terpotong pada kartu sempit', () => {
+    renderPage(makePackages(SAMPLE_PACKAGES), DEFAULT_FILTERS, {
+        '1': { rata_rata: 4.5, jumlah: 2 },
+    });
+
+    expect(screen.getByText('(2 ulasan)').className).toContain(
+        'whitespace-nowrap',
+    );
+});
