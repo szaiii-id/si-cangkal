@@ -222,7 +222,7 @@ test.describe('Client Booking — Create & Listing Flow', () => {
 
             await bookingPage.submitBooking(pkg.package_id);
 
-            await expect(page).toHaveURL(/\/client\/bookings\/\d+$/);
+            await expect(page).toHaveURL(/\/client\/bookings\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
             await expect(
                 SEL.LAYOUT.toastRegion(page).getByText(
                     /Booking berhasil dibuat/i,

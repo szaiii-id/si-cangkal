@@ -83,7 +83,7 @@ export class MitraBookingPage {
     get proofImage(): Locator {
         // aria-label={`Lihat gambar bukti transfer booking ${bookingId}`}
         return this.page.getByRole('img', {
-            name: /Bukti Transfer untuk Booking #\d+/i,
+            name: /Bukti Transfer untuk Booking #[0-9a-f-]{36}/i,
         });
     }
 
