@@ -141,44 +141,15 @@
             </span>
         </div>
 
-        <!-- RINGKASAN & DAFTAR ULASAN -->
-        <section class="mb-8 bg-white rounded-2xl p-5 border border-gray-100 shadow-sm" aria-labelledby="ulasan-heading">
-            <div class="flex flex-wrap items-center gap-x-3 gap-y-2 pb-3 border-b border-gray-100">
-                <StarRating value={ratingBulat} readonly />
-                <span class="text-lg font-extrabold text-dark">{formatRataRata(reviewStats.rata_rata)}</span>
-                <span class="text-xs font-medium text-gray-600">
-                    · {reviewStats.jumlah} ulasan
-                </span>
-            </div>
-
-            <h3 id="ulasan-heading" class="text-base font-extrabold text-dark mt-4 mb-1">Ulasan Client</h3>
-
-            {#if reviewStats.jumlah === 0 || reviews.data.length === 0}
-                <p class="text-xs text-gray-500 italic">Belum ada ulasan untuk paket ini.</p>
-            {:else}
-                <div class="divide-y divide-gray-100">
-                    {#each reviews.data as review (review.id)}
-                        <article class="py-4 first:pt-2 last:pb-0">
-                            <div class="flex items-start gap-3">
-                                <div class="w-8 h-8 rounded-full bg-pink/10 text-pink-text flex items-center justify-center font-extrabold text-sm shrink-0" aria-hidden="true">
-                                    {(review.client?.nama ?? '?').charAt(0).toUpperCase()}
-                                </div>
-                                <div class="flex-1 min-w-0">
-                                    <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
-                                        <p class="text-xs font-extrabold text-dark">{review.client?.nama ?? 'Client'}</p>
-                                        <StarRating value={review.rating} readonly size="sm" />
-                                        <time datetime={review.created_at} class="text-[10px] text-gray-500">
-                                            {formatDateTime(review.created_at, viewerTimezone)}
-                                        </time>
-                                    </div>
-                                    <p class="text-xs text-gray-600 leading-relaxed mt-1.5 whitespace-pre-line">{review.komentar}</p>
-                                </div>
-                            </div>
-                        </article>
-                    {/each}
-                </div>
-            {/if}
-        </section>
+        <!-- RINGKASAN ULASAN -->
+        <div class="mb-8 flex flex-wrap items-center gap-x-3 gap-y-2" aria-label="Ringkasan ulasan">
+            <StarRating value={ratingBulat} readonly />
+            <span class="text-lg font-extrabold text-dark">{formatRataRata(reviewStats.rata_rata)}</span>
+            <span class="text-xs font-medium text-gray-600">
+                · {reviewStats.jumlah} ulasan
+            </span>
+            <a href="#ulasan" class="text-xs font-bold text-pink-text hover:underline">Lihat ulasan</a>
+        </div>
 
         <!-- Deskripsi -->
         {#if pkg.deskripsi}
@@ -371,6 +342,37 @@
                     </div>
                 </section>
             {/if}
+
+        <!-- DAFTAR ULASAN -->
+        <section id="ulasan" class="mb-8 bg-white rounded-2xl p-5 border border-gray-100 shadow-sm scroll-mt-24" aria-labelledby="ulasan-heading">
+            <h3 id="ulasan-heading" class="text-base font-extrabold text-dark mt-4 mb-1">Ulasan Client</h3>
+
+            {#if reviewStats.jumlah === 0 || reviews.data.length === 0}
+                <p class="text-xs text-gray-500 italic">Belum ada ulasan untuk paket ini.</p>
+            {:else}
+                <div class="divide-y divide-gray-100">
+                    {#each reviews.data as review (review.id)}
+                        <article class="py-4 first:pt-2 last:pb-0">
+                            <div class="flex items-start gap-3">
+                                <div class="w-8 h-8 rounded-full bg-pink/10 text-pink-text flex items-center justify-center font-extrabold text-sm shrink-0" aria-hidden="true">
+                                    {(review.client?.nama ?? '?').charAt(0).toUpperCase()}
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                        <p class="text-xs font-extrabold text-dark">{review.client?.nama ?? 'Client'}</p>
+                                        <StarRating value={review.rating} readonly size="sm" />
+                                        <time datetime={review.created_at} class="text-[10px] text-gray-500">
+                                            {formatDateTime(review.created_at, viewerTimezone)}
+                                        </time>
+                                    </div>
+                                    <p class="text-xs text-gray-600 leading-relaxed mt-1.5 whitespace-pre-line">{review.komentar}</p>
+                                </div>
+                            </div>
+                        </article>
+                    {/each}
+                </div>
+            {/if}
+        </section>
 
             <!-- CARD HARGA & TOMBOL BOOKING -->
             <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
