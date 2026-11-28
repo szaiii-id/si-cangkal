@@ -153,9 +153,12 @@ test.describe('Dashboard Notifications — Mitra & Admin (/notifications)', () =
                     { nama: `Peserta Notif Mitra ${i}` },
                 ]);
                 await SEL.CLIENT.booking.submit(page).click();
-                await page.waitForURL(/\/client\/bookings\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/, {
-                    timeout: 20_000,
-                });
+                await page.waitForURL(
+                    /\/client\/bookings\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/,
+                    {
+                        timeout: 20_000,
+                    },
+                );
             }
 
             // 3. Login sebagai mitra & buka /notifications
@@ -186,7 +189,9 @@ test.describe('Dashboard Notifications — Mitra & Admin (/notifications)', () =
                 .first();
             await firstUnreadItem.click();
 
-            await expect(page).toHaveURL(/\/mitra\/bookings\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/);
+            await expect(page).toHaveURL(
+                /\/mitra\/bookings\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/,
+            );
 
             // 5. Kembali ke /notifications -> sisa 1 belum dibaca, lalu klik "Tandai Semua Dibaca"
             await page.goto('/notifications');

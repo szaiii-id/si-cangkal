@@ -64,7 +64,9 @@ import { VALID_JPEG_BUFFER } from '../fixtures/files';
  */
 function extractBookingId(page: Page): string {
     const url = page.url();
-    const match = url.match(/\/client\/bookings\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:[/?#]|$)/);
+    const match = url.match(
+        /\/client\/bookings\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:[/?#]|$)/,
+    );
 
     if (match === null) {
         throw new Error(
@@ -156,9 +158,12 @@ test.describe.serial('E2E Flow — Booking Confirmation', () => {
         await bookingPage.submitBooking(packageId);
 
         // --- Tunggu redirect ke halaman show (anti race Inertia) ---
-        await page.waitForURL(/\/client\/bookings\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/, {
-            timeout: 15_000,
-        });
+        await page.waitForURL(
+            /\/client\/bookings\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/,
+            {
+                timeout: 15_000,
+            },
+        );
         await page.waitForLoadState('networkidle', { timeout: 15_000 });
 
         // --- Extract state untuk step berikutnya ---

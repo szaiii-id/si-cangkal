@@ -308,9 +308,12 @@ test.describe('Mitra — Pesanan Manual (Manual Booking)', () => {
             await page.locator('#participant-catatan-1').fill('Vegetarian');
 
             await Promise.all([
-                page.waitForURL(/\/mitra\/bookings\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/, {
-                    timeout: 20_000,
-                }),
+                page.waitForURL(
+                    /\/mitra\/bookings\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+                    {
+                        timeout: 20_000,
+                    },
+                ),
                 page
                     .getByRole('button', { name: /Buat Pesanan Manual/i })
                     .click(),
@@ -357,15 +360,22 @@ test.describe('Mitra — Pesanan Manual (Manual Booking)', () => {
                 .fill(SEED_USERS.client.name);
 
             await Promise.all([
-                page.waitForURL(/\/mitra\/bookings\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/, {
-                    timeout: 20_000,
-                }),
+                page.waitForURL(
+                    /\/mitra\/bookings\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+                    {
+                        timeout: 20_000,
+                    },
+                ),
                 page
                     .getByRole('button', { name: /Buat Pesanan Manual/i })
                     .click(),
             ]);
 
-            const match = page.url().match(/\/mitra\/bookings\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/);
+            const match = page
+                .url()
+                .match(
+                    /\/mitra\/bookings\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/,
+                );
             expect(match).not.toBeNull();
             const createdBookingId = match![1];
 
