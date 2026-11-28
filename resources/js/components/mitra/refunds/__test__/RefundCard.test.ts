@@ -31,8 +31,8 @@ type RefundItem = {
 
 const createMockRefund = (overrides: Partial<RefundItem> = {}): any => ({
     id: 1,
-    booking_id: 100,
-    mitra_id: 1,
+    booking_id: '100',
+    mitra_id: '1',
     amount: '500000',
     currency: 'IDR',
     reason: 'CANCELLATION',
@@ -48,7 +48,7 @@ const createMockRefund = (overrides: Partial<RefundItem> = {}): any => ({
         kode: 'BK-123',
         total_harga: '1000000',
         status: 'cancelled',
-        client: { id: 1, name: 'Budi', email: 'budi@test.com' },
+        client: { id: '1', name: 'Budi', email: 'budi@test.com' },
     },
     mitra: null,
     ...overrides,

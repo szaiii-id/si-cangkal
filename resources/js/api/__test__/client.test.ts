@@ -76,7 +76,7 @@ describe('Client API Wrapper', () => {
 
         it('cancelBooking() memanggil POST /client/bookings/{id}/cancel', () => {
             const data = { reason: 'Berubah pikiran' };
-            cancelBooking(42, data);
+            cancelBooking('42', data);
             expect(router.post).toHaveBeenCalledWith(
                 '/client/bookings/42/cancel',
                 data,
@@ -85,7 +85,7 @@ describe('Client API Wrapper', () => {
         });
 
         it('createXenditCharge() memanggil POST /client/bookings/{id}/pay', () => {
-            createXenditCharge(42);
+            createXenditCharge('42');
             expect(router.post).toHaveBeenCalledWith(
                 '/client/bookings/42/pay',
                 {},
@@ -95,7 +95,7 @@ describe('Client API Wrapper', () => {
 
         it('createReview() memanggil POST /client/bookings/{id}/review', () => {
             const data = { rating: 4, komentar: 'Perjalanan menyenangkan.' };
-            createReview(42, data);
+            createReview('42', data);
             expect(router.post).toHaveBeenCalledWith(
                 '/client/bookings/42/review',
                 data,
@@ -105,7 +105,7 @@ describe('Client API Wrapper', () => {
 
         it('uploadProof() memanggil POST /client/bookings/{id}/upload-proof', () => {
             const formData = { file: 'proof.jpg' };
-            uploadProof(42, formData);
+            uploadProof('42', formData);
             expect(router.post).toHaveBeenCalledWith(
                 '/client/bookings/42/upload-proof',
                 formData,
@@ -119,7 +119,7 @@ describe('Client API Wrapper', () => {
     // ==========================================
     describe('URL Builders (Pure String Logic)', () => {
         it('getPaymentProofUrl() menghasilkan URL yang benar', () => {
-            expect(getPaymentProofUrl(42)).toBe(
+            expect(getPaymentProofUrl('42')).toBe(
                 '/client/bookings/42/payment-proof',
             );
         });
@@ -132,10 +132,10 @@ describe('Client API Wrapper', () => {
         });
 
         it('URL Builder menangani ID ekstrem (angka besar & nol)', () => {
-            expect(getPaymentProofUrl(0)).toBe(
+            expect(getPaymentProofUrl('0')).toBe(
                 '/client/bookings/0/payment-proof',
             );
-            expect(getPaymentProofUrl(9999999)).toBe(
+            expect(getPaymentProofUrl('9999999')).toBe(
                 '/client/bookings/9999999/payment-proof',
             );
         });
@@ -191,7 +191,7 @@ describe('Client API Wrapper', () => {
         });
 
         it('cancelBooking() hanya dengan bookingId menggunakan payload default {}', () => {
-            cancelBooking(42);
+            cancelBooking('42');
             expect(router.post).toHaveBeenCalledWith(
                 '/client/bookings/42/cancel',
                 {},
@@ -225,7 +225,7 @@ describe('Client API Wrapper', () => {
         });
 
         it('URL Builders tidak memanggil router sama sekali', () => {
-            getPaymentProofUrl(1);
+            getPaymentProofUrl('1');
             getETicketDownloadUrl('abc');
             expect(router.get).not.toHaveBeenCalled();
             expect(router.post).not.toHaveBeenCalled();

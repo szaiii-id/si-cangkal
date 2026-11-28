@@ -23,6 +23,26 @@ describe('googleMapsUrl', () => {
         );
     });
 
+    it('memakai koordinat bila tersedia', () => {
+        expect(
+            googleMapsUrl('Paket Bali', {
+                latitude: '-8.6500000',
+                longitude: '115.2200000',
+            }),
+        ).toBe(
+            'https://www.google.com/maps/search/?api=1&query=-8.6500000%2C115.2200000',
+        );
+    });
+
+    it('jatuh ke pencarian teks bila koordinat tidak lengkap', () => {
+        expect(
+            googleMapsUrl('Paket Bali', {
+                latitude: '-8.6500000',
+                longitude: null,
+            }),
+        ).toContain('query=Paket%20Bali');
+    });
+
     it('mengencode karakter khusus', () => {
         expect(googleMapsUrl('Hotel A & B')).toContain('Hotel%20A%20%26%20B');
     });

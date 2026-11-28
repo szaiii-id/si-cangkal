@@ -8,7 +8,7 @@ import type { BookingEloquent } from './booking';
  */
 export type AppNotification = {
     id: string;
-    user_id: number;
+    user_id: string;
     tipe: string;
     judul: string;
     pesan: string;
@@ -27,7 +27,7 @@ export type ETicket = {
     id: number;
     uuid: string;
     trip_id: number;
-    booking_id: number;
+    booking_id: string;
     qr_code: string;
     pdf_path: string;
     generated_at: string | null;

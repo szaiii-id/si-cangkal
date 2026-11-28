@@ -1,6 +1,6 @@
 export type MitraBankAccount = {
     id: number;
-    user_id: number;
+    user_id: string;
     tipe: 'bank' | 'ewallet';
     nama_penyedia: string;
     nomor_rekening: string;

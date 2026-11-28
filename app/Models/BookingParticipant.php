@@ -12,7 +12,7 @@ use Illuminate\Support\Carbon;
  * Model BookingParticipant — data peserta dalam sebuah booking.
  *
  * @property int $id
- * @property int $booking_id
+ * @property string $booking_id
  * @property string $nama
  * @property int|null $umur
  * @property string|null $no_hp

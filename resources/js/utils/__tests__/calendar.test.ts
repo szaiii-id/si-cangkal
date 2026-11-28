@@ -23,8 +23,36 @@ describe('buildIcs', () => {
     it('memakai waktu UTC dalam format ICS', () => {
         const ics = buildIcs(event);
 
-        expect(ics).toContain('DTSTART:20261126T010000Z');
-        expect(ics).toContain('DTEND:20261128T100000Z');
+        expect(ics).toContain('DTSTART;VALUE=DATE:20261126');
+        expect(ics).toContain('DTEND;VALUE=DATE:20261128');
+    });
+
+    it('UID stabil dari UUID booking dan menyertakan koordinat', () => {
+        const ics = buildIcs({
+            ...event,
+            uuid: '00000000-0000-4000-8000-000000000001',
+            latitude: '-8.6500000',
+            longitude: '115.2200000',
+        });
+
+        expect(ics).toContain(
+            'UID:booking-00000000-0000-4000-8000-000000000001@si-cangkal',
+        );
+        expect(ics).toContain('GEO:-8.6500000;115.2200000');
+        expect(ics.replace(/\r\n /g, '')).toContain(
+            'URL:https://www.google.com/maps/search/?api=1&query=-8.6500000%2C115.2200000',
+        );
+    });
+
+    it('tidak menyertakan GEO bila koordinat tidak ada', () => {
+        expect(buildIcs(event)).not.toContain('GEO:');
+    });
+
+    it('memakai CRLF dan melipat baris panjang', () => {
+        const ics = buildIcs({ ...event, description: 'x'.repeat(200) });
+
+        expect(ics).toContain('\r\n');
+        expect(ics.split('\r\n').every((line) => line.length <= 75)).toBe(true);
     });
 
     it('meng-escape koma, titik koma, dan newline', () => {

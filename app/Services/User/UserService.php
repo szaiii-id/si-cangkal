@@ -240,7 +240,7 @@ class UserService
      *
      * @throws ValidationException
      */
-    protected function validateUnique(array $data, ?int $exceptUserId = null): void
+    protected function validateUnique(array $data, ?string $exceptUserId = null): void
     {
         if (isset($data['email']) && $this->userRepository->emailExists($data['email'], $exceptUserId)) {
             throw ValidationException::withMessages([

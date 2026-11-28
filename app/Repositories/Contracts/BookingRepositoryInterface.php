@@ -16,7 +16,7 @@ interface BookingRepositoryInterface
      *     search?: string|null,
      *     status?: string|null,
      *     package_id?: int|null,
-     *     user_id?: int|null,
+     *     user_id?: string|null,
      *     tanggal_dari?: string|null,
      *     tanggal_sampai?: string|null,
      *     per_page?: int,
@@ -38,7 +38,7 @@ interface BookingRepositoryInterface
     /**
      * Cari booking berdasarkan ID.
      */
-    public function findById(int $id): ?Booking;
+    public function findById(string $id): ?Booking;
 
     /**
      * Cari booking berdasarkan ID dengan row lock (SELECT ... FOR UPDATE).
@@ -47,7 +47,7 @@ interface BookingRepositoryInterface
      * pembayaran, double refund, dan auto-expire yang menimpa booking
      * yang baru dibayar.
      */
-    public function findByIdForUpdate(int $id): ?Booking;
+    public function findByIdForUpdate(string $id): ?Booking;
 
     /**
      * Cari booking berdasarkan kode (BKG-2026-001).
@@ -76,7 +76,7 @@ interface BookingRepositoryInterface
     /**
      * Cek apakah kode booking sudah dipakai.
      */
-    public function kodeExists(string $kode, ?int $exceptId = null): bool;
+    public function kodeExists(string $kode, ?string $exceptId = null): bool;
 
     /**
      * Generate kode booking berikutnya untuk tahun tertentu.

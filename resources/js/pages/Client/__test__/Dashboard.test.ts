@@ -23,7 +23,7 @@ import Dashboard from '../Dashboard.svelte';
 const mockPage = vi.hoisted(() => ({
     props: {
         auth: {
-            user: { id: 1, name: 'Budi', role: 'client' },
+            user: { id: '1', name: 'Budi', role: 'client' },
         },
     },
 }));
@@ -94,7 +94,9 @@ const renderPage = (props = {}) =>
 describe('Client Dashboard (Beranda)', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        mockPage.props.auth = { user: { id: 1, name: 'Budi', role: 'client' } };
+        mockPage.props.auth = {
+            user: { id: '1', name: 'Budi', role: 'client' },
+        };
     });
 
     // ----------------------------------------------------------

@@ -80,14 +80,14 @@ function makeRefundMockForApproval(array $attrs = [], $booking = null, $client =
     $refund = Mockery::mock(Refund::class)->makePartial();
     $refund->forceFill(array_merge([
         'id' => 1,
-        'booking_id' => 10,
-        'mitra_id' => 99,
+        'booking_id' => '00000000-0000-4000-8000-000000000110',
+        'mitra_id' => '00000000-0000-4000-8000-000000000099',
         'amount' => '500000.00',
         'currency' => 'IDR',
         'reason' => RefundReason::CANCELLATION,
         'status' => RefundStatus::PENDING,
         'catatan' => null,
-        'initiated_by_mitra' => 99,
+        'initiated_by_mitra' => '00000000-0000-4000-8000-000000000099',
     ], $attrs));
 
     if ($booking !== null) {
@@ -105,7 +105,7 @@ function makeRefundMockForApproval(array $attrs = [], $booking = null, $client =
 
 describe('approve — status guard', function () {
     it('status bukan PENDING → ValidationException', function () {
-        $mitra = makeUser(['id' => 99]);
+        $mitra = makeUser(['id' => '00000000-0000-4000-8000-000000000099']);
         $refund = makeRefundMockForApproval(['status' => RefundStatus::SUCCEEDED]);
 
         expect(fn () => $this->service->approve($refund, $mitra, null))
@@ -113,7 +113,7 @@ describe('approve — status guard', function () {
     });
 
     it('status CANCELLED → ValidationException', function () {
-        $mitra = makeUser(['id' => 99]);
+        $mitra = makeUser(['id' => '00000000-0000-4000-8000-000000000099']);
         $refund = makeRefundMockForApproval(['status' => RefundStatus::CANCELLED]);
 
         expect(fn () => $this->service->approve($refund, $mitra, null))
@@ -123,16 +123,16 @@ describe('approve — status guard', function () {
 
 describe('approve — ownership guard', function () {
     it('mitra bukan pemilik refund → ValidationException', function () {
-        $otherMitra = makeUser(['id' => 88]);
-        $refund = makeRefundMockForApproval(['mitra_id' => 99]);
+        $otherMitra = makeUser(['id' => '00000000-0000-4000-8000-000000000088']);
+        $refund = makeRefundMockForApproval(['mitra_id' => '00000000-0000-4000-8000-000000000099']);
 
         expect(fn () => $this->service->approve($refund, $otherMitra, null))
             ->toThrow(ValidationException::class);
     });
 
     it('booking null → ValidationException', function () {
-        $mitra = makeUser(['id' => 99]);
-        $refund = makeRefundMockForApproval(['mitra_id' => 99]);
+        $mitra = makeUser(['id' => '00000000-0000-4000-8000-000000000099']);
+        $refund = makeRefundMockForApproval(['mitra_id' => '00000000-0000-4000-8000-000000000099']);
         $refund->setRelation('booking', null);
 
         expect(fn () => $this->service->approve($refund, $mitra, null))
@@ -140,8 +140,8 @@ describe('approve — ownership guard', function () {
     });
 
     it('booking milik mitra lain → ValidationException', function () {
-        $mitra = makeUser(['id' => 99]);
-        $booking = makeBookingMock(['id' => 10, 'mitra_id' => 88]);
+        $mitra = makeUser(['id' => '00000000-0000-4000-8000-000000000099']);
+        $booking = makeBookingMock(['id' => '00000000-0000-4000-8000-000000000110', 'mitra_id' => '00000000-0000-4000-8000-000000000088']);
         $refund = makeRefundMockForApproval(['mitra_id' => 99], $booking);
 
         expect(fn () => $this->service->approve($refund, $mitra, null))
@@ -157,7 +157,7 @@ describe('approve — ownership guard', function () {
 
 describe('reject — status guard', function () {
     it('status bukan PENDING → ValidationException', function () {
-        $mitra = makeUser(['id' => 99]);
+        $mitra = makeUser(['id' => '00000000-0000-4000-8000-000000000099']);
         $refund = makeRefundMockForApproval(['status' => RefundStatus::SUCCEEDED]);
 
         expect(fn () => $this->service->reject($refund, $mitra, 'Alasan'))
@@ -167,8 +167,8 @@ describe('reject — status guard', function () {
 
 describe('reject — ownership guard', function () {
     it('mitra bukan pemilik refund → ValidationException', function () {
-        $otherMitra = makeUser(['id' => 88]);
-        $refund = makeRefundMockForApproval(['mitra_id' => 99]);
+        $otherMitra = makeUser(['id' => '00000000-0000-4000-8000-000000000088']);
+        $refund = makeRefundMockForApproval(['mitra_id' => '00000000-0000-4000-8000-000000000099']);
 
         expect(fn () => $this->service->reject($refund, $otherMitra, 'Alasan'))
             ->toThrow(ValidationException::class);
@@ -183,14 +183,14 @@ describe('reject — ownership guard', function () {
 
 describe('reject — flow', function () {
     it('sukses → $refund->update status CANCELLED + notif client', function () {
-        $mitra = makeUser(['id' => 99]);
-        $client = makeUser(['id' => 10]);
+        $mitra = makeUser(['id' => '00000000-0000-4000-8000-000000000099']);
+        $client = makeUser(['id' => '00000000-0000-4000-8000-000000000001']);
 
-        $booking = makeBookingMock(['id' => 10, 'mitra_id' => 99]);
+        $booking = makeBookingMock(['id' => '00000000-0000-4000-8000-000000000110', 'mitra_id' => '00000000-0000-4000-8000-000000000099']);
         $booking->setRelation('client', $client);
 
         $refund = makeRefundMockForApproval(
-            ['id' => 1, 'booking_id' => 10, 'mitra_id' => 99, 'status' => RefundStatus::PENDING, 'catatan' => null],
+            ['id' => 1, 'booking_id' => '00000000-0000-4000-8000-000000000110', 'mitra_id' => '00000000-0000-4000-8000-000000000099', 'status' => RefundStatus::PENDING, 'catatan' => null],
             $booking,
         );
 

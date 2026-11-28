@@ -27,7 +27,12 @@ vi.mock('@/api/auth', () => ({
 const mockPage = vi.hoisted(() => ({
     props: {
         auth: {
-            user: { id: 1, name: 'Admin', role: 'admin', has_fcm_token: true },
+            user: {
+                id: '1',
+                name: 'Admin',
+                role: 'admin',
+                has_fcm_token: true,
+            },
         },
         flash: {},
         unread_notifications: 1,

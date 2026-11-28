@@ -40,6 +40,8 @@ class PackageFactory extends Factory
             'harga_per_rombongan' => null, // Default: per orang
             'max_peserta' => null,         // Default: per orang (nullable)
             'timezone' => User::DEFAULT_TIMEZONE,
+            'latitude' => '-8.6500000',
+            'longitude' => '115.2200000',
             'cover_image' => null,
             'status' => PackageStatus::DRAFT->value,
         ];

@@ -7,7 +7,7 @@
         maxWidth = 'max-w-sm',
         emptyMessage = 'Client belum mengirim bukti transfer.',
     }: {
-        bookingId: number;
+        bookingId: string;
         role: 'client' | 'mitra' | 'admin';
         hasProof: boolean;
         showLinkToNewTab?: boolean;

@@ -25,7 +25,7 @@ describe('UploadPaymentProofCard Component', () => {
     // ==========================================
     describe('Rendering', () => {
         it('harus merender judul dan area upload', () => {
-            render(UploadPaymentProofCard, { props: { bookingId: 1 } });
+            render(UploadPaymentProofCard, { props: { bookingId: '1' } });
 
             expect(
                 screen.getByText('Kirim Bukti Transfer'),
@@ -41,7 +41,7 @@ describe('UploadPaymentProofCard Component', () => {
     // ==========================================
     describe('File Validation', () => {
         it('harus menampilkan error jika file terlalu besar (>5MB)', async () => {
-            render(UploadPaymentProofCard, { props: { bookingId: 1 } });
+            render(UploadPaymentProofCard, { props: { bookingId: '1' } });
 
             const label = screen
                 .getByLabelText(/Klik untuk memilih file/i)
@@ -65,7 +65,7 @@ describe('UploadPaymentProofCard Component', () => {
         });
 
         it('harus menampilkan error jika format file tidak didukung', async () => {
-            render(UploadPaymentProofCard, { props: { bookingId: 1 } });
+            render(UploadPaymentProofCard, { props: { bookingId: '1' } });
 
             const label = screen
                 .getByLabelText(/Klik untuk memilih file/i)
@@ -95,7 +95,7 @@ describe('UploadPaymentProofCard Component', () => {
     // ==========================================
     describe('Upload', () => {
         it('harus memanggil uploadPaymentProof saat tombol "Kirim Bukti" diklik', async () => {
-            render(UploadPaymentProofCard, { props: { bookingId: 1 } });
+            render(UploadPaymentProofCard, { props: { bookingId: '1' } });
 
             const label = screen
                 .getByLabelText(/Klik untuk memilih file/i)
@@ -116,7 +116,7 @@ describe('UploadPaymentProofCard Component', () => {
             await fireEvent.click(uploadBtn);
 
             expect(uploadPaymentProof).toHaveBeenCalledWith(
-                1,
+                '1',
                 expect.any(FormData),
                 expect.any(Object),
             );
@@ -128,7 +128,7 @@ describe('UploadPaymentProofCard Component', () => {
     // ==========================================
     describe('Accessibility', () => {
         it('pesan error harus memiliki role="alert"', async () => {
-            render(UploadPaymentProofCard, { props: { bookingId: 1 } });
+            render(UploadPaymentProofCard, { props: { bookingId: '1' } });
 
             const label = screen
                 .getByLabelText(/Klik untuk memilih file/i)

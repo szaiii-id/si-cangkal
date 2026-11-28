@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('mitra_bank_accounts', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
+            $table->foreignUuid('user_id')->constrained('users')->cascadeOnDelete();
 
             $table->string('tipe', 20);
             $table->string('nama_penyedia', 50);

@@ -22,7 +22,7 @@ import Dashboard from '../Dashboard.svelte';
 const mockPage = vi.hoisted(() => ({
     props: {
         auth: {
-            user: { id: 1, name: 'Mitra Jaya', role: 'mitra' },
+            user: { id: '1', name: 'Mitra Jaya', role: 'mitra' },
         },
     },
 }));
@@ -119,7 +119,7 @@ describe('Mitra Dashboard', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mockPage.props.auth = {
-            user: { id: 1, name: 'Mitra Jaya', role: 'mitra' },
+            user: { id: '1', name: 'Mitra Jaya', role: 'mitra' },
         };
     });
 

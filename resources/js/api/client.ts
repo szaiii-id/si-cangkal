@@ -35,13 +35,13 @@ export const createBooking = (
 ) => router.post(`/client/bookings/${packageId}`, data, options);
 
 export const cancelBooking = (
-    bookingId: number,
+    bookingId: string,
     data: RequestPayload = {},
     options?: ClientOptions,
 ) => router.post(`/client/bookings/${bookingId}/cancel`, data, options);
 
 export const uploadProof = (
-    bookingId: number,
+    bookingId: string,
     data: RequestPayload,
     options?: ClientOptions,
 ) => router.post(`/client/bookings/${bookingId}/upload-proof`, data, options);
@@ -52,7 +52,7 @@ export const uploadProof = (
  * checkout Xendit secara otomatis sebagai hard redirect.
  */
 export const createXenditCharge = (
-    bookingId: number,
+    bookingId: string,
     options?: ClientOptions,
 ) => router.post(`/client/bookings/${bookingId}/pay`, {}, options);
 
@@ -64,7 +64,7 @@ export const createXenditCharge = (
  * Backend: `Client\ReviewController@store`.
  */
 export const createReview = (
-    bookingId: number,
+    bookingId: string,
     data: RequestPayload,
     options?: ClientOptions,
 ) => router.post(`/client/bookings/${bookingId}/review`, data, options);
@@ -73,7 +73,7 @@ export const createReview = (
  * URL untuk mengunduh bukti transfer (digunakan di PaymentProofPreview).
  * Backend: `Client\BookingController@downloadProof`.
  */
-export const getPaymentProofUrl = (bookingId: number): string =>
+export const getPaymentProofUrl = (bookingId: string): string =>
     `/client/bookings/${bookingId}/payment-proof`;
 
 /**

@@ -6,7 +6,7 @@ import MitraTable from '../MitraTable.svelte';
 // MOCK DATA
 // ==========================================
 const createMockMitra = (overrides: Record<string, unknown> = {}) => ({
-    id: 1,
+    id: '1',
     name: 'Mitra Travel',
     email: 'mitra@test.com',
     total_trip: 10,
@@ -32,8 +32,8 @@ describe('MitraTable Component', () => {
             render(MitraTable, {
                 props: {
                     mitras: [
-                        createMockMitra({ id: 1, name: 'Mitra A' }),
-                        createMockMitra({ id: 2, name: 'Mitra B' }),
+                        createMockMitra({ id: '1', name: 'Mitra A' }),
+                        createMockMitra({ id: '2', name: 'Mitra B' }),
                     ],
                 },
             });

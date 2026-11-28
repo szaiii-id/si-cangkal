@@ -172,7 +172,7 @@ final class XenditNotificationProcessor
         $this->notifyClient($booking);
 
         try {
-            BookingConfirmed::dispatch($booking->refresh(), (int) $booking->mitra_id);
+            BookingConfirmed::dispatch($booking->refresh(), (string) $booking->mitra_id);
         } catch (Throwable $e) {
             Log::error('XenditNotificationProcessor: dispatch BookingConfirmed gagal', [
                 'booking_id' => $booking->id,

@@ -7,7 +7,7 @@ import type { UserMini, UserWithEmail } from './user';
 
 export type PackageEloquent = {
     id: number;
-    mitra_id: number;
+    mitra_id: string;
     kode: string;
     nama: string;
     slug: string;
@@ -19,6 +19,8 @@ export type PackageEloquent = {
     harga_per_rombongan: string | null;
     max_peserta: number | null;
     timezone: string;
+    latitude: string | null;
+    longitude: string | null;
     cover_image: string | null;
     cover_image_url?: string | null;
     status: PackageStatus;
@@ -32,7 +34,7 @@ export type PackageEloquent = {
 
 export type PackageResource = {
     id: number;
-    mitra_id: number;
+    mitra_id: string;
     kode: string;
     nama: string;
     slug: string;
@@ -45,6 +47,8 @@ export type PackageResource = {
     max_peserta: number | null;
     isRombongan: boolean;
     timezone: string;
+    latitude: string | null;
+    longitude: string | null;
     cover_image: string | null;
     cover_image_url?: string | null;
     status: PackageStatus;
@@ -83,6 +87,8 @@ export type PackageInfoFormData = {
     harga_per_rombongan: number;
     max_peserta: number;
     timezone: string;
+    latitude?: string | null;
+    longitude?: string | null;
 };
 
 // ==========================================

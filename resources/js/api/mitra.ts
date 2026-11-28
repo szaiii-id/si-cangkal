@@ -13,6 +13,35 @@ export const getPackages = (
     options?: MitraOptions,
 ) => router.get('/mitra/packages', params, options);
 
+/**
+ * Ikuti redirect tautan pendek Google Maps. Bukan navigasi halaman,
+ * jadi memakai fetch dengan CSRF token dari meta tag.
+ */
+export async function resolveGoogleMapsUrl(
+    url: string,
+): Promise<string | null> {
+    const token =
+        document
+            .querySelector('meta[name="csrf-token"]')
+            ?.getAttribute('content') ?? '';
+
+    const response = await fetch('/mitra/packages/resolve-location', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'X-CSRF-TOKEN': token,
+        },
+        body: JSON.stringify({ url }),
+    });
+
+    if (!response.ok) return null;
+
+    const data = (await response.json()) as { url?: string | null };
+
+    return data.url ?? null;
+}
+
 export const getPackage = (id: number, options?: MitraOptions) =>
     router.get(`/mitra/packages/${id}`, {}, options);
 
@@ -70,17 +99,17 @@ export const getBookings = (
     options?: MitraOptions,
 ) => router.get('/mitra/bookings', params, options);
 
-export const verifyPayment = (bookingId: number, options?: MitraOptions) =>
+export const verifyPayment = (bookingId: string, options?: MitraOptions) =>
     router.post(`/mitra/bookings/${bookingId}/verify`, {}, options);
 
 export const rejectPayment = (
-    bookingId: number,
+    bookingId: string,
     data: RequestPayload,
     options?: MitraOptions,
 ) => router.post(`/mitra/bookings/${bookingId}/reject`, data, options);
 
 export const cancelBooking = (
-    bookingId: number,
+    bookingId: string,
     data: RequestPayload,
     options?: MitraOptions,
 ) => router.post(`/mitra/bookings/${bookingId}/cancel`, data, options);
@@ -98,7 +127,7 @@ function csrfToken(): string {
 }
 
 export async function createPaymentLink(
-    bookingId: number,
+    bookingId: string,
 ): Promise<{ url: string; expires_at: string | null; checkout_url: string }> {
     const response = await fetch(`/mitra/bookings/${bookingId}/payment-link`, {
         method: 'POST',
@@ -121,7 +150,7 @@ export async function createPaymentLink(
 }
 
 export const uploadPaymentProof = (
-    bookingId: number,
+    bookingId: string,
     data: RequestPayload,
     options?: MitraOptions,
 ) => router.post(`/mitra/bookings/${bookingId}/upload-proof`, data, options);

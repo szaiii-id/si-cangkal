@@ -10,7 +10,7 @@ const createMockPaymentEloquent = (
     overrides: Partial<PaymentEloquent> = {},
 ): PaymentEloquent => ({
     id: 1,
-    booking_id: 1,
+    booking_id: '1',
     jumlah: '500000',
     metode: 'transfer_manual',
     channel_code: null,
@@ -109,7 +109,11 @@ describe('PaymentHistory Component', () => {
             const payments = [
                 createMockPaymentResource({
                     verified_at: '2026-10-16T11:00:00Z',
-                    verifier: { id: 1, name: 'Admin', email: 'admin@test.com' },
+                    verifier: {
+                        id: '1',
+                        name: 'Admin',
+                        email: 'admin@test.com',
+                    },
                 }),
             ];
             render(PaymentHistory, { props: { payments } });

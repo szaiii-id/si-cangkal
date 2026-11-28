@@ -47,6 +47,8 @@ final class PackageResource extends JsonResource
             'max_peserta' => $this->max_peserta,
             'isRombongan' => $this->isRombongan(),
             'timezone' => $this->timezone,
+            'latitude' => $this->latitude !== null ? (string) $this->latitude : null,
+            'longitude' => $this->longitude !== null ? (string) $this->longitude : null,
             'cover_image' => $this->cover_image,
             'status' => $this->status->value,
             'created_at' => $this->created_at->toIso8601String(),

@@ -3,6 +3,7 @@
     import { onMount } from 'svelte';
     import { inertia, page } from '@inertiajs/svelte';
     import ToastContainer from '@/components/ui/ToastContainer.svelte';
+    import ScrollControls from '@/components/layout/ScrollControls.svelte';
     import NotificationPermissionBanner from '@/components/NotificationPermissionBanner.svelte';
     import { isFcmSupported } from '@/lib/firebase';
     import { logout as apiLogout } from '@/api/auth';
@@ -284,6 +285,8 @@
         </div>
     </div>
 </div>
+
+<ScrollControls variant="dashboard" />
 
 <ToastContainer />
 

@@ -223,7 +223,13 @@
     );
 
     let mapsUrl = $derived(
-        googleMapsUrl(`${booking.package.nama} ${booking.tanggal_keberangkatan}`),
+        googleMapsUrl(
+            `${booking.package.nama} ${booking.tanggal_keberangkatan}`,
+            {
+                latitude: booking.package.latitude,
+                longitude: booking.package.longitude,
+            },
+        ),
     );
 
     function downloadCalendar(): void {
@@ -239,6 +245,9 @@
                 end: end.toISOString(),
                 location: booking.package.nama,
                 description: `Booking ${booking.kode} · ${booking.jumlah_peserta} peserta`,
+                uuid: booking.id,
+                latitude: booking.package.latitude,
+                longitude: booking.package.longitude,
             }),
         );
     }

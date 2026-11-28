@@ -380,7 +380,7 @@ describe('Idempotency', function () {
 
 describe('Data Integrity — store', function () {
     it('store → service dipanggil + redirect ke show', function () {
-        $booking = makeBookingForClient($this->client, $this->mitra, ['id' => 999]);
+        $booking = makeBookingForClient($this->client, $this->mitra, ['id' => '00000000-0000-4000-8000-000000000000']);
 
         $this->mock(BookingCreationService::class, function (MockInterface $m) use ($booking) {
             $m->shouldReceive('create')
@@ -396,7 +396,7 @@ describe('Data Integrity — store', function () {
         $response = $this->actingAs($this->client)
             ->post("/client/bookings/{$this->package->id}", validStoreBookingPayload());
 
-        $response->assertRedirect(route('client.bookings.show', 999))
+        $response->assertRedirect(route('client.bookings.show', '00000000-0000-4000-8000-000000000000'))
             ->assertSessionHas('status');
     });
 

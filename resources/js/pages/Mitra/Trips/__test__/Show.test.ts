@@ -101,9 +101,9 @@ vi.mock('@/components/mitra/trips/TripFacilitiesCard.svelte', () => ({
 // ============================================================
 const makeTrip = (overrides = {}) => ({
     id: 42,
-    mitra_id: 1,
+    mitra_id: '1',
     package_id: 1,
-    booking_id: 10,
+    booking_id: '10',
     kode: 'TRIP-001',
     status: 'scheduled' as const,
     tanggal_mulai: '2026-02-01',
@@ -130,10 +130,10 @@ const makeTrip = (overrides = {}) => ({
     booking: {
         id: 10,
         kode: 'BK-001',
-        client: { id: 100, name: 'Budi', email: 'budi@test.com' },
+        client: { id: '100', name: 'Budi', email: 'budi@test.com' },
     },
     mitra: {
-        id: 1,
+        id: '1',
         name: 'PT Mitra Jaya',
         email: 'mitra@test.com',
         username: 'mitrajaya',

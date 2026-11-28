@@ -130,7 +130,7 @@ describe('Contract — findById / findByKode / findByBookingId', function () {
     });
 
     it('findByBookingId mengembalikan null jika tidak ada', function () {
-        expect($this->repo->findByBookingId(999_999))->toBeNull();
+        expect($this->repo->findByBookingId('00000000-0000-4000-8000-000000000000'))->toBeNull();
     });
 });
 

@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->char('uuid', 36)->unique();
             $table->foreignId('trip_id')->constrained('trips')->cascadeOnDelete();
-            $table->foreignId('booking_id')->constrained('bookings')->cascadeOnDelete();
+            $table->foreignUuid('booking_id')->constrained('bookings')->cascadeOnDelete();
             $table->string('qr_code');
             $table->string('pdf_path');
             $table->timestamp('generated_at')->nullable();

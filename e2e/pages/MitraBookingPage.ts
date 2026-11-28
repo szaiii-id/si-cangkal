@@ -37,7 +37,7 @@ export class MitraBookingPage {
         await this.page.goto('/mitra/bookings');
     }
 
-    async gotoShow(bookingId: number): Promise<void> {
+    async gotoShow(bookingId: string): Promise<void> {
         await this.page.goto(`/mitra/bookings/${bookingId}`);
     }
 
@@ -83,7 +83,7 @@ export class MitraBookingPage {
     get proofImage(): Locator {
         // aria-label={`Lihat gambar bukti transfer booking ${bookingId}`}
         return this.page.getByRole('img', {
-            name: /Bukti Transfer untuk Booking #\d+/i,
+            name: /Bukti Transfer untuk Booking #[0-9a-f-]{36}/i,
         });
     }
 
@@ -133,7 +133,7 @@ export class MitraBookingPage {
      *
      * ⚠️ Tombol verify hanya ada jika isPending && hasProof.
      */
-    async verifyPayment(bookingId: number): Promise<void> {
+    async verifyPayment(bookingId: string): Promise<void> {
         // Step 1: buka modal
         await this.verifyButton.click();
         await expect(this.confirmModal).toBeVisible();
@@ -163,7 +163,7 @@ export class MitraBookingPage {
      * 2. Isi alasan (min 5 karakter)
      * 3. Klik "Ya, Tolak" → POST /mitra/bookings/{id}/reject
      */
-    async rejectPayment(bookingId: number, reason: string): Promise<void> {
+    async rejectPayment(bookingId: string, reason: string): Promise<void> {
         await this.rejectButton.click();
         await expect(this.confirmModal).toBeVisible();
 
@@ -193,7 +193,7 @@ export class MitraBookingPage {
      * 3. Klik "Ya, Batalkan" → POST /mitra/bookings/{id}/cancel
      *    → redirect ke /mitra/bookings (index), bukan back()
      */
-    async cancelBooking(bookingId: number, reason: string): Promise<void> {
+    async cancelBooking(bookingId: string, reason: string): Promise<void> {
         await this.cancelButton.click();
         await expect(this.confirmModal).toBeVisible();
 

@@ -7,7 +7,7 @@
     // TYPES
     // ==========================================
     type RecentBooking = {
-        id: number;
+        id: string;
         paket: string | null;
         client: string | null;
         status: string;

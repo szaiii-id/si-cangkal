@@ -228,7 +228,7 @@ const makeBooking = (overrides: Record<string, unknown> = {}) =>
         created_at: '2026-01-01',
         has_payment_proof: false,
         package: { id: 1, nama: 'Paket Bali' },
-        client: { id: 10, name: 'Budi', email: 'budi@test.com' },
+        client: { id: '10', name: 'Budi', email: 'budi@test.com' },
         participants: [{ id: 1, nama: 'Budi' }],
         payments: [],
         refunds: [],

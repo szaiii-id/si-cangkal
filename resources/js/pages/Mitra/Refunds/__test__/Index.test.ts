@@ -185,8 +185,8 @@ async function syncUI() {
 // ============================================================
 const makeRefund = (overrides: Record<string, unknown> = {}) => ({
     id: 1,
-    booking_id: 10,
-    mitra_id: 1,
+    booking_id: '10',
+    mitra_id: '1',
     xendit_refund_id: null,
     amount: '500000',
     currency: 'IDR',
@@ -202,7 +202,7 @@ const makeRefund = (overrides: Record<string, unknown> = {}) => ({
         kode: 'BK-01',
         status: 'refund_requested',
         total_harga: '500000',
-        client: { id: 100, name: 'Budi', email: 'budi@test.com' },
+        client: { id: '100', name: 'Budi', email: 'budi@test.com' },
     },
     ...overrides,
 });

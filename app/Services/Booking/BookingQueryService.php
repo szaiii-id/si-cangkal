@@ -45,7 +45,7 @@ class BookingQueryService
      *
      * @throws ValidationException Bila booking tidak ditemukan.
      */
-    public function findDetail(int $id): Booking
+    public function findDetail(string $id): Booking
     {
         $booking = $this->bookingRepository->findById($id);
 

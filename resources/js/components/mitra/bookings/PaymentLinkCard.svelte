@@ -11,7 +11,7 @@
         canCreate = true,
         phone = null,
     }: {
-        bookingId: number;
+        bookingId: string;
         canCreate?: boolean;
         phone?: string | null;
     } = $props();

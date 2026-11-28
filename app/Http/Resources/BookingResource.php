@@ -98,6 +98,8 @@ final class BookingResource extends JsonResource
             'kode' => $package->kode,
             'slug' => $package->slug,
             'timezone' => $package->timezone,
+            'latitude' => $package->latitude !== null ? (string) $package->latitude : null,
+            'longitude' => $package->longitude !== null ? (string) $package->longitude : null,
             'harga_per_orang' => (string) $package->harga_per_orang,
             'harga_per_rombongan' => $package->harga_per_rombongan !== null
                 ? (string) $package->harga_per_rombongan

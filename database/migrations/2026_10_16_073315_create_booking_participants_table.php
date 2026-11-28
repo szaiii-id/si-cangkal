@@ -29,7 +29,7 @@ return new class extends Migration
         Schema::create('booking_participants', function (Blueprint $table) {
             $table->id();
 
-            $table->foreignId('booking_id')
+            $table->foreignUuid('booking_id')
                 ->constrained('bookings')
                 ->cascadeOnDelete();
 

@@ -14,7 +14,7 @@ use Illuminate\Support\Carbon;
  * Laravel notification system bawaan).
  *
  * @property string $id
- * @property int $user_id
+ * @property string $user_id
  * @property string $tipe
  * @property string $judul
  * @property string $pesan

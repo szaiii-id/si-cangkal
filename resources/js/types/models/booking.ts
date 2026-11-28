@@ -5,11 +5,11 @@ import type { PackageEloquent } from './package';
 import type { RefundEloquent, RefundResource } from './refund';
 
 export type BookingEloquent = {
-    id: number;
+    id: string;
     kode: string;
     package_id: number;
-    user_id: number;
-    mitra_id: number;
+    user_id: string;
+    mitra_id: string;
     tanggal_keberangkatan: string;
     jumlah_peserta: number;
     total_harga: string;
@@ -32,7 +32,7 @@ export type BookingEloquent = {
 };
 
 export type BookingResource = {
-    id: number;
+    id: string;
     kode: string;
     status: BookingStatus;
     statusLabel: string;
@@ -50,6 +50,8 @@ export type BookingResource = {
         kode: string;
         slug: string;
         timezone: string;
+        latitude: string | null;
+        longitude: string | null;
         harga_per_orang: string;
         harga_per_rombongan: string | null;
         durasi_hari: number;
@@ -66,7 +68,7 @@ export type BookingResource = {
 
 export type BookingParticipant = {
     id: number;
-    booking_id: number;
+    booking_id: string;
     nama: string;
     umur: number | null;
     no_hp: string | null;
@@ -85,11 +87,11 @@ export type BookingParticipantResource = {
 
 export type PaymentEloquent = {
     id: number;
-    booking_id: number;
+    booking_id: string;
     jumlah: string;
     metode: PaymentMetode;
     channel_code: string | null;
-    verified_by: number | null;
+    verified_by: string | null;
     verified_at: string | null;
     catatan: string | null;
     created_at: string;

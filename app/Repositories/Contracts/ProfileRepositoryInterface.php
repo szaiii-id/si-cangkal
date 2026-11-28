@@ -24,5 +24,5 @@ interface ProfileRepositoryInterface
     /**
      * Cari profile berdasarkan user_id.
      */
-    public function findByUserId(int $userId): ?Profile;
+    public function findByUserId(string $userId): ?Profile;
 }

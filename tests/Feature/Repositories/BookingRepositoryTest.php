@@ -107,7 +107,7 @@ describe('Contract — findById / findByKode', function () {
     });
 
     it('findById mengembalikan null jika tidak ada', function () {
-        expect($this->repo->findById(999_999))->toBeNull();
+        expect($this->repo->findById('00000000-0000-4000-8000-000000000000'))->toBeNull();
     });
 
     it('findById TIDAK mengembalikan booking soft-deleted', function () {
@@ -283,7 +283,7 @@ describe('Concurrency — unique constraint', function () {
 
         // Mitra "palsu"
         $ghostMitra = new User;
-        $ghostMitra->forceFill(['id' => 999_999, 'role' => 'mitra']);
+        $ghostMitra->forceFill(['id' => '00000000-0000-4000-8000-000000000000', 'role' => 'mitra']);
 
         expect(fn () => $this->repo->create([
             'kode' => 'BKG-2026-001',

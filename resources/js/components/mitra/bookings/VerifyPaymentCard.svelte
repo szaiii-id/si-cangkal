@@ -13,7 +13,7 @@
         canVerify,
         canReject,
     }: {
-        bookingId: number;
+        bookingId: string;
         hasProof: boolean;
         onVerify: () => void;
         onReject: () => void;

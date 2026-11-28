@@ -120,7 +120,7 @@ function getCardByTitle(title: string): HTMLElement {
 const makeProfile = (overrides: Record<string, unknown> = {}) =>
     ({
         id: 1,
-        user_id: 2,
+        user_id: '2',
         tipe: 'badan_usaha',
         logo: null,
         meta: null,

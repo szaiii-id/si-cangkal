@@ -149,7 +149,7 @@ describe('findDetail — persistence', function () {
     });
 
     it('findDetail → booking tidak ada → ValidationException', function () {
-        expect(fn () => $this->service->findDetail(999_999))
+        expect(fn () => $this->service->findDetail('00000000-0000-4000-8000-000000000100'))
             ->toThrow(ValidationException::class);
     });
 });

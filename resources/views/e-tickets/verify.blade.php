@@ -180,7 +180,7 @@
                 <dt>Lokasi</dt>
                 <dd>
                     <a
-                        href="https://www.google.com/maps/search/?api=1&query={{ rawurlencode($namaPaket) }}"
+                        href="{{ $latitude && $longitude ? 'https://www.google.com/maps/search/?api=1&query='.rawurlencode($latitude.','.$longitude) : 'https://www.google.com/maps/search/?api=1&query='.rawurlencode($namaPaket) }}"
                         target="_blank"
                         rel="noopener noreferrer"
                     >Buka di Maps</a>

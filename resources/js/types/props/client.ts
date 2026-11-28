@@ -90,7 +90,7 @@ export type ClientBookingShowProps = {
  */
 export type ClientReviewCreateProps = {
     booking: {
-        id: number;
+        id: string;
         kode: string;
         paket: string | null;
     };
@@ -181,7 +181,7 @@ export type ClientCatalogShowProps = {
  */
 export type ClientProfileProps = {
     user: {
-        id: number;
+        id: string;
         name: string;
         username: string | null;
         email: string;

@@ -116,10 +116,10 @@ final class RefundRepository implements RefundRepositoryInterface
      * Base query untuk refund dengan filter search & status.
      *
      * @param  array{search?: string|null, status?: string|null}  $filters
-     * @param  int|null  $mitraId  Null = admin (semua refund).
+     * @param  string|null  $mitraId  Null = admin (semua refund).
      * @return Builder<Refund>
      */
-    private function buildQuery(array $filters, ?int $mitraId): Builder
+    private function buildQuery(array $filters, ?string $mitraId): Builder
     {
         $search = $filters['search'] ?? null;
         $status = $filters['status'] ?? null;

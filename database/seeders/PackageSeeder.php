@@ -193,6 +193,8 @@ class PackageSeeder extends Seeder
      *     harga_per_orang: int,
      *     harga_per_rombongan: int|null,
      *     max_peserta: int|null,
+     *     latitude?: string|null,
+     *     longitude?: string|null,
      *     days: array<int, array{
      *         hari_ke: int,
      *         judul: string,
@@ -220,6 +222,8 @@ class PackageSeeder extends Seeder
                 'harga_per_rombongan' => $data['harga_per_rombongan'],
                 'max_peserta' => $data['max_peserta'],
                 'timezone' => 'Asia/Makassar',
+                'latitude' => $data['latitude'] ?? '-8.6500000',
+                'longitude' => $data['longitude'] ?? '115.2200000',
                 'status' => PackageStatus::AKTIF->value,
             ]
         );

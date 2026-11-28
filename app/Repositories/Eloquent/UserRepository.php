@@ -58,7 +58,7 @@ final class UserRepository implements UserRepositoryInterface
     /**
      * {@inheritDoc}
      */
-    public function findById(int $id): ?User
+    public function findById(string $id): ?User
     {
         return User::find($id);
     }
@@ -211,7 +211,7 @@ final class UserRepository implements UserRepositoryInterface
     /**
      * {@inheritDoc}
      */
-    public function emailExists(string $email, ?int $exceptUserId = null): bool
+    public function emailExists(string $email, ?string $exceptUserId = null): bool
     {
         return User::where('email', $email)
             ->when($exceptUserId, fn (Builder $q) => $q->where('id', '!=', $exceptUserId))
@@ -221,7 +221,7 @@ final class UserRepository implements UserRepositoryInterface
     /**
      * {@inheritDoc}
      */
-    public function usernameExists(string $username, ?int $exceptUserId = null): bool
+    public function usernameExists(string $username, ?string $exceptUserId = null): bool
     {
         return User::where('username', $username)
             ->when($exceptUserId, fn (Builder $q) => $q->where('id', '!=', $exceptUserId))

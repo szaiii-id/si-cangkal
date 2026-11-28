@@ -9,7 +9,7 @@ use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
- * @property int $booking_id
+ * @property string $booking_id
  * @property string $token
  * @property Carbon|null $expires_at
  * @property Carbon|null $revoked_at

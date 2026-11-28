@@ -20,14 +20,14 @@ export class ClientBookingPage {
         await expect(SEL.CLIENT.booking.heading(this.page)).toBeVisible();
     }
 
-    async gotoCreate(packageId: number): Promise<void> {
+    async gotoCreate(packageId: string): Promise<void> {
         await this.page.goto(`/client/bookings/create/${packageId}`);
         await expect(
             this.page.getByRole('heading', { name: 'Info Pemesanan' }),
         ).toBeVisible();
     }
 
-    async gotoShow(bookingId: number): Promise<void> {
+    async gotoShow(bookingId: string): Promise<void> {
         await this.page.goto(`/client/bookings/${bookingId}`);
         await expect(SEL.CLIENT.booking.backLink(this.page)).toBeVisible();
     }
@@ -80,7 +80,7 @@ export class ClientBookingPage {
         }
     }
 
-    async submitBooking(packageId: number): Promise<void> {
+    async submitBooking(packageId: string): Promise<void> {
         const responsePromise = this.page.waitForResponse(
             (res) =>
                 res.url().includes(`/client/bookings/${packageId}`) &&
@@ -106,7 +106,7 @@ export class ClientBookingPage {
     }
 
     async uploadPaymentProof(
-        bookingId: number,
+        bookingId: string,
         file: { name: string; mimeType: string; buffer: Buffer },
     ): Promise<void> {
         await this.selectTransferMethod();
@@ -124,7 +124,7 @@ export class ClientBookingPage {
         await responsePromise;
     }
 
-    async cancelBooking(bookingId: number): Promise<void> {
+    async cancelBooking(bookingId: string): Promise<void> {
         await SEL.CLIENT.booking.cancelButton(this.page).click();
         await expect(SEL.CLIENT.booking.confirmModal(this.page)).toBeVisible();
 

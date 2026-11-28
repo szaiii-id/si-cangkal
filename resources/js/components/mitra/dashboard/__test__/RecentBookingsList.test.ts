@@ -13,7 +13,7 @@ vi.mock('@inertiajs/svelte', () => ({
 // MOCK DATA
 // ==========================================
 const createMockBooking = (overrides = {}) => ({
-    id: 1,
+    id: '1',
     kode: 'BK-001',
     client: 'Budi',
     paket: 'Paket Bali',
@@ -98,8 +98,8 @@ describe('RecentBookingsList Component', () => {
             render(RecentBookingsList, {
                 props: {
                     bookings: [
-                        createMockBooking({ id: 1, kode: 'BK-001' }),
-                        createMockBooking({ id: 2, kode: 'BK-002' }),
+                        createMockBooking({ id: '1', kode: 'BK-001' }),
+                        createMockBooking({ id: '2', kode: 'BK-002' }),
                     ],
                 },
             });

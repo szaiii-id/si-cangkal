@@ -17,7 +17,7 @@ return new class extends Migration
         Schema::table('refunds', function (Blueprint $table): void {
             $table->string('proof_path', 255)->nullable()->after('catatan');
             $table->timestamp('proof_uploaded_at')->nullable()->after('proof_path');
-            $table->foreignId('proof_uploaded_by')
+            $table->foreignUuid('proof_uploaded_by')
                 ->nullable()
                 ->after('proof_uploaded_at')
                 ->constrained('users')

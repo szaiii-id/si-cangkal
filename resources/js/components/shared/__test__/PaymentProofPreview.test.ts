@@ -9,14 +9,14 @@ describe('PaymentProofPreview Component', () => {
     describe('When Proof Exists', () => {
         it('harus merender judul "Bukti Transfer"', () => {
             render(PaymentProofPreview, {
-                props: { bookingId: 123, role: 'client', hasProof: true },
+                props: { bookingId: '123', role: 'client', hasProof: true },
             });
             expect(screen.getByText('Bukti Transfer')).toBeInTheDocument();
         });
 
         it('harus membentuk URL yang benar untuk role "client"', () => {
             render(PaymentProofPreview, {
-                props: { bookingId: 123, role: 'client', hasProof: true },
+                props: { bookingId: '123', role: 'client', hasProof: true },
             });
 
             const link = screen.getByLabelText(
@@ -30,7 +30,7 @@ describe('PaymentProofPreview Component', () => {
 
         it('harus membentuk URL yang benar untuk role "mitra"', () => {
             render(PaymentProofPreview, {
-                props: { bookingId: 456, role: 'mitra', hasProof: true },
+                props: { bookingId: '456', role: 'mitra', hasProof: true },
             });
 
             const link = screen.getByLabelText(
@@ -44,7 +44,7 @@ describe('PaymentProofPreview Component', () => {
 
         it('harus membentuk URL yang benar untuk role "admin"', () => {
             render(PaymentProofPreview, {
-                props: { bookingId: 789, role: 'admin', hasProof: true },
+                props: { bookingId: '789', role: 'admin', hasProof: true },
             });
 
             const link = screen.getByLabelText(
@@ -58,7 +58,7 @@ describe('PaymentProofPreview Component', () => {
 
         it('harus merender gambar dengan alt text yang deskriptif', () => {
             render(PaymentProofPreview, {
-                props: { bookingId: 123, role: 'client', hasProof: true },
+                props: { bookingId: '123', role: 'client', hasProof: true },
             });
 
             const img = screen.getByAltText(
@@ -70,7 +70,7 @@ describe('PaymentProofPreview Component', () => {
         it('TIDAK boleh merender tautan "Buka di tab baru" jika showLinkToNewTab=false', () => {
             render(PaymentProofPreview, {
                 props: {
-                    bookingId: 123,
+                    bookingId: '123',
                     role: 'client',
                     hasProof: true,
                     showLinkToNewTab: false,
@@ -89,7 +89,7 @@ describe('PaymentProofPreview Component', () => {
     describe('When Proof Does Not Exist', () => {
         it('harus menampilkan pesan default "Client belum mengunggah…"', () => {
             render(PaymentProofPreview, {
-                props: { bookingId: 123, role: 'client', hasProof: false },
+                props: { bookingId: '123', role: 'client', hasProof: false },
             });
 
             expect(
@@ -100,7 +100,7 @@ describe('PaymentProofPreview Component', () => {
         it('harus menampilkan pesan kustom jika emptyMessage diberikan', () => {
             render(PaymentProofPreview, {
                 props: {
-                    bookingId: 123,
+                    bookingId: '123',
                     role: 'admin',
                     hasProof: false,
                     emptyMessage: 'Belum ada bukti untuk admin.',
@@ -114,7 +114,7 @@ describe('PaymentProofPreview Component', () => {
 
         it('TIDAK boleh merender link atau gambar apa pun', () => {
             render(PaymentProofPreview, {
-                props: { bookingId: 123, role: 'client', hasProof: false },
+                props: { bookingId: '123', role: 'client', hasProof: false },
             });
 
             expect(screen.queryByRole('link')).not.toBeInTheDocument();
@@ -128,7 +128,7 @@ describe('PaymentProofPreview Component', () => {
     describe('Accessibility', () => {
         it('ikon SVG harus disembunyikan dari screen reader', () => {
             const { container } = render(PaymentProofPreview, {
-                props: { bookingId: 123, role: 'client', hasProof: true },
+                props: { bookingId: '123', role: 'client', hasProof: true },
             });
 
             const svgs = container.querySelectorAll('svg');
@@ -139,7 +139,7 @@ describe('PaymentProofPreview Component', () => {
 
         it('tautan gambar harus memiliki aria-label yang jelas', () => {
             render(PaymentProofPreview, {
-                props: { bookingId: 123, role: 'client', hasProof: true },
+                props: { bookingId: '123', role: 'client', hasProof: true },
             });
 
             const imgLink = screen.getByLabelText(

@@ -69,6 +69,8 @@ final class PublicETicketController extends Controller
                 'namaClient' => PiiMask::name($booking->client?->name),
                 'statusBooking' => $booking->status->label(),
                 'statusTrip' => $trip->status->label(),
+                'latitude' => isset($snapshot['latitude']) ? (string) $snapshot['latitude'] : null,
+                'longitude' => isset($snapshot['longitude']) ? (string) $snapshot['longitude'] : null,
             ])
             ->header('X-Robots-Tag', 'noindex, nofollow, noarchive')
             ->header('Referrer-Policy', 'no-referrer')

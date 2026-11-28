@@ -22,7 +22,7 @@ const createMockTrip = (overrides: Record<string, unknown> = {}) =>
         tanggal_selesai: '2026-10-22',
         jumlah_peserta: 10,
         timezone: 'Asia/Makassar',
-        mitra: { id: 1, name: 'Mitra A' },
+        mitra: { id: '1', name: 'Mitra A' },
         package: { nama: 'Paket Bali' },
         booking: { id: 100 },
         ...overrides,

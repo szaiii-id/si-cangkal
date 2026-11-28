@@ -109,7 +109,7 @@ final class TripRepository implements TripRepositoryInterface
             })
             ->when($status, fn (Builder $q, string $s) => $q->where('status', $s))
             ->when($packageId, fn (Builder $q, int $id) => $q->where('package_id', $id))
-            ->when($mitraId, fn (Builder $q, int $id) => $q->where('mitra_id', $id))
+            ->when($mitraId, fn (Builder $q, string $id) => $q->where('mitra_id', $id))
             ->when($tanggalDari, fn (Builder $q, string $tgl) => $q->where('tanggal_mulai', '>=', $tgl))
             ->when($tanggalSampai, fn (Builder $q, string $tgl) => $q->where('tanggal_mulai', '<=', $tgl))
             ->orderBy($sort, $direction)
@@ -163,7 +163,7 @@ final class TripRepository implements TripRepositoryInterface
     /**
      * {@inheritDoc}
      */
-    public function findByBookingId(int $bookingId): ?Trip
+    public function findByBookingId(string $bookingId): ?Trip
     {
         return Trip::with(['package', 'mitra', 'days.trip'])
             ->where('booking_id', $bookingId)

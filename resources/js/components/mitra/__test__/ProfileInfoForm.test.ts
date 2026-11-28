@@ -26,7 +26,7 @@ vi.mock('@/utils/toast.svelte', () => ({
 // ==========================================
 const mockPage = vi.hoisted(() => ({
     props: {
-        auth: { user: { id: 1, name: 'Budi', email: 'budi@test.com' } },
+        auth: { user: { id: '1', name: 'Budi', email: 'budi@test.com' } },
     },
 }));
 

@@ -61,11 +61,25 @@
     let waLink = $derived(
         waMeUrl(mitraProfile?.telepon ?? null, `Halo, saya tertarik dengan paket ${pkg.nama}.`),
     );
+    let embedMapUrl = $derived(
+        pkg.latitude && pkg.longitude
+            ? `https://www.google.com/maps?q=${encodeURIComponent(`${pkg.latitude},${pkg.longitude}`)}&output=embed`
+            : null,
+    );
+
+    let harga = $derived(
+        pkg.harga_per_rombongan ? pkg.harga_per_rombongan : pkg.harga_per_orang,
+    );
+    let satuanHarga = $derived(
+        pkg.harga_per_rombongan ? '/ rombongan' : '/ orang',
+    );
+
     let mapsUrl = $derived(
         googleMapsUrl(
             [pkg.nama, mitraProfile?.kota, mitraProfile?.provinsi]
                 .filter(Boolean)
                 .join(', '),
+            { latitude: pkg.latitude, longitude: pkg.longitude },
         ),
     );
 </script>
@@ -74,7 +88,7 @@
     <title>{pkg.nama} | SI-CANGKAL</title>
 </svelte:head>
 
-<ClientLayout title="Detail Paket">
+<ClientLayout title="Detail Paket" hideBottomNav>
     
     <!-- HERO IMAGE -->
     <div class="relative -mx-5 -mt-4 sm:-mx-8 sm:-mt-6 h-[40vh] sm:h-[50vh] bg-gray-200">
@@ -127,44 +141,15 @@
             </span>
         </div>
 
-        <!-- RINGKASAN & DAFTAR ULASAN -->
-        <section class="mb-8 bg-white rounded-2xl p-5 border border-gray-100 shadow-sm" aria-labelledby="ulasan-heading">
-            <div class="flex flex-wrap items-center gap-x-3 gap-y-2 pb-3 border-b border-gray-100">
-                <StarRating value={ratingBulat} readonly />
-                <span class="text-lg font-extrabold text-dark">{formatRataRata(reviewStats.rata_rata)}</span>
-                <span class="text-xs font-medium text-gray-600">
-                    · {reviewStats.jumlah} ulasan
-                </span>
-            </div>
-
-            <h3 id="ulasan-heading" class="text-base font-extrabold text-dark mt-4 mb-1">Ulasan Client</h3>
-
-            {#if reviewStats.jumlah === 0 || reviews.data.length === 0}
-                <p class="text-xs text-gray-500 italic">Belum ada ulasan untuk paket ini.</p>
-            {:else}
-                <div class="divide-y divide-gray-100">
-                    {#each reviews.data as review (review.id)}
-                        <article class="py-4 first:pt-2 last:pb-0">
-                            <div class="flex items-start gap-3">
-                                <div class="w-8 h-8 rounded-full bg-pink/10 text-pink-text flex items-center justify-center font-extrabold text-sm shrink-0" aria-hidden="true">
-                                    {(review.client?.nama ?? '?').charAt(0).toUpperCase()}
-                                </div>
-                                <div class="flex-1 min-w-0">
-                                    <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
-                                        <p class="text-xs font-extrabold text-dark">{review.client?.nama ?? 'Client'}</p>
-                                        <StarRating value={review.rating} readonly size="sm" />
-                                        <time datetime={review.created_at} class="text-[10px] text-gray-500">
-                                            {formatDateTime(review.created_at, viewerTimezone)}
-                                        </time>
-                                    </div>
-                                    <p class="text-xs text-gray-600 leading-relaxed mt-1.5 whitespace-pre-line">{review.komentar}</p>
-                                </div>
-                            </div>
-                        </article>
-                    {/each}
-                </div>
-            {/if}
-        </section>
+        <!-- RINGKASAN ULASAN -->
+        <div class="mb-8 flex flex-wrap items-center gap-x-3 gap-y-2" aria-label="Ringkasan ulasan">
+            <StarRating value={ratingBulat} readonly />
+            <span class="text-lg font-extrabold text-dark">{formatRataRata(reviewStats.rata_rata)}</span>
+            <span class="text-xs font-medium text-gray-600">
+                · {reviewStats.jumlah} ulasan
+            </span>
+            <a href="#ulasan" class="text-xs font-bold text-pink-text hover:underline">Lihat ulasan</a>
+        </div>
 
         <!-- Deskripsi -->
         {#if pkg.deskripsi}
@@ -331,28 +316,97 @@
                 </div>
             {/if}
 
+            <!-- PETA LOKASI -->
+            {#if embedMapUrl}
+                <section class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-5" aria-label="Lokasi paket">
+                    <div class="p-5 border-b border-gray-100">
+                        <h2 class="text-sm font-extrabold text-dark">Lokasi Paket</h2>
+                        <p class="text-[11px] text-gray-500 mt-1">Titik lokasi pada peta.</p>
+                    </div>
+                    <iframe
+                        src={embedMapUrl}
+                        title="Peta lokasi {pkg.nama}"
+                        loading="lazy"
+                        referrerpolicy="no-referrer-when-downgrade"
+                        class="w-full h-[240px] border-0"
+                    ></iframe>
+                    <div class="p-4">
+                        <a
+                            href={mapsUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-pink/10 text-pink-text font-bold text-xs hover:bg-pink/20 transition-colors"
+                        >
+                            Buka di Google Maps
+                        </a>
+                    </div>
+                </section>
+            {/if}
+
+        <!-- DAFTAR ULASAN -->
+        <section id="ulasan" class="mb-8 bg-white rounded-2xl p-5 border border-gray-100 shadow-sm scroll-mt-24" aria-labelledby="ulasan-heading">
+            <h3 id="ulasan-heading" class="text-base font-extrabold text-dark mt-4 mb-1">Ulasan Client</h3>
+
+            {#if reviewStats.jumlah === 0 || reviews.data.length === 0}
+                <p class="text-xs text-gray-500 italic">Belum ada ulasan untuk paket ini.</p>
+            {:else}
+                <div class="divide-y divide-gray-100">
+                    {#each reviews.data as review (review.id)}
+                        <article class="py-4 first:pt-2 last:pb-0">
+                            <div class="flex items-start gap-3">
+                                <div class="w-8 h-8 rounded-full bg-pink/10 text-pink-text flex items-center justify-center font-extrabold text-sm shrink-0" aria-hidden="true">
+                                    {(review.client?.nama ?? '?').charAt(0).toUpperCase()}
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                        <p class="text-xs font-extrabold text-dark">{review.client?.nama ?? 'Client'}</p>
+                                        <StarRating value={review.rating} readonly size="sm" />
+                                        <time datetime={review.created_at} class="text-[10px] text-gray-500">
+                                            {formatDateTime(review.created_at, viewerTimezone)}
+                                        </time>
+                                    </div>
+                                    <p class="text-xs text-gray-600 leading-relaxed mt-1.5 whitespace-pre-line">{review.komentar}</p>
+                                </div>
+                            </div>
+                        </article>
+                    {/each}
+                </div>
+            {/if}
+        </section>
+
             <!-- CARD HARGA & TOMBOL BOOKING -->
             <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">Total Harga</p>
-                    {#if pkg.harga_per_rombongan}
-                        <p class="text-2xl font-extrabold text-dark">{formatCurrency(pkg.harga_per_rombongan)}</p>
-                        <p class="text-xs text-gray-500">/ rombongan</p>
-                    {:else}
-                        <p class="text-2xl font-extrabold text-dark">{formatCurrency(pkg.harga_per_orang)}</p>
-                        <p class="text-xs text-gray-500">/ orang</p>
-                    {/if}
+                    <p class="text-2xl font-extrabold text-dark">{formatCurrency(harga)}</p>
+                    <p class="text-xs text-gray-500">{satuanHarga}</p>
                 </div>
 
                 <!-- Tombol Booking -->
                 <a 
                     href={`/client/bookings/create/${pkg.id}`} 
                     use:inertia 
-                    class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-full bg-pink-dark text-white font-extrabold text-sm hover:bg-sun-dark transition-[transform,box-shadow,background-color,border-color,color,opacity] shadow-lg hover:shadow-pink-dark/30"
+                    class="hidden sm:inline-flex w-full sm:w-auto items-center justify-center gap-2 px-8 py-3.5 rounded-full bg-pink-dark text-white font-extrabold text-sm hover:bg-sun-dark transition-[transform,box-shadow,background-color,border-color,color,opacity] shadow-lg hover:shadow-pink-dark/30"
                 >
                     Booking Sekarang
                     </a>
             </div>
+        </div>
+
+        <!-- BAR BOOKING MELEKAT (MOBILE) -->
+        <div class="fixed inset-x-0 bottom-0 z-40 sm:hidden bg-white/95 backdrop-blur border-t border-gray-200 px-5 py-3 flex items-center justify-between gap-4 shadow-[0_-8px_24px_rgba(0,0,0,0.06)]">
+            <div class="min-w-0">
+                <p class="text-[9px] text-gray-500 font-bold uppercase tracking-wider">Total Harga</p>
+                <p class="text-lg font-extrabold text-dark truncate">{formatCurrency(harga)}</p>
+                <p class="text-[10px] text-gray-500">{satuanHarga}</p>
+            </div>
+            <a
+                href={`/client/bookings/create/${pkg.id}`}
+                use:inertia
+                class="shrink-0 inline-flex items-center justify-center px-6 py-3 rounded-full bg-pink-dark text-white font-extrabold text-sm shadow-lg"
+            >
+                Booking Sekarang
+            </a>
         </div>
 
     </div>

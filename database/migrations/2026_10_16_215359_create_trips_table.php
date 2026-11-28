@@ -12,11 +12,11 @@ return new class extends Migration
             $table->id();
             $table->string('kode', 50)->unique();
 
-            $table->foreignId('booking_id')->unique()->constrained('bookings')->restrictOnDelete();
+            $table->foreignUuid('booking_id')->unique()->constrained('bookings')->restrictOnDelete();
             $table->foreignId('package_id')->constrained('packages')->restrictOnDelete();
 
             // Relasi Mitra (1 Trip = 1 Mitra)
-            $table->foreignId('mitra_id')->constrained('users')->restrictOnDelete();
+            $table->foreignUuid('mitra_id')->constrained('users')->restrictOnDelete();
 
             $table->jsonb('snapshot_package');
             $table->date('tanggal_mulai');

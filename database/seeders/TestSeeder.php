@@ -158,6 +158,8 @@ class TestSeeder extends Seeder
             'harga_per_rombongan' => null,
             'max_peserta' => null,
             'timezone' => 'Asia/Makassar',
+            'latitude' => '-8.6500000',
+            'longitude' => '115.2200000',
         ]);
 
         PackageDay::factory()->create([
@@ -208,6 +210,8 @@ class TestSeeder extends Seeder
             'harga_per_rombongan' => '5000000.00',
             'max_peserta' => 20,
             'timezone' => 'Asia/Makassar',
+            'latitude' => '-8.6500000',
+            'longitude' => '115.2200000',
         ]);
 
         // ==========================================

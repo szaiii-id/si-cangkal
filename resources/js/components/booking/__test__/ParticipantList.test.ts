@@ -13,7 +13,7 @@ const createMockParticipant = (
     overrides: Partial<BookingParticipant> = {},
 ): BookingParticipant => ({
     id: 1,
-    booking_id: 1,
+    booking_id: '1',
     nama: 'Budi',
     umur: 25,
     no_hp: '081234567890',

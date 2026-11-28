@@ -13,7 +13,7 @@ vi.mock('@inertiajs/svelte', () => ({
 // MOCK DATA
 // ==========================================
 const createMockMitra = (overrides = {}) => ({
-    id: 1,
+    id: '1',
     name: 'Mitra Travel',
     email: 'mitra@test.com',
     username: 'mitratravel',

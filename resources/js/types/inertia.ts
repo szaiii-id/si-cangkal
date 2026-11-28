@@ -45,7 +45,7 @@ export type Credentials = {
  * (mis. `/profile`).
  */
 export type AuthUser = {
-    id: number;
+    id: string;
     name: string;
     username: string | null;
     email: string;

@@ -20,7 +20,7 @@ vi.mock('@/components/layout/ClientLayout.svelte', () => ({
 }));
 
 const booking = {
-    id: 42,
+    id: '42',
     kode: 'BKG-2026-042',
     paket: 'Paket Review Test',
 };
@@ -64,7 +64,7 @@ describe('Client Reviews — Create Page (Component Test)', () => {
         await fireEvent.click(submit);
 
         expect(mockApi.createReview).toHaveBeenCalledWith(
-            42,
+            '42',
             { rating: 4, komentar: 'Perjalanan sangat menyenangkan.' },
             expect.any(Object),
         );

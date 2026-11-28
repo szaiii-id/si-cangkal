@@ -47,7 +47,7 @@ describe('Admin API Wrapper', () => {
         });
 
         it('getUserDetail() memanggil GET /admin/users/{id}', () => {
-            getUserDetail(1);
+            getUserDetail('1');
             expect(router.get).toHaveBeenCalledWith(
                 '/admin/users/1',
                 {},
@@ -67,7 +67,7 @@ describe('Admin API Wrapper', () => {
 
         it('updateUser() memanggil PUT /admin/users/{id}', () => {
             const data = { name: 'Update Nama' };
-            updateUser(1, data);
+            updateUser('1', data);
             expect(router.put).toHaveBeenCalledWith(
                 '/admin/users/1',
                 data,
@@ -76,7 +76,7 @@ describe('Admin API Wrapper', () => {
         });
 
         it('deleteUser() memanggil DELETE /admin/users/{id}', () => {
-            deleteUser(1);
+            deleteUser('1');
             expect(router.delete).toHaveBeenCalledWith(
                 '/admin/users/1',
                 undefined,
@@ -84,7 +84,7 @@ describe('Admin API Wrapper', () => {
         });
 
         it('resetUserPassword() memanggil POST /admin/users/{id}/reset-password', () => {
-            resetUserPassword(1);
+            resetUserPassword('1');
             expect(router.post).toHaveBeenCalledWith(
                 '/admin/users/1/reset-password',
                 {},
@@ -121,7 +121,7 @@ describe('Admin API Wrapper', () => {
         });
 
         it('regenerateETicket() memanggil POST /admin/bookings/{id}/regenerate-eticket', () => {
-            regenerateETicket(99);
+            regenerateETicket('99');
             expect(router.post).toHaveBeenCalledWith(
                 '/admin/bookings/99/regenerate-eticket',
                 {},
@@ -192,7 +192,7 @@ describe('Admin API Wrapper', () => {
         it('meneruskan VisitOptions ke updateUser', () => {
             const data = { name: 'Test' };
             const options = { preserveScroll: true, onSuccess: vi.fn() };
-            updateUser(1, data, options);
+            updateUser('1', data, options);
             expect(router.put).toHaveBeenCalledWith(
                 '/admin/users/1',
                 data,

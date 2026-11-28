@@ -127,7 +127,7 @@ const makeBooking = (overrides: Record<string, unknown> = {}) => ({
     expired_at: null,
     created_at: '2026-01-01',
     package: { id: 1, nama: 'Paket Bali', kode: 'PKT-01' },
-    client: { id: 10, name: 'Budi', email: 'budi@test.com' },
+    client: { id: '10', name: 'Budi', email: 'budi@test.com' },
     ...overrides,
 });
 

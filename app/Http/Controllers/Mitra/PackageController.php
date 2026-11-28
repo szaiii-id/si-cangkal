@@ -7,11 +7,15 @@ use App\Http\Requests\Mitra\StorePackageRequest;
 use App\Http\Requests\Mitra\UpdatePackageRequest;
 use App\Models\Package;
 use App\Services\Package\PackageService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
+use Throwable;
 
 final class PackageController extends Controller
 {
@@ -102,7 +106,7 @@ final class PackageController extends Controller
                 ->with('status', 'Paket, Rencana Perjalanan, dan Fasilitas berhasil diperbarui.');
         } catch (ValidationException $e) {
             return back()->withErrors($e->errors())->withInput();
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             return back()
                 ->withErrors(['error' => 'Gagal memperbarui paket: '.$e->getMessage()])
                 ->withInput();
@@ -133,6 +137,59 @@ final class PackageController extends Controller
         return redirect()
             ->route('mitra.packages.show', $package->id)
             ->with('status', 'Paket berhasil dipublish.');
+    }
+
+    /**
+     * Ikuti redirect tautan pendek Google Maps supaya frontend bisa membaca
+     * koordinat dari URL akhir. Tanpa API key dan tanpa panggilan geocoding.
+     */
+    public function resolveLocation(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'url' => ['required', 'string', 'url', 'max:2048'],
+        ]);
+
+        $url = $validated['url'];
+        $allowed = [
+            'maps.app.goo.gl',
+            'goo.gl',
+            'google.com',
+            'www.google.com',
+            'maps.google.com',
+        ];
+
+        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+        abort_unless(in_array($host, $allowed, true), 422, 'Tautan bukan Google Maps.');
+
+        $finalUrl = Cache::remember(
+            'google-maps:'.hash('sha256', $url),
+            now()->addDay(),
+            function () use ($url, $allowed): ?string {
+                try {
+                    $response = Http::timeout(8)
+                        ->withOptions(['allow_redirects' => true])
+                        ->get($url);
+
+                    if (! $response->successful()) {
+                        return null;
+                    }
+
+                    $effective = (string) $response->effectiveUri();
+                    $effectiveHost = strtolower((string) parse_url($effective, PHP_URL_HOST));
+
+                    return in_array($effectiveHost, $allowed, true) ? $effective : null;
+                } catch (Throwable) {
+                    return null;
+                }
+            },
+        );
+
+        return response()->json([
+            'url' => $finalUrl,
+            'message' => $finalUrl === null
+                ? 'Tautan tidak dapat dibaca. Coba salin ulang dari Google Maps.'
+                : null,
+        ]);
     }
 
     public function archive(Package $package): RedirectResponse

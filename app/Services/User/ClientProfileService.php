@@ -16,7 +16,7 @@ class ClientProfileService
      * Ambil data profile client untuk ditampilkan di FE.
      *
      * @return array{
-     *     id: int,
+     *     id: string,
      *     name: string,
      *     username: string|null,
      *     email: string,

@@ -17,8 +17,8 @@ const createMockRefund = (
     overrides: Partial<RefundResource> = {},
 ): RefundResource => ({
     id: 1,
-    booking_id: 100,
-    mitra_id: 1,
+    booking_id: '100',
+    mitra_id: '1',
     amount: '500000',
     amountRupiah: 'Rp 500.000',
     currency: 'IDR',
@@ -33,7 +33,7 @@ const createMockRefund = (
     catatan: null,
     created_at: '2026-10-16T10:00:00Z',
     mitra: null,
-    mitraInitiator: { id: 1, name: 'Mitra A', email: 'mitra@test.com' },
+    mitraInitiator: { id: '1', name: 'Mitra A', email: 'mitra@test.com' },
     booking: {
         id: 100,
         kode: 'BK-123',

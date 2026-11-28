@@ -15,9 +15,22 @@ export function toWhatsAppNumber(
     return digits === '' ? null : digits;
 }
 
-/** Tautan pencarian Google Maps — tanpa API key dan tanpa SDK. */
-export function googleMapsUrl(query: string): string {
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query.trim())}`;
+/**
+ * Tautan pencarian Google Maps — tanpa API key dan tanpa SDK.
+ *
+ * Bila koordinat lengkap, query memakai "lat,lng" agar menunjukkan titik
+ * yang tepat. Jika tidak, kembali ke pencarian berdasarkan teks.
+ */
+export function googleMapsUrl(
+    query: string,
+    coords?: { latitude?: string | null; longitude?: string | null } | null,
+): string {
+    const latitude = coords?.latitude?.trim();
+    const longitude = coords?.longitude?.trim();
+    const search =
+        latitude && longitude ? `${latitude},${longitude}` : query.trim();
+
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(search)}`;
 }
 
 /** Deep link WhatsApp dengan pesan yang sudah di-encode. */

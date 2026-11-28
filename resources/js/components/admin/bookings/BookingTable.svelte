@@ -11,7 +11,7 @@
     // TYPES
     // ==========================================
     type BookingRow = {
-        id: number;
+        id: string;
         kode: string;
         status: string;
         tanggal_keberangkatan: string;

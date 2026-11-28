@@ -4,7 +4,12 @@
     import ImageUploader from '@/global/ImageUploader.svelte';
     import InputText from '@/global/InputText.svelte';
     import RupiahInput from '@/global/RupiahInput.svelte';
-    import { createPackage } from '@/api/mitra';
+    import { createPackage, resolveGoogleMapsUrl } from '@/api/mitra';
+    import {
+        extractCoordinatesFromGoogleMapsUrl,
+        isGoogleMapsUrl,
+        isShortGoogleMapsUrl,
+    } from '@/utils/googleMaps';
     import { mitraMenu } from '@/utils/menus';
     import { formatCurrency } from '@/utils/formatCurrency';
 
@@ -20,7 +25,56 @@
         harga_per_rombongan: 0,
         max_peserta: 0,
         timezone: 'Asia/Makassar',
+        latitude: '',
+        longitude: '',
     });
+
+
+    let locationUrl = $state('');
+    let locationStatus = $state('');
+    let locationError = $state('');
+    let resolvingLocation = $state(false);
+
+    async function handleLocationUrl(): Promise<void> {
+        locationError = '';
+        const raw = locationUrl.trim();
+
+        if (raw === '') {
+            locationStatus = '';
+            return;
+        }
+
+        if (!isGoogleMapsUrl(raw)) {
+            locationError = 'Tautan harus berasal dari Google Maps.';
+            return;
+        }
+
+        let resolved = raw;
+
+        if (isShortGoogleMapsUrl(raw)) {
+            resolvingLocation = true;
+            resolved = (await resolveGoogleMapsUrl(raw)) ?? '';
+            resolvingLocation = false;
+
+            if (resolved === '') {
+                locationError =
+                    'Tautan tidak dapat dibaca. Coba salin ulang dari Google Maps.';
+                return;
+            }
+        }
+
+        const coords = extractCoordinatesFromGoogleMapsUrl(resolved);
+
+        if (coords === null) {
+            locationError =
+                'Lokasi tidak ditemukan dalam tautan. Coba tautan lain atau isi koordinat manual.';
+            return;
+        }
+
+        form.latitude = coords.latitude;
+        form.longitude = coords.longitude;
+        locationStatus = `Lokasi terdeteksi: ${coords.latitude}, ${coords.longitude}`;
+    }
 
     let coverFiles = $state<File[]>([]);
     let useRombongan = $state(false);
@@ -81,6 +135,8 @@
         }
 
         formData.append('timezone', form.timezone);
+        formData.append('latitude', form.latitude);
+        formData.append('longitude', form.longitude);
         if (coverFiles.length > 0) {
             formData.append('cover_image', coverFiles[0]);
         }
@@ -183,6 +239,40 @@
                                 <select id="timezone" bind:value={form.timezone} class="w-full px-4 py-2.5 border rounded-xl bg-gray-50 text-sm focus:ring-2 focus:ring-pink/20 focus:border-pink focus:bg-white">
                                     {#each timezoneOptions as opt}<option value={opt.value}>{opt.label}</option>{/each}
                                 </select>
+                            </div>
+                            <div class="sm:col-span-2">
+                                <label for="location_url" class="block text-xs font-bold text-dark mb-1.5">Tautan lokasi Google Maps</label>
+                                <input
+                                    id="location_url"
+                                    type="url"
+                                    bind:value={locationUrl}
+                                    onchange={handleLocationUrl}
+                                    onpaste={() => setTimeout(() => void handleLocationUrl(), 150)}
+                                    placeholder="Tempel tautan dari tombol Bagikan di Google Maps"
+                                    class="w-full px-4 py-2.5 border rounded-xl bg-gray-50 text-sm focus:ring-2 focus:ring-pink/20 focus:border-pink focus:bg-white"
+                                />
+                                {#if resolvingLocation}
+                                    <p class="text-[11px] text-gray-500 mt-1" role="status">Membaca lokasi…</p>
+                                {:else if locationError !== ''}
+                                    <p class="text-[11px] font-bold text-red-700 mt-1" role="alert">{locationError}</p>
+                                {:else if locationStatus !== ''}
+                                    <p class="text-[11px] font-bold text-green-text mt-1" role="status">{locationStatus}</p>
+                                {:else}
+                                    <p class="text-[11px] text-gray-500 mt-1">Cari lokasi di Google Maps, tekan Bagikan, lalu tempel tautannya di sini. Koordinat terisi otomatis.</p>
+                                {/if}
+                                <details class="mt-2">
+                                    <summary class="text-[11px] text-gray-500 cursor-pointer">Pengaturan lanjutan (koordinat manual)</summary>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                                        <div>
+                                            <label for="latitude" class="block text-xs font-bold text-dark mb-1.5">Latitude</label>
+                                            <input id="latitude" type="number" step="any" min="-90" max="90" bind:value={form.latitude} placeholder="-8.6500000" class="w-full px-4 py-2.5 border rounded-xl bg-gray-50 text-sm focus:ring-2 focus:ring-pink/20 focus:border-pink focus:bg-white" />
+                                        </div>
+                                        <div>
+                                            <label for="longitude" class="block text-xs font-bold text-dark mb-1.5">Longitude</label>
+                                            <input id="longitude" type="number" step="any" min="-180" max="180" bind:value={form.longitude} placeholder="115.2200000" class="w-full px-4 py-2.5 border rounded-xl bg-gray-50 text-sm focus:ring-2 focus:ring-pink/20 focus:border-pink focus:bg-white" />
+                                        </div>
+                                    </div>
+                                </details>
                             </div>
                         </div>
                     </div>

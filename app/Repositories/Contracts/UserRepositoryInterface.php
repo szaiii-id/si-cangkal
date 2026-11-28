@@ -26,7 +26,7 @@ interface UserRepositoryInterface
     /**
      * Mencari user berdasarkan ID.
      */
-    public function findById(int $id): ?User;
+    public function findById(string $id): ?User;
 
     /**
      * Membuat akun baru khusus dengan role 'client'.
@@ -109,12 +109,12 @@ interface UserRepositoryInterface
     /**
      * Cek apakah email sudah dipakai.
      */
-    public function emailExists(string $email, ?int $exceptUserId = null): bool;
+    public function emailExists(string $email, ?string $exceptUserId = null): bool;
 
     /**
      * Cek apakah username sudah dipakai.
      */
-    public function usernameExists(string $username, ?int $exceptUserId = null): bool;
+    public function usernameExists(string $username, ?string $exceptUserId = null): bool;
 
     /**
      * Cari user berdasarkan role (untuk autocomplete).

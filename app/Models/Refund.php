@@ -15,8 +15,8 @@ use Illuminate\Support\Carbon;
  * Model Refund — rekam jejak refund manual.
  *
  * @property int $id
- * @property int $booking_id
- * @property int|null $mitra_id
+ * @property string $booking_id
+ * @property string|null $mitra_id
  * @property numeric-string $amount
  * @property string $currency
  * @property RefundReason $reason

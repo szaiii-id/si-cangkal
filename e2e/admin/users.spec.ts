@@ -140,10 +140,13 @@ test.describe
         await expect(mitraRow).toBeVisible({ timeout: 10_000 });
 
         await Promise.all([
-            page.waitForURL(/\/admin\/users\/\d+$/, {
-                timeout: 20_000,
-                waitUntil: 'commit',
-            }),
+            page.waitForURL(
+                /\/admin\/users\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+                {
+                    timeout: 20_000,
+                    waitUntil: 'commit',
+                },
+            ),
             mitraRow.getByRole('link', { name: /^Detail$/i }).click(),
         ]);
 
@@ -183,10 +186,13 @@ test.describe
         await expect(createdRow).toBeVisible({ timeout: 10_000 });
 
         await Promise.all([
-            page.waitForURL(/\/admin\/users\/\d+\/edit$/, {
-                timeout: 20_000,
-                waitUntil: 'commit',
-            }),
+            page.waitForURL(
+                /\/admin\/users\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/edit$/,
+                {
+                    timeout: 20_000,
+                    waitUntil: 'commit',
+                },
+            ),
             createdRow.getByRole('link', { name: /^Edit$/i }).click(),
         ]);
 
@@ -199,7 +205,9 @@ test.describe
         await Promise.all([
             page.waitForResponse(
                 (res) =>
-                    /\/admin\/users\/\d+/.test(res.url()) &&
+                    /\/admin\/users\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/.test(
+                        res.url(),
+                    ) &&
                     (res.request().method() === 'PUT' ||
                         res.request().method() === 'PATCH' ||
                         res.request().method() === 'POST'),
@@ -267,8 +275,9 @@ test.describe
         await Promise.all([
             page.waitForResponse(
                 (res) =>
-                    /\/admin\/users\/\d+\/reset-password/.test(res.url()) &&
-                    res.request().method() === 'POST',
+                    /\/admin\/users\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/reset-password/.test(
+                        res.url(),
+                    ) && res.request().method() === 'POST',
             ),
             resetDialog
                 .getByRole('button', { name: /Ya, Reset Password/i })
@@ -375,7 +384,9 @@ test.describe
         await Promise.all([
             page.waitForResponse(
                 (res) =>
-                    /\/admin\/users\/\d+/.test(res.url()) &&
+                    /\/admin\/users\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/.test(
+                        res.url(),
+                    ) &&
                     (res.request().method() === 'DELETE' ||
                         res.request().method() === 'POST'),
                 { timeout: 20_000 },
