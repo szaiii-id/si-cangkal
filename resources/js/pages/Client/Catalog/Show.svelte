@@ -61,6 +61,12 @@
     let waLink = $derived(
         waMeUrl(mitraProfile?.telepon ?? null, `Halo, saya tertarik dengan paket ${pkg.nama}.`),
     );
+    let embedMapUrl = $derived(
+        pkg.latitude && pkg.longitude
+            ? `https://www.google.com/maps?q=${encodeURIComponent(`${pkg.latitude},${pkg.longitude}`)}&output=embed`
+            : null,
+    );
+
     let mapsUrl = $derived(
         googleMapsUrl(
             [pkg.nama, mitraProfile?.kota, mitraProfile?.provinsi]
@@ -330,6 +336,33 @@
                         {/if}
                     </div>
                 </div>
+            {/if}
+
+            <!-- PETA LOKASI -->
+            {#if embedMapUrl}
+                <section class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-5" aria-label="Lokasi paket">
+                    <div class="p-5 border-b border-gray-100">
+                        <h2 class="text-sm font-extrabold text-dark">Lokasi Paket</h2>
+                        <p class="text-[11px] text-gray-500 mt-1">Titik lokasi pada peta.</p>
+                    </div>
+                    <iframe
+                        src={embedMapUrl}
+                        title="Peta lokasi {pkg.nama}"
+                        loading="lazy"
+                        referrerpolicy="no-referrer-when-downgrade"
+                        class="w-full h-[240px] border-0"
+                    ></iframe>
+                    <div class="p-4">
+                        <a
+                            href={mapsUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-pink/10 text-pink-text font-bold text-xs hover:bg-pink/20 transition-colors"
+                        >
+                            Buka di Google Maps
+                        </a>
+                    </div>
+                </section>
             {/if}
 
             <!-- CARD HARGA & TOMBOL BOOKING -->

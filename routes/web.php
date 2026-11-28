@@ -260,6 +260,10 @@ Route::middleware('auth')->group(function () {
                 Route::get('/password', [MitraPasswordController::class, 'edit'])->name('password.edit');
                 Route::put('/password', [MitraPasswordController::class, 'update'])->name('password.update');
 
+                Route::post('/packages/resolve-location', [MitraPackageController::class, 'resolveLocation'])
+                    ->middleware('throttle:20,1')
+                    ->name('packages.resolve-location');
+
                 Route::resource('packages', MitraPackageController::class);
 
                 // Route tambahan untuk Complete Phase 2

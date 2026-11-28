@@ -13,6 +13,35 @@ export const getPackages = (
     options?: MitraOptions,
 ) => router.get('/mitra/packages', params, options);
 
+/**
+ * Ikuti redirect tautan pendek Google Maps. Bukan navigasi halaman,
+ * jadi memakai fetch dengan CSRF token dari meta tag.
+ */
+export async function resolveGoogleMapsUrl(
+    url: string,
+): Promise<string | null> {
+    const token =
+        document
+            .querySelector('meta[name="csrf-token"]')
+            ?.getAttribute('content') ?? '';
+
+    const response = await fetch('/mitra/packages/resolve-location', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'X-CSRF-TOKEN': token,
+        },
+        body: JSON.stringify({ url }),
+    });
+
+    if (!response.ok) return null;
+
+    const data = (await response.json()) as { url?: string | null };
+
+    return data.url ?? null;
+}
+
 export const getPackage = (id: number, options?: MitraOptions) =>
     router.get(`/mitra/packages/${id}`, {}, options);
 
