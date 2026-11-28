@@ -380,13 +380,15 @@ describe('Client Catalog — Show Page', () => {
     describe('Rendering — Harga', () => {
         it('menampilkan harga per orang saat rombongan null', () => {
             renderPage();
-            expect(screen.getByText('/ orang')).toBeInTheDocument();
+            expect(screen.getAllByText('/ orang').length).toBeGreaterThan(0);
             expect(formatCurrency).toHaveBeenCalledWith('750000');
         });
 
         it('menampilkan harga rombongan saat ada', () => {
             renderPage(makePackage({ harga_per_rombongan: '5000000' }));
-            expect(screen.getByText('/ rombongan')).toBeInTheDocument();
+            expect(screen.getAllByText('/ rombongan').length).toBeGreaterThan(
+                0,
+            );
             expect(formatCurrency).toHaveBeenCalledWith('5000000');
         });
     });
@@ -405,13 +407,16 @@ describe('Client Catalog — Show Page', () => {
 
         it('link "Booking Sekarang" ke /client/bookings/create/:id', () => {
             renderPage();
-            const bookingLink = screen.getByRole('link', {
+            const bookingLinks = screen.getAllByRole('link', {
                 name: /Booking Sekarang/i,
             });
-            expect(bookingLink).toHaveAttribute(
-                'href',
-                '/client/bookings/create/1',
-            );
+            expect(bookingLinks.length).toBeGreaterThan(0);
+            for (const link of bookingLinks) {
+                expect(link).toHaveAttribute(
+                    'href',
+                    '/client/bookings/create/1',
+                );
+            }
         });
     });
 });

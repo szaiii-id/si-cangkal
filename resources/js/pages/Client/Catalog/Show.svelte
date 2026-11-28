@@ -67,6 +67,13 @@
             : null,
     );
 
+    let harga = $derived(
+        pkg.harga_per_rombongan ? pkg.harga_per_rombongan : pkg.harga_per_orang,
+    );
+    let satuanHarga = $derived(
+        pkg.harga_per_rombongan ? '/ rombongan' : '/ orang',
+    );
+
     let mapsUrl = $derived(
         googleMapsUrl(
             [pkg.nama, mitraProfile?.kota, mitraProfile?.provinsi]
@@ -81,7 +88,7 @@
     <title>{pkg.nama} | SI-CANGKAL</title>
 </svelte:head>
 
-<ClientLayout title="Detail Paket">
+<ClientLayout title="Detail Paket" hideBottomNav>
     
     <!-- HERO IMAGE -->
     <div class="relative -mx-5 -mt-4 sm:-mx-8 sm:-mt-6 h-[40vh] sm:h-[50vh] bg-gray-200">
@@ -369,24 +376,35 @@
             <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">Total Harga</p>
-                    {#if pkg.harga_per_rombongan}
-                        <p class="text-2xl font-extrabold text-dark">{formatCurrency(pkg.harga_per_rombongan)}</p>
-                        <p class="text-xs text-gray-500">/ rombongan</p>
-                    {:else}
-                        <p class="text-2xl font-extrabold text-dark">{formatCurrency(pkg.harga_per_orang)}</p>
-                        <p class="text-xs text-gray-500">/ orang</p>
-                    {/if}
+                    <p class="text-2xl font-extrabold text-dark">{formatCurrency(harga)}</p>
+                    <p class="text-xs text-gray-500">{satuanHarga}</p>
                 </div>
 
                 <!-- Tombol Booking -->
                 <a 
                     href={`/client/bookings/create/${pkg.id}`} 
                     use:inertia 
-                    class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-full bg-pink-dark text-white font-extrabold text-sm hover:bg-sun-dark transition-[transform,box-shadow,background-color,border-color,color,opacity] shadow-lg hover:shadow-pink-dark/30"
+                    class="hidden sm:inline-flex w-full sm:w-auto items-center justify-center gap-2 px-8 py-3.5 rounded-full bg-pink-dark text-white font-extrabold text-sm hover:bg-sun-dark transition-[transform,box-shadow,background-color,border-color,color,opacity] shadow-lg hover:shadow-pink-dark/30"
                 >
                     Booking Sekarang
                     </a>
             </div>
+        </div>
+
+        <!-- BAR BOOKING MELEKAT (MOBILE) -->
+        <div class="fixed inset-x-0 bottom-0 z-40 sm:hidden bg-white/95 backdrop-blur border-t border-gray-200 px-5 py-3 flex items-center justify-between gap-4 shadow-[0_-8px_24px_rgba(0,0,0,0.06)]">
+            <div class="min-w-0">
+                <p class="text-[9px] text-gray-500 font-bold uppercase tracking-wider">Total Harga</p>
+                <p class="text-lg font-extrabold text-dark truncate">{formatCurrency(harga)}</p>
+                <p class="text-[10px] text-gray-500">{satuanHarga}</p>
+            </div>
+            <a
+                href={`/client/bookings/create/${pkg.id}`}
+                use:inertia
+                class="shrink-0 inline-flex items-center justify-center px-6 py-3 rounded-full bg-pink-dark text-white font-extrabold text-sm shadow-lg"
+            >
+                Booking Sekarang
+            </a>
         </div>
 
     </div>

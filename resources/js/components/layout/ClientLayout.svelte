@@ -2,6 +2,7 @@
     import { inertia, page } from '@inertiajs/svelte';
     import { logout } from '@/api/auth';
     import ToastContainer from '@/components/ui/ToastContainer.svelte';
+    import ScrollControls from '@/components/layout/ScrollControls.svelte';
     import { clientMenu } from '@/utils/menus';
     import type { Snippet } from 'svelte';
     import { onMount } from 'svelte';
@@ -223,6 +224,8 @@
     {/if}
 
 </div>
+
+<ScrollControls variant="client" />
 
 <ToastContainer />
 
