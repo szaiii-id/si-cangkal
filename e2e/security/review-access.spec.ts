@@ -63,13 +63,29 @@ test.describe('Security — Review Client (OWASP A01/A03)', () => {
     test('mitra tidak bisa mengakses endpoint review client', async ({
         page,
         asMitra,
+        seed,
     }) => {
         await asMitra();
 
-        const response = await page.request.get('/client/bookings/1/review', {
-            failOnStatusCode: false,
-            maxRedirects: 0,
+        const pkg = await seed.createPackage(page, {
+            mitra_email: SEED_USERS.mitra.email,
+            nama: `Paket Security Review Mitra ${Date.now()}`,
+            status: 'aktif',
+            harga_per_orang: 350_000,
         });
+        const booking = await seed.createBooking(page, {
+            client_email: SEED_USERS.client.email,
+            package_kode: pkg.kode,
+            status: 'confirmed',
+        });
+
+        const response = await page.request.get(
+            `/client/bookings/${booking.booking_id}/review`,
+            {
+                failOnStatusCode: false,
+                maxRedirects: 0,
+            },
+        );
 
         expect([302, 403]).toContain(response.status());
     });
